@@ -15,6 +15,7 @@ import { useRender } from '#web/hooks/use-render.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
+import { scrollIntoView } from '#web/tools/dom.js';
 
 import '#web/components/material-symbols.js';
 import '#web/components/router-link.js';
@@ -79,11 +80,6 @@ export class SettingsViewElement extends HTMLElement {
     useBusyStateUntil(host, function firstLoad() {
       return state.isLoadingConfig === false && state.isLoadingPaymentMethods === false;
     });
-
-    /** @param {HTMLElement} element */
-    function scrollIntoView(element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-    }
 
     function syncRouteToTabpanel() {
       if (!(accountingTabpanel.value instanceof HTMLElement)) return;

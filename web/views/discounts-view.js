@@ -165,30 +165,6 @@ export class DiscountsViewElement extends HTMLElement {
       loadDiscounts();
     }
 
-    /** @param {Event} event */
-    function handleDiscountRowInteraction(event) {
-      if (!(event.target instanceof HTMLElement)) return;
-
-      const closestRow = event.target.closest('tr[data-discount-id]');
-      if (!(closestRow instanceof HTMLTableRowElement)) return;
-
-      const discountId = Number(closestRow.dataset.discountId);
-      if (isNaN(discountId)) return;
-
-      const isOpeningAction = (event instanceof MouseEvent && event.type === 'click')
-        || (event instanceof KeyboardEvent && ['Enter', ' '].includes(event.key));
-
-      if (isOpeningAction) {
-        state.selectedDiscountId = discountId;
-        discountDetailsDialog.value?.dispatchEvent(new CommandEvent('command', {
-          command: '--open',
-          bubbles: true,
-          cancelable: true,
-        }));
-        event.preventDefault();
-      }
-    }
-
     useEffect(host, loadDiscounts);
 
     function renderLoadingIndicator() {

@@ -51,7 +51,6 @@ describe('Journal Entries', function () {
     test('shall have filters for source type and status', async function ({ page }) {
       await setupDatabaseAndNavigate(page, tursoLibSQLiteServer().url);
 
-      // Get the journal entries panel specifically using ID
       const journalEntriesPanel = page.getByRole('tabpanel', { name: 'Journal Entries' });
       await expect(journalEntriesPanel.getByLabel('Source', { exact: true })).toBeVisible();
       await expect(journalEntriesPanel.getByLabel('Status', { exact: true })).toBeVisible();
@@ -60,7 +59,6 @@ describe('Journal Entries', function () {
     test('shall have refresh button in header', async function ({ page }) {
       await setupDatabaseAndNavigate(page, tursoLibSQLiteServer().url);
 
-      // Get the journal entries panel specifically using ID
       const journalEntriesPanel = page.getByRole('tabpanel', { name: 'Journal Entries' });
       await expect(journalEntriesPanel.getByRole('button', { name: 'Refresh entries' })).toBeVisible();
     });
@@ -84,7 +82,6 @@ describe('Journal Entries', function () {
 
       await expect(page.getByRole('tab', { name: 'Chart of Accounts' })).toHaveAttribute('aria-selected', 'true');
       await expect(page.getByRole('tab', { name: 'Journal Entries' })).toHaveAttribute('aria-selected', 'false');
-      // Chart of Accounts tab should show the accounts table
       await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' })).toBeVisible();
     });
 
@@ -155,10 +152,8 @@ describe('Chart of Accounts', function () {
     test('shall display account type tags', async function ({ page }) {
       await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
 
-      // Expand all to see account types
       await page.getByRole('button', { name: 'Expand all accounts' }).click();
 
-      // Wait for accounts to load and verify type column exists
       await expect(page.getByRole('columnheader', { name: 'Type' })).toBeVisible();
     });
 
@@ -181,7 +176,6 @@ describe('Chart of Accounts', function () {
     test('shall have search input for filtering accounts', async function ({ page }) {
       await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
 
-      // Get the chart of accounts panel specifically using ID
       const chartOfAccountsPanel = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
       await expect(chartOfAccountsPanel.getByLabel('Search', { exact: true })).toBeVisible();
     });
@@ -204,7 +198,6 @@ describe('Chart of Accounts', function () {
     test('shall have type filter dropdown', async function ({ page }) {
       await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
 
-      // Get the chart of accounts panel specifically using ID
       const chartOfAccountsPanel = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
       await expect(chartOfAccountsPanel.getByLabel('Type', { exact: true })).toBeVisible();
     });
@@ -239,9 +232,7 @@ describe('Chart of Accounts', function () {
     test('shall display expand/collapse buttons', async function ({ page }) {
       await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
 
-      // Verify expand all button exists
       await expect(page.getByRole('button', { name: 'Expand all accounts' })).toBeVisible();
-      // Verify collapse all button exists
       await expect(page.getByRole('button', { name: 'Collapse all accounts' })).toBeVisible();
     });
 
@@ -250,7 +241,6 @@ describe('Chart of Accounts', function () {
 
       await page.getByRole('button', { name: 'Expand all accounts' }).click();
 
-      // Verify sub-accounts are visible (Aset Lancar is child of Aset)
       await expect(page.getByRole('row', { name: /Aset Lancar/ })).toBeVisible();
     });
 
@@ -290,7 +280,6 @@ describe('Chart of Accounts', function () {
 
       await page.getByRole('button', { name: 'Refresh accounts' }).click();
 
-      // Verify accounts are still displayed (table reloads)
       await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' })).toBeVisible();
       await expect(page.getByRole('row', { name: /Aset/ })).toBeVisible();
     });

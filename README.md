@@ -21,7 +21,6 @@ JuruKasa is a complete business management solution that combines:
 | 📦 **Stock Management** | Real-time inventory tracking with stock alerts and stock taking support |
 | 📊 **Financial Dashboard** | At-a-glance view of revenue, cash balances, and business metrics |
 | 📒 **Chart of Accounts** | Pre-configured Indonesian retail business chart of accounts |
-| 💱 **Multi-Currency Support** | Configurable currency with Indonesian Rupiah (IDR) as default |
 | 🔒 **Local-First** | Your data stays in your browser or your own Turso database |
 
 ## What JuruKasa is NOT

@@ -2,7 +2,6 @@ import { html, nothing } from 'lit-html';
 import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
-import { JournalEntryDetailsDialogElement } from '#web/components/journal-entry-details-dialog.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useBusyStateUntil } from '#web/contexts/ready-context.js';
@@ -10,12 +9,12 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useElement } from '#web/hooks/use-element.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
-import '#web/components/material-symbols.js';
 import '#web/components/journal-entry-creation-dialog.js';
+import '#web/components/journal-entry-details-dialog.js';
+import '#web/components/material-symbols.js';
 
 /**
  * @typedef {object} JournalEntryRow
@@ -41,7 +40,6 @@ export class JournalEntriesViewElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
 
-    const journalEntryDetailsDialogElement = useElement(host, JournalEntryDetailsDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -152,34 +150,6 @@ export class JournalEntriesViewElement extends HTMLElement {
       loadJournalEntries();
     }
 
-    /**
-     * @param {Event} event
-     */
-    function handleJournalEntryRowInteraction(event) {
-      if (journalEntryDetailsDialogElement.value.open) return;
-
-      if (!(event.target instanceof HTMLElement)) return;
-
-      const closestJournalEntryRow = event.target.closest('tr[data-journal-entry-ref]');
-      if (!(closestJournalEntryRow instanceof HTMLTableRowElement)) return;
-
-      const journalEntryRef = Number(closestJournalEntryRow.dataset.journalEntryRef);
-      if (isNaN(journalEntryRef)) return;
-
-      const isOpeningAction = (event instanceof MouseEvent && event.type === 'click')
-        || (event instanceof KeyboardEvent && ['Enter', ' '].includes(event.key));
-
-      if (isOpeningAction) {
-        state.selectedJournalEntryRef = journalEntryRef;
-        journalEntryDetailsDialogElement.value.dispatchEvent(new CommandEvent('command', {
-          command: '--open',
-          bubbles: true,
-          cancelable: true,
-        }));
-        event.preventDefault();
-      }
-    }
-
     useEffect(host, loadJournalEntries);
 
     function renderLoadingIndicator() {
@@ -281,14 +251,18 @@ export class JournalEntriesViewElement extends HTMLElement {
       const statusText = isPosted ? 'Posted' : 'Draft';
 
       return html`
-        <tr
-          tabindex="0"
-          aria-label="Journal entry ${journalEntry.ref}"
-          data-journal-entry-ref="${journalEntry.ref}"
-          @click=${handleJournalEntryRowInteraction}
-          @keydown=${handleJournalEntryRowInteraction}
-        >
-          <td class="label-large" style="color: var(--md-sys-color-primary);">#${journalEntry.ref}</td>
+        <tr>
+          <td>
+            <button
+              role="button"
+              type="button"
+              class="text extra-small label-large"
+              style="--md-sys-density: -4; color: var(--md-sys-color-primary);"
+              commandfor="journal-entry-details-dialog"
+              command="--open"
+              data-journal-entry-ref="${journalEntry.ref}"
+            >#${journalEntry.ref}</button>
+          </td>
           <td style="white-space: nowrap;">${i18n.date.format(journalEntry.entry_time)}</td>
           <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${journalEntry.note || '—'}</td>
           <td class="source-cell center">
@@ -520,9 +494,7 @@ export class JournalEntriesViewElement extends HTMLElement {
         ></journal-entry-creation-dialog>
 
         <journal-entry-details-dialog
-          ${journalEntryDetailsDialogElement}
           id="journal-entry-details-dialog"
-          ref=${state.selectedJournalEntryRef}
           @journal-entry-posted=${loadJournalEntries}
           @journal-entry-discarded=${loadJournalEntries}
           @journal-entry-reversed=${loadJournalEntries}

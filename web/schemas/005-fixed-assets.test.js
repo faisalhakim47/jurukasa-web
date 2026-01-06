@@ -138,6 +138,30 @@ describe('Fixed Assets Schema Tests', function () {
         { message: /CHECK constraint failed/ }
       );
     });
+
+    it('shall reject asset creation in closed fiscal year', async function () {
+      await setupAssetAccounts();
+      
+      const fyBegin = new Date(2024, 0, 1).getTime();
+      const fyEnd = new Date(2024, 11, 31).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'FY2024');
+      await closeFiscalYear(fyBegin, fyEnd);
+
+      const acquisitionTime = new Date(2024, 5, 1).getTime();
+      
+      await rejects(
+        async () => {
+          await createFixedAsset(
+            'Backdated Asset',
+            10000000,
+            5,
+            1000000,
+            acquisitionTime
+          );
+        },
+        { message: /Cannot acquire asset in a closed fiscal year/ }
+      );
+    });
   });
 
   describe('Asset Acquisition Journal Entry', function () {
@@ -244,8 +268,8 @@ describe('Fixed Assets Schema Tests', function () {
 
       // Check depreciation journal entry was created
       const jeResult = await db().execute(
-        `SELECT * FROM journal_entries WHERE note = 'FY Depreciation Expense' AND fiscal_year_begin_time = ?`,
-        [fyBegin]
+        `SELECT * FROM journal_entries WHERE note = 'FY Depreciation Expense' AND entry_time = ?`,
+        [fyEnd]
       );
       equal(jeResult.rows.length, 1);
       ok(jeResult.rows[0].post_time); // Should be posted

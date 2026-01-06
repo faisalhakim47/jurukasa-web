@@ -3,6 +3,7 @@ import { provideContext, useContext, useOptionalContext } from '#web/hooks/use-c
 import { useEffect, stopEffect } from '#web/hooks/use-effect.js';
 import { useConnectedCallback } from '#web/hooks/use-lifecycle.js';
 import { useWindowEventListener } from '#web/hooks/use-window-event-listener.js';
+import { assertInstanceOf } from '#web/tools/assertion.js';
 
 export class ReadyContextElement extends HTMLElement {
   constructor() {
@@ -33,6 +34,9 @@ export class ReadyContextElement extends HTMLElement {
       return resolve;
     };
 
+    /** @type {PromiseWithResolvers<void>} */
+    const { promise: readyPromise, resolve: resolveReady } = Promise.withResolvers();
+
     useWindowEventListener(host, 'load', async function resolveBusyResolvers() {
       if (!(shadowRoot instanceof ShadowRoot)) return;
       while (pendingResolvers.length) {
@@ -48,12 +52,45 @@ export class ReadyContextElement extends HTMLElement {
       else throw new Error('ReadyContextElement: Busy dialog not found in <ready-context>.');
       queueMicrotask(function readyTask() {
         requestAnimationFrame(function waitForAnimationToReady() {
-          host.dispatchEvent(new CustomEvent('ready-context:ready', {
-            bubbles: true,
-            composed: false,
-          }));
+          resolveReady();
         });
       });
+    });
+
+    readyPromise.then(function dispatchReadyEvent() {
+      host.dispatchEvent(new CustomEvent('ready-context:ready', {
+        bubbles: true,
+        composed: false,
+      }));
+    });
+
+    /** @param {Event} event */
+    function onRequestReady(event) {
+      assertInstanceOf(ReadyContextRequestEvent, event);
+      readyPromise.then(function resolveReadyRequest() {
+        event.detail.callback();
+      });
+    }
+
+    host.addEventListener('ready-context:request', onRequestReady);
+  }
+
+  /** @returns {Promise<void>} */
+  async ready() {
+    const host = this;
+    return new Promise(function requestReady(resolve) {
+      host.dispatchEvent(new ReadyContextRequestEvent(resolve));
+    });
+  }
+}
+
+export class ReadyContextRequestEvent extends CustomEvent {
+  /** @param {() => void} callback */
+  constructor(callback) {
+    super('ready-context:request', {
+      bubbles: true,
+      composed: false,
+      detail: { callback },
     });
   }
 }

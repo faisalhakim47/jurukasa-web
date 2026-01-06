@@ -232,7 +232,7 @@ describe('Revenue Tracking Schema Tests', function () {
     const endTime = new Date(2026, 0, 1, 0, 0, 0, 0).getTime();
     
     await db().execute(
-      `INSERT INTO fiscal_years (begin_time, end_time, name, is_closed) VALUES (?, ?, 'FY2025', 0)`,
+      `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, 'FY2025')`,
       [beginTime, endTime]
     );
 

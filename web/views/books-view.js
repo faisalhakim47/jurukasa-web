@@ -11,6 +11,7 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
+import { scrollIntoView } from '#web/tools/dom.js';
 
 import '#web/components/material-symbols.js';
 import '#web/components/router-link.js';
@@ -20,6 +21,7 @@ import '#web/views/chart-of-accounts-view.js';
 import '#web/views/account-tags-view.js';
 import '#web/views/financial-reports-view.js';
 import '#web/views/fiscal-years-view.js';
+import '#web/views/fixed-assets-view.js';
 
 export class BooksViewElement extends HTMLElement {
   constructor() {
@@ -35,12 +37,8 @@ export class BooksViewElement extends HTMLElement {
     const accountTagsTabpanel = useElement(host, HTMLElement);
     const reportsTabpanel = useElement(host, HTMLElement);
     const fiscalYearsTabpanel = useElement(host, HTMLElement);
+    const fixedAssetsTabpanel = useElement(host, HTMLElement);
     const notfoundDialog = useElement(host, HTMLDialogElement);
-
-    /** @param {HTMLElement} element */
-    function scrollIntoView(element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-    }
 
     function syncRouteToTabpanel() {
       if (!(journalEntriesTabpanel.value instanceof HTMLElement)) return;
@@ -48,6 +46,7 @@ export class BooksViewElement extends HTMLElement {
       if (!(accountTagsTabpanel.value instanceof HTMLElement)) return;
       if (!(reportsTabpanel.value instanceof HTMLElement)) return;
       if (!(fiscalYearsTabpanel.value instanceof HTMLElement)) return;
+      if (!(fixedAssetsTabpanel.value instanceof HTMLElement)) return;
       if (!(notfoundDialog.value instanceof HTMLDialogElement)) return;
       notfoundDialog.value.close();
       const pathname = router.route.pathname;
@@ -57,6 +56,7 @@ export class BooksViewElement extends HTMLElement {
       else if (pathname.startsWith('/books/account-tags')) scrollIntoView(accountTagsTabpanel.value);
       else if (pathname.startsWith('/books/reports')) scrollIntoView(reportsTabpanel.value);
       else if (pathname.startsWith('/books/fiscal-years')) scrollIntoView(fiscalYearsTabpanel.value);
+      else if (pathname.startsWith('/books/fixed-assets')) scrollIntoView(fixedAssetsTabpanel.value);
       else {
         if (notfoundDialog.value.isConnected) notfoundDialog.value.showModal();
         else requestAnimationFrame(function waitForAnimationToShowModal() {
@@ -89,6 +89,7 @@ export class BooksViewElement extends HTMLElement {
           else if (tabIndex === 2) router.navigate({ pathname: '/books/account-tags', replace: true });
           else if (tabIndex === 3) router.navigate({ pathname: '/books/reports', replace: true });
           else if (tabIndex === 4) router.navigate({ pathname: '/books/fiscal-years', replace: true });
+          else if (tabIndex === 5) router.navigate({ pathname: '/books/fixed-assets', replace: true });
           else router.navigate({ pathname: '/books/journal-entries', replace: true });
         });
       });
@@ -137,6 +138,12 @@ export class BooksViewElement extends HTMLElement {
               <span class="content">
                 <material-symbols name="calendar_month" size="24"></material-symbols>
                 Fiscal Years
+              </span>
+            </router-link>
+            <router-link role="tab" id="fixed-assets-tab" aria-controls="fixed-assets-panel" href="/books/fixed-assets" replace>
+              <span class="content">
+                <material-symbols name="real_estate_agent" size="24"></material-symbols>
+                Fixed Assets
               </span>
             </router-link>
           </nav>
@@ -242,6 +249,23 @@ export class BooksViewElement extends HTMLElement {
                 overflow-y: auto;
               "
             ></fiscal-years-view>
+            <fixed-assets-view
+              ${fixedAssetsTabpanel}
+              id="fixed-assets-panel"
+              role="tabpanel"
+              aria-labelledby="fixed-assets-tab"
+              aria-hidden="${pathname.startsWith('/books/fixed-assets') ? 'false' : 'true'}"
+              tabindex="${pathname.startsWith('/books/fixed-assets') ? '0' : '-1'}"
+              ?inert=${pathname.startsWith('/books/fixed-assets') === false}
+              style="
+                flex: 0 0 100%;
+                width: 100%;
+                min-width: 0;
+                scroll-snap-align: start;
+                scroll-snap-stop: always;
+                overflow-y: auto;
+              "
+            ></fixed-assets-view>
           </main>
         </div>
         <dialog ${notfoundDialog} id="notfound-dialog">

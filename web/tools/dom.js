@@ -34,3 +34,13 @@ export function getMetaContent(name, defaultContent) {
     return cachedMeta.get(name) || defaultContent;
   }
 }
+
+/** @param {HTMLElement} element */
+export function scrollIntoView(element) {
+  const applicationEnvironment = getMetaContent('application-environment', 'production');
+  element.scrollIntoView({
+    behavior: applicationEnvironment === 'testing' ? 'instant' : 'smooth',
+    block: 'nearest',
+    inline: 'start',
+  });
+}

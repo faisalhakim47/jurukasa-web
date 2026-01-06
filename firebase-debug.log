@@ -1,0 +1,19 @@
+[debug] [2026-01-06T16:01:20.169Z] ----------------------------------------------------------------------
+[debug] [2026-01-06T16:01:20.170Z] Command:       /home/faisalhakim47/.nvm/versions/node/v24.5.0/bin/node /home/faisalhakim47/.nvm/versions/node/v24.5.0/bin/firebase init
+[debug] [2026-01-06T16:01:20.170Z] CLI Version:   15.1.0
+[debug] [2026-01-06T16:01:20.170Z] Platform:      linux
+[debug] [2026-01-06T16:01:20.170Z] Node Version:  v24.5.0
+[debug] [2026-01-06T16:01:20.170Z] Time:          Tue Jan 06 2026 23:01:20 GMT+0700 (Western Indonesia Time)
+[debug] [2026-01-06T16:01:20.171Z] ----------------------------------------------------------------------
+[debug] 
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /home/faisalhakim47/Projects/faisalhakim47/jurukasa-web/main
+

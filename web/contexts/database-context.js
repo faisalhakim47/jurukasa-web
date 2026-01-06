@@ -88,24 +88,31 @@ export class DatabaseContextElement extends HTMLElement {
      */
     const autoMigrate = async function (client) {
       const schemaVersion = await getSchemaVersion(client);
-      if (schemaVersion === '004-revenue-tracking') return; // Already latest schema
+      if (schemaVersion === '005-fixed-assets') return; // Already latest schema
+      else if (schemaVersion === '004-revenue-tracking') {
+        await migrate(client, '/web/schemas/005-fixed-assets.sql');
+      }
       else if (schemaVersion === '003-chart-of-accounts') {
         await migrate(client, '/web/schemas/004-revenue-tracking.sql');
+        await migrate(client, '/web/schemas/005-fixed-assets.sql');
       }
       else if (schemaVersion === '002-pos') {
         await migrate(client, '/web/schemas/003-chart-of-accounts.sql');
         await migrate(client, '/web/schemas/004-revenue-tracking.sql');
+        await migrate(client, '/web/schemas/005-fixed-assets.sql');
       }
       else if (schemaVersion === '001-accounting') {
         await migrate(client, '/web/schemas/002-pos.sql');
         await migrate(client, '/web/schemas/003-chart-of-accounts.sql');
         await migrate(client, '/web/schemas/004-revenue-tracking.sql');
+        await migrate(client, '/web/schemas/005-fixed-assets.sql');
       }
       else if (schemaVersion === undefined) {
         await migrate(client, '/web/schemas/001-accounting.sql');
         await migrate(client, '/web/schemas/002-pos.sql');
         await migrate(client, '/web/schemas/003-chart-of-accounts.sql');
         await migrate(client, '/web/schemas/004-revenue-tracking.sql');
+        await migrate(client, '/web/schemas/005-fixed-assets.sql');
       }
     };
 
@@ -116,12 +123,9 @@ export class DatabaseContextElement extends HTMLElement {
     const migrate = async function (client, path) {
       const migrationSQLResponse = await fetch(path);
       const migrationSQLText = await migrationSQLResponse.text();
-      const statements = cleanupMigrationSQLText(migrationSQLText);
       const tx = await client.transaction('write');
       try {
-        for (const statement of statements) {
-          await tx.execute(statement);
-        }
+        tx.executeMultiple(migrationSQLText)
         await tx.commit();
       }
       catch (error) {

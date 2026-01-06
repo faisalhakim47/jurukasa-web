@@ -45,9 +45,9 @@ export class DashboardViewElement extends HTMLElement {
 
         // Get current fiscal year
         const fiscalYearResult = await database.sql`
-          SELECT begin_time, end_time, name, is_closed
+          SELECT begin_time, end_time, name, post_time
           FROM fiscal_years
-          WHERE is_closed = 0
+          WHERE post_time IS NULL
           ORDER BY begin_time DESC
           LIMIT 1
         `;

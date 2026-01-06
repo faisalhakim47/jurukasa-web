@@ -13,7 +13,7 @@ const { describe } = test;
  * @param {number} supplierId
  */
 async function setupPage(page, tursoDatabaseUrl, supplierId) {
-  await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+  await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
   await page.evaluate(async function ({ tursoDatabaseUrl, supplierId }) {
     localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);

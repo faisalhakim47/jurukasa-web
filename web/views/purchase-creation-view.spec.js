@@ -10,7 +10,7 @@ describe('Purchase Creation View with Supplier Selector Dialog', function () {
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall open supplier selector dialog and select a supplier', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function setupPOSData(tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -51,7 +51,7 @@ describe('Purchase Creation View with Supplier Selector Dialog', function () {
   });
 
   test('it shall allow changing supplier via edit button', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function setupPOSData(tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -90,5 +90,52 @@ describe('Purchase Creation View with Supplier Selector Dialog', function () {
 
     await expect(page.getByText('(+62822222222)')).toBeVisible();
     await expect(page.getByText('(+62811111111)')).not.toBeVisible();
+  });
+
+  test('it shall allow creating new supplier and automatically select it', async function ({ page }) {
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+
+    await page.evaluate(async function setupPOSData(tursoDatabaseUrl) {
+      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
+      localStorage.setItem('tursoDatabaseKey', '');
+      document.body.innerHTML = `
+        <ready-context>
+          <router-context>
+            <database-context>
+              <device-context>
+                <i18n-context>
+                  <time-context></time-context>
+                </i18n-context>
+              </device-context>
+            </database-context>
+          </router-context>
+        </ready-context>
+      `;
+
+      /** @type {DatabaseContextElement} */
+      const database = document.querySelector('database-context');
+      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`
+
+      const deepestContext = document.querySelector('time-context');
+      deepestContext.innerHTML = '<purchase-creation-view></purchase-creation-view>';
+    }, tursoLibSQLiteServer().url);
+
+    // Click the "New Supplier" button
+    await page.getByRole('button', { name: 'New Supplier' }).click();
+    await expect(page.getByRole('dialog', { name: 'Add Supplier' })).toBeVisible();
+
+    // Fill in the supplier form
+    await page.getByLabel('Supplier Name').fill('New Supplier Co.');
+    await page.getByLabel('Phone Number (Optional)').fill('+62899999999');
+
+    // Submit the form
+    await page.getByRole('button', { name: 'Add Supplier' }).click();
+
+    // The dialog should close
+    await expect(page.getByRole('dialog', { name: 'Add Supplier' })).not.toBeVisible();
+
+    // The newly created supplier should be automatically selected
+    await expect(page.getByText('New Supplier Co.')).toBeVisible();
+    await expect(page.getByText('(+62899999999)')).toBeVisible();
   });
 });

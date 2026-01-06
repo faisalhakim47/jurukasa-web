@@ -11,7 +11,7 @@ describe('Account Creation Dialog', function () {
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall create a new account', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -96,7 +96,7 @@ describe('Account Creation Dialog', function () {
   });
 
   test('it shall validate duplicate account code', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);

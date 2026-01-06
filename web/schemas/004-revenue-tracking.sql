@@ -158,6 +158,7 @@ ORDER BY ds.date_key ASC; -- EOS
 -- View to get revenue summary for current fiscal year
 CREATE VIEW fiscal_year_revenue_summary AS
 SELECT
+  fy.id AS fiscal_year_id,
   fy.begin_time,
   fy.end_time,
   fy.name AS fiscal_year_name,
@@ -167,8 +168,8 @@ SELECT
   COALESCE(SUM(dr.transaction_count), 0) AS total_transactions
 FROM fiscal_years fy
 LEFT JOIN daily_revenue dr ON dr.date_key >= fy.begin_time AND dr.date_key < fy.end_time
-WHERE fy.is_closed = 0
-GROUP BY fy.begin_time, fy.end_time, fy.name; -- EOS
+WHERE fy.post_time IS NULL
+GROUP BY fy.id, fy.begin_time, fy.end_time, fy.name; -- EOS
 
 -- =================================================================
 -- TRIGGER: UPDATE DAILY REVENUE ON SALE POST

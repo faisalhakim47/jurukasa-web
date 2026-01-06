@@ -3,6 +3,7 @@ import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
 import { FiscalYearClosingDialogElement } from '#web/components/fiscal-year-closing-dialog.js';
+import { FiscalYearReversalDialogElement } from '#web/components/fiscal-year-reversal-dialog.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useBusyStateUntil } from '#web/contexts/ready-context.js';
@@ -17,15 +18,17 @@ import { assertInstanceOf } from '#web/tools/assertion.js';
 import '#web/components/material-symbols.js';
 import '#web/components/fiscal-year-creation-dialog.js';
 import '#web/components/fiscal-year-closing-dialog.js';
+import '#web/components/fiscal-year-reversal-dialog.js';
 
 /**
  * @typedef {object} FiscalYearRow
  * @property {number} begin_time
  * @property {number} end_time
  * @property {string | null} name
- * @property {number} is_closed
  * @property {number | null} post_time
  * @property {number | null} closing_journal_entry_ref
+ * @property {number | null} reversal_time
+ * @property {number | null} reversal_journal_entry_ref
  */
 
 export class FiscalYearsViewElement extends HTMLElement {
@@ -37,6 +40,7 @@ export class FiscalYearsViewElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
 
     const fiscalYearClosingDialog = useElement(host, FiscalYearClosingDialogElement);
+    const fiscalYearReversalDialog = useElement(host, FiscalYearReversalDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -61,9 +65,10 @@ export class FiscalYearsViewElement extends HTMLElement {
             begin_time,
             end_time,
             name,
-            is_closed,
             post_time,
-            closing_journal_entry_ref
+            closing_journal_entry_ref,
+            reversal_time,
+            reversal_journal_entry_ref
           FROM fiscal_years
           ORDER BY begin_time DESC
         `;
@@ -73,9 +78,10 @@ export class FiscalYearsViewElement extends HTMLElement {
             begin_time: Number(row.begin_time),
             end_time: Number(row.end_time),
             name: row.name ? String(row.name) : null,
-            is_closed: Number(row.is_closed),
             post_time: row.post_time ? Number(row.post_time) : null,
             closing_journal_entry_ref: row.closing_journal_entry_ref ? Number(row.closing_journal_entry_ref) : null,
+            reversal_time: row.reversal_time ? Number(row.reversal_time) : null,
+            reversal_journal_entry_ref: row.reversal_journal_entry_ref ? Number(row.reversal_journal_entry_ref) : null,
           });
         });
 
@@ -88,30 +94,6 @@ export class FiscalYearsViewElement extends HTMLElement {
     }
 
     useEffect(host, loadFiscalYears);
-
-    /** @param {Event} event */
-    function handleFiscalYearRowInteraction(event) {
-      assertInstanceOf(HTMLTableRowElement, event.currentTarget);
-
-      const beginTime = Number(event.currentTarget.dataset.beginTime);
-      if (isNaN(beginTime)) return;
-
-      const isOpeningAction = (event instanceof MouseEvent && event.type === 'click')
-        || (event instanceof KeyboardEvent && ['Enter', ' '].includes(event.key));
-
-      if (isOpeningAction) {
-        state.selectedFiscalYearBeginTime = beginTime;
-        if (fiscalYearClosingDialog.value instanceof FiscalYearClosingDialogElement) {
-          fiscalYearClosingDialog.value.dispatchEvent(new CommandEvent('command', {
-            command: '--open',
-            bubbles: true,
-            cancelable: true,
-            source: event.currentTarget,
-          }));
-          event.preventDefault();
-        }
-      }
-    }
 
     function renderLoadingIndicator() {
       return html`
@@ -204,8 +186,9 @@ export class FiscalYearsViewElement extends HTMLElement {
      * @param {FiscalYearRow} fiscalYear
      */
     function renderFiscalYearRow(fiscalYear) {
-      const statusText = fiscalYear.is_closed ? 'Closed' : 'Open';
+      const statusText = fiscalYear.reversal_time ? 'Reversed' : fiscalYear.post_time ? 'Closed' : 'Open';
       const displayName = fiscalYear.name || `FY ${new Date(fiscalYear.begin_time).getFullYear()}`;
+      const canReverse = fiscalYear.post_time && !fiscalYear.reversal_time;
 
       return html`
         <tr>
@@ -223,21 +206,38 @@ export class FiscalYearsViewElement extends HTMLElement {
           <td style="white-space: nowrap;">${i18n.date.format(fiscalYear.begin_time)}</td>
           <td style="white-space: nowrap;">${i18n.date.format(fiscalYear.end_time)}</td>
           <td class="center">
-            <span
-              class="label-small"
-              style="
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-                padding: 4px 8px;
-                border-radius: var(--md-sys-shape-corner-small);
-                background-color: ${statusText === 'Closed' ? 'var(--md-sys-color-tertiary-container)' : 'var(--md-sys-color-secondary-container)'};
-                color: ${statusText === 'Closed' ? 'var(--md-sys-color-on-tertiary-container)' : 'var(--md-sys-color-on-secondary-container)'};
-              "
-            >
-              <material-symbols name="${fiscalYear.is_closed ? 'lock' : 'lock_open'}" size="16" aria-hidden="true"></material-symbols>
-              ${statusText}
-            </span>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span
+                class="label-small"
+                style="
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 4px;
+                  padding: 4px 8px;
+                  border-radius: var(--md-sys-shape-corner-small);
+                  background-color: ${statusText === 'Reversed' ? 'var(--md-sys-color-error-container)' : statusText === 'Closed' ? 'var(--md-sys-color-tertiary-container)' : 'var(--md-sys-color-secondary-container)'};
+                  color: ${statusText === 'Reversed' ? 'var(--md-sys-color-on-error-container)' : statusText === 'Closed' ? 'var(--md-sys-color-on-tertiary-container)' : 'var(--md-sys-color-on-secondary-container)'};
+                "
+              >
+                <material-symbols name="${statusText === 'Reversed' ? 'history' : fiscalYear.post_time ? 'lock' : 'lock_open'}" size="16" aria-hidden="true"></material-symbols>
+                ${statusText}
+              </span>
+              ${canReverse ? html`
+                <button
+                  role="button"
+                  type="button"
+                  class="text extra-small"
+                  style="--md-sys-density: -4;"
+                  commandfor="fiscal-year-reversal-dialog"
+                  command="--open"
+                  data-begin-time="${fiscalYear.begin_time}"
+                  aria-label="Reverse ${displayName}"
+                >
+                  <material-symbols name="history" size="18"></material-symbols>
+                  Reverse
+                </button>
+              ` : nothing}
+            </div>
           </td>
           <td style="white-space: nowrap;">${fiscalYear.post_time ? i18n.date.format(fiscalYear.post_time) : '—'}</td>
           <td class="center">
@@ -304,6 +304,12 @@ export class FiscalYearsViewElement extends HTMLElement {
           id="fiscal-year-closing-dialog"
           @fiscal-year-closed=${loadFiscalYears}
         ></fiscal-year-closing-dialog>
+
+        <fiscal-year-reversal-dialog
+          ${fiscalYearReversalDialog}
+          id="fiscal-year-reversal-dialog"
+          @fiscal-year-reversed=${loadFiscalYears}
+        ></fiscal-year-reversal-dialog>
       `);
     });
   }

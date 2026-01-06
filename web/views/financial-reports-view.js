@@ -60,7 +60,7 @@ import '#web/components/material-symbols.js';
  * @property {number} begin_time
  * @property {number} end_time
  * @property {string | null} name
- * @property {number} is_closed
+ * @property {number | null} post_time
  */
 
 const reportTypes = /** @type {const} */ (['Trial Balance', 'Balance Sheet', 'Income Statement']);
@@ -132,7 +132,7 @@ export class FinancialReportsViewElement extends HTMLElement {
             begin_time,
             end_time,
             name,
-            is_closed
+            post_time
           FROM fiscal_years
           ORDER BY begin_time DESC
         `;
@@ -141,7 +141,7 @@ export class FinancialReportsViewElement extends HTMLElement {
             begin_time: Number(row.begin_time),
             end_time: Number(row.end_time),
             name: row.name ? String(row.name) : null,
-            is_closed: Number(row.is_closed),
+            post_time: row.post_time ? Number(row.post_time) : null,
           });
         });
       } catch (error) {
@@ -547,7 +547,7 @@ export class FinancialReportsViewElement extends HTMLElement {
                   <span>${fy.name || 'Fiscal Year'}</span>
                   <span class="label-small" style="color: var(--md-sys-color-on-surface-variant);">
                     ${i18n.date.format(fy.begin_time)} – ${i18n.date.format(fy.end_time)}
-                    ${fy.is_closed ? ' • Closed' : ' • Open'}
+                    ${fy.post_time !== null ? ' • Closed' : ' • Open'}
                   </span>
                 </span>
               </button>

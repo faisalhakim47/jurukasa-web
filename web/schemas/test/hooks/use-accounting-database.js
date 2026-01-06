@@ -13,7 +13,7 @@ export function useAccountingDatabase() {
     // Create a fixed fiscal year for predictable testing
     const beginTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime(); // 1 Jan 2025
     const endTime = new Date(2026, 0, 1, 0, 0, 0, 0).getTime(); // 1 Jan 2026
-    await client.execute(`INSERT INTO fiscal_years (begin_time, end_time, name, is_closed) VALUES (${beginTime}, ${endTime}, 'FY2026', 0)`);
+    await client.execute(`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2026')`);
   });
 
   return getClient;

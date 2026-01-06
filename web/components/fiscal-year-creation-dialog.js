@@ -194,8 +194,8 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
 
         // Insert fiscal year
         await database.sql`
-          INSERT INTO fiscal_years (begin_time, end_time, name, is_closed)
-          VALUES (${beginTime}, ${endTime}, ${name}, 0)
+          INSERT INTO fiscal_years (begin_time, end_time, name)
+          VALUES (${beginTime}, ${endTime}, ${name})
         `;
 
         form.state = 'success';

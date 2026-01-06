@@ -23,7 +23,7 @@ export function useLibSQLiteClient() {
     const { resolve, promise } = Promise.withResolvers();
     currentPromise = promise;
 
-    let databaseDirectory = join(__dirname, `../../../../.local/test-database-${Date.now()}`);
+    let databaseDirectory = join(__dirname, `../../../../.local/test-database-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     while (true) {
       try { await stat(databaseDirectory); }
       catch (error) { if (error.code === 'ENOENT') break; }

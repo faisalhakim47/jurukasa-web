@@ -51,7 +51,7 @@ describe('useMounted', function () {
   // useConsoleOutput(test);
 
   test('it shall execute callback after first render', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     const eventTriggersSequence = await page.evaluate(setupUseMountLifecycleScenario);
 

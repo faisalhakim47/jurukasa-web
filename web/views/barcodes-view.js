@@ -47,6 +47,7 @@ export class BarcodesViewElement extends HTMLElement {
       selectedBarcodeCode: /** @type {string | null} */ (null),
       selectedInventoryName: /** @type {string | null} */ (null),
       isDeleting: false,
+      reloadTrigger: 0,
     });
 
     useBusyStateUntil(host, function firstLoad() {
@@ -58,13 +59,22 @@ export class BarcodesViewElement extends HTMLElement {
     }
 
     async function loadBarcodes() {
+      // Access reloadTrigger to make this effect dependent on it
+      void state.reloadTrigger;
+      
+      // Wait for all pending state updates to complete
+      await new Promise(function (resolve) { queueMicrotask(function () { resolve(undefined); }); });
+      
+      // Capture values immediately to avoid mid-execution changes
+      const searchQueryValue = state.searchQuery.trim() || null;
+      const currentPage = state.currentPage;
+
       try {
         state.isLoading = true;
         state.error = null;
 
-        const searchQueryValue = state.searchQuery.trim() || null;
         const searchPattern = searchQueryValue ? `%${searchQueryValue}%` : null;
-        const offset = (state.currentPage - 1) * pageSize;
+        const offset = (currentPage - 1) * pageSize;
 
         const countResult = await database.sql`
           SELECT COUNT(*) as count
@@ -105,11 +115,22 @@ export class BarcodesViewElement extends HTMLElement {
 
     useEffect(host, loadBarcodes);
 
+    let reloadDebounce = null;
+
+    function triggerReload() {
+      if (reloadDebounce) return;
+      reloadDebounce = setTimeout(function () {
+        reloadDebounce = null;
+        state.reloadTrigger++;
+      }, 0);
+    }
+
     /** @param {Event} event */
     function handleSearchInteraction(event) {
       if (event.currentTarget instanceof HTMLInputElement) {
         state.searchQuery = event.currentTarget.value;
         state.currentPage = 1;
+        triggerReload();
       }
       else if (event.currentTarget instanceof HTMLButtonElement) {
         // the event.currentTarget.form.reset function is inconsistent across browsers.
@@ -125,20 +146,19 @@ export class BarcodesViewElement extends HTMLElement {
         event.preventDefault();
       }
       else console.warn('Unhandled search interaction event from', event.currentTarget);
-      loadBarcodes();
     }
 
     function handlePreviousPage() {
       if (state.currentPage > 1) {
         state.currentPage--;
-        loadBarcodes();
+        triggerReload();
       }
     }
 
     function handleNextPage() {
       if (state.currentPage < getTotalPages()) {
         state.currentPage++;
-        loadBarcodes();
+        triggerReload();
       }
     }
 
@@ -172,7 +192,7 @@ export class BarcodesViewElement extends HTMLElement {
         confirmDeleteDialog.open = false;
         state.selectedBarcodeCode = null;
         state.selectedInventoryName = null;
-        loadBarcodes();
+        triggerReload();
       }
       catch (error) {
         await tx.rollback();
@@ -192,6 +212,10 @@ export class BarcodesViewElement extends HTMLElement {
 
     function handleDismissErrorDialog() {
       state.error = null;
+    }
+
+    function handleBarcodeAssigned() {
+      triggerReload();
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
@@ -359,7 +383,7 @@ export class BarcodesViewElement extends HTMLElement {
 
         <barcode-assignment-dialog
           id="barcode-assignment-dialog"
-          @barcode-assigned=${loadBarcodes}
+          @barcode-assigned=${handleBarcodeAssigned}
         ></barcode-assignment-dialog>
 
         <dialog ${confirmDeleteDialog.element} id="confirm-delete-dialog" aria-labelledby="confirm-delete-dialog-title">

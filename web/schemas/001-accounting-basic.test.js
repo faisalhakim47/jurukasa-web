@@ -1,8 +1,9 @@
 import { describe, it } from 'node:test';
-import { ok, equal, rejects } from 'node:assert/strict';
+import { equal, rejects } from 'node:assert/strict';
+
 import { useLibSQLiteClient } from '#web/schemas/test/hooks/use-libsqlite-client.js';
 
-describe('Accounting Schema Tests', function () {
+describe('Accounting Schema Tests - Basic', function () {
   const db = useLibSQLiteClient();
   const testTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
 
@@ -224,67 +225,6 @@ describe('Accounting Schema Tests', function () {
       // Note: Schema doesn't explicitly prevent INSERT on posted journal entry lines in the provided text,
       // but let's see if it's covered or if I need to add it.
       // If this fails (i.e., it allows insert), I will add the trigger.
-    });
-  });
-
-  describe('Fiscal Year Closing', function () {
-    it('shall close fiscal year and generate closing entries', async function () {
-      // Setup accounts
-      await createAccount(1000, 'Cash', 0);
-      await createAccount(3000, 'Retained Earnings', 1);
-      await createAccount(4000, 'Revenue', 1);
-      await createAccount(5000, 'Expense', 0);
-
-      await addTag(3000, 'Fiscal Year Closing - Retained Earning');
-      await addTag(4000, 'Fiscal Year Closing - Revenue');
-      await addTag(5000, 'Fiscal Year Closing - Expense');
-
-      // Post transactions
-      // 1. Revenue: Dr Cash 1000, Cr Revenue 1000
-      const ref1 = await draftJournalEntry(new Date(2024, 5, 10, 0, 0, 0, 0));
-      await addJournalLine(ref1, 1000, 1000, 0);
-      await addJournalLine(ref1, 4000, 0, 1000);
-      await postJournalEntry(ref1, new Date(2024, 5, 10, 0, 0, 0, 0));
-
-      // 2. Expense: Dr Expense 400, Cr Cash 400
-      const ref2 = await draftJournalEntry(new Date(2024, 5, 15, 0, 0, 0, 0));
-      await addJournalLine(ref2, 5000, 400, 0);
-      await addJournalLine(ref2, 1000, 0, 400);
-      await postJournalEntry(ref2, new Date(2024, 5, 15, 0, 0, 0, 0));
-
-      // Net Income should be 600.
-
-      // Create Fiscal Year
-      const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
-      const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
-
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
-
-      // Close Fiscal Year
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [testTime, beginTime]
-      );
-
-      // Verify Closing Entry
-      const fiscalYear = (await db().execute(`SELECT * FROM fiscal_years WHERE begin_time = ?`, [beginTime])).rows[0];
-      ok(fiscalYear.closing_journal_entry_ref, 'Closing journal entry should be created');
-
-      // Verify Balances
-      // Revenue should be 0
-      const revenue = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 4000`)).rows[0];
-      equal(revenue.balance, 0, 'Revenue should be zeroed out');
-
-      // Expense should be 0
-      const expense = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 5000`)).rows[0];
-      equal(expense.balance, 0, 'Expense should be zeroed out');
-
-      // Retained Earnings should be 600
-      const retainedEarnings = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 3000`)).rows[0];
-      equal(retainedEarnings.balance, 600, 'Retained Earnings should reflect Net Income');
     });
   });
 });

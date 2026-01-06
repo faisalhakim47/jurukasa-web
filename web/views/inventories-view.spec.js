@@ -11,7 +11,7 @@ describe('Inventories View - Price Edit Button', function () {
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display edit button beside unit price column', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -78,7 +78,7 @@ describe('Inventories View - Price Edit Button', function () {
   });
 
   test('it shall open price update dialog when edit button is clicked', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -141,7 +141,7 @@ describe('Inventories View - Price Edit Button', function () {
   });
 
   test('it shall update price and refresh table after successful update', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -228,7 +228,7 @@ describe('Inventories View - Price Edit Button', function () {
   });
 
   test('it shall show edit button for multiple inventories', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);

@@ -75,6 +75,21 @@ BEGIN
     END;
 END; -- EOS
 
+-- Prevent acquiring assets in closed fiscal years
+CREATE TRIGGER fixed_assets_period_validation_trigger
+BEFORE INSERT ON fixed_assets FOR EACH ROW
+BEGIN
+  SELECT
+    CASE
+      WHEN EXISTS (
+        SELECT 1 FROM fiscal_years
+        WHERE post_time IS NOT NULL
+          AND NEW.acquisition_time >= begin_time
+          AND NEW.acquisition_time <= end_time
+      ) THEN RAISE(ABORT, 'Cannot acquire asset in a closed fiscal year')
+    END;
+END; -- EOS
+
 -- Prevent modification of posted fixed assets
 CREATE TRIGGER fixed_assets_update_prevention_trigger
 BEFORE UPDATE OF acquisition_cost, useful_life_years, salvage_value ON fixed_assets FOR EACH ROW
@@ -167,13 +182,11 @@ BEGIN
   INSERT INTO journal_entries (
     entry_time,
     note,
-    fiscal_year_begin_time,
     source_type,
     created_by
   ) VALUES (
     NEW.end_time,
     'FY Depreciation Expense',
-    NEW.begin_time,
     'System',
     'System'
   );

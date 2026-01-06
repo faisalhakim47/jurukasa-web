@@ -10,7 +10,7 @@ describe('Barcodes View', function () {
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display empty state when no barcodes exist', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -35,7 +35,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall display list of barcodes', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -73,7 +73,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall search barcodes by code', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -110,7 +110,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall search barcodes by product name', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -147,7 +147,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall clear search', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -187,7 +187,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall display empty state when search has no results', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -221,7 +221,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall paginate barcodes list', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -269,7 +269,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall disable pagination buttons appropriately', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -310,7 +310,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall open barcode assignment dialog', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -336,7 +336,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall unassign barcode with confirmation', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -379,7 +379,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall cancel unassign barcode', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -417,7 +417,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall reload barcodes after assignment', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -457,7 +457,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall display error dialog on unassign failure', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -515,7 +515,7 @@ describe('Barcodes View', function () {
   });
 
   test('it shall reset to first page on new search', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'networkidle' });
+    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);

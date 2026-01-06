@@ -18,6 +18,7 @@ import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
 import '#web/components/supplier-selector-dialog.js';
+import '#web/components/supplier-creation-dialog.js';
 
 /**
  * @typedef {object} InventoryOption
@@ -163,6 +164,31 @@ export class PurchaseCreationViewElement extends HTMLElement {
       state.selectedSupplierId = supplierId;
       state.selectedSupplierName = supplierName;
       state.selectedSupplierPhone = phoneNumber;
+    }
+
+    /** @param {CustomEvent} event */
+    async function handleSupplierCreated(event) {
+      const { supplierId } = event.detail;
+      
+      // Fetch the newly created supplier details
+      try {
+        const result = await database.sql`
+          SELECT id, name, phone_number
+          FROM suppliers
+          WHERE id = ${supplierId}
+          LIMIT 1
+        `;
+        
+        if (result.rows.length > 0) {
+          const supplier = result.rows[0];
+          state.selectedSupplierId = Number(supplier.id);
+          state.selectedSupplierName = String(supplier.name);
+          state.selectedSupplierPhone = supplier.phone_number ? String(supplier.phone_number) : null;
+        }
+      }
+      catch (error) {
+        console.error('Failed to fetch newly created supplier:', error);
+      }
     }
 
     function clearSupplier() {
@@ -521,6 +547,17 @@ export class PurchaseCreationViewElement extends HTMLElement {
               <material-symbols name="local_shipping"></material-symbols>
               Select Supplier
             </button>
+            <button
+              role="button"
+              type="button"
+              class="filled-tonal"
+              commandfor="supplier-creation-dialog"
+              command="--open"
+              aria-label="Add new supplier"
+            >
+              <material-symbols name="person_add"></material-symbols>
+              New Supplier
+            </button>
           `}
         </div>
       `;
@@ -737,6 +774,11 @@ export class PurchaseCreationViewElement extends HTMLElement {
           id="supplier-selector-dialog"
           @supplier-select=${handleSupplierSelect}
         ></supplier-selector-dialog>
+
+        <supplier-creation-dialog
+          id="supplier-creation-dialog"
+          @supplier-created=${handleSupplierCreated}
+        ></supplier-creation-dialog>
 
         <dialog ${errorAlertDialog.element} role="alertdialog">
           <div class="container">

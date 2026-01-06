@@ -12,6 +12,7 @@ import { useMounted } from '#web/hooks/use-mounted.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
+import { scrollIntoView } from '#web/tools/dom.js';
 
 import '#web/components/material-symbols.js';
 import '#web/components/router-link.js';
@@ -30,11 +31,6 @@ export class ProcurementViewElement extends HTMLElement {
     const purchasesTabpanel = useElement(host, HTMLElement);
     const suppliersTabpanel = useElement(host, HTMLElement);
     const notfoundDialog = useDialog(host);
-
-    /** @param {HTMLElement} element */
-    function scrollIntoView(element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-    }
 
     function syncRouteToTabpanel() {
       if (!(purchasesTabpanel.value instanceof HTMLElement)) return;

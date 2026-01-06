@@ -127,6 +127,7 @@ describe('Fiscal Years', function () {
       await dialog.getByRole('button', { name: 'Create' }).click();
 
       await expect(dialog).not.toBeVisible();
+      await page.pause();
       await expect(page.getByRole('table', { name: 'Fiscal years list' })).toBeVisible();
       await expect(page.getByRole('row', { name: /FY 2025/ })).toBeVisible();
     });
@@ -360,7 +361,7 @@ describe('Fiscal Years', function () {
       await detailsDialog.getByRole('button', { name: 'Close dialog' }).click();
 
       // Re-open details dialog
-      await page.getByRole('button', { name: /FY 2025/ }).click();
+      await page.getByRole('table', { name: 'Fiscal years list' }).getByRole('button', { name: 'FY 2025', exact: true }).click();
       detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
 
       // Verify Close Fiscal Year button is not visible
@@ -389,6 +390,310 @@ describe('Fiscal Years', function () {
       // Verify fiscal year is still displayed
       await expect(page.getByRole('table', { name: 'Fiscal years list' })).toBeVisible();
       await expect(page.getByRole('row', { name: /FY 2025/ })).toBeVisible();
+    });
+  });
+
+  describe('Fiscal Year Reversal', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
+    test('shall display Reverse button for closed fiscal year', async function ({ page }) {
+      await setupDatabaseAndNavigateToFiscalYears(page, tursoLibSQLiteServer().url);
+
+      // Create and close a fiscal year
+      await page.getByRole('button', { name: 'New Fiscal Year' }).click();
+      const creationDialog = page.getByRole('dialog', { name: 'Create Fiscal Year' });
+      await creationDialog.getByLabel('Name (Optional)').fill('FY 2025');
+      await creationDialog.getByLabel('Begin Date').fill('2025-01-01');
+      await creationDialog.getByLabel('End Date').fill('2025-12-31');
+      await creationDialog.getByRole('button', { name: 'Create' }).click();
+      await expect(creationDialog).not.toBeVisible();
+
+      // Open details and close fiscal year
+      await page.getByRole('button', { name: /FY 2025/ }).click();
+      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      const confirmDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
+      await confirmDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+
+      // Wait for closing to complete
+      await expect(detailsDialog.getByText('lock Closed')).toBeVisible();
+
+      // Close details dialog
+      await detailsDialog.getByRole('button', { name: 'Close dialog' }).click();
+
+      // Verify Reverse button is visible in table row beside Closed status
+      const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
+      await expect(fiscalYearRow.getByRole('button', { name: /Reverse/ })).toBeVisible();
+    });
+
+    test('shall open reversal dialog when clicking Reverse button', async function ({ page }) {
+      await setupDatabaseAndNavigateToFiscalYears(page, tursoLibSQLiteServer().url);
+
+      // Create and close a fiscal year
+      await page.getByRole('button', { name: 'New Fiscal Year' }).click();
+      const creationDialog = page.getByRole('dialog', { name: 'Create Fiscal Year' });
+      await creationDialog.getByLabel('Name (Optional)').fill('FY 2025');
+      await creationDialog.getByLabel('Begin Date').fill('2025-01-01');
+      await creationDialog.getByLabel('End Date').fill('2025-12-31');
+      await creationDialog.getByRole('button', { name: 'Create' }).click();
+      await expect(creationDialog).not.toBeVisible();
+
+      // Open details and close fiscal year
+      await page.getByRole('button', { name: /FY 2025/ }).click();
+      let detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
+      await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+
+      // Wait for closing to complete
+      await expect(detailsDialog.getByText('lock Closed')).toBeVisible();
+
+      // Close details dialog
+      await detailsDialog.getByRole('button', { name: 'Close dialog' }).click();
+
+      // Click Reverse button in table row
+      const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
+      await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
+
+      // Verify reversal dialog opens
+      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      await expect(reversalDialog).toBeVisible();
+    });
+
+    test('shall display reversal warning in reversal dialog', async function ({ page }) {
+      await setupDatabaseAndNavigateToFiscalYears(page, tursoLibSQLiteServer().url);
+
+      // Create and close a fiscal year
+      await page.getByRole('button', { name: 'New Fiscal Year' }).click();
+      const creationDialog = page.getByRole('dialog', { name: 'Create Fiscal Year' });
+      await creationDialog.getByLabel('Name (Optional)').fill('FY 2025');
+      await creationDialog.getByLabel('Begin Date').fill('2025-01-01');
+      await creationDialog.getByLabel('End Date').fill('2025-12-31');
+      await creationDialog.getByRole('button', { name: 'Create' }).click();
+      await expect(creationDialog).not.toBeVisible();
+
+      // Open details and close fiscal year
+      await page.getByRole('button', { name: /FY 2025/ }).click();
+      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
+      await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      await expect(detailsDialog.getByText('lock Closed')).toBeVisible();
+
+      // Close details dialog
+      await detailsDialog.getByRole('button', { name: 'Close dialog' }).click();
+
+      // Click Reverse button in table row
+      const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
+      await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
+
+      // Verify warning is displayed
+      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      await expect(reversalDialog.getByText('About Reversal')).toBeVisible();
+      await expect(reversalDialog.getByText(/This should only be done if the fiscal year was closed incorrectly/)).toBeVisible();
+    });
+
+    test('shall show confirmation dialog when clicking Reverse Fiscal Year', async function ({ page }) {
+      await setupDatabaseAndNavigateToFiscalYears(page, tursoLibSQLiteServer().url);
+
+      // Create and close a fiscal year
+      await page.getByRole('button', { name: 'New Fiscal Year' }).click();
+      const creationDialog = page.getByRole('dialog', { name: 'Create Fiscal Year' });
+      await creationDialog.getByLabel('Name (Optional)').fill('FY 2025');
+      await creationDialog.getByLabel('Begin Date').fill('2025-01-01');
+      await creationDialog.getByLabel('End Date').fill('2025-12-31');
+      await creationDialog.getByRole('button', { name: 'Create' }).click();
+      await expect(creationDialog).not.toBeVisible();
+
+      // Open details and close fiscal year
+      await page.getByRole('button', { name: /FY 2025/ }).click();
+      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
+      await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      await expect(detailsDialog.getByText('lock Closed')).toBeVisible();
+
+      // Close details dialog
+      await detailsDialog.getByRole('button', { name: 'Close dialog' }).click();
+
+      // Click Reverse button in table row and open reversal dialog
+      const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
+      await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
+      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      await expect(reversalDialog).toBeVisible();
+
+      // Click Reverse Fiscal Year button
+      await reversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
+
+      // Verify confirmation dialog appears
+      const confirmReversalDialog = page.getByRole('alertdialog', { name: /Reverse Fiscal Year/ });
+      await expect(confirmReversalDialog).toBeVisible();
+      await expect(confirmReversalDialog.getByText(/Only proceed if you need to correct an incorrectly closed fiscal year/)).toBeVisible();
+    });
+
+    test('shall reverse fiscal year successfully', async function ({ page }) {
+      await setupDatabaseAndNavigateToFiscalYears(page, tursoLibSQLiteServer().url);
+
+      // Create and close a fiscal year
+      await page.getByRole('button', { name: 'New Fiscal Year' }).click();
+      const creationDialog = page.getByRole('dialog', { name: 'Create Fiscal Year' });
+      await creationDialog.getByLabel('Name (Optional)').fill('FY 2025');
+      await creationDialog.getByLabel('Begin Date').fill('2025-01-01');
+      await creationDialog.getByLabel('End Date').fill('2025-12-31');
+      await creationDialog.getByRole('button', { name: 'Create' }).click();
+      await expect(creationDialog).not.toBeVisible();
+
+      // Open details and close fiscal year
+      await page.getByRole('button', { name: /FY 2025/ }).click();
+      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
+      await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      await expect(detailsDialog.getByText('lock Closed')).toBeVisible();
+
+      // Close details dialog
+      await detailsDialog.getByRole('button', { name: 'Close dialog' }).click();
+
+      // Click Reverse button in table row
+      const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
+      await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
+      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      await reversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
+
+      // Confirm reversal
+      const confirmReversalDialog = page.getByRole('alertdialog', { name: /Reverse Fiscal Year/ });
+      await confirmReversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
+
+      // Verify reversal was successful
+      await expect(reversalDialog.getByText('history Reversed')).toBeVisible();
+      await expect(reversalDialog.getByText('Reversal Details')).toBeVisible();
+    });
+
+    test('shall update fiscal year status to Reversed in list after reversal', async function ({ page }) {
+      await setupDatabaseAndNavigateToFiscalYears(page, tursoLibSQLiteServer().url);
+
+      // Create and close a fiscal year
+      await page.getByRole('button', { name: 'New Fiscal Year' }).click();
+      const creationDialog = page.getByRole('dialog', { name: 'Create Fiscal Year' });
+      await creationDialog.getByLabel('Name (Optional)').fill('FY 2025');
+      await creationDialog.getByLabel('Begin Date').fill('2025-01-01');
+      await creationDialog.getByLabel('End Date').fill('2025-12-31');
+      await creationDialog.getByRole('button', { name: 'Create' }).click();
+      await expect(creationDialog).not.toBeVisible();
+
+      // Open details and close fiscal year
+      await page.getByRole('button', { name: /FY 2025/ }).click();
+      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
+      await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      await expect(detailsDialog.getByText('lock Closed')).toBeVisible();
+
+      // Close details dialog
+      await detailsDialog.getByRole('button', { name: 'Close dialog' }).click();
+
+      // Click Reverse button and reverse
+      const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
+      await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
+      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      await reversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
+      const confirmReversalDialog = page.getByRole('alertdialog', { name: /Reverse Fiscal Year/ });
+      await confirmReversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
+
+      // Wait for reversal to complete
+      await expect(reversalDialog.getByText('history Reversed')).toBeVisible();
+
+      // Close reversal dialog
+      await reversalDialog.getByRole('button', { name: 'Close dialog' }).click();
+
+      // Verify status in list is Reversed
+      await expect(fiscalYearRow.locator('span.label-small', { hasText: 'Reversed' })).toBeVisible();
+    });
+
+    test('shall not show Reverse button for reversed fiscal year', async function ({ page }) {
+      await setupDatabaseAndNavigateToFiscalYears(page, tursoLibSQLiteServer().url);
+
+      // Create, close, and reverse a fiscal year
+      await page.getByRole('button', { name: 'New Fiscal Year' }).click();
+      const creationDialog = page.getByRole('dialog', { name: 'Create Fiscal Year' });
+      await creationDialog.getByLabel('Name (Optional)').fill('FY 2025');
+      await creationDialog.getByLabel('Begin Date').fill('2025-01-01');
+      await creationDialog.getByLabel('End Date').fill('2025-12-31');
+      await creationDialog.getByRole('button', { name: 'Create' }).click();
+      await expect(creationDialog).not.toBeVisible();
+
+      // Open details and close fiscal year
+      await page.getByRole('button', { name: /FY 2025/ }).click();
+      let detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
+      await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      await expect(detailsDialog.getByText('lock Closed')).toBeVisible();
+
+      // Close details dialog
+      await detailsDialog.getByRole('button', { name: 'Close dialog' }).click();
+
+      // Reverse
+      const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
+      await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
+      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      await reversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
+      const confirmReversalDialog = page.getByRole('alertdialog', { name: /Reverse Fiscal Year/ });
+      await confirmReversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
+      await expect(reversalDialog.getByText('history Reversed')).toBeVisible();
+
+      // Close reversal dialog
+      await reversalDialog.getByRole('button', { name: 'Close dialog' }).click();
+
+      // Verify Reverse button is not visible in table row
+      await expect(fiscalYearRow.getByRole('button', { name: /Reverse/ })).not.toBeVisible();
+
+      // Re-open details dialog and verify status
+      await page.getByRole('button', { name: /FY 2025/ }).click();
+      detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      await expect(detailsDialog.getByText('history Reversed')).toBeVisible();
+    });
+
+    test('shall display reversal details for reversed fiscal year', async function ({ page }) {
+      await setupDatabaseAndNavigateToFiscalYears(page, tursoLibSQLiteServer().url);
+
+      // Create, close, and reverse a fiscal year
+      await page.getByRole('button', { name: 'New Fiscal Year' }).click();
+      const creationDialog = page.getByRole('dialog', { name: 'Create Fiscal Year' });
+      await creationDialog.getByLabel('Name (Optional)').fill('FY 2025');
+      await creationDialog.getByLabel('Begin Date').fill('2025-01-01');
+      await creationDialog.getByLabel('End Date').fill('2025-12-31');
+      await creationDialog.getByRole('button', { name: 'Create' }).click();
+      await expect(creationDialog).not.toBeVisible();
+
+      // Open details and close fiscal year
+      await page.getByRole('button', { name: /FY 2025/ }).click();
+      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
+      await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
+      await expect(detailsDialog.getByText('lock Closed')).toBeVisible();
+
+      // Close details dialog
+      await detailsDialog.getByRole('button', { name: 'Close dialog' }).click();
+
+      // Reverse
+      const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
+      await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
+      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      await reversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
+      const confirmReversalDialog = page.getByRole('alertdialog', { name: /Reverse Fiscal Year/ });
+      await confirmReversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
+      await expect(reversalDialog.getByText('history Reversed')).toBeVisible();
+
+      // Close reversal dialog and re-open details
+      await reversalDialog.getByRole('button', { name: 'Close dialog' }).click();
+      await page.getByRole('button', { name: /FY 2025/ }).click();
+
+      // Verify reversal details are shown
+      const reopenedDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      await expect(reopenedDialog.getByText('Reversal Details')).toBeVisible();
+      await expect(reopenedDialog.getByText('Reversed On')).toBeVisible();
     });
   });
 });

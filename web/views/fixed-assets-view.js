@@ -2,8 +2,6 @@ import { html, nothing } from 'lit-html';
 import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
-import { InventoryCreationDialogElement } from '#web/components/inventory-creation-dialog.js';
-import { InventoryDetailsDialogElement } from '#web/components/inventory-details-dialog.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useBusyStateUntil } from '#web/contexts/ready-context.js';
@@ -17,30 +15,29 @@ import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
 import '#web/components/material-symbols.js';
-import '#web/components/inventory-creation-dialog.js';
-import '#web/components/inventory-details-dialog.js';
-import '#web/components/inventory-discounts-edit-dialog.js';
-import '#web/components/inventory-price-update-dialog.js';
+import '#web/components/fixed-asset-creation-dialog.js';
+import '#web/components/fixed-asset-details-dialog.js';
 
 /**
- * @typedef {object} InventoryRow
+ * @typedef {object} FixedAssetRow
  * @property {number} id
  * @property {string} name
- * @property {number} unit_price
- * @property {string | null} unit_of_measurement
- * @property {number} account_code
- * @property {string} account_name
- * @property {number} cost
- * @property {number} stock
- * @property {number} num_of_sales
- * @property {number} discount_count
+ * @property {string | null} description
+ * @property {number} acquisition_time
+ * @property {number} acquisition_cost
+ * @property {number} useful_life_years
+ * @property {number} salvage_value
+ * @property {number} accumulated_depreciation
+ * @property {number} is_fully_depreciated
+ * @property {number} asset_account_code
+ * @property {string} asset_account_name
  */
 
-const stockFilterOptions = /** @type {const} */ (['All', 'In Stock', 'Low Stock', 'Out of Stock', 'Negative Stock']);
+const depreciationFilterOptions = /** @type {const} */ (['All', 'Active', 'Fully Depreciated']);
 
-/** @typedef {typeof stockFilterOptions[number]} StockFilter */
+/** @typedef {typeof depreciationFilterOptions[number]} DepreciationFilter */
 
-export class InventoriesViewElement extends HTMLElement {
+export class FixedAssetsViewElement extends HTMLElement {
   constructor() {
     super();
 
@@ -48,22 +45,20 @@ export class InventoriesViewElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
 
-    const inventoryCreationDialog = useElement(host, InventoryCreationDialogElement);
-    const inventoryDetailsDialog = useElement(host, InventoryDetailsDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
     const pageSize = 20;
 
     const state = reactive({
-      inventories: /** @type {InventoryRow[]} */ ([]),
+      fixedAssets: /** @type {FixedAssetRow[]} */ ([]),
       isLoading: true,
       error: /** @type {Error | null} */ (null),
       searchQuery: '',
-      stockFilter: /** @type {StockFilter} */ ('All'),
+      depreciationFilter: /** @type {DepreciationFilter} */ ('All'),
       currentPage: 1,
       totalCount: 0,
-      selectedInventoryId: /** @type {number | null} */ (null),
+      selectedAssetId: /** @type {number | null} */ (null),
     });
 
     useBusyStateUntil(host, function firstLoad() {
@@ -74,64 +69,62 @@ export class InventoriesViewElement extends HTMLElement {
       return Math.max(1, Math.ceil(state.totalCount / pageSize));
     }
 
-    async function loadInventories() {
+    async function loadFixedAssets() {
       try {
         state.isLoading = true;
         state.error = null;
 
         const searchQueryValue = state.searchQuery.trim() || null;
         const searchPattern = searchQueryValue ? `%${searchQueryValue}%` : null;
-        const stockFilterValue = state.stockFilter;
+        const depreciationFilterValue = state.depreciationFilter;
         const offset = (state.currentPage - 1) * pageSize;
 
         const countResult = await database.sql`
           SELECT COUNT(*) as count
-          FROM inventories i
-          WHERE (${searchPattern} IS NULL OR i.name LIKE ${searchPattern})
-            AND (${stockFilterValue} = 'All'
-              OR (${stockFilterValue} = 'In Stock' AND i.stock > 10)
-              OR (${stockFilterValue} = 'Low Stock' AND i.stock > 0 AND i.stock <= 10)
-              OR (${stockFilterValue} = 'Out of Stock' AND i.stock = 0)
-              OR (${stockFilterValue} = 'Negative Stock' AND i.stock < 0))
+          FROM fixed_assets fa
+          WHERE (${searchPattern} IS NULL OR fa.name LIKE ${searchPattern})
+            AND (${depreciationFilterValue} = 'All'
+              OR (${depreciationFilterValue} = 'Active' AND fa.is_fully_depreciated = 0)
+              OR (${depreciationFilterValue} = 'Fully Depreciated' AND fa.is_fully_depreciated = 1))
         `;
         state.totalCount = Number(countResult.rows[0].count);
 
         const result = await database.sql`
           SELECT
-            i.id,
-            i.name,
-            i.unit_price,
-            i.unit_of_measurement,
-            i.account_code,
-            a.name as account_name,
-            i.cost,
-            i.stock,
-            i.num_of_sales,
-            (SELECT COUNT(*) FROM discounts d WHERE d.inventory_id = i.id) as discount_count
-          FROM inventories i
-          JOIN accounts a ON a.account_code = i.account_code
-          WHERE (${searchPattern} IS NULL OR i.name LIKE ${searchPattern})
-            AND (${stockFilterValue} = 'All'
-              OR (${stockFilterValue} = 'In Stock' AND i.stock > 10)
-              OR (${stockFilterValue} = 'Low Stock' AND i.stock > 0 AND i.stock <= 10)
-              OR (${stockFilterValue} = 'Out of Stock' AND i.stock = 0)
-              OR (${stockFilterValue} = 'Negative Stock' AND i.stock < 0))
-          ORDER BY i.name ASC
+            fa.id,
+            fa.name,
+            fa.description,
+            fa.acquisition_time,
+            fa.acquisition_cost,
+            fa.useful_life_years,
+            fa.salvage_value,
+            fa.accumulated_depreciation,
+            fa.is_fully_depreciated,
+            fa.asset_account_code,
+            a.name as asset_account_name
+          FROM fixed_assets fa
+          JOIN accounts a ON a.account_code = fa.asset_account_code
+          WHERE (${searchPattern} IS NULL OR fa.name LIKE ${searchPattern})
+            AND (${depreciationFilterValue} = 'All'
+              OR (${depreciationFilterValue} = 'Active' AND fa.is_fully_depreciated = 0)
+              OR (${depreciationFilterValue} = 'Fully Depreciated' AND fa.is_fully_depreciated = 1))
+          ORDER BY fa.acquisition_time DESC
           LIMIT ${pageSize} OFFSET ${offset}
         `;
 
-        state.inventories = result.rows.map(function (row) {
-          return /** @type {InventoryRow} */ ({
+        state.fixedAssets = result.rows.map(function (row) {
+          return /** @type {FixedAssetRow} */ ({
             id: Number(row.id),
             name: String(row.name),
-            unit_price: Number(row.unit_price),
-            unit_of_measurement: row.unit_of_measurement ? String(row.unit_of_measurement) : null,
-            account_code: Number(row.account_code),
-            account_name: String(row.account_name),
-            cost: Number(row.cost),
-            stock: Number(row.stock),
-            num_of_sales: Number(row.num_of_sales),
-            discount_count: Number(row.discount_count),
+            description: row.description ? String(row.description) : null,
+            acquisition_time: Number(row.acquisition_time),
+            acquisition_cost: Number(row.acquisition_cost),
+            useful_life_years: Number(row.useful_life_years),
+            salvage_value: Number(row.salvage_value),
+            accumulated_depreciation: Number(row.accumulated_depreciation),
+            is_fully_depreciated: Number(row.is_fully_depreciated),
+            asset_account_code: Number(row.asset_account_code),
+            asset_account_name: String(row.asset_account_name),
           });
         });
 
@@ -147,7 +140,7 @@ export class InventoriesViewElement extends HTMLElement {
       const totalPages = getTotalPages();
       if (page < 1 || page > totalPages) return;
       state.currentPage = page;
-      loadInventories();
+      loadFixedAssets();
     }
 
     /** @param {Event} event */
@@ -162,24 +155,24 @@ export class InventoriesViewElement extends HTMLElement {
       assertInstanceOf(HTMLInputElement, event.target);
       state.searchQuery = event.target.value;
       state.currentPage = 1;
-      loadInventories();
+      loadFixedAssets();
     }
 
     /** @param {Event} event */
-    function handleStockFilterChange(event) {
+    function handleDepreciationFilterChange(event) {
       assertInstanceOf(HTMLButtonElement, event.currentTarget);
-      state.stockFilter = /** @type {StockFilter} */ (event.currentTarget.dataset.stockFilter);
+      state.depreciationFilter = /** @type {DepreciationFilter} */ (event.currentTarget.dataset.depreciationFilter);
       state.currentPage = 1;
-      loadInventories();
+      loadFixedAssets();
     }
 
-    useEffect(host, loadInventories);
+    useEffect(host, loadFixedAssets);
 
     function renderLoadingIndicator() {
       return html`
         <div
           role="status"
-          aria-label="Loading inventories"
+          aria-label="Loading fixed assets"
           style="
             display: flex;
             flex-direction: column;
@@ -195,7 +188,7 @@ export class InventoriesViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading inventories...</p>
+          <p>Loading fixed assets...</p>
         </div>
       `;
     }
@@ -219,9 +212,9 @@ export class InventoriesViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load inventories</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load fixed assets</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
-          <button role="button" class="tonal" @click=${loadInventories}>
+          <button role="button" class="tonal" @click=${loadFixedAssets}>
             <material-symbols name="refresh"></material-symbols>
             Retry
           </button>
@@ -236,10 +229,10 @@ export class InventoriesViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 200px; min-width: 160px;">
             <div class="container">
               <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="inventory-search-input">Search</label>
+              <label for="fixed-asset-search-input">Search</label>
               <input
                 ${readValue(state, 'searchQuery')}
-                id="inventory-search-input"
+                id="fixed-asset-search-input"
                 type="text"
                 placeholder=" "
                 autocomplete="off"
@@ -248,36 +241,36 @@ export class InventoriesViewElement extends HTMLElement {
             </div>
           </div>
 
-          <!-- Stock Filter -->
-          <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 160px; anchor-name: --stock-filter-menu-anchor;">
+          <!-- Depreciation Filter -->
+          <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 180px; anchor-name: --depreciation-filter-menu-anchor;">
             <div class="container">
-              <label for="stock-filter-input">Stock</label>
+              <label for="depreciation-filter-input">Status</label>
               <input
-                id="stock-filter-input"
+                id="depreciation-filter-input"
                 type="button"
-                value="${state.stockFilter}"
-                popovertarget="stock-filter-menu"
+                value="${state.depreciationFilter}"
+                popovertarget="depreciation-filter-menu"
                 popovertargetaction="show"
                 placeholder=" "
               />
-              <label for="stock-filter-input" class="trailing-icon">
+              <label for="depreciation-filter-input" class="trailing-icon">
                 <material-symbols name="arrow_drop_down"></material-symbols>
               </label>
             </div>
           </div>
-          <menu role="menu" popover id="stock-filter-menu" class="dropdown" style="position-anchor: --stock-filter-menu-anchor;">
-            ${stockFilterOptions.map(function (option) {
+          <menu role="menu" popover id="depreciation-filter-menu" class="dropdown" style="position-anchor: --depreciation-filter-menu-anchor;">
+            ${depreciationFilterOptions.map(function (option) {
               return html`
                 <li>
                   <button
                     role="menuitem"
-                    data-stock-filter="${option}"
-                    @click=${handleStockFilterChange}
-                    popovertarget="stock-filter-menu"
+                    data-depreciation-filter="${option}"
+                    @click=${handleDepreciationFilterChange}
+                    popovertarget="depreciation-filter-menu"
                     popovertargetaction="hide"
-                    aria-selected=${option === state.stockFilter ? 'true' : 'false'}
+                    aria-selected=${option === state.depreciationFilter ? 'true' : 'false'}
                   >
-                    ${option === state.stockFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
+                    ${option === state.depreciationFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
                     ${option}
                   </button>
                 </li>
@@ -302,54 +295,43 @@ export class InventoriesViewElement extends HTMLElement {
             padding: 48px;
           "
         >
-          <material-symbols name="inventory_2" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No inventories found</h2>
+          <material-symbols name="real_estate_agent" size="64"></material-symbols>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No fixed assets found</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
-            ${state.searchQuery || state.stockFilter !== 'All'
+            ${state.searchQuery || state.depreciationFilter !== 'All'
               ? 'Try adjusting your search or filters.'
-              : 'Start by adding your first inventory item to track stock levels.'}
+              : 'Start by recording your first fixed asset to track depreciation.'}
           </p>
-          ${!state.searchQuery && state.stockFilter === 'All' ? html`
-            <button
-              role="button"
-              type="button"
-              class="tonal"
-              commandfor="inventory-creation-dialog"
-              command="--open"
-            >
-              <material-symbols name="add"></material-symbols>
-              Add Inventory
-            </button>
-          ` : nothing}
         </div>
       `;
     }
 
     /**
-     * @param {number} stock
+     * @param {number} isFullyDepreciated
      */
-    function getStockStatusStyle(stock) {
-      if (stock < 0) return 'background-color: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container);';
-      if (stock === 0) return 'background-color: var(--md-sys-color-surface-container-highest); color: var(--md-sys-color-on-surface-variant);';
-      if (stock <= 10) return 'background-color: #FFF3E0; color: #E65100;';
+    function getDepreciationStatusStyle(isFullyDepreciated) {
+      if (isFullyDepreciated === 1) {
+        return 'background-color: var(--md-sys-color-surface-container-highest); color: var(--md-sys-color-on-surface-variant);';
+      }
       return 'background-color: #E8F5E9; color: #1B5E20;';
     }
 
     /**
-     * @param {number} stock
+     * @param {number} isFullyDepreciated
      */
-    function getStockStatusText(stock) {
-      if (stock < 0) return 'Negative';
-      if (stock === 0) return 'Out of Stock';
-      if (stock <= 10) return 'Low Stock';
-      return 'In Stock';
+    function getDepreciationStatusText(isFullyDepreciated) {
+      return isFullyDepreciated === 1 ? 'Fully Depreciated' : 'Active';
     }
 
     /**
-     * @param {InventoryRow} inventory
+     * @param {FixedAssetRow} asset
      */
-    function renderInventoryRow(inventory) {
-      const avgCostPerUnit = inventory.stock > 0 ? Math.round(inventory.cost / inventory.stock) : 0;
+    function renderFixedAssetRow(asset) {
+      const bookValue = asset.acquisition_cost - asset.accumulated_depreciation;
+      const depreciableAmount = asset.acquisition_cost - asset.salvage_value;
+      const depreciationPercentage = depreciableAmount > 0
+        ? Math.round((asset.accumulated_depreciation / depreciableAmount) * 100)
+        : 100;
 
       return html`
         <tr>
@@ -360,34 +342,19 @@ export class InventoriesViewElement extends HTMLElement {
                 type="button"
                 class="text extra-small"
                 style="--md-sys-density: -4;"
-                commandfor="inventory-details-dialog"
+                commandfor="fixed-asset-details-dialog"
                 command="--open"
-                data-inventory-id="${inventory.id}"
-              >${inventory.name}</button>
+                data-asset-id="${asset.id}"
+              >${asset.name}</button>
             </span>
           </td>
-          <td class="numeric">
-            <div style="display: inline-flex; align-items: center; gap: 4px;">
-              ${i18n.displayCurrency(inventory.unit_price)}
-              <button
-                role="button"
-                type="button"
-                class="text extra-small"
-                style="--md-sys-density: -4;"
-                commandfor="inventory-price-update-dialog"
-                command="--open"
-                data-inventory-id="${inventory.id}"
-                aria-label="Edit price for ${inventory.name}"
-              >
-                <material-symbols name="edit" size="18"></material-symbols>
-              </button>
-            </div>
+          <td style="white-space: nowrap;">
+            ${i18n.date.format(new Date(asset.acquisition_time))}
           </td>
-          <td class="numeric" style="color: ${inventory.stock < 0 ? 'var(--md-sys-color-error)' : 'inherit'}; white-space: nowrap;">
-            ${inventory.stock} ${inventory.unit_of_measurement ? html`
-              <span style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;">${inventory.unit_of_measurement}</span>
-            ` : nothing}
-          </td>
+          <td class="numeric">${i18n.displayCurrency(asset.acquisition_cost)}</td>
+          <td class="numeric">${asset.useful_life_years} years</td>
+          <td class="numeric">${i18n.displayCurrency(asset.accumulated_depreciation)}</td>
+          <td class="numeric">${i18n.displayCurrency(bookValue)}</td>
           <td class="center">
             <span
               class="label-small"
@@ -395,28 +362,40 @@ export class InventoriesViewElement extends HTMLElement {
                 display: inline-flex;
                 padding: 4px 8px;
                 border-radius: var(--md-sys-shape-corner-small);
-                ${getStockStatusStyle(inventory.stock)}
+                ${getDepreciationStatusStyle(asset.is_fully_depreciated)}
               "
-            >${getStockStatusText(inventory.stock)}</span>
+            >${getDepreciationStatusText(asset.is_fully_depreciated)}</span>
           </td>
-          <td class="numeric">${i18n.displayCurrency(inventory.cost)}</td>
-          <td class="numeric">${inventory.stock > 0 ? i18n.displayCurrency(avgCostPerUnit) : '—'}</td>
-          <td class="numeric">${inventory.num_of_sales}</td>
           <td class="center">
-            <div style="display: inline-flex; align-items: center; gap: 4px;">
-              ${inventory.discount_count}
-              <button
-                role="button"
-                type="button"
-                class="text extra-small"
-                style="--md-sys-density: -4;"
-                commandfor="inventory-discounts-edit-dialog"
-                command="--open"
-                data-inventory-id="${inventory.id}"
-                aria-label="Edit discounts for ${inventory.name}"
+            <div
+              style="
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 80px;
+              "
+            >
+              <div
+                style="
+                  flex: 1;
+                  height: 8px;
+                  background-color: var(--md-sys-color-surface-container-highest);
+                  border-radius: 4px;
+                  overflow: hidden;
+                "
               >
-                <material-symbols name="edit" size="18"></material-symbols>
-              </button>
+                <div
+                  style="
+                    width: ${depreciationPercentage}%;
+                    height: 100%;
+                    background-color: ${asset.is_fully_depreciated === 1
+                      ? 'var(--md-sys-color-outline)'
+                      : 'var(--md-sys-color-primary)'};
+                    transition: width 0.3s ease;
+                  "
+                ></div>
+              </div>
+              <span class="label-small" style="min-width: 36px; text-align: right;">${depreciationPercentage}%</span>
             </div>
           </td>
         </tr>
@@ -494,26 +473,26 @@ export class InventoriesViewElement extends HTMLElement {
       `;
     }
 
-    function renderInventoriesTable() {
-      if (state.inventories.length === 0) return renderEmptyState();
+    function renderFixedAssetsTable() {
+      if (state.fixedAssets.length === 0) return renderEmptyState();
 
       return html`
         <div>
-          <table aria-label="Inventories list" style="--md-sys-density: -3;">
+          <table aria-label="Fixed assets list" style="--md-sys-density: -3;">
             <thead>
               <tr>
                 <th scope="col">Name</th>
-                <th scope="col" class="numeric" style="width: 120px;">Unit Price</th>
-                <th scope="col" class="numeric" style="width: 80px;">Stock</th>
-                <th scope="col" class="center" style="width: 100px;">Status</th>
-                <th scope="col" class="numeric" style="width: 120px;">Total Cost</th>
-                <th scope="col" class="numeric" style="width: 120px;">Avg Cost</th>
-                <th scope="col" class="numeric" style="width: 80px;">Sales</th>
-                <th scope="col" class="center" style="width: 120px;">Discounts</th>
+                <th scope="col" style="width: 120px;">Acquisition Date</th>
+                <th scope="col" class="numeric" style="width: 140px;">Acquisition Cost</th>
+                <th scope="col" class="numeric" style="width: 100px;">Useful Life</th>
+                <th scope="col" class="numeric" style="width: 140px;">Accum. Depr.</th>
+                <th scope="col" class="numeric" style="width: 120px;">Book Value</th>
+                <th scope="col" class="center" style="width: 130px;">Status</th>
+                <th scope="col" class="center" style="width: 140px;">Progress</th>
               </tr>
             </thead>
             <tbody>
-              ${state.inventories.map(renderInventoryRow)}
+              ${state.fixedAssets.map(renderFixedAssetRow)}
             </tbody>
           </table>
           ${renderPaginationControls()}
@@ -521,53 +500,41 @@ export class InventoriesViewElement extends HTMLElement {
       `;
     }
 
-    useEffect(host, function renderInventoriesView() {
+    useEffect(host, function renderFixedAssetsView() {
       render(html`
         <div style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%; overflow-y: scroll;">
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>
-              <button role="button" class="text" @click=${loadInventories} aria-label="Refresh inventories">
+              <button role="button" class="text" @click=${loadFixedAssets} aria-label="Refresh fixed assets">
                 <material-symbols name="refresh"></material-symbols>
                 Refresh
               </button>
-              <button role="button" type="button" class="tonal" commandfor="inventory-creation-dialog" command="--open">
+              <button role="button" type="button" class="tonal" commandfor="fixed-asset-creation-dialog" command="--open">
                 <material-symbols name="add"></material-symbols>
-                Add Inventory
+                Add Fixed Asset
               </button>
             </div>
           </div>
 
           ${state.isLoading ? renderLoadingIndicator() : nothing}
           ${state.error instanceof Error ? renderErrorNotice(state.error) : nothing}
-          ${state.isLoading === false && state.error === null ? renderInventoriesTable() : nothing}
+          ${state.isLoading === false && state.error === null ? renderFixedAssetsTable() : nothing}
         </div>
 
-        <inventory-creation-dialog
-          ${inventoryCreationDialog}
-          id="inventory-creation-dialog"
-          @inventory-created=${loadInventories}
-        ></inventory-creation-dialog>
+        <fixed-asset-creation-dialog
+          id="fixed-asset-creation-dialog"
+          @fixed-asset-created=${loadFixedAssets}
+        ></fixed-asset-creation-dialog>
 
-        <inventory-details-dialog
-          ${inventoryDetailsDialog}
-          id="inventory-details-dialog"
-          inventory-id=${state.selectedInventoryId}
-          @inventory-updated=${loadInventories}
-        ></inventory-details-dialog>
-
-        <inventory-price-update-dialog
-          id="inventory-price-update-dialog"
-          @inventory-price-updated=${loadInventories}
-        ></inventory-price-update-dialog>
-
-        <inventory-discounts-edit-dialog
-          id="inventory-discounts-edit-dialog"
-          @inventory-discounts-updated=${loadInventories}
-        ></inventory-discounts-edit-dialog>
+        <fixed-asset-details-dialog
+          id="fixed-asset-details-dialog"
+          @fixed-asset-updated=${loadFixedAssets}
+          @fixed-asset-deleted=${loadFixedAssets}
+        ></fixed-asset-details-dialog>
       `);
     });
   }
 }
 
-defineWebComponent('inventories-view', InventoriesViewElement);
+defineWebComponent('fixed-assets-view', FixedAssetsViewElement);

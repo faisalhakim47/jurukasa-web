@@ -42,8 +42,6 @@ import '#web/components/material-symbols.js';
  */
 
 export class JournalEntryDetailsDialogElement extends HTMLElement {
-  static get observedAttributes() { return ['ref']; }
-
   constructor() {
     super();
 
@@ -51,8 +49,6 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
     const time = useContext(host, TimeContextElement);
-
-    const journalEntryRef = useAttribute(host, 'ref');
 
     const dialog = useDialog(host);
     const confirmationDialog = useElement(host, HTMLDialogElement);
@@ -73,12 +69,18 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
     });
 
     async function loadJournalEntry() {
-      if (typeof journalEntryRef.value === 'string' && journalEntryRef.value.trim()) {
-        try {
-          state.isLoading = true;
-          state.error = null;
+      const journalEntryRef = parseInt(dialog.context?.dataset.journalEntryRef, 10);
 
-          const journalEntryResult = await database.sql`
+      if (isNaN(journalEntryRef)) {
+        state.journalEntry = null;
+        state.journalEntryLines = [];
+        state.error = null;
+      }
+      else try {
+        state.isLoading = true;
+        state.error = null;
+
+        const journalEntryResult = await database.sql`
             SELECT
               je.ref,
               je.entry_time,
@@ -90,27 +92,25 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
               COALESCE(SUM(jel.debit), 0) as total_amount
             FROM journal_entries je
             LEFT JOIN journal_entry_lines jel ON jel.journal_entry_ref = je.ref
-            WHERE je.ref = ${journalEntryRef.value}
+            WHERE je.ref = ${journalEntryRef}
             GROUP BY je.ref
           `;
 
-          if (journalEntryResult.rows.length === 0) {
-            throw new Error(`Journal entry #${journalEntryRef.value} not found`);
-          }
+        if (journalEntryResult.rows.length === 0) throw new Error(`Journal entry #${journalEntryRef} not found`);
 
-          const journalEntryRow = journalEntryResult.rows[0];
-          state.journalEntry = {
-            ref: Number(journalEntryRow.ref),
-            entry_time: Number(journalEntryRow.entry_time),
-            note: journalEntryRow.note ? String(journalEntryRow.note) : null,
-            source_type: String(journalEntryRow.source_type),
-            post_time: journalEntryRow.post_time ? Number(journalEntryRow.post_time) : null,
-            total_amount: Number(journalEntryRow.total_amount),
-            reversal_of_ref: journalEntryRow.reversal_of_ref ? Number(journalEntryRow.reversal_of_ref) : null,
-            reversed_by_ref: journalEntryRow.reversed_by_ref ? Number(journalEntryRow.reversed_by_ref) : null,
-          };
+        const journalEntryRow = journalEntryResult.rows[0];
+        state.journalEntry = {
+          ref: Number(journalEntryRow.ref),
+          entry_time: Number(journalEntryRow.entry_time),
+          note: journalEntryRow.note ? String(journalEntryRow.note) : null,
+          source_type: String(journalEntryRow.source_type),
+          post_time: journalEntryRow.post_time ? Number(journalEntryRow.post_time) : null,
+          total_amount: Number(journalEntryRow.total_amount),
+          reversal_of_ref: journalEntryRow.reversal_of_ref ? Number(journalEntryRow.reversal_of_ref) : null,
+          reversed_by_ref: journalEntryRow.reversed_by_ref ? Number(journalEntryRow.reversed_by_ref) : null,
+        };
 
-          const journalEntryLinesResult = await database.sql`
+        const journalEntryLinesResult = await database.sql`
             SELECT
               jel.line_number,
               jel.account_code,
@@ -121,34 +121,28 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
               jel.reference
             FROM journal_entry_lines jel
             JOIN accounts a ON a.account_code = jel.account_code
-            WHERE jel.journal_entry_ref = ${journalEntryRef.value}
+            WHERE jel.journal_entry_ref = ${journalEntryRef}
             ORDER BY jel.line_number ASC
           `;
 
-          state.journalEntryLines = journalEntryLinesResult.rows.map(function (row) {
-            return /** @type {JournalEntryLine} */ ({
-              line_number: Number(row.line_number),
-              account_code: Number(row.account_code),
-              account_name: String(row.account_name),
-              debit: Number(row.debit),
-              credit: Number(row.credit),
-              description: row.description ? String(row.description) : null,
-              reference: row.reference ? String(row.reference) : null,
-            });
+        state.journalEntryLines = journalEntryLinesResult.rows.map(function mapRowToJournalEntryLine(row) {
+          return /** @type {JournalEntryLine} */ ({
+            line_number: Number(row.line_number),
+            account_code: Number(row.account_code),
+            account_name: String(row.account_name),
+            debit: Number(row.debit),
+            credit: Number(row.credit),
+            description: row.description ? String(row.description) : null,
+            reference: row.reference ? String(row.reference) : null,
           });
-        }
-        catch (error) {
-          console.error('Failed to load entry details:', error);
-          state.error = error instanceof Error ? error : new Error(String(error));
-        }
-        finally {
-          state.isLoading = false;
-        }
+        });
       }
-      else {
-        state.journalEntry = null;
-        state.journalEntryLines = [];
-        state.error = null;
+      catch (error) {
+        console.error('Failed to load entry details:', error);
+        state.error = error instanceof Error ? error : new Error(String(error));
+      }
+      finally {
+        state.isLoading = false;
       }
     }
 

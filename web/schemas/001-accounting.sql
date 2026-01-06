@@ -268,7 +268,6 @@ CREATE TABLE journal_entries (
   entry_time INTEGER NOT NULL,
   note TEXT,
   post_time INTEGER,
-  fiscal_year_begin_time INTEGER REFERENCES fiscal_years (begin_time) ON UPDATE RESTRICT ON DELETE RESTRICT,
   source_type TEXT DEFAULT 'Manual' CHECK (source_type IN ('Manual', 'LLM', 'System')),
   source_reference TEXT,
   created_by TEXT DEFAULT 'User' CHECK (created_by IN ('User', 'System', 'Migration')),
@@ -282,7 +281,6 @@ CREATE INDEX journal_entries_entry_time_post_time_index ON journal_entries (entr
 CREATE INDEX journal_entries_post_time_not_null_index ON journal_entries (post_time) WHERE post_time IS NOT NULL; -- EOS
 CREATE INDEX journal_entries_post_time_ref_index ON journal_entries (post_time, ref) WHERE post_time IS NOT NULL; -- EOS
 CREATE INDEX journal_entries_ref_post_time_index ON journal_entries(ref, post_time); -- EOS
-CREATE INDEX journal_entries_fiscal_year_index ON journal_entries (fiscal_year_begin_time) WHERE fiscal_year_begin_time IS NOT NULL; -- EOS
 CREATE INDEX journal_entries_source_type_index ON journal_entries (source_type, entry_time); -- EOS
 CREATE INDEX journal_entries_reversal_index ON journal_entries (reversal_of_ref) WHERE reversal_of_ref IS NOT NULL; -- EOS
 CREATE UNIQUE INDEX journal_entries_idempotent_key_index ON journal_entries (idempotent_key) WHERE idempotent_key IS NOT NULL; -- EOS
@@ -488,30 +486,35 @@ ORDER BY je.ref ASC, jel.line_number ASC; -- EOS
 
 -- Fiscal year periods
 CREATE TABLE fiscal_years (
-  begin_time INTEGER NOT NULL PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  begin_time INTEGER NOT NULL UNIQUE,
   end_time INTEGER NOT NULL,
   post_time INTEGER,
   closing_journal_entry_ref INTEGER REFERENCES journal_entries (ref) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  reversal_time INTEGER,
+  reversal_journal_entry_ref INTEGER REFERENCES journal_entries (ref) ON UPDATE RESTRICT ON DELETE RESTRICT,
   name TEXT, -- 'FY2024', 'Q1 2024', etc.
-  is_closed INTEGER NOT NULL DEFAULT 0 CHECK (is_closed IN (0, 1)),
   CHECK (begin_time < end_time)
 ) STRICT; -- EOS
 
+CREATE INDEX fiscal_years_begin_time_index ON fiscal_years (begin_time); -- EOS
 CREATE INDEX fiscal_years_end_time_index ON fiscal_years (end_time); -- EOS
 CREATE INDEX fiscal_years_begin_end_time_index ON fiscal_years (begin_time, end_time); -- EOS
 CREATE INDEX fiscal_years_post_time_index ON fiscal_years (post_time) WHERE post_time IS NOT NULL; -- EOS
-CREATE INDEX fiscal_years_closed_index ON fiscal_years (is_closed, begin_time); -- EOS
+CREATE INDEX fiscal_years_reversal_time_begin_time_index ON fiscal_years (reversal_time, begin_time); -- EOS
+CREATE INDEX fiscal_years_reversal_time_index ON fiscal_years (reversal_time) WHERE reversal_time IS NOT NULL; -- EOS
 
 -- Fiscal year validation trigger
 CREATE TRIGGER fiscal_years_insert_validation_trigger
 BEFORE INSERT ON fiscal_years FOR EACH ROW
 BEGIN
-  -- Prevent overlapping fiscal years
+  -- Prevent overlapping fiscal years (excluding reversed fiscal years)
   SELECT
     CASE
       WHEN EXISTS (
         SELECT 1 FROM fiscal_years 
-        WHERE (new.begin_time < end_time AND new.end_time > begin_time)
+        WHERE reversal_time IS NULL
+          AND (new.begin_time < end_time AND new.end_time > begin_time)
       ) THEN RAISE(ABORT, 'Fiscal year periods cannot overlap')
     END;
   
@@ -551,9 +554,108 @@ BEGIN
   SELECT RAISE(ABORT, 'Cannot unpost or change post_time of a posted fiscal year');
 END; -- EOS
 
+-- Prevent deletion of closed or reversed fiscal years
+CREATE TRIGGER fiscal_years_delete_prevention_trigger
+BEFORE DELETE ON fiscal_years FOR EACH ROW
+BEGIN
+  SELECT
+    CASE
+      WHEN old.closing_journal_entry_ref IS NOT NULL OR old.reversal_journal_entry_ref IS NOT NULL
+      THEN RAISE(ABORT, 'Cannot delete closed or reversed fiscal year')
+    END;
+END; -- EOS
+
+-- Validate reversal preconditions
+CREATE TRIGGER fiscal_years_reversal_validation_trigger
+BEFORE UPDATE OF reversal_time ON fiscal_years FOR EACH ROW
+WHEN new.reversal_time IS NOT NULL AND old.reversal_time IS NULL
+BEGIN
+  -- Must be closed first
+  SELECT
+    CASE
+      WHEN old.post_time IS NULL
+      THEN RAISE(ABORT, 'Cannot reverse fiscal year that has not been closed')
+    END;
+
+  -- Cannot reverse if there are newer non-reversed fiscal years
+  SELECT
+    CASE
+      WHEN EXISTS (
+        SELECT 1 FROM fiscal_years
+        WHERE id > old.id AND reversal_time IS NULL
+      ) THEN RAISE(ABORT, 'Cannot reverse fiscal year: newer fiscal years exist')
+    END;
+
+  -- Validate reversal time
+  SELECT
+    CASE
+      WHEN new.reversal_time <= old.post_time
+      THEN RAISE(ABORT, 'Reversal time must be after post time')
+    END;
+END; -- EOS
+
+-- Prevent changing reversal_time once set
+CREATE TRIGGER fiscal_years_reversal_time_immutability_trigger
+BEFORE UPDATE OF reversal_time ON fiscal_years FOR EACH ROW
+WHEN old.reversal_time IS NOT NULL AND (new.reversal_time IS NULL OR new.reversal_time != old.reversal_time)
+BEGIN
+  SELECT RAISE(ABORT, 'Cannot change or remove reversal_time once set');
+END; -- EOS
+
+-- Create reversal journal entry when fiscal year is reversed
+CREATE TRIGGER fiscal_years_reversal_trigger
+AFTER UPDATE OF reversal_time ON fiscal_years FOR EACH ROW
+WHEN new.reversal_time IS NOT NULL AND old.reversal_time IS NULL AND old.closing_journal_entry_ref IS NOT NULL
+BEGIN
+  -- Create reversal journal entry header
+  INSERT INTO journal_entries (
+    entry_time,
+    note,
+    source_type,
+    created_by,
+    reversal_of_ref
+  ) VALUES (
+    new.reversal_time,
+    'Reversal of FY' || strftime('%Y', datetime(new.end_time, 'unixepoch')) || ' Closing Entry',
+    'System',
+    'System',
+    old.closing_journal_entry_ref
+  );
+
+  -- Copy journal entry lines with swapped debits/credits
+  INSERT INTO journal_entry_lines_auto_number (
+    journal_entry_ref,
+    account_code,
+    debit,
+    credit,
+    description,
+    reference
+  )
+  SELECT
+    last_insert_rowid(),
+    jel.account_code,
+    jel.credit,  -- Swap: old credit becomes new debit
+    jel.debit,   -- Swap: old debit becomes new credit
+    'Reversal: ' || COALESCE(jel.description, ''),
+    jel.reference
+  FROM journal_entry_lines jel
+  WHERE jel.journal_entry_ref = old.closing_journal_entry_ref;
+
+  -- Auto-post the reversal entry
+  UPDATE journal_entries
+  SET post_time = new.reversal_time
+  WHERE ref = last_insert_rowid();
+
+  -- Store reversal journal entry reference
+  UPDATE fiscal_years
+  SET reversal_journal_entry_ref = last_insert_rowid()
+  WHERE id = new.id;
+END; -- EOS
+
 -- Account mutation view for fiscal year analysis
 CREATE VIEW fiscal_year_account_mutation AS
 SELECT
+  fy.id AS fiscal_year_id,
   fy.begin_time,
   fy.end_time,
   a.account_code AS account_code,
@@ -573,7 +675,7 @@ LEFT JOIN journal_entry_summary jes
   ON jes.entry_time > fy.begin_time
   AND jes.entry_time <= fy.end_time
   AND jes.account_code = a.account_code
-GROUP BY fy.begin_time, a.account_code
+GROUP BY fy.id, a.account_code
 HAVING sum_of_debit != 0 OR sum_of_credit != 0; -- EOS
 
 -- Automated fiscal year closing trigger
@@ -582,80 +684,100 @@ AFTER UPDATE OF post_time ON fiscal_years FOR EACH ROW
 WHEN old.post_time IS NULL AND new.post_time IS NOT NULL
 BEGIN
   -- Create comprehensive closing entry
-  INSERT INTO journal_entries (entry_time, note, fiscal_year_begin_time, source_type, created_by)
+  INSERT INTO journal_entries (entry_time, note, source_type, created_by)
   VALUES (
     new.end_time,
     'FY' || strftime('%Y', datetime(new.end_time, 'unixepoch')) || ' Closing Entry',
-    new.begin_time,
     'System',
     'System'
   );
 
-  -- Revenue closing entries: debit revenue accounts to zero their credit balances
+  -- Revenue closing entries: debit revenue accounts to zero their period balance
+  -- Calculate the balance change during the fiscal year period (exclusive begin, inclusive end)
+  -- net_change > 0 means credit balance (for credit-normal accounts) or debit balance (for debit-normal)
+  -- To close: create the opposite entry
   INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
   SELECT
     last_insert_rowid(),
-    a.account_code,
-    -- Debit side: if account has an effective debit balance to offset, or if credit-normal revenue has positive balance
-    CASE
-      WHEN a.normal_balance = 0 AND a.balance < 0 THEN ABS(a.balance)   -- debit-normal but has negative (credit) balance -> debit to offset
-      WHEN a.normal_balance = 1 AND a.balance > 0 THEN a.balance        -- credit-normal and positive (credit) balance -> debit to offset
-      ELSE 0
-    END,
-    -- Credit side: if account has an effective credit to offset
-    CASE
-      WHEN a.normal_balance = 0 AND a.balance > 0 THEN a.balance        -- debit-normal and positive (debit) balance -> credit to offset
-      WHEN a.normal_balance = 1 AND a.balance < 0 THEN ABS(a.balance)   -- credit-normal but negative (debit) balance -> credit to offset
-      ELSE 0
-    END
-  FROM accounts a
-  JOIN account_tags at ON at.account_code = a.account_code
+    period_change.account_code,
+    -- If net_change > 0, we need to debit to offset the credit balance
+    -- If net_change < 0, we need to credit to offset the debit balance
+    CASE WHEN period_change.net_change > 0 THEN period_change.net_change ELSE 0 END,
+    CASE WHEN period_change.net_change < 0 THEN ABS(period_change.net_change) ELSE 0 END
+  FROM (
+    SELECT
+      jes.account_code,
+      COALESCE(SUM(
+        CASE a2.normal_balance
+          WHEN 0 THEN jes.debit - jes.credit  -- Debit normal balance
+          WHEN 1 THEN jes.credit - jes.debit  -- Credit normal balance
+        END
+      ), 0) AS net_change
+    FROM journal_entry_summary jes
+    JOIN accounts a2 ON a2.account_code = jes.account_code
+    WHERE jes.entry_time > new.begin_time
+      AND jes.entry_time <= new.end_time
+    GROUP BY jes.account_code
+  ) period_change
+  JOIN account_tags at ON at.account_code = period_change.account_code
   WHERE at.tag = 'Fiscal Year Closing - Revenue'
-    AND a.balance != 0;
+    AND period_change.net_change != 0;
 
-  -- Expense closing entries: credit expense accounts to zero their debit balances
+  -- Expense closing entries: credit expense accounts to zero their period balance
+  -- For debit-normal expense accounts: net_change > 0 means debit balance, need to credit to close
   INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
   SELECT
     last_insert_rowid(),
-    a.account_code,
-    -- Debit side: if expense account currently has a credit (negative) balance -> debit to offset
-    CASE
-      WHEN a.normal_balance = 0 AND a.balance < 0 THEN ABS(a.balance)
-      WHEN a.normal_balance = 1 AND a.balance > 0 THEN a.balance
-      ELSE 0
-    END,
-    -- Credit side: if expense account has a debit (positive) balance -> credit to offset
-    CASE
-      WHEN a.normal_balance = 0 AND a.balance > 0 THEN a.balance
-      WHEN a.normal_balance = 1 AND a.balance < 0 THEN ABS(a.balance)
-      ELSE 0
-    END -- Credit to zero existing balance
-  FROM accounts a
-  JOIN account_tags at ON at.account_code = a.account_code
+    period_change.account_code,
+    CASE WHEN period_change.net_change < 0 THEN ABS(period_change.net_change) ELSE 0 END,
+    CASE WHEN period_change.net_change > 0 THEN period_change.net_change ELSE 0 END
+  FROM (
+    SELECT
+      jes.account_code,
+      COALESCE(SUM(
+        CASE a2.normal_balance
+          WHEN 0 THEN jes.debit - jes.credit  -- Debit normal balance
+          WHEN 1 THEN jes.credit - jes.debit  -- Credit normal balance
+        END
+      ), 0) AS net_change
+    FROM journal_entry_summary jes
+    JOIN accounts a2 ON a2.account_code = jes.account_code
+    WHERE jes.entry_time > new.begin_time
+      AND jes.entry_time <= new.end_time
+    GROUP BY jes.account_code
+  ) period_change
+  JOIN account_tags at ON at.account_code = period_change.account_code
   WHERE at.tag = 'Fiscal Year Closing - Expense'
-    AND a.balance != 0;
+    AND period_change.net_change != 0;
 
-  -- Dividend closing entries: credit dividend accounts to zero their debit balances
+  -- Dividend closing entries: credit dividend accounts to zero their period balance
   INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
   SELECT
     last_insert_rowid(),
-    a.account_code,
-    CASE
-      WHEN a.normal_balance = 0 AND a.balance < 0 THEN ABS(a.balance)
-      WHEN a.normal_balance = 1 AND a.balance > 0 THEN a.balance
-      ELSE 0
-    END,
-    CASE
-      WHEN a.normal_balance = 0 AND a.balance > 0 THEN a.balance
-      WHEN a.normal_balance = 1 AND a.balance < 0 THEN ABS(a.balance)
-      ELSE 0
-    END -- Credit to zero existing balance
-  FROM accounts a
-  JOIN account_tags at ON at.account_code = a.account_code
+    period_change.account_code,
+    CASE WHEN period_change.net_change < 0 THEN ABS(period_change.net_change) ELSE 0 END,
+    CASE WHEN period_change.net_change > 0 THEN period_change.net_change ELSE 0 END
+  FROM (
+    SELECT
+      jes.account_code,
+      COALESCE(SUM(
+        CASE a2.normal_balance
+          WHEN 0 THEN jes.debit - jes.credit  -- Debit normal balance
+          WHEN 1 THEN jes.credit - jes.debit  -- Credit normal balance
+        END
+      ), 0) AS net_change
+    FROM journal_entry_summary jes
+    JOIN accounts a2 ON a2.account_code = jes.account_code
+    WHERE jes.entry_time > new.begin_time
+      AND jes.entry_time <= new.end_time
+    GROUP BY jes.account_code
+  ) period_change
+  JOIN account_tags at ON at.account_code = period_change.account_code
   WHERE at.tag = 'Fiscal Year Closing - Dividend'
-    AND a.balance != 0;
+    AND period_change.net_change != 0;
 
   -- Calculate net income for retained earnings balancing
+  -- Net income = Revenues - Expenses - Dividends
   INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
   SELECT
     last_insert_rowid(),
@@ -665,14 +787,29 @@ BEGIN
   FROM (
     SELECT
       COALESCE(SUM(
-        CASE
-          WHEN at.tag IN ('Fiscal Year Closing - Revenue', 'Fiscal Year Closing - Expense', 'Fiscal Year Closing - Dividend')
-          THEN CASE WHEN a.normal_balance = 1 THEN a.balance ELSE -a.balance END
+        CASE at.tag
+          WHEN 'Fiscal Year Closing - Revenue' THEN COALESCE(period_change.net_change, 0)
+          WHEN 'Fiscal Year Closing - Expense' THEN -COALESCE(period_change.net_change, 0)
+          WHEN 'Fiscal Year Closing - Dividend' THEN -COALESCE(period_change.net_change, 0)
           ELSE 0
         END
       ), 0) AS net_income
-    FROM accounts a
-    JOIN account_tags at ON at.account_code = a.account_code
+    FROM account_tags at
+    LEFT JOIN (
+      SELECT
+        jes.account_code,
+        COALESCE(SUM(
+          CASE a2.normal_balance
+            WHEN 0 THEN jes.debit - jes.credit  -- Debit normal balance
+            WHEN 1 THEN jes.credit - jes.debit  -- Credit normal balance
+          END
+        ), 0) AS net_change
+      FROM journal_entry_summary jes
+      JOIN accounts a2 ON a2.account_code = jes.account_code
+      WHERE jes.entry_time > new.begin_time
+        AND jes.entry_time <= new.end_time
+      GROUP BY jes.account_code
+    ) period_change ON period_change.account_code = at.account_code
     WHERE at.tag IN ('Fiscal Year Closing - Revenue', 'Fiscal Year Closing - Expense', 'Fiscal Year Closing - Dividend')
   ) calc
   CROSS JOIN (
@@ -700,9 +837,8 @@ BEGIN
       SELECT ref FROM journal_entries
       WHERE ref = last_insert_rowid()
         AND EXISTS (SELECT 1 FROM journal_entry_lines WHERE journal_entry_ref = last_insert_rowid())
-    ),
-    is_closed = 1
-  WHERE begin_time = new.begin_time
+    )
+  WHERE id = new.id
     AND closing_journal_entry_ref IS NULL;
 END; -- EOS
 
@@ -715,12 +851,13 @@ CREATE TABLE balance_reports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_time INTEGER NOT NULL,
   report_type TEXT NOT NULL DEFAULT 'Period End' CHECK (report_type IN ('Period End', 'Monthly', 'Quarterly', 'Annual', 'Ad Hoc')),
-  fiscal_year_begin_time INTEGER REFERENCES fiscal_years (begin_time) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  fiscal_year_id INTEGER REFERENCES fiscal_years (id) ON UPDATE RESTRICT ON DELETE RESTRICT,
   name TEXT, -- Human-readable report name
   create_time INTEGER NOT NULL
 ) STRICT; -- EOS
 
 CREATE INDEX balance_reports_report_time_index ON balance_reports (report_time); -- EOS
+CREATE INDEX balance_reports_fiscal_year_index ON balance_reports (fiscal_year_id) WHERE fiscal_year_id IS NOT NULL; -- EOS
 CREATE INDEX balance_reports_id_time_index ON balance_reports (id, report_time); -- EOS
 CREATE INDEX balance_reports_type_time_index ON balance_reports (report_type, report_time); -- EOS
 
@@ -882,12 +1019,13 @@ SELECT
   fyam.account_code,
   fyam.account_name,
   fyam.net_change AS amount,
+  fyam.fiscal_year_id,
   fyam.begin_time,
   fyam.end_time,
   fy.name AS fiscal_year_name
 FROM fiscal_year_account_mutation fyam
 JOIN account_tags at ON at.account_code = fyam.account_code
-JOIN fiscal_years fy ON fy.begin_time = fyam.begin_time
+JOIN fiscal_years fy ON fy.id = fyam.fiscal_year_id
 WHERE fyam.net_change != 0
   AND at.tag IN (
     'Income Statement - Revenue',
@@ -897,7 +1035,7 @@ WHERE fyam.net_change != 0
     'Income Statement - Expense',
     'Income Statement - Other Expense'
   )
-ORDER BY fyam.begin_time DESC, classification, category, fyam.account_code; -- EOS
+ORDER BY fyam.fiscal_year_id DESC, classification, category, fyam.account_code; -- EOS
 
 -- =================================================================
 -- CASH FLOW STATEMENT REPORTING
@@ -909,7 +1047,7 @@ CREATE TABLE cashflow_reports (
   report_time INTEGER NOT NULL,
   begin_time INTEGER NOT NULL,
   end_time INTEGER NOT NULL,
-  fiscal_year_begin_time INTEGER REFERENCES fiscal_years (begin_time) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  fiscal_year_id INTEGER REFERENCES fiscal_years (id) ON UPDATE RESTRICT ON DELETE RESTRICT,
   name TEXT,
   create_time INTEGER NOT NULL,
   CHECK (begin_time < end_time)
