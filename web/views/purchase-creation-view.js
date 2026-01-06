@@ -66,6 +66,11 @@ export class PurchaseCreationViewElement extends HTMLElement {
       isLoadingInventories: false,
       inventorySearchQuery: '',
 
+      // Barcode scanning
+      barcodeBuffer: '',
+      barcodeStartTime: 0,
+      barcodeDetected: false,
+
       // Purchase data
       selectedSupplierId: /** @type {number | null} */ (null),
       selectedSupplierName: /** @type {string | null} */ (null),
@@ -114,6 +119,37 @@ export class PurchaseCreationViewElement extends HTMLElement {
       catch (error) {
         state.isLoadingInventories = false;
         console.error('Failed to load inventories:', error);
+      }
+    }
+
+    /**
+     * Load inventory by barcode and add to purchase
+     * @param {string} barcode
+     */
+    async function loadInventoryByBarcode(barcode) {
+      try {
+        const result = await database.sql`
+          SELECT i.id, i.name, i.unit_price, i.unit_of_measurement, i.stock
+          FROM inventories i
+          JOIN inventory_barcodes b ON b.inventory_id = i.id
+          WHERE b.code = ${barcode}
+          LIMIT 1
+        `;
+
+        if (result.rows.length > 0) {
+          const row = result.rows[0];
+          const inventory = /** @type {InventoryOption} */ ({
+            id: Number(row.id),
+            name: String(row.name),
+            unit_price: Number(row.unit_price),
+            unit_of_measurement: row.unit_of_measurement ? String(row.unit_of_measurement) : null,
+            stock: Number(row.stock),
+          });
+          addInventoryToPurchase(inventory);
+        }
+      }
+      catch (error) {
+        console.error('Failed to load inventory by barcode:', error);
       }
     }
 
@@ -278,8 +314,55 @@ export class PurchaseCreationViewElement extends HTMLElement {
     /** @param {Event} event */
     function handleInventorySearchInput(event) {
       assertInstanceOf(HTMLInputElement, event.target);
-      state.inventorySearchQuery = event.target.value;
+      const currentTime = Date.now();
+      const input = event.target.value;
+
+      // Track timing for barcode detection
+      if (state.barcodeBuffer === '') {
+        state.barcodeStartTime = currentTime;
+      }
+
+      state.barcodeBuffer = input;
+      state.inventorySearchQuery = input;
+
+      // Regular search if not in rapid input mode
       loadInventories();
+    }
+
+    /** @param {KeyboardEvent} event */
+    function handleInventorySearchKeyDown(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - state.barcodeStartTime;
+        const inputLength = state.barcodeBuffer.length;
+
+        // Barcode detection: >5 chars in <1000ms
+        if (inputLength > 5 && elapsedTime < 1000) {
+          state.barcodeDetected = true;
+          const barcode = state.barcodeBuffer.trim();
+
+          // Clear search field after barcode detected
+          state.inventorySearchQuery = '';
+          state.barcodeBuffer = '';
+
+          // Load and add inventory by barcode
+          loadInventoryByBarcode(barcode);
+        }
+        else {
+          // Normal search behavior - just reset buffer
+          state.barcodeBuffer = '';
+        }
+      }
+    }
+
+    /** @param {Event} event */
+    function handleInventorySearchFocus(event) {
+      // Reset barcode detection state on focus
+      state.barcodeBuffer = '';
+      state.barcodeStartTime = 0;
+      state.barcodeDetected = false;
     }
 
     /** @param {Event} event */
@@ -338,6 +421,8 @@ export class PurchaseCreationViewElement extends HTMLElement {
                   placeholder=" "
                   autocomplete="off"
                   @input=${handleInventorySearchInput}
+                  @keydown=${handleInventorySearchKeyDown}
+                  @focus=${handleInventorySearchFocus}
                 />
               </div>
             </div>
@@ -357,7 +442,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
             ` : html`
               <div role="list">
                 ${state.inventories.map(function (inventory) {
-                  return html`
+        return html`
                     <div
                       role="listitem"
                       class="divider-inset"
@@ -373,7 +458,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
                       </div>
                     </div>
                   `;
-                })}
+      })}
               </div>
             `}
           </div>
@@ -483,7 +568,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
               </thead>
               <tbody>
                 ${state.lines.map(function (line, index) {
-                  return html`
+        return html`
                     <tr>
                       <td>
                         <span style="font-weight: 500;">${line.inventoryName}</span>
@@ -533,7 +618,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
                       </td>
                     </tr>
                   `;
-                })}
+      })}
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">

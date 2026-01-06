@@ -96,6 +96,11 @@ export class POSViewElement extends HTMLElement {
       isLoadingInventories: false,
       inventorySearchQuery: '',
 
+      // Barcode scanning
+      barcodeBuffer: '',
+      barcodeStartTime: 0,
+      barcodeDetected: false,
+
       // Discounts
       discounts: /** @type {DiscountItem[]} */ ([]),
       isLoadingDiscounts: false,
@@ -122,6 +127,9 @@ export class POSViewElement extends HTMLElement {
 
       // Auto apply discount toggle
       autoApplyDiscounts: true,
+
+      // Auto apply cash payment toggle
+      autoApplyCashPayment: false,
     });
 
     const form = reactive({
@@ -164,6 +172,37 @@ export class POSViewElement extends HTMLElement {
       catch (error) {
         state.isLoadingInventories = false;
         console.error('Failed to load inventories:', error);
+      }
+    }
+
+    /**
+     * Load inventory by barcode and add to sale
+     * @param {string} barcode
+     */
+    async function loadInventoryByBarcode(barcode) {
+      try {
+        const result = await database.sql`
+          SELECT i.id, i.name, i.unit_price, i.unit_of_measurement, i.stock
+          FROM inventories i
+          JOIN inventory_barcodes b ON b.inventory_id = i.id
+          WHERE b.code = ${barcode}
+          LIMIT 1
+        `;
+
+        if (result.rows.length > 0) {
+          const row = result.rows[0];
+          const inventory = /** @type {InventoryItem} */ ({
+            id: Number(row.id),
+            name: String(row.name),
+            unit_price: Number(row.unit_price),
+            unit_of_measurement: row.unit_of_measurement ? String(row.unit_of_measurement) : null,
+            stock: Number(row.stock),
+          });
+          addInventoryToSale(inventory);
+        }
+      }
+      catch (error) {
+        console.error('Failed to load inventory by barcode:', error);
       }
     }
 
@@ -249,27 +288,25 @@ export class POSViewElement extends HTMLElement {
 
     /** @param {InventoryItem} inventory */
     function addInventoryToSale(inventory) {
-      const existingIndex = state.lines.findIndex((line) => line.inventoryId === inventory.id);
+      const existingIndex = state.lines.findIndex(function findLineIdex(line) {
+        return line.inventoryId === inventory.id;
+      });
 
       if (existingIndex >= 0) {
-        // Increment quantity
         state.lines[existingIndex].quantity += 1;
         state.lines[existingIndex].price = state.lines[existingIndex].quantity * inventory.unit_price;
       }
-      else {
-        // Add new line
-        state.lines.push({
-          inventoryId: inventory.id,
-          inventoryName: inventory.name,
-          unitOfMeasurement: inventory.unit_of_measurement,
-          unitPrice: inventory.unit_price,
-          quantity: 1,
-          price: inventory.unit_price,
-        });
-      }
+      else state.lines.push({
+        inventoryId: inventory.id,
+        inventoryName: inventory.name,
+        unitOfMeasurement: inventory.unit_of_measurement,
+        unitPrice: inventory.unit_price,
+        quantity: 1,
+        price: inventory.unit_price,
+      });
 
-      // Auto-apply inventory-specific discounts
       autoApplyDiscounts();
+      autoApplyCashPayment();
     }
 
     /** @param {number} index */
@@ -278,6 +315,7 @@ export class POSViewElement extends HTMLElement {
       line.quantity += 1;
       line.price = line.quantity * line.unitPrice;
       autoApplyDiscounts();
+      autoApplyCashPayment();
     }
 
     /** @param {number} index */
@@ -287,6 +325,7 @@ export class POSViewElement extends HTMLElement {
         line.quantity -= 1;
         line.price = line.quantity * line.unitPrice;
         autoApplyDiscounts();
+        autoApplyCashPayment();
       }
       else {
         removeLine(index);
@@ -299,12 +338,15 @@ export class POSViewElement extends HTMLElement {
       state.lines.splice(index, 1);
 
       // Remove associated inventory-specific discounts
-      state.appliedDiscounts = state.appliedDiscounts.filter(function (d) {
-        const discount = state.discounts.find((disc) => disc.id === d.discountId);
+      state.appliedDiscounts = state.appliedDiscounts.filter(function (appliedDiscount) {
+        const discount = state.discounts.find(function (discount) {
+          return discount.id === appliedDiscount.discountId;
+        });
         return !discount || discount.inventoryId !== removedLine.inventoryId;
       });
 
       autoApplyDiscounts();
+      autoApplyCashPayment();
     }
 
     function autoApplyDiscounts() {
@@ -316,7 +358,9 @@ export class POSViewElement extends HTMLElement {
       for (const discount of state.discounts) {
         if (discount.inventoryId !== null) {
           // Inventory-specific discount
-          const line = state.lines.find((l) => l.inventoryId === discount.inventoryId);
+          const line = state.lines.find(function findLine(line) {
+            return line.inventoryId === discount.inventoryId;
+          });
           if (line) {
             const multiplier = Math.floor(line.quantity / discount.multipleOfQuantity);
             if (multiplier > 0) {
@@ -328,6 +372,39 @@ export class POSViewElement extends HTMLElement {
             }
           }
         }
+      }
+    }
+
+    // Special identifier for auto-applied cash payment
+    const AUTO_CASH_PAYMENT_ID = -1;
+
+    function autoApplyCashPayment() {
+      if (!state.autoApplyCashPayment) return;
+
+      // Find cash payment method (the one with zero fees)
+      const cashMethod = state.paymentMethods.find(function (method) {
+        return method.minFee === 0 && method.maxFee === 0 && method.relFee === 0;
+      });
+
+      if (!cashMethod) return;
+
+      // Remove existing auto-applied cash payment
+      state.payments = state.payments.filter(function (payment) {
+        return payment.paymentMethodId !== AUTO_CASH_PAYMENT_ID;
+      });
+
+      // Calculate remaining balance (excluding auto cash)
+      const remaining = getRemainingBalance();
+
+      // Only add if there's a positive amount to pay
+      if (remaining > 0) {
+        const fee = calculatePaymentFee(remaining, cashMethod);
+        state.payments.push({
+          paymentMethodId: AUTO_CASH_PAYMENT_ID,
+          paymentMethodName: cashMethod.name,
+          amount: remaining,
+          paymentFee: fee,
+        });
       }
     }
 
@@ -346,30 +423,33 @@ export class POSViewElement extends HTMLElement {
       const discount = state.discounts.find((d) => d.id === discountId);
       if (!discount || discount.inventoryId !== null) return;
 
-      // Check if already applied
-      if (state.appliedDiscounts.some((d) => d.discountId === discountId)) {
+      const isDiscountAlreadyApplied = state.appliedDiscounts.some(function checkApplied(appliedDiscount) {
+        return appliedDiscount.discountId === discountId;
+      });
+      if (isDiscountAlreadyApplied) {
         cancelAddingDiscount();
         return;
       }
 
-      // Calculate total quantity for general discounts
-      const totalQuantity = state.lines.reduce((sum, l) => sum + l.quantity, 0);
-      const multiplier = Math.floor(totalQuantity / discount.multipleOfQuantity);
+      const totalQuantity = state.lines.reduce(function sum(sumOfQuantity, line) {
+        return sumOfQuantity + line.quantity;
+      }, 0);
+      const discountMultiplier = Math.floor(totalQuantity / discount.multipleOfQuantity);
 
-      if (multiplier > 0) {
-        state.appliedDiscounts.push({
-          discountId: discount.id,
-          discountName: discount.name,
-          amount: multiplier * discount.amount,
-        });
-      }
+      if (discountMultiplier > 0) state.appliedDiscounts.push({
+        discountId: discount.id,
+        discountName: discount.name,
+        amount: discountMultiplier * discount.amount,
+      });
 
+      autoApplyCashPayment();
       cancelAddingDiscount();
     }
 
     /** @param {number} index */
     function removeDiscount(index) {
       state.appliedDiscounts.splice(index, 1);
+      autoApplyCashPayment();
     }
 
     function startAddingPayment() {
@@ -416,12 +496,18 @@ export class POSViewElement extends HTMLElement {
         paymentFee: fee,
       });
 
+      autoApplyCashPayment();
       cancelAddingPayment();
     }
 
     /** @param {number} index */
     function removePayment(index) {
+      const payment = state.payments[index];
+      // Prevent removing auto-applied cash payment
+      if (payment.paymentMethodId === AUTO_CASH_PAYMENT_ID) return;
+
       state.payments.splice(index, 1);
+      autoApplyCashPayment();
     }
 
     function clearSale() {
@@ -435,33 +521,25 @@ export class POSViewElement extends HTMLElement {
       state.selectedPaymentMethodId = null;
       state.paymentAmount = null;
       state.selectedDiscountId = null;
+      state.autoApplyCashPayment = false;
     }
 
     /** @param {SubmitEvent} event */
     async function handleSubmit(event) {
       event.preventDefault();
-
-      if (state.lines.length === 0) {
-        form.error = new Error('Please add at least one item to the sale.');
-        return;
-      }
-
-      const remaining = getRemainingBalance();
-      if (remaining > 0) {
-        form.error = new Error(`Payment is incomplete. Remaining balance: ${i18n.displayCurrency(remaining)}`);
-        return;
-      }
-
       const tx = await database.transaction('write');
-
       try {
         form.state = 'submitting';
         form.error = null;
 
+        if (state.lines.length === 0) throw new Error('Please add at least one item to the sale.');
+
+        const remaining = getRemainingBalance();
+        if (remaining > 0) throw new Error(`Payment is incomplete. Remaining balance: ${i18n.displayCurrency(remaining)}`);
+
         const saleTime = new Date(state.saleTime).getTime();
         const customerName = state.customerName.trim() || null;
 
-        // Insert sale
         const saleResult = await tx.sql`
           INSERT INTO sales (customer_name, sale_time)
           VALUES (${customerName}, ${saleTime})
@@ -470,50 +548,42 @@ export class POSViewElement extends HTMLElement {
 
         const saleId = Number(saleResult.rows[0].id);
 
-        // Insert sale lines
-        for (let i = 0; i < state.lines.length; i++) {
-          const line = state.lines[i];
+        for (let index = 0; index < state.lines.length; index++) {
+          const line = state.lines[index];
           await tx.sql`
             INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost)
-            VALUES (${saleId}, ${i + 1}, ${line.inventoryId}, ${line.quantity}, ${line.price}, 0);
+            VALUES (${saleId}, ${index + 1}, ${line.inventoryId}, ${line.quantity}, ${line.price}, 0);
           `;
         }
 
-        // Insert sale discounts
-        for (let i = 0; i < state.appliedDiscounts.length; i++) {
-          const discount = state.appliedDiscounts[i];
+        for (let index = 0; index < state.appliedDiscounts.length; index++) {
+          const discount = state.appliedDiscounts[index];
           await tx.sql`
             INSERT INTO sale_discounts (sale_id, line_number, discount_id, amount)
-            VALUES (${saleId}, ${i + 1}, ${discount.discountId}, ${discount.amount});
+            VALUES (${saleId}, ${index + 1}, ${discount.discountId}, ${discount.amount});
           `;
         }
 
-        // Insert sale payments
-        for (let i = 0; i < state.payments.length; i++) {
-          const payment = state.payments[i];
+        for (let index = 0; index < state.payments.length; index++) {
+          const payment = state.payments[index];
           await tx.sql`
             INSERT INTO sale_payments (sale_id, line_number, payment_method_id, amount, payment_fee)
-            VALUES (${saleId}, ${i + 1}, ${payment.paymentMethodId}, ${payment.amount}, ${payment.paymentFee});
+            VALUES (${saleId}, ${index + 1}, ${payment.paymentMethodId}, ${payment.amount}, ${payment.paymentFee});
           `;
         }
 
-        // Post the sale
         const postTime = Date.now();
-        await tx.sql`
-          UPDATE sales SET post_time = ${postTime} WHERE id = ${saleId};
-        `;
+        await tx.sql`UPDATE sales SET post_time = ${postTime} WHERE id = ${saleId};`;
 
         await tx.commit();
 
         form.state = 'success';
         form.lastSaleId = saleId;
 
-        // Show success dialog
         successDialog.open = true;
-
         await feedbackDelay();
         clearSale();
-        loadInventories(); // Refresh inventory stock
+        loadInventories();
 
         await feedbackDelay();
         successDialog.open = false;
@@ -527,12 +597,7 @@ export class POSViewElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error && form.state !== 'submitting') {
-        errorAlertDialog.open = true;
-      }
-      else {
-        errorAlertDialog.open = false;
-      }
+      errorAlertDialog.open = form.error instanceof Error && form.state !== 'submitting';
     });
 
     function handleDismissErrorDialog() {
@@ -543,8 +608,49 @@ export class POSViewElement extends HTMLElement {
     /** @param {Event} event */
     function handleInventorySearchInput(event) {
       assertInstanceOf(HTMLInputElement, event.target);
-      state.inventorySearchQuery = event.target.value;
+      const currentTime = Date.now();
+      const input = event.target.value;
+
+      // Track timing for barcode detection
+      if (state.barcodeBuffer === '') state.barcodeStartTime = currentTime;
+
+      state.barcodeBuffer = input;
+      state.inventorySearchQuery = input;
+
+      // Regular search if not in rapid input mode
       loadInventories();
+    }
+
+    /** @param {KeyboardEvent} event */
+    function handleInventorySearchKeyDown(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - state.barcodeStartTime;
+        const inputLength = state.barcodeBuffer.length;
+
+        // Barcode detection: >5 chars in <1000ms
+        if (inputLength > 5 && elapsedTime < 1000) {
+          state.barcodeDetected = true;
+          const barcode = state.barcodeBuffer.trim();
+
+          state.inventorySearchQuery = state.inventorySearchQuery.replace(state.barcodeBuffer, '');
+          state.barcodeBuffer = '';
+
+          loadInventoryByBarcode(barcode);
+        }
+        // Normal search behavior - just reset buffer
+        else state.barcodeBuffer = '';
+      }
+    }
+
+    /** @param {Event} event */
+    function handleInventorySearchFocus(event) {
+      // Reset barcode detection state on focus
+      state.barcodeBuffer = '';
+      state.barcodeStartTime = 0;
+      state.barcodeDetected = false;
     }
 
     /** @param {Event} event */
@@ -628,7 +734,21 @@ export class POSViewElement extends HTMLElement {
       }
     }
 
-    // Initial load
+    /** @param {Event} event */
+    function handleAutoApplyCashPaymentToggle(event) {
+      assertInstanceOf(HTMLInputElement, event.target);
+      state.autoApplyCashPayment = event.target.checked;
+      if (state.autoApplyCashPayment) {
+        autoApplyCashPayment();
+      }
+      else {
+        // Remove auto-applied cash payment when toggle is off
+        state.payments = state.payments.filter(function (payment) {
+          return payment.paymentMethodId !== AUTO_CASH_PAYMENT_ID;
+        });
+      }
+    }
+
     useEffect(host, loadInventories);
     useEffect(host, loadDiscounts);
     useEffect(host, loadPaymentMethods);
@@ -656,6 +776,8 @@ export class POSViewElement extends HTMLElement {
                   placeholder=" "
                   autocomplete="off"
                   @input=${handleInventorySearchInput}
+                  @keydown=${handleInventorySearchKeyDown}
+                  @focus=${handleInventorySearchFocus}
                 />
               </div>
             </div>
@@ -675,11 +797,11 @@ export class POSViewElement extends HTMLElement {
             ` : html`
               <div role="list">
                 ${state.inventories.map(function (inventory) {
-                  const isLowStock = inventory.stock > 0 && inventory.stock <= 10;
-                  const isOutOfStock = inventory.stock <= 0;
-                  const stockColor = isOutOfStock ? 'var(--md-sys-color-error)' : isLowStock ? '#E65100' : 'var(--md-sys-color-on-surface-variant)';
+        const isLowStock = inventory.stock > 0 && inventory.stock <= 10;
+        const isOutOfStock = inventory.stock <= 0;
+        const stockColor = isOutOfStock ? 'var(--md-sys-color-error)' : isLowStock ? '#E65100' : 'var(--md-sys-color-on-surface-variant)';
 
-                  return html`
+        return html`
                     <div
                       role="listitem"
                       class="divider-inset"
@@ -700,7 +822,7 @@ export class POSViewElement extends HTMLElement {
                       </div>
                     </div>
                   `;
-                })}
+      })}
               </div>
             `}
           </div>
@@ -777,7 +899,7 @@ export class POSViewElement extends HTMLElement {
               </thead>
               <tbody>
                 ${state.lines.map(function (line, index) {
-                  return html`
+        return html`
                     <tr>
                       <td>
                         <span style="font-weight: 500;">${line.inventoryName}</span>
@@ -829,7 +951,7 @@ export class POSViewElement extends HTMLElement {
                       </td>
                     </tr>
                   `;
-                })}
+      })}
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">
@@ -885,8 +1007,8 @@ export class POSViewElement extends HTMLElement {
               </div>
               <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                 ${generalDiscounts.map(function (discount) {
-                  const isApplied = state.appliedDiscounts.some((d) => d.discountId === discount.id);
-                  return html`
+        const isApplied = state.appliedDiscounts.some((d) => d.discountId === discount.id);
+        return html`
                     <button
                       role="button"
                       type="button"
@@ -898,7 +1020,7 @@ export class POSViewElement extends HTMLElement {
                       ${discount.name}
                     </button>
                   `;
-                })}
+      })}
               </div>
             </div>
           ` : nothing}
@@ -923,7 +1045,7 @@ export class POSViewElement extends HTMLElement {
               </thead>
               <tbody>
                 ${state.appliedDiscounts.map(function (discount, index) {
-                  return html`
+        return html`
                     <tr>
                       <td>${discount.discountName}</td>
                       <td class="numeric" style="color: var(--md-sys-color-tertiary);">
@@ -944,7 +1066,7 @@ export class POSViewElement extends HTMLElement {
                       </td>
                     </tr>
                   `;
-                })}
+      })}
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">
@@ -966,12 +1088,24 @@ export class POSViewElement extends HTMLElement {
         <section style="margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <h3 class="title-small" style="margin: 0;">Payments</h3>
-            ${!state.addingPayment && state.paymentMethods.length > 0 && getRemainingBalance() > 0 ? html`
-              <button role="button" type="button" class="text extra-small" style="--md-sys-density: -4;" @click=${startAddingPayment}>
-                <material-symbols name="add" size="20"></material-symbols>
-                Add Payment
-              </button>
-            ` : nothing}
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <label for="auto-apply-cash-payment-checkbox" style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input
+                  id="auto-apply-cash-payment-checkbox"
+                  name="auto-apply-cash-payment"
+                  type="checkbox"
+                  .checked=${state.autoApplyCashPayment}
+                  @change=${handleAutoApplyCashPaymentToggle}
+                />
+                <span class="label-small">Auto-apply Cash Payment</span>
+              </label>
+              ${!state.addingPayment && !state.autoApplyCashPayment && state.paymentMethods.length > 0 && getRemainingBalance() > 0 ? html`
+                <button role="button" type="button" class="text extra-small" style="--md-sys-density: -4;" @click=${startAddingPayment}>
+                  <material-symbols name="add" size="20"></material-symbols>
+                  Add Payment
+                </button>
+              ` : nothing}
+            </div>
           </div>
           ${state.addingPayment ? html`
             <div style="
@@ -992,8 +1126,8 @@ export class POSViewElement extends HTMLElement {
                 </span>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                   ${state.paymentMethods.map(function (method) {
-                    const isSelected = state.selectedPaymentMethodId === method.id;
-                    return html`
+        const isSelected = state.selectedPaymentMethodId === method.id;
+        return html`
                       <button
                         role="button"
                         type="button"
@@ -1004,7 +1138,7 @@ export class POSViewElement extends HTMLElement {
                         ${method.name}
                       </button>
                     `;
-                  })}
+      })}
                 </div>
               </div>
               ${state.selectedPaymentMethodId !== null ? html`
@@ -1059,29 +1193,35 @@ export class POSViewElement extends HTMLElement {
               </thead>
               <tbody>
                 ${state.payments.map(function (payment, index) {
-                  return html`
+        const isAutoCash = payment.paymentMethodId === AUTO_CASH_PAYMENT_ID;
+        return html`
                     <tr>
-                      <td>${payment.paymentMethodName}</td>
+                      <td>
+                        ${payment.paymentMethodName}
+                        ${isAutoCash ? html`<span class="label-small" style="color: var(--md-sys-color-primary);"> (Auto)</span>` : nothing}
+                      </td>
                       <td class="numeric">${i18n.displayCurrency(payment.amount)}</td>
                       <td class="numeric" style="color: var(--md-sys-color-error);">
                         ${payment.paymentFee > 0 ? `-${i18n.displayCurrency(payment.paymentFee)}` : '—'}
                       </td>
                       <td class="center">
-                        <button
-                          role="button"
-                          type="button"
-                          class="text"
-                          data-index="${index}"
-                          @click=${handleRemovePayment}
-                          aria-label="Remove payment"
-                          style="color: var(--md-sys-color-error);"
-                        >
-                          <material-symbols name="close" size="20"></material-symbols>
-                        </button>
+                        ${!isAutoCash ? html`
+                          <button
+                            role="button"
+                            type="button"
+                            class="text"
+                            data-index="${index}"
+                            @click=${handleRemovePayment}
+                            aria-label="Remove payment"
+                            style="color: var(--md-sys-color-error);"
+                          >
+                            <material-symbols name="close" size="20"></material-symbols>
+                          </button>
+                        ` : nothing}
                       </td>
                     </tr>
                   `;
-                })}
+      })}
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">

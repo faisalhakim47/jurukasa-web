@@ -16,6 +16,7 @@ import '#web/views/procurement-view.js';
 import '#web/views/purchase-creation-view.js';
 import '#web/views/sale-view.js';
 import '#web/views/settings-view.js';
+import '#web/views/stock-taking-creation-view.js';
 import '#web/views/stock-view.js';
 
 /**
@@ -42,8 +43,10 @@ export class DesktopViewElement extends HTMLElement {
 
     function renderContent() {
       const pathname = router.route?.pathname;
+      // the ordering here matters for correct matching
       if (pathname === '/dashboard') return html`<dashboard-view></dashboard-view>`;
       else if (pathname.startsWith('/books')) return html`<books-view></books-view>`;
+      else if (pathname.startsWith('/stock/stock-taking-creation')) return html`<stock-taking-creation-view></stock-taking-creation>`;
       else if (pathname.startsWith('/stock')) return html`<stock-view></stock-view>`;
       else if (pathname.startsWith('/procurement/purchase-creation')) return html`<purchase-creation-view></purchase-creation-view>`;
       else if (pathname.startsWith('/procurement')) return html`<procurement-view></procurement-view>`;

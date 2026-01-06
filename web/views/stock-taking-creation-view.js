@@ -37,7 +37,6 @@ export class StockTakingCreationViewElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
 
-    const stockTakingDialog = useElement(host, StockTakingDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -137,28 +136,6 @@ export class StockTakingCreationViewElement extends HTMLElement {
       state.searchQuery = event.target.value;
       state.currentPage = 1;
       loadInventories();
-    }
-
-    /** @param {Event} event */
-    function handleInventoryRowInteraction(event) {
-      assertInstanceOf(StockTakingDialogElement, stockTakingDialog.value);
-      assertInstanceOf(HTMLTableRowElement, event.currentTarget);
-
-      const inventoryId = Number(event.currentTarget.dataset.inventoryId);
-      if (isNaN(inventoryId)) return;
-
-      const isOpeningAction = (event instanceof MouseEvent && event.type === 'click')
-        || (event instanceof KeyboardEvent && ['Enter', ' '].includes(event.key));
-
-      if (isOpeningAction) {
-        state.selectedInventoryId = inventoryId;
-        stockTakingDialog.value?.dispatchEvent(new CommandEvent('command', {
-          command: '--open',
-          bubbles: true,
-          cancelable: true,
-        }));
-        event.preventDefault();
-      }
     }
 
     function handleStockTakingCreated() {
@@ -295,22 +272,29 @@ export class StockTakingCreationViewElement extends HTMLElement {
      */
     function renderInventoryRow(inventory) {
       return html`
-        <tr
-          tabindex="0"
-          aria-label="Inventory ${inventory.name}"
-          data-inventory-id="${inventory.id}"
-          @click=${handleInventoryRowInteraction}
-          @keydown=${handleInventoryRowInteraction}
-          style="cursor: pointer;"
-        >
+        <tr data-inventory-id="${inventory.id}">
           <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
             <span style="font-weight: 500;">${inventory.name}</span>
-            ${inventory.unit_of_measurement ? html`
-              <span style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;"> / ${inventory.unit_of_measurement}</span>
-            ` : nothing}
           </td>
-          <td class="numeric" style="color: ${inventory.stock < 0 ? 'var(--md-sys-color-error)' : 'inherit'};">
-            ${inventory.stock}
+          <td class="right numeric" style="color: ${inventory.stock < 0 ? 'var(--md-sys-color-error)' : 'inherit'};">
+            <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+              <span>${inventory.stock}</span>
+              ${inventory.unit_of_measurement ? html`
+                <span style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;"> / ${inventory.unit_of_measurement}</span>
+              ` : nothing}
+              <button
+                role="button"
+                type="button"
+                class="text extra-small"
+                style="--md-sys-density: -4;"
+                commandfor="stock-taking-dialog"
+                command="--open"
+                data-inventory-id="${inventory.id}"
+              >
+                <material-symbols name="fact_check"></material-symbols>
+                Audit
+              </button>
+            </span>
           </td>
           <td class="numeric">${i18n.displayCurrency(inventory.cost)}</td>
           <td style="white-space: nowrap;">
@@ -413,9 +397,9 @@ export class StockTakingCreationViewElement extends HTMLElement {
             <thead>
               <tr>
                 <th scope="col">Name</th>
-                <th scope="col" class="numeric" style="width: 80px;">Stock</th>
-                <th scope="col" class="numeric" style="width: 120px;">Cost</th>
+                <th scope="col" class="center numeric" style="width: 80px;">Stock</th>
                 <th scope="col" style="width: 140px;">Last Audit</th>
+                <th scope="col" class="numeric" style="width: 120px;">Cost</th>
                 <th scope="col" class="center" style="width: 120px;">Status</th>
               </tr>
             </thead>
@@ -430,43 +414,50 @@ export class StockTakingCreationViewElement extends HTMLElement {
 
     useEffect(host, function renderStockTakingCreationView() {
       render(html`
-        <div style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%; overflow-y: scroll;">
-          <div style="
-            background-color: var(--md-sys-color-secondary-container);
-            color: var(--md-sys-color-on-secondary-container);
-            padding: 16px;
-            border-radius: var(--md-sys-shape-corner-medium);
-            margin-bottom: 8px;
-          ">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <material-symbols name="info" size="24"></material-symbols>
-              <div>
-                <p class="body-medium" style="margin: 0;">
-                  Select an inventory item to perform stock taking. Items are sorted by audit priority—those never audited or with the oldest audits appear first.
-                </p>
+        <div style="display: flex; flex-direction: column; height: 100%;">
+          <header class="app-bar" style="max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;">
+            <hgroup>
+              <h1>New Stock Taking</h1>
+              <p>Select an inventory item to perform stock audit.</p>
+            </hgroup>
+          </header>
+          
+          <div style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; flex: 1; overflow-y: scroll; max-width: 1280px; margin: 0 auto; width: 100%;">
+            <div style="
+              background-color: var(--md-sys-color-secondary-container);
+              color: var(--md-sys-color-on-secondary-container);
+              padding: 16px;
+              border-radius: var(--md-sys-shape-corner-medium);
+              margin-bottom: 8px;
+            ">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <material-symbols name="info" size="24"></material-symbols>
+                <div>
+                  <p class="body-medium" style="margin: 0;">
+                    Select an inventory item to perform stock taking. Items are sorted by audit priority—those never audited or with the oldest audits appear first.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
-            ${renderFilterControls()}
-            <div>
-              <button role="button" class="text" @click=${loadInventories} aria-label="Refresh inventories">
-                <material-symbols name="refresh"></material-symbols>
-                Refresh
-              </button>
+            <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
+              ${renderFilterControls()}
+              <div>
+                <button role="button" class="text" @click=${loadInventories} aria-label="Refresh inventories">
+                  <material-symbols name="refresh"></material-symbols>
+                  Refresh
+                </button>
+              </div>
             </div>
-          </div>
 
-          ${state.isLoading ? renderLoadingIndicator() : nothing}
-          ${state.error instanceof Error ? renderErrorNotice(state.error) : nothing}
-          ${state.isLoading === false && state.error === null ? renderInventoriesTable() : nothing}
+            ${state.isLoading ? renderLoadingIndicator() : nothing}
+            ${state.error instanceof Error ? renderErrorNotice(state.error) : nothing}
+            ${state.isLoading === false && state.error === null ? renderInventoriesTable() : nothing}
+          </div>
         </div>
 
         <stock-taking-dialog
-          ${stockTakingDialog}
           id="stock-taking-dialog"
-          inventory-id=${state.selectedInventoryId}
           @stock-taking-created=${handleStockTakingCreated}
         ></stock-taking-dialog>
       `);

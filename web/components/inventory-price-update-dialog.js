@@ -20,6 +20,7 @@ import '#web/components/material-symbols.js';
  * @property {number} id
  * @property {string} name
  * @property {number} unit_price
+ * @property {string} unit_of_measurement
  */
 
 /**
@@ -61,7 +62,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
         state.error = null;
 
         const result = await database.sql`
-          SELECT id, name, unit_price
+          SELECT id, name, unit_price, unit_of_measurement
           FROM inventories
           WHERE id = ${inventoryId}
         `;
@@ -75,6 +76,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
             id: Number(row.id),
             name: String(row.name),
             unit_price: Number(row.unit_price),
+            unit_of_measurement: String(row.unit_of_measurement),
           };
         }
 
@@ -216,7 +218,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
         <!-- Current Price -->
         <div style="margin: 20px 0 12px 0;">
           <p class="label-small" style="margin: 0 0 4px 0; color: var(--md-sys-color-on-surface-variant);">Current Unit Price</p>
-          <p class="headline-small" style="margin: 0;">${i18n.displayCurrency(inventory.unit_price)}</p>
+          <p class="headline-small" style="margin: 0;">${i18n.displayCurrency(inventory.unit_price)} / <small>${inventory.unit_of_measurement}</small></p>
         </div>
 
         <!-- New Unit Price -->

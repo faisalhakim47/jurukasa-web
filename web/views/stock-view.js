@@ -18,7 +18,6 @@ import '#web/components/router-link.js';
 import '#web/views/inventories-view.js';
 import '#web/views/barcodes-view.js';
 import '#web/views/stock-takings-view.js';
-import '#web/views/stock-taking-creation-view.js';
 
 export class StockViewElement extends HTMLElement {
   constructor() {
@@ -31,7 +30,6 @@ export class StockViewElement extends HTMLElement {
 
     const inventoriesTabpanel = useElement(host, HTMLElement);
     const barcodesTabpanel = useElement(host, HTMLElement);
-    const stockTakingCreationTabpanel = useElement(host, HTMLElement);
     const stockTakingsTabpanel = useElement(host, HTMLElement);
     const notfoundDialog = useDialog(host);
 
@@ -43,7 +41,6 @@ export class StockViewElement extends HTMLElement {
     function syncRouteToTabpanel() {
       if (!(inventoriesTabpanel.value instanceof HTMLElement)) return;
       if (!(barcodesTabpanel.value instanceof HTMLElement)) return;
-      if (!(stockTakingCreationTabpanel.value instanceof HTMLElement)) return;
       if (!(stockTakingsTabpanel.value instanceof HTMLElement)) return;
 
       notfoundDialog.open = false;
@@ -51,7 +48,6 @@ export class StockViewElement extends HTMLElement {
       if (pathname === '/stock' || pathname === '/stock/') { /** evaluate default path on mounted */ }
       else if (pathname.startsWith('/stock/inventories')) scrollIntoView(inventoriesTabpanel.value);
       else if (pathname.startsWith('/stock/barcodes')) scrollIntoView(barcodesTabpanel.value);
-      else if (pathname.startsWith('/stock/create-stock-taking')) scrollIntoView(stockTakingCreationTabpanel.value);
       else if (pathname.startsWith('/stock/stock-takings')) scrollIntoView(stockTakingsTabpanel.value);
       else {
         notfoundDialog.open = true;
@@ -78,8 +74,7 @@ export class StockViewElement extends HTMLElement {
           const tabIndex = Math.round(scrollLeft / containerWidth);
           if (tabIndex === 0) router.navigate({ pathname: '/stock/inventories', replace: true });
           else if (tabIndex === 1) router.navigate({ pathname: '/stock/barcodes', replace: true });
-          else if (tabIndex === 2) router.navigate({ pathname: '/stock/create-stock-taking', replace: true });
-          else if (tabIndex === 3) router.navigate({ pathname: '/stock/stock-takings', replace: true });
+          else if (tabIndex === 2) router.navigate({ pathname: '/stock/stock-takings', replace: true });
           else router.navigate({ pathname: '/stock/inventories', replace: true });
         });
       });
@@ -109,12 +104,6 @@ export class StockViewElement extends HTMLElement {
               <span class="content">
                 <material-symbols name="barcode" size="24"></material-symbols>
                 Barcodes
-              </span>
-            </router-link>
-            <router-link role="tab" id="stock-taking-creation-tab" aria-controls="stock-taking-creation-panel" href="/stock/create-stock-taking" replace>
-              <span class="content">
-                <material-symbols name="add_box" size="24"></material-symbols>
-                New Stock Taking
               </span>
             </router-link>
             <router-link role="tab" id="stock-takings-tab" aria-controls="stock-takings-panel" href="/stock/stock-takings" replace>
@@ -175,23 +164,6 @@ export class StockViewElement extends HTMLElement {
                 overflow-y: auto;
               "
             ></barcodes-view>
-            <stock-taking-creation-view
-              ${stockTakingCreationTabpanel}
-              id="stock-taking-creation-panel"
-              role="tabpanel"
-              aria-labelledby="stock-taking-creation-tab"
-              aria-hidden="${router.route.pathname.startsWith('/stock/create-stock-taking') ? 'false' : 'true'}"
-              tabindex="${router.route.pathname.startsWith('/stock/create-stock-taking') ? '0' : '-1'}"
-              ?inert=${router.route.pathname.startsWith('/stock/create-stock-taking') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
-            ></stock-taking-creation-view>
             <stock-takings-view
               ${stockTakingsTabpanel}
               id="stock-takings-panel"

@@ -31,10 +31,6 @@ import '#web/components/material-symbols.js';
  * @fires stock-taking-created - Fired when a stock taking is successfully created. Detail: { stockTakingId: number }
  */
 export class StockTakingDialogElement extends HTMLElement {
-  static get observedAttributes() {
-    return ['inventory-id'];
-  }
-
   constructor() {
     super();
 
@@ -42,7 +38,6 @@ export class StockTakingDialogElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
 
-    const inventoryIdAttr = useAttribute(host, 'inventory-id');
     const errorAlertDialog = useDialog(host);
 
     const dialog = useDialog(host);
@@ -61,7 +56,8 @@ export class StockTakingDialogElement extends HTMLElement {
     });
 
     async function loadInventory() {
-      const inventoryId = inventoryIdAttr.value ? Number(inventoryIdAttr.value) : null;
+      const inventoryId = parseInt(dialog.context?.dataset.inventoryId ?? '', 10);
+
       if (inventoryId === null || isNaN(inventoryId)) {
         state.inventory = null;
         state.actualStock = null;

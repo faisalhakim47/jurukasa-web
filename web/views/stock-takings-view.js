@@ -271,7 +271,7 @@ export class StockTakingsViewElement extends HTMLElement {
             <router-link
               role="button"
               class="tonal"
-              href="/stock/create-stock-taking"
+              href="/stock/stock-taking-creation"
             >
               <material-symbols name="add"></material-symbols>
               New Stock Taking
@@ -453,7 +453,7 @@ export class StockTakingsViewElement extends HTMLElement {
                 <material-symbols name="refresh"></material-symbols>
                 Refresh
               </button>
-              <router-link role="button" class="tonal" href="/stock/create-stock-taking">
+              <router-link role="button" class="tonal" href="/stock/stock-taking-creation">
                 <material-symbols name="add"></material-symbols>
                 New Stock Taking
               </router-link>
