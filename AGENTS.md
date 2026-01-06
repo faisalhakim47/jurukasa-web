@@ -2,7 +2,6 @@
 
 JuruKasa is point-of-sales (POS) web application with following features:
 - Implement Indonesian accounting standard
-- Offline-first single page application
 - Native web modern development architecture using latest web standard
 - Single-user application with local database storage, act like desktop application
 
@@ -19,7 +18,7 @@ JuruKasa is point-of-sales (POS) web application with following features:
 
 ## Compatibility Target
 
-Application shall be written targeting modern chromium-based browser version 140 or above as of year 2025.
+Application shall be written targeting modern chromium-based browser version 140 or above as of year 2026.
 
 ## JavaScript Code Style
 
