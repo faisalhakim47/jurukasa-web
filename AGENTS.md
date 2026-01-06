@@ -1,1 +1,0 @@
-# JuruKasa Application
