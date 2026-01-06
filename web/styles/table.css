@@ -1,0 +1,103 @@
+/* Table Container */
+.container:has(>table) {
+  overflow-x: auto;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background-color: var(--md-sys-color-surface);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+  /* Ensure the container handles its own scrolling context */
+  position: relative;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--md-sys-typescale-font);
+  /* Reset spacing */
+  border-spacing: 0;
+}
+
+/* Header */
+thead {
+  background-color: var(--md-sys-color-surface-container);
+}
+
+th {
+  box-sizing: border-box;
+  padding: max(4px, 12px + calc(var(--md-sys-density, 0) * 4px)) 16px;
+  height: max(36px, calc(52px + (var(--md-sys-density, 0) * 4px))); /* essentially min-height for table cell */
+  text-align: left;
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  font-size: var(--md-sys-typescale-label-large-size);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+  /* Ensure headers stay on top of content when scrolling */
+  z-index: 1;
+}
+
+/* Body */
+tbody>tr {
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+}
+
+/* Interactive Rows */
+tbody>tr[tabindex="0"],
+tbody>tr.interactive {
+  cursor: pointer;
+}
+
+tbody>tr[tabindex="0"]:hover,
+tbody>tr.interactive:hover {
+  background-color: var(--md-sys-color-surface-container-low);
+}
+
+tbody>tr:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+
+/* Cells */
+td {
+  box-sizing: border-box;
+  padding: max(4px, 12px + calc(var(--md-sys-density, 0) * 4px)) 16px;
+  height: max(36px, calc(52px + (var(--md-sys-density, 0) * 4px))); /* essentially min-height for table cell */
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  color: var(--md-sys-color-on-surface);
+}
+
+/* Alignment Utilities */
+th.numeric,
+td.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+th.center,
+td.center {
+  text-align: center;
+}
+
+/* Sticky Header Support */
+.container:has(>table).sticky-header {
+  overflow-y: auto;
+}
+
+.container:has(>table).sticky-header thead th {
+  position: sticky;
+  top: 0;
+  /* Re-apply background to cover scrolling content */
+  background-color: var(--md-sys-color-surface-container);
+  /* Add a bottom border to separate header from scrolling content */
+  box-shadow: 0 1px 0 var(--md-sys-color-outline-variant);
+}
+
+/* Empty State within Table (if needed) */
+tbody.empty-state-body td {
+  text-align: center;
+  padding: 48px;
+  color: var(--md-sys-color-on-surface-variant);
+}

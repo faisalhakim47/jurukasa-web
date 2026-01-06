@@ -1,0 +1,275 @@
+/**
+ * Material 3 Expressive Cards
+ * @see https://m3.material.io/components/cards/overview
+ * 
+ * Implements: Elevated card, Filled card, and Outlined card.
+ *
+ * HTML STRUCTURE:
+ * <article class="card">
+ *   <header>
+ *     <material-symbols name="icon"></material-symbols>
+ *     <hgroup>
+ *       <h3>Card Title</h3>
+ *       <p>Subhead or supporting text</p>
+ *     </hgroup>
+ *   </header>
+ *   <section>
+ *     <p>Card content goes here</p>
+ *   </section>
+ *   <footer>
+ *     <button class="text">Action</button>
+ *   </footer>
+ * </article.card>
+ */
+
+/* =================================================================
+   # 1. Base Container (Filled Card - Default)
+   ================================================================= */
+
+article.card {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-sizing: border-box;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background-color: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  overflow: hidden;
+
+  /* Transition for hover/focus states */
+  transition-property: box-shadow, background-color;
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized);
+}
+
+/* =================================================================
+   # 2. Card Variants
+   ================================================================= */
+
+/* ## 2.1. Elevated Card */
+article.card.elevated {
+  background-color: var(--md-sys-color-surface-container-low);
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+article.card.elevated:hover {
+  box-shadow: var(--md-sys-elevation-level2);
+}
+
+/* ## 2.2. Outlined Card */
+article.card.outlined {
+  background-color: var(--md-sys-color-surface);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+}
+
+article.card.outlined:hover {
+  background-color: var(--md-sys-color-surface-container-low);
+}
+
+/* =================================================================
+   # 3. Card Header
+   ================================================================= */
+
+article.card>header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+}
+
+article.card>header>material-symbols {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+article.card>header>material-symbols>svg {
+  width: 24px;
+  height: 24px;
+}
+
+article.card>header>hgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+article.card>header>hgroup>h3,
+article.card>header>h3 {
+  margin: 0;
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  line-height: var(--md-sys-typescale-title-medium-line-height);
+  color: var(--md-sys-color-on-surface);
+}
+
+article.card>header>hgroup>p,
+article.card>header>p {
+  margin: 0;
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* =================================================================
+   # 4. Card Content (Section)
+   ================================================================= */
+
+article.card>section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+article.card>section>p {
+  margin: 0;
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* =================================================================
+   # 5. Card Footer (Actions)
+   ================================================================= */
+
+article.card>footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 16px 16px;
+}
+
+/* =================================================================
+   # 6. Special Content Types
+   ================================================================= */
+
+/* ## 6.1. Large Display Value (Headline) */
+article.card>section>[role="heading"] {
+  font-family: var(--md-sys-typescale-display-small-font);
+  font-weight: var(--md-sys-typescale-display-small-weight);
+  font-size: var(--md-sys-typescale-display-small-size);
+  line-height: var(--md-sys-typescale-display-small-line-height);
+  color: var(--md-sys-color-on-surface);
+}
+
+/* ## 6.2. Metric Card (Compact Value Display) */
+article.card.metric {
+  padding: 16px;
+  gap: 8px;
+}
+
+article.card.metric>header {
+  padding: 0;
+  gap: 8px;
+}
+
+article.card.metric>header>material-symbols {
+  width: 24px;
+  height: 24px;
+  background-color: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+article.card.metric>header>material-symbols>svg {
+  width: 24px;
+  height: 24px;
+}
+
+article.card.metric>header>hgroup>h3,
+article.card.metric>header>h3 {
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+article.card.metric>section {
+  padding: 0;
+  gap: 4px;
+}
+
+article.card.metric>section>[role="heading"] {
+  font-family: var(--md-sys-typescale-headline-medium-font);
+  font-weight: var(--md-sys-typescale-headline-medium-weight);
+  font-size: var(--md-sys-typescale-headline-medium-size);
+  line-height: var(--md-sys-typescale-headline-medium-line-height);
+}
+
+/* ## 6.3. Status Indicator */
+article.card [data-status="positive"] {
+  color: #1B5E20; /* Green for positive */
+}
+
+article.card [data-status="negative"] {
+  color: var(--md-sys-color-error);
+}
+
+article.card [data-status="warning"] {
+  color: #F57C00; /* Orange for warning */
+}
+
+/* =================================================================
+   # 7. Interactive Cards (Clickable)
+   ================================================================= */
+
+article.card[tabindex="0"],
+article.card:has(> router-link:only-child) {
+  cursor: pointer;
+}
+
+article.card[tabindex="0"]:hover,
+article.card:has(> router-link:only-child):hover {
+  background-color: var(--md-sys-color-surface-container);
+}
+
+article.card[tabindex="0"]:focus-visible,
+article.card:has(> router-link:only-child):focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+article.card[tabindex="0"]:active,
+article.card:has(> router-link:only-child):active {
+  background-color: var(--md-sys-color-surface-container-high);
+}
+
+/* Link wrapper inside card */
+article.card>router-link:only-child {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* =================================================================
+   # 8. Card Grid Layout Helper
+   ================================================================= */
+
+.card-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+/* Compact grid for metric cards */
+.card-grid.compact {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+

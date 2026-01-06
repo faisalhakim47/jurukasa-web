@@ -1,0 +1,418 @@
+/**
+ * Material 3 Expressive Common Buttons
+ * @see https://m3.material.io/components/buttons/specs
+ *
+ * Implements: Filled, Tonal, Elevated, Outlined, and Text buttons.
+ */
+
+
+/* =================================================================
+   # 1. Base Style
+   ================================================================= */
+
+[role="button"] {
+  appearance: none;
+  user-select: none;
+  background: none;
+  border: none;
+  outline: none;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  margin-inline: 4px; /* margin for outline */
+  position: relative;
+  font-family: var(--md-sys-typescale-font);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  transition-property: color;
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized);
+  text-decoration: none;
+}
+[role="button"]::before,
+[role="button"]::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  transition-property: background-color, border-radius, box-shadow, opacity;
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized);
+}
+/* Use ::before pseudo-element as the container/main background */
+[role="button"]::before {
+  z-index: -2;
+}
+/* Use ::after pseudo-element as the state-layer */
+[role="button"]::after {
+  z-index: -1;
+}
+[role="button"]>material-symbols {
+  display: block;
+  color: currentColor;
+}
+
+/* =================================================================
+   # 2. Size Variants
+   ================================================================= */
+
+/* ## 2.1. Size Variants -> Small Size (default) */
+[role="button"] {
+  /* --md.comp.button.container.height */
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: 40px;
+  height: 40px;
+  padding-inline: 16px;
+  gap: 8px;
+}
+[role="button"]::before,
+[role="button"]::after {
+  height: 40px;
+}
+[role="button"]>material-symbols {
+  width: 20px;
+  height: 20px;
+}
+
+/* ## 2.2. Size Variants -> Extra Small Size */
+[role="button"].extra-small {
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: max(28px, calc(40px + calc(4px * var(--md-sys-density, 0))));
+  height: max(28px, calc(40px + calc(4px * var(--md-sys-density, 0))));
+  padding-inline: 12px;
+  gap: 4px;
+}
+[role="button"].extra-small::before,
+[role="button"].extra-small::after {
+  height: max(28px, calc(40px + calc(4px * var(--md-sys-density, 0))));
+}
+[role="button"].extra-small>material-symbols {
+  width: 20px;
+  height: 20px;
+}
+
+/* ## 2.2. Size Variants -> Medium Size */
+[role="button"].medium {
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: 56px;
+  height: 56px;
+  padding-inline: 24px;
+  gap: 8px;
+}
+[role="button"].medium::before,
+[role="button"].medium::after {
+  top: 0px;
+  height: 56px;
+}
+[role="button"].medium>material-symbols {
+  width: 24px;
+}
+
+/* ## 2.3. Size Variant -> Large Size */
+[role="button"].large {
+  font-size: var(--md-sys-typescale-label-large-size);
+  line-height: 96px;
+  height: 96px;
+  padding-inline: 48px;
+  gap: 12px;
+}
+[role="button"].large::before,
+[role="button"].large::after {
+  top: 0px;
+  height: 96px;
+}
+[role="button"].large>material-symbols {
+  width: 32px;
+}
+
+/* ## 2.4. Size Variant -> Extra Large Size */
+[role="button"].extra-large {
+  font-size: var(--md-sys-typescale-headline-large-size);
+  line-height: 136px;
+  padding-inline: 64px;
+  gap: 16px;
+}
+[role="button"].extra-large::before,
+[role="button"].extra-large::after {
+  top: 0px;
+  height: 136px;
+}
+[role="button"].extra-large>material-symbols {
+  width: 40px;
+}
+
+
+/* =================================================================
+   # 3. Shape Variants
+   ================================================================= */
+
+/* ## 3.1. Rounded Shape (default) */
+[role="button"]::before,
+[role="button"]::after {
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+
+/* =================================================================
+   # 4. Style Variants
+   ================================================================= */
+
+/* ## 4.1. Style Variants -> Filled Style (default) */
+
+/* ## 4.1.1. Style Variants -> Filled Style -> Enabled State */
+[role="button"] {
+  color: var(--md-sys-color-on-primary);
+}
+[role="button"]::before {
+  background-color: var(--md-sys-color-primary);
+}
+
+/* ## 4.1.2. Style Variants -> Filled Style -> Disabled State */
+[role="button"]:disabled {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+}
+[role="button"]:disabled::before {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 10%, transparent);
+}
+
+/* ## 4.1.3. Style Variants -> Filled Style -> Hovered State */
+[role="button"]:not(:disabled):hover {
+  color: var(--md-sys-color-on-primary);
+}
+[role="button"]:not(:disabled):hover::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-primary) 8%, transparent);
+}
+
+/* ## 4.1.4. Style Variants -> Filled Style -> Focused State */
+[role="button"]:not(:disabled):is(:focus, :focus-visible) {
+  color: var(--md-sys-color-on-primary);
+}
+[role="button"]:not(:disabled):is(:focus, :focus-visible)::before {
+  outline: 2px solid color-mix(in srgb, var(--md-sys-color-primary) 75%, transparent);
+  outline-offset: 1px;
+}
+[role="button"]:not(:disabled):is(:focus, :focus-visible)::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-primary) 10%, transparent);
+}
+
+/* ## 4.1.5. Style Variants -> Filled Style -> Pressed State */
+[role="button"]:not(:disabled):active {
+  color: var(--md-sys-color-on-primary);
+}
+[role="button"]:not(:disabled):active::after,
+[role="button"]:not(:disabled):active::before {
+  border-radius: var(--md-sys-shape-corner-medium);
+}
+
+
+/* =================================================================
+   # 4.2. Style Variants -> Tonal Style
+   ================================================================= */
+
+/* ## 4.2.1. Style Variants -> Tonal Style -> Enabled State */
+[role="button"].tonal {
+  color: var(--md-sys-color-on-secondary-container);
+}
+[role="button"].tonal::before {
+  background-color: var(--md-sys-color-secondary-container);
+}
+
+/* ## 4.2.2. Style Variants -> Tonal Style -> Disabled State */
+[role="button"].tonal:disabled {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+}
+[role="button"].tonal:disabled::before {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+}
+
+/* ## 4.2.3. Style Variants -> Tonal Style -> Hovered State */
+[role="button"].tonal:not(:disabled):hover {
+  color: var(--md-sys-color-on-secondary-container);
+}
+[role="button"].tonal:not(:disabled):hover::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-secondary-container) 8%, transparent);
+}
+
+/* ## 4.2.4. Style Variants -> Tonal Style -> Focused State */
+[role="button"].tonal:not(:disabled):is(:focus, :focus-visible) {
+  color: var(--md-sys-color-on-secondary-container);
+}
+[role="button"].tonal:not(:disabled):is(:focus, :focus-visible)::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-secondary-container) 10%, transparent);
+}
+
+/* ## 4.2.5. Style Variants -> Tonal Style -> Pressed State */
+[role="button"].tonal:not(:disabled):active {
+  color: var(--md-sys-color-on-secondary-container);
+}
+[role="button"].tonal:not(:disabled):active::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-secondary-container) 12%, transparent);
+}
+
+
+/* =================================================================
+   # 4.3. Style Variants -> Elevated Style
+   ================================================================= */
+
+/* ## 4.3.1. Style Variants -> Elevated Style -> Enabled State */
+[role="button"].elevated {
+  color: var(--md-sys-color-primary);
+}
+[role="button"].elevated::before {
+  background-color: var(--md-sys-color-surface-container-low);
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+/* ## 4.3.2. Style Variants -> Elevated Style -> Disabled State */
+[role="button"].elevated:disabled {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+}
+[role="button"].elevated:disabled::before {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+  box-shadow: none;
+}
+
+/* ## 4.3.3. Style Variants -> Elevated Style -> Hovered State */
+[role="button"].elevated:not(:disabled):hover {
+  color: var(--md-sys-color-primary);
+}
+[role="button"].elevated:not(:disabled):hover::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+  box-shadow: var(--md-sys-elevation-level2);
+}
+
+/* ## 4.3.4. Style Variants -> Elevated Style -> Focused State */
+[role="button"].elevated:not(:disabled):is(:focus, :focus-visible) {
+  color: var(--md-sys-color-primary);
+}
+[role="button"].elevated:not(:disabled):is(:focus, :focus-visible)::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+/* ## 4.3.5. Style Variants -> Elevated Style -> Pressed State */
+[role="button"].elevated:not(:disabled):active {
+  color: var(--md-sys-color-primary);
+}
+[role="button"].elevated:not(:disabled):active::before {
+  box-shadow: var(--md-sys-elevation-level1);
+}
+[role="button"].elevated:not(:disabled):active::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+}
+
+
+/* =================================================================
+   # 4.4. Style Variants -> Outlined Style
+   ================================================================= */
+
+/* ## 4.4.1. Style Variants -> Outlined Style -> Enabled State */
+[role="button"].outlined {
+  color: var(--md-sys-color-primary);
+}
+[role="button"].outlined::before {
+  background-color: transparent;
+  /* Use box-shadow inset to simulate border without layout shifts */
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline);
+}
+
+/* ## 4.4.2. Style Variants -> Outlined Style -> Disabled State */
+[role="button"].outlined:disabled {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+}
+[role="button"].outlined:disabled::before {
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+}
+
+/* ## 4.4.3. Style Variants -> Outlined Style -> Hovered State */
+[role="button"].outlined:not(:disabled):hover {
+  color: var(--md-sys-color-primary);
+}
+[role="button"].outlined:not(:disabled):hover::before {
+  /* Outline color stays the same or follows focus logic, 
+     but spec usually keeps it Outline color unless focused */
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline);
+}
+[role="button"].outlined:not(:disabled):hover::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+
+/* ## 4.4.4. Style Variants -> Outlined Style -> Focused State */
+[role="button"].outlined:not(:disabled):is(:focus, :focus-visible) {
+  color: var(--md-sys-color-primary);
+}
+[role="button"].outlined:not(:disabled):is(:focus, :focus-visible)::before {
+  /* Focus outline style replaces the border */
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-primary);
+  outline: none; /* Reset default outline as we handle it on ::before if needed, though standard filled uses outline offset. */
+}
+/* Re-apply the focus ring style from base but adjusted for outlined if necessary.
+   Here we keep the filled logic (outline on ::before) but ensure border color changes. */
+[role="button"].outlined:not(:disabled):is(:focus, :focus-visible)::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
+}
+
+/* ## 4.4.5. Style Variants -> Outlined Style -> Pressed State */
+[role="button"].outlined:not(:disabled):active {
+  color: var(--md-sys-color-primary);
+}
+[role="button"].outlined:not(:disabled):active::before {
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline);
+}
+[role="button"].outlined:not(:disabled):active::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+}
+
+
+/* =================================================================
+   # 4.5. Style Variants -> Text Style
+   ================================================================= */
+
+/* ## 4.5.1. Style Variants -> Text Style -> Enabled State */
+[role="button"].text {
+  color: var(--md-sys-color-primary);
+  padding-inline: 12px; /* Text buttons often have less padding */
+}
+/* Override base sizes for Text button specific padding if needed */
+[role="button"].text.small { padding-inline: 8px; }
+[role="button"].text.medium { padding-inline: 16px; }
+[role="button"].text.large { padding-inline: 24px; }
+[role="button"].text.extra-large { padding-inline: 32px; }
+
+[role="button"].text::before {
+  background-color: transparent;
+}
+
+/* ## 4.5.2. Style Variants -> Text Style -> Disabled State */
+[role="button"].text:disabled {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+}
+[role="button"].text:disabled::before {
+  background-color: transparent;
+}
+
+/* ## 4.5.3. Style Variants -> Text Style -> Hovered State */
+[role="button"].text:not(:disabled):hover {
+  color: var(--md-sys-color-primary);
+}
+[role="button"].text:not(:disabled):hover::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+
+/* ## 4.5.4. Style Variants -> Text Style -> Focused State */
+[role="button"].text:not(:disabled):is(:focus, :focus-visible) {
+  color: var(--md-sys-color-primary);
+}
+[role="button"].text:not(:disabled):is(:focus, :focus-visible)::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
+}
+
+/* ## 4.5.5. Style Variants -> Text Style -> Pressed State */
+[role="button"].text:not(:disabled):active {
+  color: var(--md-sys-color-primary);
+}
+[role="button"].text:not(:disabled):active::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+}

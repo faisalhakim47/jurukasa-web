@@ -1,0 +1,327 @@
+/**
+ * Material 3 Expressive Outlined Text Field
+ * @see https://m3.material.io/components/text-fields/specs
+ *
+ * Implements: Outlined Text Field with Floating Label and Supporting Text.
+ * This implementation does not support <select>. Use .outlined-text-field + [role="menu"].dropdown + Popover API instead.
+ *
+ * HTML REQUIREMENT:
+ * To function without JavaScript, the input MUST have a placeholder attribute (can be empty space).
+ * <input type="text" placeholder=" " />
+ *
+ * EXAMPLE USAGE:
+ * Minimal markup (icons are optional):
+ *
+ * <div class="outlined-text-field">
+ *   <div class="container">
+ *     <label for="search">Search</label>
+ *     <span class="leading-icon" aria-hidden="true">🔍</span> <!-- optional -->
+ *     <input id="search" type="text" placeholder=" " aria-labelledby="search-label" />
+ *     <span class="trailing-icon" aria-hidden="true">✖</span> <!-- optional -->
+ *   </div>
+ *   <div class="supporting-text">Supporting text or helper/trailing info</div>
+ * </div>
+ *
+ * Accessibility notes:
+ * - Provide an accessible name using a visible <label> (recommended) or `aria-label` / `aria-labelledby`.
+ * - Keep a non-empty placeholder (can be a single space) for pure-CSS floating label behavior.
+ *
+ * Customization:
+ * - Override `--md-comp-outlined-text-field-label-surface` to change the label background on colored surfaces.
+ */
+
+/* =================================================================
+   # 1. Base Style
+   ================================================================= */
+
+:where(.outlined-text-field) {
+  --md-comp-outlined-text-field-label-surface: var(--md-sys-color-surface);
+}
+
+.outlined-text-field {
+  --md-comp-button-container-height: max(36px, calc(56px + (var(--md-sys-density, 0) * 4px)));
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 210px;
+  margin-left: 2px;
+  margin-right: 2px;
+  font-family: var(--md-sys-typescale-font);
+}
+
+/* ## 1.1. Input Container */
+.outlined-text-field>.container {
+  position: relative;
+  isolation: isolate;
+
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  
+  box-sizing: border-box;
+  /* Use min-height to ensure standard size, but allow growth */
+  min-height: var(--md-comp-button-container-height);
+  
+  border-radius: var(--md-sys-shape-corner-medium);
+  outline: 1px solid var(--md-sys-color-outline);
+  
+  transition-property: box-shadow, outline-color, outline-width;
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized);
+}
+
+/* Padding Logic: Adjust based on presence of icons */
+.outlined-text-field>.container:has(.leading-icon),
+.outlined-text-field>.container:has(.trailing-icon) {
+  padding-inline: 12px;
+}
+.outlined-text-field>.container:not(:has(.leading-icon)),
+.outlined-text-field>.container:not(:has(.trailing-icon)) {
+  padding-inline: 16px;
+}
+
+/* ## 1.2. Leading Icon */
+.outlined-text-field>.container>.leading-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  color: var(--md-sys-color-on-surface-variant);
+  flex-shrink: 0;
+}
+
+/* ## 1.3. The Native Input Element */
+.outlined-text-field>.container>input {
+  flex: 1;
+  appearance: none;
+  border: none;
+  outline: none;
+  width: 100%;
+  min-height: var(--md-comp-button-container-height);
+  background: transparent;
+  
+  /* Typography: Body Large */
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  color: var(--md-sys-color-on-surface);
+  
+  /* Caret Color (Default) */
+  caret-color: var(--md-sys-color-primary);
+}
+
+.outlined-text-field>.container>input::placeholder {
+  color: transparent;
+}
+.outlined-text-field>.container>input:focus:empty::placeholder {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ## 1.4. Floating Label */
+.outlined-text-field>.container>label:first-of-type {
+  position: absolute;
+  z-index: 1;
+  
+  /* Robust Centering: Vertically center based on container height */
+  top: 50%;
+  transform: translateY(-50%);
+  transform-origin: left top;
+  
+  pointer-events: none;
+  padding-inline: 4px;
+  
+  /* Typography: Body Large (Resting) */
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+  font-size: var(--md-sys-typescale-body-large-size);
+  letter-spacing: var(--md-sys-typescale-body-large-tracking);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+
+  /* Transitions */
+  transition-property: top, left, color, font-size, transform;
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized);
+}
+
+/* Label X Position */
+.outlined-text-field>.container:has(.leading-icon)>label:first-of-type {
+  left: 52px;
+}
+.outlined-text-field>.container:not(:has(.leading-icon))>label:first-of-type {
+  left: 16px;
+}
+
+/* ## 1.5. Supporting Text */
+.outlined-text-field>.supporting-text {
+  margin-top: 4px;
+  margin-bottom: 0px;
+  padding-inline: 16px;
+  
+  font-family: var(--md-sys-typescale-body-small-font);
+  font-weight: var(--md-sys-typescale-body-small-weight);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ## 1.6. Trailing Icon */
+.outlined-text-field>.container>.trailing-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--md-comp-button-container-height);
+  height: var(--md-comp-button-container-height);
+  flex-shrink: 0;
+}
+
+.outlined-text-field>.container>.trailing-icon:is([type="button"],[type="reset"]):not([role="button"]) {
+  appearance: none;
+  background: none;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+.outlined-text-field>.container>.trailing-icon:is([type="button"],[type="reset"]):not([role="button"]):hover {
+  color: var(--md-sys-color-primary);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+
+.outlined-text-field>.container>.trailing-icon:is([type="button"],[type="reset"]):not([role="button"]):active {
+  color: var(--md-sys-color-primary);
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+}
+
+.outlined-text-field>.container>material-symbols.trailing-icon>svg,
+.outlined-text-field>.container>.trailing-icon:is([type="button"],[type="reset"]):not([role="button"])>material-symbols {
+  display: block;
+  width: 24px;
+  height: 24px;
+  color: var(--md-sys-color-on-surface-variant);
+  flex-shrink: 0;
+}
+
+/* =================================================================
+   # 2. State Management
+   ================================================================= */
+
+/* ## 2.1. Hover State */
+.outlined-text-field>.container:hover:not(:has(input:disabled)) {
+  outline: 1px solid var(--md-sys-color-on-surface);
+  color: var(--md-sys-color-on-surface); /* Ensures text stays high contrast */
+}
+
+/* ## 2.2. Focus State */
+.outlined-text-field>.container:has(input:focus) {
+  outline: 2px solid var(--md-sys-color-primary);
+}
+.outlined-text-field>.container:has(input:focus)>label:first-of-type {
+  color: var(--md-sys-color-primary);
+}
+
+/* ## 2.3. Floating Label Logic */
+/* Moves label to top border when focused OR populated */
+.outlined-text-field>.container:has(input:focus)>label:first-of-type,
+.outlined-text-field>.container:has(input:not(:placeholder-shown))>label:first-of-type {
+  /* Move to absolute top, then shift up by 50% of the label's own height to sit on the line */
+  top: 0;
+  transform: translateY(-50%);
+  
+  background-color: var(--md-comp-outlined-text-field-label-surface);
+  
+  /* Typography: Body Small (Floating) */
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  
+  /* Reset left position to align with border cut */
+  left: 12px;
+}
+
+/* ## 2.4. Error State */
+/* Trigger: :invalid pseudo on input */
+.outlined-text-field>.container:has(input:invalid:not(:placeholder-shown)) {
+  outline: 1px solid var(--md-sys-color-error);
+}
+
+/* Error Focus: Thicker red outline */
+.outlined-text-field>.container:has(input:focus:invalid) {
+  outline: 2px solid var(--md-sys-color-error);
+}
+
+/* Error Label */
+.outlined-text-field>.container:has(input:invalid:not(:placeholder-shown))>label:first-of-type {
+  color: var(--md-sys-color-error);
+}
+
+/* Error Input Caret */
+.outlined-text-field>.container:has(input:invalid:not(:placeholder-shown))>input {
+  caret-color: var(--md-sys-color-error);
+}
+
+/* Error Icons */
+.outlined-text-field>.container:has(input:invalid:not(:placeholder-shown))>.trailing-icon,
+.outlined-text-field>.container:has(input:invalid:not(:placeholder-shown))>.leading-icon {
+  color: var(--md-sys-color-error);
+}
+
+/* Error Supporting Text */
+.outlined-text-field:has(input:invalid:not(:placeholder-shown))>.supporting-text {
+  color: var(--md-sys-color-error);
+}
+
+/* ## 2.5. Disabled State */
+.outlined-text-field>.container:has(input:disabled) {
+  outline: 1px solid color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+  pointer-events: none;
+}
+
+.outlined-text-field>.container>input:disabled {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+  cursor: not-allowed;
+  /* Prevent caret from showing even if browser tries to force it */
+  caret-color: transparent; 
+}
+
+.outlined-text-field>.container:has(input:disabled)>label:first-of-type {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+}
+
+/* Disabled Icons */
+.outlined-text-field>.container:has(input:disabled)>.leading-icon,
+.outlined-text-field>.container:has(input:disabled)>.trailing-icon {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+}
+
+.outlined-text-field:has(input:disabled)>.supporting-text {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+}
+
+/* ## 2.6. Read-only State (Dropdown) */
+.outlined-text-field>.container:has(input[readonly]) {
+  cursor: pointer;
+}
+.outlined-text-field>.container>input[readonly] {
+  cursor: pointer;
+  caret-color: transparent;
+}
+
+/* ## 2.7. Active/Expanded State */
+/* Used for dropdowns to rotate the trailing icon */
+.outlined-text-field.active .trailing-icon,
+.outlined-text-field[aria-expanded="true"] .trailing-icon {
+  transform: rotate(180deg);
+  transition: transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+}
+
+/* =================================================================
+   # 3. Contextual Adjustments
+   ================================================================= */
+
+dialog>.container>.content>.outlined-text-field {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+dialog:not(.full-screen)>.container>.content>.outlined-text-field>.container:has(input:focus)>label:first-of-type,
+dialog:not(.full-screen)>.container>.content>.outlined-text-field>.container:has(input:not(:placeholder-shown))>label:first-of-type {
+  background-color: var(--md-sys-color-surface-container-high);
+}

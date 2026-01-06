@@ -1,0 +1,247 @@
+/**
+ * Material 3 Expressive Dialogs
+ * @see https://m3.material.io/components/dialogs/specs
+ *
+ * Implements: Basic Dialog (default) and Full-screen Dialog.
+ */
+
+/* =================================================================
+   # 1. Base Dialog (Container)
+   ================================================================= */
+
+/* The <dialog> element acts as the Container (Label 1) */
+dialog {
+  /* Layout & Position */
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  
+  /* Size & Shape (Basic Dialog Default). We have our own opinion about the width. */
+  /* min-width: 280px; */
+  /* max-width: 560px; */
+  min-width: 360px;
+  max-width: 640px;
+  width: fit-content;
+  /* The height max-content is important. The user-agent height styls for dialog is fit-content. When we set dialog content's height to 100%, it ignores the dialog's max-height. */
+  height: max-content;
+  max-height: calc(100vh - 48px);
+  border: none;
+  border-radius: 28px;
+  padding: max(8px, calc(24px + calc(var(--md-sys-density, 0) * 4px))) 24px;
+  box-sizing: border-box;
+  
+  /* Color & Elevation */
+  background-color: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--md-sys-elevation-level3);
+  
+  /* Typography inherited by children */
+  font-family: var(--md-sys-typescale-font);
+  
+  /* Animation State: Open (Fade + Scale) */
+  opacity: 0;
+  transform: scale(0.9);
+  transition:
+    opacity var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized),
+    transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized),
+    display var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized) allow-discrete;
+
+  overflow-y: auto;
+}
+
+dialog[open] {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Scrim (Backdrop) - Label 7 */
+dialog::backdrop {
+  background-color: color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent);
+  animation: fade-in var(--md-sys-motion-duration-short3) forwards;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+
+/* =================================================================
+   # 2. Dialog Content Structure
+   ================================================================= */
+
+/* Ensure the form takes up the full space if used */
+dialog>.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  max-height: 100%;
+  max-width: 1280px; /* The width is not part of Material 3 Expressive specs, this is our design choise. */
+  margin: auto;
+  overflow-y: auto;
+}
+
+/* ## 2.1. Header / Icon / Title */
+
+/* Icon (Label 2) - Center aligned by default for basic dialogs */
+dialog>.container>material-symbols {
+  font-size: 24px; /* */
+  width: 24px;
+  height: 24px;
+  color: var(--md-sys-color-secondary);
+  align-self: center;
+}
+
+/* Headline/Title (Label 3) */
+dialog>.container>header {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center align by default */
+}
+
+dialog>.container>header>:is(h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+  font-family: var(--md-sys-typescale-font);
+  font-weight: var(--md-sys-typescale-headline-small-weight);
+  font-size: var(--md-sys-typescale-headline-small-size);
+  line-height: var(--md-sys-typescale-headline-small-line-height);
+  color: var(--md-sys-color-on-surface);
+  text-align: center;
+}
+
+/* ## 2.2. Supporting Text (Body) */
+
+/* Supporting text (Label 4) */
+dialog>.container>.content {
+  margin-top: 0;
+  font-family: var(--md-sys-typescale-font);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+  overflow-y: auto; /* Scrollable content if too long */
+}
+
+/* ## 2.3. Actions (Menu) */
+
+/* Action buttons container (Label 6 area) */
+dialog>.container>menu {
+  display: flex;
+  justify-content: flex-end; /* End-aligned actions */
+  gap: 8px; /* Padding between buttons */
+  margin: 0;
+  padding: 4px 0; /* for button outline */
+  list-style: none;
+}
+
+/* Ensure buttons in dialog menu behave correctly */
+dialog>.container>menu>li>[role="button"] {
+  /* Default to Text Button style implicitly if no class provided, 
+     but usually explicit classes are better. */
+  flex-shrink: 0;
+}
+
+/* Divider (Label 5) - Optional visual separator */
+dialog>.container>.content>hr {
+  width: 100%;
+  height: 1px;
+  border: none;
+  background-color: var(--md-sys-color-outline-variant);
+  margin: 16px 0;
+}
+
+
+/* =================================================================
+   # 3. Full Screen Dialog Variant
+   ================================================================= */
+
+dialog.full-screen {
+  /* Layout & Position: Fills entire screen */
+  max-width: 100vw;
+  max-height: 100vh;
+  width: 100%;
+  height: 100%;
+  border-radius: 0px; /* */
+  padding: 0; /* Full screen controls its own padding internally */
+  
+  /* Animation: Slide up from bottom */
+  transform: translateY(100%);
+  transition:
+    transform var(--md-sys-motion-duration-medium3) var(--md-sys-motion-easing-emphasized),
+    opacity var(--md-sys-motion-duration-short3) linear,
+    display var(--md-sys-motion-duration-medium3) allow-discrete;
+}
+
+dialog.full-screen[open] {
+  transform: translateY(0);
+}
+
+dialog.full-screen>.container {
+  background-color: var(--md-sys-color-surface);
+}
+
+/* ## 3.1. Full Screen Header */
+
+/* The header in full screen dialog is a top app bar equivalent */
+dialog.full-screen>.container>header {
+  /* Header height: 56dp */
+  height: 56px; 
+  flex-direction: row; /* Horizontal layout */
+  align-items: center;
+  justify-content: space-between;
+  /* Top/Left/Right padding 24dp (adjusted for header internals) */
+  padding: 0 16px 0 16px; 
+  gap: 16px;
+  border-bottom: 1px solid transparent; 
+  margin-bottom: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Headline in Full Screen: Start-aligned */
+dialog.full-screen>.container>header>:is(h1, h2, h3, h4, h5, h6) {
+  flex: 1; /* Take up remaining space */
+  text-align: left; /* */
+  font-size: var(--md-sys-typescale-title-large-size);
+  line-height: var(--md-sys-typescale-title-large-line-height);
+  padding-left: 8px; /* Padding between elements */
+}
+
+/* Close Icon Button (Navigation Icon) */
+dialog.full-screen>.container>header>[role="button"][type="button"].text {
+  order: -1; /* Ensure it appears before title */
+  color: var(--md-sys-color-on-surface);
+  background: transparent;
+  padding: 0;
+  width: 48px;
+  height: 48px;
+  justify-content: center;
+}
+dialog.full-screen>.container>header>[role="button"][type="button"].text::before {
+  background: transparent; /* Force Text/Icon button style */
+  height: 48px;
+}
+dialog.full-screen>.container>header>[role="button"][type="button"].text::after {
+  height: 48px;
+}
+
+/* Action Button (Save/Confirm) */
+dialog.full-screen>.container>header>[role="button"][type="submit"] {
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  /* Text button style */
+  color: var(--md-sys-color-primary);
+  background: transparent;
+}
+dialog.full-screen>.container>header>[role="button"][type="submit"]::before {
+  background: transparent;
+}
+
+/* ## 3.2. Full Screen Content */
+dialog.full-screen>.container>.content {
+  padding: 24px; /* Body padding */
+  flex: 1; /* Fill remaining height */
+  overflow-y: auto;
+}
+

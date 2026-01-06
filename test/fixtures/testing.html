@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="application-environment" content="testing">
+<title>JuruKasa</title>
+<link rel="icon" type="image/png" href="/web/assets/jurukasa-brand.png">
+<script type="importmap">
+{
+  "imports": {
+    "@libsql/client/web": "/web/vendor/bundle01.js",
+    "@vue/reactivity": "/web/vendor/bundle01.js",
+    "#web/": "/web/",
+    "lit-html": "/web/vendor/bundle02.js",
+    "lit-html/directives/ref.js": "/web/vendor/bundle02.js",
+    "lit-html/directives/repeat.js": "/web/vendor/bundle02.js",
+    "lit-html/directive.js": "/web/vendor/bundle02.js"
+  }
+}
+</script>
+<script type="module" src="/web/app.js"></script>
+<script>
+// Ensure we're at the root path for testing
+window.history.pushState({}, '', '/');
+</script>
+<ready-context>
+  <template shadowrootmode="open">
+    <slot></slot>
+    <style>
+      dialog[open] { display: flex; }
+      dialog:not([open]) { display: none; }
+    </style>
+    <dialog
+      open
+      aria-live="assertive"
+      aria-busy="true"
+      aria-label="Application is loading"
+      style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        width: 100vw;
+        height: 100vh;
+        border: none;
+        padding: 0;
+        margin: 0;
+        background: black;
+      "
+    ><p><span aria-hidden="true">...</span></p></dialog>
+  </template>
+  <font-context>
+    <time-context>
+      <router-context>
+        <database-context>
+          <device-context>
+            <i18n-context>
+              <onboarding-context>
+                <main-view></main-view>
+              </onboarding-context>
+            </i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </time-context>
+  </font-context>
+</ready-context>

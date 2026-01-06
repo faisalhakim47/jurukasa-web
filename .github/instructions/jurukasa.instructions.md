@@ -1,0 +1,5 @@
+---
+applyTo: '**'
+---
+
+#file:../../AGENTS.md

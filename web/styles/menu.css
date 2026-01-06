@@ -1,0 +1,342 @@
+/* =================================================================
+   # Material 3 Expressive Menu
+   @see https://m3.material.io/components/menus/specs
+   
+   Implements anatomy: Container, Menu Item, Leading/Trailing Icons, 
+   Supporting Text, Dividers, and Labels.
+   ================================================================= */
+
+/* =================================================================
+   # 1. Base Container
+   ================================================================= */
+
+/**
+ * Menu Container (Anatomy #7)
+ * Used [role="menu"] instead of the <menu> tag as selector. Although <menu> was reintroduced, it is still semantically treated as an unordered list (similar to <ul>) by most browsers. To ensure proper accessibility and menu behavior, the ARIA role is required.
+ * * Measurements:
+ * - Corners: 16px (Medium/Large shape)
+ * - Vertical Padding: 8px
+ * - Width: Min 112px, Max 280px (Standard M3)
+ */
+[role="menu"] {
+  /* Reset & Layout */
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  /* Width constraints per M3 spec (not explicitly in image but standard) */
+  min-width: 112px;
+  max-width: 280px;
+  width: max-content;
+  
+  /* Spacing */
+  padding-block: 8px; /* Top/Bottom padding inside container */
+  padding-inline: 0;
+  
+  /* Visuals */
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  border-radius: var(--md-sys-shape-corner-large); /* 16px */
+  border: none;
+  outline: none;
+  
+  /* Elevation */
+  box-shadow: var(--md-sys-elevation-level2);
+  
+  /* Typography */
+  font-family: var(--md-sys-typescale-font);
+  list-style: none;
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+}
+
+/* =================================================================
+   # 2. Menu Items
+   ================================================================= */
+
+/**
+ * Menu Item (Anatomy #1)
+ * * Measurements:
+ * - Height: 48px
+ * - Horizontal Padding: 12px
+ * - Internal Gap: 12px
+ */
+[role="menu"]>li>[role^="menuitem"] {
+  /* Reset generic button styles */
+  appearance: none;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px; /* Gap between leading icon and text */
+  
+  /* Dimensions */
+  min-height: 48px;
+  padding-inline: 12px; /* Left/Right padding */
+  
+  /* Typography - Item Text (Anatomy #3) */
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  font-size: var(--md-sys-typescale-label-large-size);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  color: var(--md-sys-color-on-surface);
+  
+  /* Motion */
+  transition-property: background-color, color;
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized);
+}
+
+/* =================================================================
+   # 3. State Layers
+   ================================================================= */
+
+/**
+ * Implements standard State Layers (Hover, Focus, Press)
+ * consistent with common.css logic using pseudo-elements.
+ */
+
+/* Container for state layer */
+[role="menu"]>li>[role^="menuitem"]::after {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: 0; /* Full fill */
+  z-index: -1;
+  background-color: transparent;
+  transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+}
+
+/* Hover State */
+[role="menu"]>li>[role^="menuitem"]:not(:disabled):hover::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+}
+
+/* Focus State */
+[role="menu"]>li>[role^="menuitem"]:not(:disabled):is(:focus, :focus-visible)::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 10%, transparent);
+}
+
+/* Pressed State */
+[role="menu"]>li>[role^="menuitem"]:not(:disabled):active::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+}
+
+/* Disabled State */
+[role="menu"]>li>[role^="menuitem"]:disabled {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+  pointer-events: none;
+}
+[role="menu"]>li>[role^="menuitem"]:disabled>material-symbols {
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+}
+
+/* =================================================================
+   # 4. Item Content & Anatomy
+   ================================================================= */
+
+/**
+ * Leading Icon (Anatomy #2)
+ * Trailing Icon (Anatomy #4)
+ */
+[role="menu"]>li>[role^="menuitem"]>material-symbols {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+  color: var(--md-sys-color-on-surface-variant);
+  flex-shrink: 0;
+}
+
+/**
+ * Text Wrapper
+ * Used when Supporting Text is present to handle vertical stacking.
+ */
+[role="menu"]>li>[role^="menuitem"]>.text {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* Pushes trailing elements to the right */
+  gap: 0;
+}
+
+/**
+ * Supporting Text (Anatomy #8)
+ * Usually 'small' tag or class inside the text wrapper.
+ */
+[role="menu"]>li>[role^="menuitem"]>.text>small,
+[role="menu"]>li>[role^="menuitem"] small {
+  font-family: var(--md-sys-typescale-body-small-font);
+  font-weight: var(--md-sys-typescale-body-small-weight);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/**
+ * Trailing Text / Shortcut (Anatomy #6)
+ * Pushed to the end of the line.
+ */
+[role="menu"]>li>[role^="menuitem"]>.trailing {
+  margin-left: auto; /* Push to right */
+  font-family: var(--md-sys-typescale-label-small-font);
+  font-weight: var(--md-sys-typescale-label-small-weight);
+  font-size: var(--md-sys-typescale-label-small-size);
+  line-height: var(--md-sys-typescale-label-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+  padding-left: 12px; /* Space between main text and trailing text */
+}
+
+/**
+ * Badge (Anatomy #5)
+ * Small visual indicator, can use generic .badge class.
+ */
+[role="menu"]>li>[role^="menuitem"] .badge {
+  background-color: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  font-family: var(--md-sys-typescale-label-small-font);
+  font-size: 11px;
+  height: 16px;
+  padding-inline: 6px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+}
+
+/* =================================================================
+   # 5. Grouping & Dividers
+   ================================================================= */
+
+/**
+ * Divider (Anatomy #11)
+ * Uses Semantic <hr> element.
+ */
+[role="menu"]>li>hr {
+  border: none;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  margin: 8px 0; /* Vertical spacing around divider */
+  width: 100%;
+}
+
+/**
+ * Label Text (Anatomy #9)
+ * Uses Semantic <header> or <span> with role="heading".
+ * Measurement: ~32px height area implied by image. <header> <li role="menu">
+ */
+[role="menu"]>li>header,
+[role="menu"]>li>.label {
+  display: block;
+  padding: 8px 12px; /* Matches horizontal padding of items */
+  font-family: var(--md-sys-typescale-title-small-font);
+  font-weight: var(--md-sys-typescale-title-small-weight);
+  font-size: var(--md-sys-typescale-title-small-size);
+  line-height: var(--md-sys-typescale-title-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+  pointer-events: none; /* Labels are not interactive */
+}
+
+/* =================================================================
+   # 6. Selected State
+   ================================================================= */
+
+/**
+ * Active/Selected Menu Item
+ * Uses aria-selected="true" or class .selected
+ */
+[role="menu"]>li>[role^="menuitem"][aria-selected="true"] {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+[role="menu"]>li>[role^="menuitem"][aria-selected="true"]>material-symbols {
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+/* Selected state layer override (darker than default hover) */
+[role="menu"]>li>[role^="menuitem"][aria-selected="true"]:hover::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-secondary-container) 8%, transparent);
+}
+
+/* =================================================================
+   # 7. Popover & Anchor Positioning Integration
+   ================================================================= */
+
+/**
+ * Popover Menu
+ * Integration with Popover API and CSS Anchor Positioning.
+ * 
+ * Supports integration with:
+ * - Buttons (web/styles/button/common.css)
+ * - Outlined Text Fields (web/styles/text-field/outlined.css)
+ */
+
+[role="menu"][popover] {
+  /* Reset & Layout */
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding-block: 8px;
+  border: none;
+  
+  /* Anchor Positioning */
+  /* Default: Position below the anchor, aligned to start */
+  top: anchor(bottom);
+  left: anchor(left);
+  
+  /* Ensure it doesn't overflow viewport */
+  max-height: var(--md-sys-layout-content-height, 100vh);
+  
+  /* Ensure menu is on top */
+  z-index: var(--md-sys-z-index-modal, 1000);
+  
+  /* Animation */
+  transform-origin: top center;
+}
+
+/* Close State */
+[role="menu"][popover]:not(:popover-open) {
+  display: none;
+}
+
+/* Open State */
+[role="menu"][popover]:popover-open {
+  display: flex;
+  animation: md-menu-enter var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+}
+
+/* Entry Animation */
+@keyframes md-menu-enter {
+  from {
+    opacity: 0;
+    transform: scaleY(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+/* Dropdown Variant (for Text Fields) */
+/* Matches width of the anchor */
+[role="menu"][popover].dropdown {
+  width: anchor-size(width);
+  max-width: none; /* Override default max-width */
+  min-width: anchor-size(width);
+}
+
+/* Position Adjustments */
+/* If using position-area (newer spec) */
+[role="menu"][popover] {
+  position-area: bottom span-right;
+  /* Reset top/left if using position-area */
+  top: auto;
+  left: auto;
+}

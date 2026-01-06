@@ -1,0 +1,275 @@
+/**
+ * Material 3 Expressive Tabs
+ * Implements Primary (Fixed/Scrollable) and Secondary Tabs.
+ *
+ * Structure:
+ * <nav role="tablist">
+ *   <button role="tab" aria-selected="true">
+ *     <span class="content">
+ *       <material-symbols>icon</material-symbols>
+ *       Label
+ *       <span class="badge"></span>
+ *     </span>
+ *   </button>
+ * </nav>
+ */
+
+/* =================================================================
+   # 1. Tab Container (Tablist)
+   ================================================================= */
+
+[role="tablist"] {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center; /* Align tabs to center vertically if heights differ */
+  width: 100%;
+  background-color: var(--md-sys-color-surface);
+  /* M3 Standard Divider */
+  border-bottom: 1px solid var(--md-sys-color-surface-variant);
+  box-sizing: border-box;
+  
+  /* Scrollable Behavior (applies to the container) */
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+/* Hide scrollbar for Webkit */
+[role="tablist"]::-webkit-scrollbar {
+  display: none;
+}
+
+/* =================================================================
+   # 2. Base Tab Item
+   ================================================================= */
+
+[role="tab"] {
+  appearance: none;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  isolation: isolate; /* Create stacking context for pseudo-elements */
+  box-sizing: border-box;
+
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1; /* Default: Fixed tabs stretch to fill space */
+  min-width: 90px; /* Spec: Minimum width for fixed tabs */
+  padding: 0 16px; /* Spec: Horizontal padding */
+  
+  /* Dimensions - Default Inline Height */
+  height: 48px;
+
+  /* Typography - Title Small */
+  font-family: var(--md-sys-typescale-title-small-font);
+  font-weight: var(--md-sys-typescale-title-small-weight);
+  font-size: var(--md-sys-typescale-title-small-size);
+  line-height: var(--md-sys-typescale-title-small-line-height);
+  white-space: nowrap;
+  
+  /* Color - Default / Inactive */
+  color: var(--md-sys-color-on-surface-variant);
+
+  /* Motion */
+  transition-property: color, background-color;
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized);
+  
+  /* Mobile optimization */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ## 2.1. State Layers (Hover/Focus/Pressed) */
+/* Using ::after for state layer to match common.css button pattern */
+[role="tab"]::after {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: 0; /* Cover entire tab */
+  z-index: -1;
+  background-color: transparent;
+  transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+}
+
+/* Hover State */
+[role="tab"]:hover {
+  color: var(--md-sys-color-on-surface); /* M3 spec: Darker text on hover */
+}
+[role="tab"]:hover::after {
+  background-color: var(--md-sys-state-hover-state-layer-opacity); /* Fallback if variable is pure opacity */
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+}
+
+/* Focus State */
+[role="tab"]:focus-visible {
+  color: var(--md-sys-color-on-surface);
+}
+[role="tab"]:focus-visible::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+}
+
+/* Pressed State */
+[role="tab"]:active::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+}
+
+
+/* =================================================================
+   # 3. Tab Content & Icons
+   ================================================================= */
+
+/* Wrapper for Icon + Text + Badge
+   Required for Active Indicator anchoring */
+[role="tab"]>.content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px; /* Spec: Gap for Inline tabs */
+  height: 100%;
+}
+
+/* Icon Styling */
+[role="tab"]>.content>material-symbols {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+  fill: currentColor; /* Inherit tab text color */
+  flex-shrink: 0;
+}
+
+
+/* =================================================================
+   # 4. Active State & Indicator
+   ================================================================= */
+
+/* ## 4.1. Active Text Color */
+[role="tab"][aria-selected="true"] {
+  color: var(--md-sys-color-primary);
+}
+
+/* Update State Layer colors when Active (Primary color based) */
+[role="tab"][aria-selected="true"]:hover::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+[role="tab"][aria-selected="true"]:focus-visible::after,
+[role="tab"][aria-selected="true"]:active::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+}
+
+/* ## 4.2. Active Indicator (Pill Shape) */
+/* Anchored to .content to match text width per specs */
+[role="tab"][aria-selected="true"]>.content::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  
+  /* Shape: Rounded top corners */
+  border-radius: 3px 3px 0 0;
+  background-color: var(--md-sys-color-primary);
+  
+  /* Animation */
+  animation: tab-indicator-enter 200ms var(--md-sys-motion-easing-emphasized);
+}
+
+@keyframes tab-indicator-enter {
+  from { transform: scaleX(0); opacity: 0; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
+
+/* =================================================================
+   # 5. Variants
+   ================================================================= */
+
+/* ## 5.1. Scrollable Tabs */
+/* Modifier class on container */
+[role="tablist"].scrollable [role="tab"] {
+  flex: 0 0 auto; /* Do not stretch, obey content width */
+  min-width: auto;
+  padding: 0 16px; /* Spec usually keeps 16px, sometimes wider for Secondary */
+}
+
+/* ## 5.2. Stacked Tabs (Icon Top, Text Bottom) */
+/* Modifier class on tab item */
+[role="tab"].stacked {
+  height: 64px; /* Spec: 64px height */
+}
+
+[role="tab"].stacked>.content {
+  flex-direction: column;
+  gap: 2px; /* Spec: Tighter gap for stacked */
+  justify-content: center;
+  padding-bottom: 2px; /* Optical adjustment to center visually */
+}
+
+/* ## 5.3. Secondary Tabs (Text Only / Smaller) */
+/* If needed, usually secondary tabs have no icons and shorter height? 
+   Standard M3 secondary tabs are just text, often strict min-width. */
+[role="tab"].secondary {
+  min-width: 64px;
+}
+
+
+/* =================================================================
+   # 6. Badges
+   ================================================================= */
+
+.badge {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  
+  background-color: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+  border-radius: 999px;
+  
+  /* Typography */
+  font-family: var(--md-sys-typescale-label-small-font);
+  font-weight: var(--md-sys-typescale-label-small-weight);
+  font-size: 11px;
+  line-height: 1;
+  z-index: 2;
+}
+
+/* ## 6.1. Small Badge (Dot) */
+.badge.small {
+  width: 6px;
+  height: 6px;
+  /* Position relative to Content Wrapper */
+  top: 4px;      /* Inline alignment */
+  right: -6px;   /* Offset from content end */
+}
+
+/* ## 6.2. Large Badge (Numeric) */
+.badge.large {
+  height: 16px;
+  min-width: 16px;
+  padding: 0 4px;
+  /* Position */
+  top: -2px;
+  right: -12px;
+}
+
+/* ## 6.3. Badge positioning in Stacked Tabs */
+/* In stacked tabs, badges align relative to the ICON usually, 
+   but since we wrap everything in .content, we adjust coordinates. */
+[role="tab"].stacked .badge.small {
+  top: 6px;
+  right: 12px; /* Pulled closer towards center */
+}
+
+[role="tab"].stacked .badge.large {
+  top: 2px;
+  right: 6px;
+}

@@ -1,0 +1,249 @@
+/**
+ * Material 3 Expressive List
+ * @see https://m3.material.io/components/lists/specs
+ *
+ * Implements: Single-line, Multi-line, Leading/Trailing Elements, and Dividers.
+ */
+
+/* =================================================================
+   # 1. Base Style (Container & List Item)
+   ================================================================= */
+
+/* ## 1.1. List Container */
+[role="list"] {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  width: 100%;
+}
+
+/* ## 1.2. List Item (Container) */
+/* Anatomy: (1) Container */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"]) {
+  display: flex;
+  align-items: center;
+  position: relative;
+  isolation: isolate;
+  padding-inline: 16px; /* */
+  min-height: 56px;     /* Standard single-line height */
+  gap: 16px;            /* Leading/Content/Trailing Gap */
+  text-decoration: none;
+  cursor: pointer;
+  transition-property: background-color;
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized);
+  /* Typography inheritance */
+  font-family: var(--md-sys-typescale-font);
+}
+
+/* ## 1.3. Interactive State Layers (::before/::after) */
+/* Implements state logic from list-states.png using common.css pattern */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])::before,
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+}
+
+/* ::before is the main background/container fill */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])::before {
+  z-index: -2;
+  background-color: transparent;
+}
+
+/* ::after is the state layer overlay (Hover/Focus/Press) */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])::after {
+  z-index: -1;
+  opacity: 0;
+  background-color: var(--md-sys-color-on-surface);
+}
+
+/* =================================================================
+   # 2. Content Anatomy
+   ================================================================= */
+
+/* ## 2.1. Text Wrapper */
+/* Handles vertical stacking of Overline, Label, Supporting Text */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1; /* Takes up remaining space */
+  padding-block: 8px; /* Vertical padding for multi-line balance */
+}
+
+/* ## 2.2. Overline Text */
+/* Anatomy: (2) Overline */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.content>.overline {
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: var(--md-sys-typescale-label-small-weight);
+  line-height: var(--md-sys-typescale-label-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 2px;
+}
+
+/* ## 2.3. Label Text (Primary Headline) */
+/* Anatomy: (3) Label text */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.content>.headline {
+  font-size: var(--md-sys-typescale-body-large-size);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  color: var(--md-sys-color-on-surface);
+  margin: 0px;
+}
+
+/* ## 2.4. Supporting Text */
+/* Anatomy: (5) Supporting text */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.content>.supporting-text {
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+  display: -webkit-box;
+  line-clamp: 2; /* Truncate after 2 lines for multi-line lists */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0px;
+}
+
+
+/* =================================================================
+   # 3. Leading & Trailing Elements (Slots)
+   ================================================================= */
+
+/* ## 3.1. Leading Elements (Start Slot) */
+/* Anatomy: (8) Leading avatar, (9) Icon, (10) Image */
+
+/* Default Leading Icon */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.leading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Leading Icon Size */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.leading>material-symbols {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+/* Leading Avatar (Circle) */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.leading.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--md-sys-shape-corner-full);
+  overflow: hidden;
+  background-color: var(--md-sys-color-surface-container-high);
+}
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.leading.avatar>img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Leading Image/Video (Square/Rect) - Anatomy (10) */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.leading.media {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--md-sys-shape-corner-small); /* 8px usually */
+  overflow: hidden;
+  object-fit: cover;
+}
+
+/* Leading Radio Input */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.leading>input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  margin: 0px;
+}
+
+/* ## 3.2. Trailing Elements (End Slot) */
+/* Anatomy: (4) Trailing text, (6) Trailing icon */
+
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.trailing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Trailing Text (e.g., "100+") */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.trailing.text {
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: var(--md-sys-typescale-label-small-weight);
+}
+
+/* Trailing Icon */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>.trailing>material-symbols {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+
+/* =================================================================
+   # 4. Dividers
+   ================================================================= */
+
+/* Anatomy: (7) Divider */
+/* Applied to the list item itself to create a separator between items */
+
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"]).divider-inset {
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+/* Ensure the last item doesn't have a divider if preferred, or use :not(:last-child) */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"]).divider-inset:last-child {
+  border-bottom: none;
+}
+
+
+/* =================================================================
+   # 5. State Variants
+   ================================================================= */
+/* Visuals derived from list-states.png */
+
+/* ## 5.1. Hover State */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"]):hover {
+  cursor: pointer;
+}
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"]):hover::after {
+  opacity: 0.08; /* 8% Opacity on surface */
+}
+
+/* ## 5.2. Focus State */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"]):is(:focus, :focus-visible) {
+  outline: none;
+}
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"]):is(:focus, :focus-visible)::after {
+  opacity: 0.12; /* 12% Opacity */
+}
+
+/* ## 5.3. Pressed State */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"]):active::after {
+  opacity: 0.12; /* 12% Opacity */
+}
+
+/* ## 5.4. Selected/Activated State (Optional) */
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])[aria-selected="true"] {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])[aria-selected="true"]>.content>.headline {
+  color: var(--md-sys-color-on-secondary-container);
+}
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])[aria-selected="true"]::after {
+  background-color: var(--md-sys-color-on-secondary-container); /* State layer color changes on selected */
+}

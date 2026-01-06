@@ -1,0 +1,36 @@
+{
+  "name": "storeman",
+  "version": "1.0.0",
+  "description": "",
+  "author": {
+    "email": "faisalhakim47@gmail.com",
+    "name": "Faisal Hakim"
+  },
+  "license": "FSL-1.1-MIT",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "web-dev-server --app-index index.html",
+    "test": "playwright test",
+    "test:db": "node --test ./web/schemas/*.test.js",
+    "build": "./scripts/build.sh"
+  },
+  "imports": {
+    "#web/*": "./web/*",
+    "#test/*": "./test/*"
+  },
+  "devDependencies": {
+    "@libsql/client": "^0.15.15",
+    "@libsql/client-wasm": "^0.15.15",
+    "@playwright/test": "^1.57.0",
+    "@testing-library/dom": "^10.4.1",
+    "@types/node": "24",
+    "@types/web": "^0.0.310",
+    "@vue/reactivity": "^3.5.26",
+    "@web/dev-server": "^0.4.6",
+    "lit-html": "^3.3.2",
+    "playwright": "^1.57.0",
+    "rolldown": "^1.0.0-beta.57",
+    "typescript": "^5.9.3"
+  }
+}

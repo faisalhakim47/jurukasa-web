@@ -1,0 +1,179 @@
+/**
+ * Material 3 Expressive App Bar
+ * @see https://m3.material.io/components/app-bars/specs
+ * * Implements: Small (default), Medium, Large.
+ * Structure: <header> containing <button> (navigation), <h1> (headline), and <section> (actions).
+ */
+
+
+/* =================================================================
+   # 1. Base Container (Small Variant by default)
+   ================================================================= */
+header.app-bar {
+  /* ## 1.1 Layout & Box Model */
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 4px; /* Space between nav icon and headline area */
+
+  /* Height: 64px is standard M3 Small, usually composed of 48px content + margins */
+  height: 64px;
+  padding-inline: 4px; /* 4px outer padding + 12px button internal padding = 16px visual start */
+  width: 100%;
+  position: relative;
+  z-index: 2; /* Ensure it sits above content */
+
+  /* ## 1.2. Color & Surface */
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  transition: background-color 200ms linear, box-shadow 200ms linear;
+}
+
+/* ## 1.3. Scroll State (Elevated) */
+header.app-bar.elevated {
+  background-color: var(--md-sys-color-surface-container);
+  /* M3 uses surface color change mainly, but elevation shadow is optional/legacy */
+}
+
+
+/* =================================================================
+   # 2. Typography & Content
+   ================================================================= */
+
+header.app-bar>hgroup {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0; /* No gap between title and subtitle by default */
+  padding-inline-end: 8px; /* Right spacing before action icons */
+  min-width: 0; /* Allow flex children to shrink properly */
+}
+
+header.app-bar:has(>[role="button"]:first-child)>hgroup {
+  /* If there is a leading button (nav icon), ensure proper left padding */
+  padding-inline-start: 16px;
+}
+
+/* ## 2.1. Headline */
+header.app-bar>hgroup>h1 {
+  /* Layout: Fills remaining space */
+  flex: 1;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  /* Typography: Title Large for Small App Bar */
+  font-family: var(--md-sys-typescale-title-large-font);
+  font-weight: var(--md-sys-typescale-title-large-weight);
+  font-size: var(--md-sys-typescale-title-large-size);
+  line-height: var(--md-sys-typescale-title-large-line-height);
+  color: var(--md-sys-color-on-surface);
+}
+
+/* ## 2.2. Subtitle (Optional, mostly for Medium/Large) */
+header.app-bar>hgroup>p {
+  margin: 0;
+  font-family: var(--md-sys-typescale-title-small-font);
+  font-weight: var(--md-sys-typescale-title-small-weight);
+  font-size: var(--md-sys-typescale-title-small-size);
+  line-height: var(--md-sys-typescale-title-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+
+/* =================================================================
+   # 3. Actions & Navigation (Buttons)
+   ================================================================= */
+
+/* ## 3.1. App Bar Icon Buttons */
+/* Overrides common button styles to create Icon Buttons */
+header.app-bar>[role="button"],
+header.app-bar>section>[role="button"] {
+  /* Layout: Fixed square size for icon buttons */
+  width: 48px;
+  height: 48px;
+  padding: 0; /* Remove horizontal padding from common.css */
+  justify-content: center;
+  
+  /* Color: Standard Icon Buttons use On Surface / On Surface Variant */
+  background-color: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ## 3.1.1. Leading Navigation Icon override */
+header.app-bar>[role="button"]:first-child {
+  color: var(--md-sys-color-on-surface); /* Leading icon usually matches title color */
+}
+
+/* ## 3.1.2. States */
+header.app-bar>[role="button"]:hover::after,
+header.app-bar>section>[role="button"]:hover::after {
+  /* Uses existing common.css logic but ensures correct color mix base */
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+}
+header.app-bar>[role="button"]:active::after,
+header.app-bar>section>[role="button"]:active::after {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+}
+
+/* ## 3.2. Trailing Section */
+header.app-bar>section {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0; /* Buttons have built-in touch target spacing */
+  padding-inline-end: 4px; /* Right spacing */
+}
+
+
+/* =================================================================
+   # 4. Medium Variant
+   ================================================================= */
+header.app-bar.medium {
+  /* Layout: Taller height, layout changes to stack */
+  height: 112px;
+  display: block; /* Switch from flex row to block for absolute positioning context */
+  padding: 0;
+}
+
+/* ## 4.1. Positioning Navigation & Actions */
+/* Keep icons at the top row (0-64px area) */
+header.app-bar.medium>[role="button"]:first-child {
+  position: absolute;
+  top: 8px; /* vertically centered in top 64px (64-48)/2 = 8 */
+  left: 4px;
+}
+
+header.app-bar.medium>section {
+  position: absolute;
+  top: 8px;
+  right: 4px;
+}
+
+/* ## 4.2. Medium Typography */
+header.app-bar.medium>hgroup>h1 {
+  /* Position: Bottom alignment */
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  
+  /* Spacing: 16px left, 20-24px bottom visual padding */
+  padding-inline-start: 16px;
+  padding-bottom: 24px;
+  
+  /* Typography: Headline Medium */
+  font-family: var(--md-sys-typescale-headline-medium-font);
+  font-weight: var(--md-sys-typescale-headline-medium-weight);
+  font-size: var(--md-sys-typescale-headline-medium-size);
+  line-height: var(--md-sys-typescale-headline-medium-line-height);
+}
+
+/* ## 4.3. Subtitle in Medium */
+header.app-bar.medium>hgroup>p {
+  display: block;
+  position: absolute;
+  bottom: 24px; /* Aligned with headline baseline if no headline? Or below it? */
+  left: 16px;
+}

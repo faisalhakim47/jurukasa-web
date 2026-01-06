@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["ESNext"],
+    "paths": {
+      "#web/*": ["./web/*"],
+      "#test/*": ["./test/*"]
+    }
+  },
+  "include": [
+    "web/**/*.js",
+    "web/global.d.ts",
+    "test/**/*.js"
+  ]
+}

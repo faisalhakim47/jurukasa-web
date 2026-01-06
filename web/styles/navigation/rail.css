@@ -1,0 +1,179 @@
+/**
+ * Material 3 Expressive Navigation Rail
+ * @see https://m3.material.io/components/navigation-rail/specs
+ *
+ * Navigation rail is a persistent, vertical bar on the inline-start side 
+ * for desktop/tablet layouts. It provides access to primary destinations.
+ *
+ * HTML STRUCTURE:
+ * <nav aria-label="Main Navigation">
+ *   <router-link href="/" aria-current="page">
+ *     <material-symbols name="dashboard"></material-symbols>
+ *     <span>Dashboard</span>
+ *   </router-link>
+ *   <router-link href="/pos">
+ *     <material-symbols name="point_of_sale"></material-symbols>
+ *     <span>POS</span>
+ *   </router-link>
+ *   <hr />
+ *   <router-link href="/settings">
+ *     <material-symbols name="settings"></material-symbols>
+ *     <span>Settings</span>
+ *   </router-link>
+ * </nav>
+ */
+
+/* =================================================================
+   # 1. Base Container
+   ================================================================= */
+
+nav[aria-label="Main Navigation"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 80px;
+  height: 100%;
+  padding-block: 12px;
+  box-sizing: border-box;
+  background-color: var(--md-sys-color-surface);
+  gap: 4px;
+}
+
+/* =================================================================
+   # 2. Navigation Destinations (Links)
+   ================================================================= */
+
+nav[aria-label="Main Navigation"]>router-link {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 56px;
+  min-height: 56px;
+  padding-block: 4px;
+  box-sizing: border-box;
+  text-decoration: none;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  border-radius: var(--md-sys-shape-corner-large);
+
+  /* Transition for smooth state changes */
+  transition-property: color;
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized);
+}
+
+/* =================================================================
+   # 3. Icon Container (Indicator Background)
+   ================================================================= */
+
+nav[aria-label="Main Navigation"]>router-link>material-symbols {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 32px;
+  border-radius: var(--md-sys-shape-corner-full);
+  color: inherit;
+
+  /* Transition for indicator */
+  transition-property: background-color, color;
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-timing-function: var(--md-sys-motion-easing-emphasized);
+}
+
+nav[aria-label="Main Navigation"]>router-link>material-symbols>svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* =================================================================
+   # 4. Label
+   ================================================================= */
+
+nav[aria-label="Main Navigation"]>router-link>span {
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 72px;
+  color: inherit;
+}
+
+/* =================================================================
+   # 5. State Layer (Hover/Focus/Active)
+   ================================================================= */
+
+/* ## 5.1. Hover State */
+nav[aria-label="Main Navigation"]>router-link:hover>material-symbols {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) var(--md-sys-state-hover-state-layer-opacity), transparent);
+}
+
+/* ## 5.2. Focus State */
+nav[aria-label="Main Navigation"]>router-link:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+nav[aria-label="Main Navigation"]>router-link:focus-visible>material-symbols {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) var(--md-sys-state-focus-state-layer-opacity), transparent);
+}
+
+/* ## 5.3. Pressed State */
+nav[aria-label="Main Navigation"]>router-link:active>material-symbols {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) var(--md-sys-state-pressed-state-layer-opacity), transparent);
+}
+
+/* =================================================================
+   # 6. Active/Selected State (aria-current="page")
+   ================================================================= */
+
+nav[aria-label="Main Navigation"]>router-link:is(.active, [aria-current="page"]) {
+  color: var(--md-sys-color-on-surface);
+}
+
+nav[aria-label="Main Navigation"]>router-link:is(.active, [aria-current="page"])>material-symbols {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+/* Active state hover */
+nav[aria-label="Main Navigation"]>router-link:is(.active, [aria-current="page"]):hover>material-symbols {
+  background-color: color-mix(
+    in srgb,
+    var(--md-sys-color-secondary-container) 100%,
+    var(--md-sys-color-on-surface) calc(var(--md-sys-state-hover-state-layer-opacity) * 100%)
+  );
+}
+
+/* Active label weight */
+nav[aria-label="Main Navigation"]>router-link:is(.active, [aria-current="page"])>span {
+  font-weight: 600;
+}
+
+/* =================================================================
+   # 7. Divider
+   ================================================================= */
+
+nav[aria-label="Main Navigation"]>hr {
+  width: 32px;
+  height: 1px;
+  margin: 8px 0;
+  border: none;
+  background-color: var(--md-sys-color-outline-variant);
+}
+
+/* =================================================================
+   # 8. Spacer (Flex Grow for pushing items to bottom)
+   ================================================================= */
+
+nav[aria-label="Main Navigation"]>[style*="flex-grow"] {
+  flex-grow: 1;
+}

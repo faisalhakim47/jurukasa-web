@@ -1,0 +1,216 @@
+import { reactive } from '@vue/reactivity';
+import { html, nothing } from 'lit-html';
+
+import { defineWebComponent } from '#web/component.js';
+import { useDialog } from '#web/hooks/use-dialog.js';
+import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
+import { DatabaseContextElement } from '#web/contexts/database-context.js';
+import { useContext } from '#web/hooks/use-context.js';
+import { useEffect } from '#web/hooks/use-effect.js';
+import { useRender } from '#web/hooks/use-render.js';
+import { useElement } from '#web/hooks/use-element.js';
+import { webStyleSheets } from '#web/styles.js';
+import { assertInstanceOf } from '#web/tools/assertion.js';
+import { feedbackDelay } from '#web/tools/timing.js';
+
+import '#web/components/material-symbols.js';
+
+/**
+ * Supplier Creation Dialog Component
+ * 
+ * @fires supplier-created - Fired when a supplier is successfully created. Detail: { supplierId: number }
+ */
+export class SupplierCreationDialogElement extends HTMLElement {
+  constructor() {
+    super();
+
+    const host = this;
+    const database = useContext(host, DatabaseContextElement);
+
+    const errorAlertDialog = useElement(host, HTMLDialogElement);
+
+    const dialog = useDialog(host);
+    const render = useRender(host);
+    useAdoptedStyleSheets(host, webStyleSheets);
+
+    const form = reactive({
+      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      error: /** @type {Error | null} */ (null),
+    });
+
+    /** @param {FocusEvent} event */
+    async function validateSupplierName(event) {
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      const input = event.currentTarget;
+      const name = input.value.trim();
+      input.setCustomValidity('');
+      if (name) {
+        try {
+          const result = await database.sql`
+            SELECT 1 FROM suppliers WHERE name = ${name} LIMIT 1;
+          `;
+          if (result.rows.length > 0) input.setCustomValidity('Supplier name already exists.');
+        }
+        catch (error) {
+          input.setCustomValidity('Error validating supplier name.');
+        }
+      }
+    }
+
+    /** @param {SubmitEvent} event */
+    async function handleSubmit(event) {
+      event.preventDefault();
+      assertInstanceOf(HTMLFormElement, event.currentTarget);
+
+      const tx = await database.transaction('write');
+
+      try {
+        form.state = 'submitting';
+        form.error = null;
+
+        const data = new FormData(event.currentTarget);
+        const name = /** @type {string} */ (data.get('name'))?.trim();
+        const phoneNumber = /** @type {string} */ (data.get('phoneNumber'))?.trim() || null;
+
+        // Validate inputs
+        if (!name) throw new Error('Supplier name is required.');
+
+        // Insert supplier
+        const result = await tx.sql`
+          INSERT INTO suppliers (name, phone_number)
+          VALUES (${name}, ${phoneNumber})
+          RETURNING id;
+        `;
+
+        const supplierId = Number(result.rows[0].id);
+
+        await tx.commit();
+
+        form.state = 'success';
+        await feedbackDelay();
+
+        host.dispatchEvent(new CustomEvent('supplier-created', {
+          detail: { supplierId },
+          bubbles: true,
+          composed: true,
+        }));
+
+        dialog.open = false;
+        // Reset form
+        event.currentTarget.reset();
+      }
+      catch (error) {
+        await tx.rollback();
+        form.state = 'error';
+        form.error = error instanceof Error ? error : new Error(String(error));
+        await feedbackDelay();
+      }
+      finally {
+        form.state = 'idle';
+      }
+    }
+
+    useEffect(host, function syncErrorAlertDialogState() {
+      if (errorAlertDialog.value instanceof HTMLDialogElement) {
+        if (form.error instanceof Error) errorAlertDialog.value.showModal();
+        else errorAlertDialog.value.close();
+      }
+    });
+
+    function handleDismissErrorDialog() { form.error = null; }
+
+    useEffect(host, function renderDialog() {
+      render(html`
+        <dialog
+          ${dialog.element}
+          id="supplier-creation-dialog"
+          class="full-screen"
+          aria-labelledby="supplier-creation-dialog-title"
+        >
+          <form class="container" @submit=${handleSubmit}>
+            <header>
+              <h2 id="supplier-creation-dialog-title">Add Supplier</h2>
+              <button
+                role="button"
+                type="button"
+                class="text"
+                commandfor="supplier-creation-dialog"
+                command="close"
+              ><material-symbols name="close"></material-symbols></button>
+              <button role="button" type="submit" name="action">Add Supplier</button>
+            </header>
+
+            <div class="content">
+              ${form.state !== 'idle' ? html`
+                <div role="status" aria-live="polite" aria-busy="true">
+                  <div role="progressbar" class="linear indeterminate">
+                    <div class="track"><div class="indicator"></div></div>
+                  </div>
+                  <p>Creating supplier...</p>
+                </div>
+              ` : nothing}
+
+              <div style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0px; max-width: 600px; margin: 0 auto;">
+
+                <!-- Supplier Name -->
+                <div class="outlined-text-field">
+                  <div class="container">
+                    <label for="supplier-name-input">Supplier Name</label>
+                    <input
+                      id="supplier-name-input"
+                      name="name"
+                      type="text"
+                      placeholder=" "
+                      required
+                      @blur=${validateSupplierName}
+                    />
+                  </div>
+                  <div class="supporting-text">Unique name for this supplier</div>
+                </div>
+
+                <!-- Phone Number -->
+                <div class="outlined-text-field">
+                  <div class="container">
+                    <label for="phone-number-input">Phone Number (Optional)</label>
+                    <input
+                      id="phone-number-input"
+                      name="phoneNumber"
+                      type="tel"
+                      placeholder=" "
+                    />
+                  </div>
+                  <div class="supporting-text">Contact phone number for this supplier</div>
+                </div>
+
+              </div>
+            </div>
+          </form>
+        </dialog>
+
+        <dialog ${errorAlertDialog} role="alertdialog">
+          <div class="container">
+            <material-symbols name="error"></material-symbols>
+            <header>
+              <h3>Error</h3>
+            </header>
+            <div class="content">
+              <p>${form.error?.message}</p>
+            </div>
+            <menu>
+              <li>
+                <button
+                  role="button"
+                  type="button"
+                  class="text"
+                  @click=${handleDismissErrorDialog}
+                >Dismiss</button>
+              </li>
+            </menu>
+          </div>
+        </dialog>
+      `);
+    });
+  }
+}
+
+defineWebComponent('supplier-creation-dialog', SupplierCreationDialogElement);
