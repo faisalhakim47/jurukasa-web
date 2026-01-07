@@ -1,0 +1,30 @@
+{
+  "hosting": {
+    "public": "./",
+    "ignore": [
+      "**/.*",
+      "**/*.spec.js",
+      "**/*.test.js",
+      "**/blob-report/**",
+      "**/docs/**",
+      "**/node_modules/**",
+      "**/playwright-report/**",
+      "**/playwright/**",
+      "**/scripts/**",
+      "**/test-results/**",
+      "**/test/**",
+      "AGENTS.md",
+      "firebase.json",
+      "jsconfig.json",
+      "package-lock.json",
+      "package.json",
+      "playwright.config.js"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

@@ -113,7 +113,7 @@
 
   /* ==================== TYPOGRAPHY SYSTEM ==================== */
 
-  --md-sys-typescale-font: 'Source Sans 3', sans-serif;
+  --md-sys-typescale-font: 'Source Sans 3 Variable', sans-serif;
 
   /* Display Large */
   --md-sys-typescale-display-large-font: var(--md-sys-typescale-font);
