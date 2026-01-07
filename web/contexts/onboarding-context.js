@@ -4,6 +4,7 @@ import { defineWebComponent } from '#web/component.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { useBusyStateUntil } from '#web/contexts/ready-context.js';
+import { translator as t } from '#web/directives/translator.js';
 import { provideContext, useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
@@ -108,54 +109,54 @@ export class OnboardingContextElement extends HTMLElement {
     };
 
     useEffect(host, function renderOnboardingView() {
-      if (onboarding.state === 'init') render(html`<p>Loading...</p>`);
+      if (onboarding.state === 'init') render(html`<p>${t('onboarding', 'loadingIndicatorLabel')}</p>`);
       else if (onboarding.state === 'business-configuration') {
         render(html`
           <dialog class="full-screen" aria-labelledby="onboarding-title" open>
             <form class="container" @submit=${submitConfiguration}>
               <header>
-                <h2 id="onboarding-title" class="headline">Configure Business</h2>
-                <button role="button" class="text" type="submit">Next</button>
+                <h2 id="onboarding-title" class="headline">${t('onboarding', 'businessConfigTitle')}</h2>
+                <button role="button" class="text" type="submit">${t('onboarding', 'businessConfigSubmitLabel')}</button>
               </header>
               <div class="content">
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="business-name">Business Name</label>
+                    <label for="business-name">${t('onboarding', 'businessNameLabel')}</label>
                     <input id="business-name" name="business-name" type="text" placeholder=" " required />
                   </div>
                 </div>
 
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="business-type">Business Type</label>
+                    <label for="business-type">${t('onboarding', 'businessTypeLabel')}</label>
                     <input id="business-type" name="business-type" type="text" placeholder=" " required value="Small Business" />
                   </div>
                 </div>
 
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="currency-code">Currency Code</label>
+                    <label for="currency-code">${t('onboarding', 'businessCurrencyCodeLabel')}</label>
                     <input id="currency-code" name="currency-code" type="text" placeholder=" " required value="IDR" />
                   </div>
                 </div>
 
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="currency-decimals">Currency Decimals</label>
+                    <label for="currency-decimals">${t('onboarding', 'businessCurrencyDecimalsLabel')}</label>
                     <input id="currency-decimals" name="currency-decimals" type="number" placeholder=" " required value="0" />
                   </div>
                 </div>
 
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="locale">Locale</label>
+                    <label for="locale">${t('onboarding', 'businessLocaleLabel')}</label>
                     <input id="locale" name="locale" type="text" placeholder=" " required value="en-ID" />
                   </div>
                 </div>
 
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="fiscal-year-start-month">Fiscal Year Start Month</label>
+                    <label for="fiscal-year-start-month">${t('onboarding', 'businessFiscalYearStartMonthLabel')}</label>
                     <input id="fiscal-year-start-month" name="fiscal-year-start-month" type="number" min="1" max="12" placeholder=" " required value="1" />
                   </div>
                 </div>
@@ -167,40 +168,46 @@ export class OnboardingContextElement extends HTMLElement {
       }
       else if (onboarding.state === 'chart-of-accounts-selection') {
         if (onboarding.templateNames.length === 0) render(html`
-          <dialog class="full-screen" open aria-labelledby="coa-title">
+          <dialog class="full-screen" aria-labelledby="coa-title" open>
             <header>
-              <h2 id="coa-title" class="headline">Setup Chart of Accounts</h2>
+              <h2 id="coa-title" class="headline">${t('onboarding', 'loadingIndicatorLabel')}</h2>
             </header>
             <div class="content" style="padding-top: 24px;">
-              <p>Loading templates...</p>
+              <p>${t('onboarding', 'loadingTemplatesIndicatorLabel')}</p>
             </div>
           </dialog>
         `);
         else render(html`
-          <dialog class="full-screen" open aria-labelledby="coa-title">
-            <form @submit=${submitChartOfAccounts}>
+          <dialog class="full-screen" aria-labelledby="coa-title" open>
+            <form class="container" @submit=${submitChartOfAccounts}>
               <header>
-                <h2 id="coa-title" class="headline">Choose Chart of Accounts Template</h2>
-                <button role="button" class="text-button" type="submit">Finish</button>
+                <h2 id="coa-title" class="headline">${t('onboarding', 'chartOfAccountsSetupTitle')}</h2>
+                <button
+                  role="button"
+                  type="submit"
+                  class="text"
+                >${t('onboarding', 'chartOfAccountsSetupSubmitLabel')}</button>
               </header>
-              <ul role="list">
-                ${onboarding.templateNames.map((templateName, index) => html`
-                  <li role="listitem">
-                    <span class="leading">
-                      <input id=${`template-name-radio-${index}`} type="radio" name="template-name" value=${templateName} required />
-                    </span>
-                    <label for="${`template-name-radio-${index}`}" class="content">
-                      <span class="headline">${templateName}</span>
-                    </label>
-                  </li>
-                `)}
-              </ul>
+              <div class="content">
+                <ul role="list">
+                  ${onboarding.templateNames.map((templateName, index) => html`
+                    <li role="listitem">
+                      <span class="leading">
+                        <input id=${`template-name-radio-${index}`} type="radio" name="template-name" value=${templateName} required />
+                      </span>
+                      <label for="${`template-name-radio-${index}`}" class="content">
+                        <span class="headline">${templateName}</span>
+                      </label>
+                    </li>
+                  `)}
+                </ul>
+              </div>
             </form>
           </dialog>
         `);
       }
       else if (onboarding.state === 'done') render(html`<slot></slot>`);
-      else render(html`<p>Unknown state: ${onboarding.state}</p>`);
+      else render(html`<p>${t('onboarding', 'unknownState', onboarding.state)}</p>`);
     });
   }
 }

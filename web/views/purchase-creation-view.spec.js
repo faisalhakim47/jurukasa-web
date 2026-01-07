@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/tools/fixture.js';
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
 const { describe } = test;
@@ -10,7 +11,7 @@ describe('Purchase Creation View with Supplier Selector Dialog', function () {
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall open supplier selector dialog and select a supplier', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function setupPOSData(tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -51,7 +52,7 @@ describe('Purchase Creation View with Supplier Selector Dialog', function () {
   });
 
   test('it shall allow changing supplier via edit button', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function setupPOSData(tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -93,7 +94,7 @@ describe('Purchase Creation View with Supplier Selector Dialog', function () {
   });
 
   test('it shall allow creating new supplier and automatically select it', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function setupPOSData(tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);

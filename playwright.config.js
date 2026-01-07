@@ -4,6 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
+  testMatch: '**/*.spec.js',
   fullyParallel: true,
   workers: 4,
   retries: 0,
@@ -12,15 +13,12 @@ export default defineConfig({
   timeout: 8000,
   globalTimeout: 300000,
   projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
+    { name: 'chromium', use: devices['Desktop Chrome'] },
   ],
   use: {
     baseURL: 'http://localhost:8000',
     screenshot: 'off',
-    trace: 'retain-on-failure',
+    trace: 'off',
     video: 'off',
     headless: true,
   },

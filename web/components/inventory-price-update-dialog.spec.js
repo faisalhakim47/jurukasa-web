@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/tools/fixture.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -11,7 +12,7 @@ describe('Inventory Price Update Dialog', function () {
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall update inventory unit price', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -126,7 +127,7 @@ describe('Inventory Price Update Dialog', function () {
   });
 
   test('it shall validate minimum price', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -190,7 +191,7 @@ describe('Inventory Price Update Dialog', function () {
   });
 
   test('it shall handle non-existent inventory', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -229,7 +230,7 @@ describe('Inventory Price Update Dialog', function () {
   });
 
   test('it shall close dialog on cancel button', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -289,7 +290,7 @@ describe('Inventory Price Update Dialog', function () {
   });
 
   test('it shall accept zero price', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/tools/fixture.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -11,7 +12,7 @@ describe('Account Creation Dialog', function () {
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall create a new account', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -39,11 +40,9 @@ describe('Account Creation Dialog', function () {
       `;
     }, tursoLibSQLiteServer().url);
 
-    // Open dialog
     await page.getByRole('button', { name: 'Create Account' }).click();
     await expect(page.getByRole('dialog', { name: 'Create New Account' })).toBeVisible();
 
-    // Fill form
     await page.getByLabel('Account Code').fill('12345');
     await page.getByLabel('Account Name').fill('Test Account');
     
@@ -53,7 +52,6 @@ describe('Account Creation Dialog', function () {
     await page.getByLabel('Account Type').click();
     await page.getByRole('menuitem', { name: 'Asset', exact: true }).click();
 
-    // Submit form
     const [accountCreatedEvent] = await Promise.all([
       page.evaluate(async function () {
         return new Promise(function (resolve, reject) {
@@ -76,7 +74,6 @@ describe('Account Creation Dialog', function () {
 
     expect(accountCreatedEvent.accountCode).toBe(12345);
 
-    // Verify in database
     const account = await page.evaluate(async function () {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
@@ -96,7 +93,7 @@ describe('Account Creation Dialog', function () {
   });
 
   test('it shall validate duplicate account code', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -131,14 +128,12 @@ describe('Account Creation Dialog', function () {
       `;
     }, tursoLibSQLiteServer().url);
 
-    // Open dialog
     await page.getByRole('button', { name: 'Create Account' }).click();
 
     // Fill duplicate code
     await page.getByLabel('Account Code').fill('11111');
     await page.getByLabel('Account Code').blur();
 
-    // Check validation message
     // Note: Browser validation message handling in Playwright can be tricky.
     // We can check if the input is invalid.
     await expect(page.getByLabel('Account Code')).toHaveJSProperty('validity.valid', false);

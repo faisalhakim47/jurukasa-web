@@ -1,15 +1,17 @@
 import { test, expect } from '@playwright/test';
+import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
-/** @import { ReadyContextElement } from '#web/contexts/ready-context.js' */
+import { loadEmptyFixture } from '#test/tools/fixture.js';
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
 const { describe } = test;
 
 describe('Discounts View', function () {
+  useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display discounts list', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -51,7 +53,7 @@ describe('Discounts View', function () {
   });
 
   test('it shall display empty state when no discounts exist', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -78,7 +80,7 @@ describe('Discounts View', function () {
   });
 
   test('it shall open discount creation dialog', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -109,7 +111,7 @@ describe('Discounts View', function () {
   });
 
   test('it shall create global discount', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -147,7 +149,7 @@ describe('Discounts View', function () {
   });
 
   test('it shall create inventory-specific discount', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -215,7 +217,7 @@ describe('Discounts View', function () {
   });
 
   test('it shall open discount details dialog when clicking on a discount', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -263,7 +265,7 @@ describe('Discounts View', function () {
   });
 
   test('it shall filter discounts by type', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -334,7 +336,7 @@ describe('Discounts View', function () {
   });
 
   test('it shall search discounts by name', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -350,7 +352,6 @@ describe('Discounts View', function () {
 
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
-
       await database.sql`
         INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount)
         VALUES (1, 'Weekend Sale', NULL, 1, 5000)
@@ -386,7 +387,7 @@ describe('Discounts View', function () {
   });
 
   test('it shall delete discount from details dialog', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -402,7 +403,6 @@ describe('Discounts View', function () {
 
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
-
       await database.sql`
         INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount)
         VALUES (1, 'Delete Me', NULL, 1, 1000)
@@ -426,7 +426,6 @@ describe('Discounts View', function () {
     await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
     await page.getByRole('row').getByRole('button', { name: 'Delete Me' }).click();
 
-    await page.pause();
     await expect(page.getByRole('dialog', { name: 'Delete Me' })).toBeVisible();
 
     await page.getByRole('dialog', { name: 'Delete Me' }).getByRole('button', { name: 'Delete' }).click();

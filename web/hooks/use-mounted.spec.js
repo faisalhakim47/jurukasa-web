@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/tools/fixture.js';
 
 const { describe } = test;
 
@@ -51,7 +52,7 @@ describe('useMounted', function () {
   // useConsoleOutput(test);
 
   test('it shall execute callback after first render', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     const eventTriggersSequence = await page.evaluate(setupUseMountLifecycleScenario);
 

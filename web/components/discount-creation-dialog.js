@@ -166,7 +166,6 @@ export class DiscountCreationDialogElement extends HTMLElement {
         const amount = parseInt(/** @type {string} */ (data.get('amount')) || '0', 10);
         const inventoryId = state.discountType === 'inventory' ? state.selectedInventoryId : null;
 
-        // Validate inputs
         if (!name) throw new Error('Discount name is required.');
         if (multipleOfQuantity < 1) throw new Error('Multiple of quantity must be at least 1.');
         if (amount <= 0) throw new Error('Discount amount must be greater than 0.');
@@ -174,7 +173,6 @@ export class DiscountCreationDialogElement extends HTMLElement {
           throw new Error('Please select an inventory for inventory-specific discount.');
         }
 
-        // Insert discount
         const result = await tx.sql`
           INSERT INTO discounts (name, inventory_id, multiple_of_quantity, amount)
           VALUES (${name}, ${inventoryId}, ${multipleOfQuantity}, ${amount})
@@ -195,7 +193,7 @@ export class DiscountCreationDialogElement extends HTMLElement {
         }));
 
         dialog.open = false;
-        // Reset form and state
+
         event.currentTarget.reset();
         state.discountType = 'global';
         state.selectedInventory = null;

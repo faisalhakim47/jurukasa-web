@@ -69,7 +69,8 @@ JuruKasa uses [Turso](https://turso.tech/) as its database backend. Turso offers
 
 **Option A: Use the hosted version**
 
-TODO: Update with actual hosted URL when available.
+1. Visit the hosted JuruKasa application at [https://jurukasa.web.app](https://jurukasa.web.app)
+2. Follow the setup wizard to connect your Turso database and configure your business
 
 **Option B: Run locally**
 

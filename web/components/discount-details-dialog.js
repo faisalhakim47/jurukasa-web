@@ -237,7 +237,6 @@ export class DiscountDetailsDialogElement extends HTMLElement {
         const amount = parseInt(/** @type {string} */(data.get('amount')) || '0', 10);
         const inventoryId = state.editDiscountType === 'inventory' ? state.selectedInventoryId : null;
 
-        // Validate inputs
         if (!name) throw new Error('Discount name is required.');
         if (multipleOfQuantity < 1) throw new Error('Multiple of quantity must be at least 1.');
         if (amount <= 0) throw new Error('Discount amount must be greater than 0.');
@@ -245,7 +244,6 @@ export class DiscountDetailsDialogElement extends HTMLElement {
           throw new Error('Please select an inventory for inventory-specific discount.');
         }
 
-        // Check for duplicate name (excluding current discount)
         const duplicateCheck = await tx.sql`
           SELECT 1 FROM discounts WHERE name = ${name} AND id != ${state.discount.id} LIMIT 1;
         `;
@@ -253,7 +251,6 @@ export class DiscountDetailsDialogElement extends HTMLElement {
           throw new Error('Discount name already exists.');
         }
 
-        // Update discount
         await tx.sql`
           UPDATE discounts
           SET name = ${name},

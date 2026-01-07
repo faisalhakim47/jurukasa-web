@@ -224,7 +224,6 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        // Update local state
         for (const account of state.accounts) {
           if (isUniqueTag()) account.hasTag = false;
           if (account.account_code === accountCode) account.hasTag = true;
@@ -260,7 +259,6 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
           WHERE account_code = ${accountCode} AND tag = ${tag}
         `;
 
-        // Update local state
         for (const account of state.accounts) {
           if (account.account_code === accountCode) {
             account.hasTag = false;

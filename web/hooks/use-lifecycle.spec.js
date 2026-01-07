@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/tools/fixture.js';
 
 const { describe } = test;
 
@@ -215,7 +216,7 @@ describe('useLifecycle', function () {
   // useConsoleOutput(test);
 
   test('it shall execute callbacks correctly', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
     const events = await page.evaluate(setupUseLifecycleScenario);
     expect(events).toEqual([
       'original-connected',
@@ -228,7 +229,7 @@ describe('useLifecycle', function () {
   });
 
   test('it shall support multiple hooks', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
     const events = await page.evaluate(setupMultipleHooksScenario);
     // Order of hooks execution depends on Set iteration order, which is insertion order.
     expect(events).toEqual([
@@ -241,7 +242,7 @@ describe('useLifecycle', function () {
   });
 
   test('it shall support multiple attribute changed hooks', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
     const events = await page.evaluate(setupMultipleAttributeHooksScenario);
     expect(events).toEqual([
       'hook1:val',
@@ -250,13 +251,13 @@ describe('useLifecycle', function () {
   });
 
   test('it shall continue execution even if a callback throws error', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
     const events = await page.evaluate(setupErrorHandlingScenario);
     expect(events).toEqual(['hook-success']);
   });
 
   test('it shall throw error when overriding callbacks twice', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
     const result = await page.evaluate(setupDoubleOverrideScenario);
     expect(result).toContain('The web component is already overridden');
   });

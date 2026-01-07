@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/tools/fixture.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -13,7 +14,7 @@ const { describe } = test;
  * @param {number} supplierId
  */
 async function setupPage(page, tursoDatabaseUrl, supplierId) {
-  await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+  await loadEmptyFixture(page);
 
   await page.evaluate(async function ({ tursoDatabaseUrl, supplierId }) {
     localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -115,37 +116,28 @@ describe('Supplier Details Dialog', function () {
         `;
       });
 
-      // Open dialog
       await page.getByRole('button', { name: 'Open Supplier Details' }).click();
       await expect(page.getByRole('dialog', { name: 'Test Supplier' })).toBeVisible();
 
-      // Click Add Mapping button
       await page.getByRole('button', { name: 'Add Mapping' }).click();
 
-      // Check that add inventory form appears
       await expect(page.getByRole('heading', { name: 'Add Inventory Mapping' })).toBeVisible();
 
-      // Search for inventory
       await page.getByLabel('Search Inventory').fill('Test');
 
-      // Select inventory from list
       await page.getByRole('option', { name: /Test Product/ }).click();
 
-      // Fill conversion and supplier name
       await page.getByLabel('Conversion').clear();
       await page.getByLabel('Conversion').fill('6');
       await page.getByLabel('Supplier Name (Optional)').fill('Supplier SKU Name');
 
-      // Click Add Mapping button in form
       await page.getByRole('button', { name: 'Add Mapping' }).last().click();
 
-      // Wait for form to close and verify the mapping was added
       await expect(page.getByRole('heading', { name: 'Add Inventory Mapping' })).not.toBeVisible();
       await expect(page.getByRole('cell', { name: 'Test Product', exact: true })).toBeVisible();
       await expect(page.getByRole('cell', { name: 'Supplier SKU Name' })).toBeVisible();
       await expect(page.getByRole('cell', { name: '6x' })).toBeVisible();
 
-      // Verify in database
       const mapping = await page.evaluate(async function () {
         /** @type {DatabaseContextElement} */
         const database = document.querySelector('database-context');
@@ -166,7 +158,6 @@ describe('Supplier Details Dialog', function () {
     test('it shall edit an existing supplier inventory mapping', async function ({ page }) {
       await setupPage(page, tursoLibSQLiteServer().url, 1);
 
-      // Create test data
       await page.evaluate(async function () {
         /** @type {DatabaseContextElement} */
         const database = document.querySelector('database-context');
@@ -180,12 +171,10 @@ describe('Supplier Details Dialog', function () {
           INSERT INTO account_tags (account_code, tag) VALUES (11100, 'POS - Inventory')
         `;
 
-        // Create supplier
         await database.sql`
           INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', '08123456789')
         `;
 
-        // Create inventory
         await database.sql`
           INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code)
           VALUES (1, 'Test Product', 10000, 'piece', 11100)
@@ -198,23 +187,18 @@ describe('Supplier Details Dialog', function () {
         `;
       });
 
-      // Open dialog
       await page.getByRole('button', { name: 'Open Supplier Details' }).click();
       await expect(page.getByRole('dialog', { name: 'Test Supplier' })).toBeVisible();
 
-      // Click edit button for the mapping
       await page.getByRole('button', { name: 'Edit mapping for Test Product' }).click();
 
-      // Check that edit inventory form appears
       await expect(page.getByRole('heading', { name: 'Edit Inventory Mapping' })).toBeVisible();
 
-      // Update conversion and supplier name
       await page.getByLabel('Conversion').clear();
       await page.getByLabel('Conversion').fill('24');
       await page.getByLabel('Supplier Name (Optional)').clear();
       await page.getByLabel('Supplier Name (Optional)').fill('New Supplier Name');
 
-      // Click Save Changes button
       await page.getByRole('button', { name: 'Save Changes' }).click();
 
       // Wait for form to close and verify the mapping was updated
@@ -222,7 +206,6 @@ describe('Supplier Details Dialog', function () {
       await expect(page.getByRole('cell', { name: 'New Supplier Name' })).toBeVisible();
       await expect(page.getByRole('cell', { name: '24x' })).toBeVisible();
 
-      // Verify in database
       const mapping = await page.evaluate(async function () {
         /** @type {DatabaseContextElement} */
         const database = document.querySelector('database-context');
@@ -273,18 +256,14 @@ describe('Supplier Details Dialog', function () {
         `;
       });
 
-      // Open dialog
       await page.getByRole('button', { name: 'Open Supplier Details' }).click();
       await expect(page.getByRole('dialog', { name: 'Test Supplier' })).toBeVisible();
 
-      // Click delete button for the mapping
       await page.getByRole('button', { name: 'Remove mapping for Test Product' }).click();
 
-      // Check that delete confirmation dialog appears
       await expect(page.getByRole('alertdialog', { name: 'Remove Inventory Mapping' })).toBeVisible();
       await expect(page.getByText('Are you sure you want to remove the mapping for Test Product?')).toBeVisible();
 
-      // Confirm deletion
       await page.getByRole('alertdialog', { name: 'Remove Inventory Mapping' }).getByRole('button', { name: 'Remove' }).click();
 
       // Wait for dialog to close and verify the mapping was removed
@@ -374,13 +353,9 @@ describe('Supplier Details Dialog', function () {
 
     test('it shall prevent duplicate supplier inventory mapping', async function ({ page }) {
       await setupPage(page, tursoLibSQLiteServer().url, 1);
-
-      // Create test data
       await page.evaluate(async function () {
         /** @type {DatabaseContextElement} */
         const database = document.querySelector('database-context');
-        
-        // Create account with POS - Inventory tag
         await database.sql`
           INSERT INTO accounts (account_code, name, normal_balance, is_posting_account, create_time, update_time)
           VALUES (11100, 'Inventory Account', 0, 1, 0, 0)
@@ -388,43 +363,31 @@ describe('Supplier Details Dialog', function () {
         await database.sql`
           INSERT INTO account_tags (account_code, tag) VALUES (11100, 'POS - Inventory')
         `;
-
-        // Create supplier
         await database.sql`
           INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', '08123456789')
         `;
-
-        // Create inventory
         await database.sql`
           INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code)
           VALUES (1, 'Test Product', 10000, 'piece', 11100)
         `;
-
-        // Create existing supplier inventory mapping
         await database.sql`
           INSERT INTO supplier_inventories (supplier_id, inventory_id, quantity_conversion, name)
           VALUES (1, 1, 12, 'Existing Mapping')
         `;
       });
 
-      // Open dialog
       await page.getByRole('button', { name: 'Open Supplier Details' }).click();
       await expect(page.getByRole('dialog', { name: 'Test Supplier' })).toBeVisible();
 
-      // Click Add Mapping button
       await page.getByRole('button', { name: 'Add Mapping' }).click();
 
-      // Select the same inventory
       await page.getByRole('option', { name: /Test Product/ }).click();
 
-      // Use the same conversion value
       await page.getByLabel('Conversion').clear();
       await page.getByLabel('Conversion').fill('12');
 
-      // Try to add the duplicate mapping
       await page.getByRole('button', { name: 'Add Mapping' }).last().click();
 
-      // Check that error dialog appears
       await expect(page.getByRole('alertdialog')).toBeVisible();
       await expect(page.getByText('This inventory mapping with the same quantity conversion already exists for this supplier.')).toBeVisible();
 

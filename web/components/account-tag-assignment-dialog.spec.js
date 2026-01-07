@@ -1,40 +1,41 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
+/** @import { Page } from '@playwright/test'; */
 
 const { describe } = test;
 
+/**
+ * @param {Page} page
+ * @param {string} tursoLibSQLiteServerUrl
+ */
+async function setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServerUrl) {
+  await page.goto('/test/fixtures/testing.html');
+
+  await page.getByLabel('Turso Database URL').fill(tursoLibSQLiteServerUrl);
+  await page.getByRole('button', { name: 'Configure' }).click();
+
+  await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();
+  await page.getByLabel('Business Name').fill('Test Business');
+  await page.getByRole('button', { name: 'Next' }).click();
+
+  await expect(page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' })).toBeVisible();
+  await page.getByRole('radio', { name: 'Retail Business - Indonesia' }).click();
+  await page.getByRole('button', { name: 'Finish' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+
+  await page.getByText('Books').click();
+
+  await page.getByRole('tab', { name: 'Account Tags' }).click();
+  await expect(page.getByRole('tab', { name: 'Account Tags' })).toHaveAttribute('aria-selected', 'true');
+}
+
 describe('Account Tag Assignment Dialog', function () {
-  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
-  /**
-   * Helper function to setup database and navigate to Account Tags tab
-   * @param {import('@playwright/test').Page} page
-   */
-  async function setupDatabaseAndNavigateToAccountTags(page) {
-    await page.goto('/test/fixtures/testing.html');
-
-    await page.getByLabel('Turso Database URL').fill(tursoLibSQLiteServer().url);
-    await page.getByRole('button', { name: 'Configure' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();
-    await page.getByLabel('Business Name').fill('Test Business');
-    await page.getByRole('button', { name: 'Next' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' })).toBeVisible();
-    await page.getByRole('radio', { name: 'Retail Business - Indonesia' }).click();
-    await page.getByRole('button', { name: 'Finish' }).click();
-
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-
-    await page.getByText('Books').click();
-
-    await page.getByRole('tab', { name: 'Account Tags' }).click();
-    await expect(page.getByRole('tab', { name: 'Account Tags' })).toHaveAttribute('aria-selected', 'true');
-  }
-
   describe('Dialog Structure', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display dialog title with tag name', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page);
+      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
 
       const editButtons = page.getByRole('button', { name: /Manage Asset tag assignments/ });
       await editButtons.click();
@@ -43,7 +44,7 @@ describe('Account Tag Assignment Dialog', function () {
     });
 
     test('shall display category label for tag', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page);
+      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
 
       const tagRow = page.getByRole('row', { name: /Tag Balance Sheet - Current Asset/ });
       const editButton = tagRow.getByRole('button', { name: /Manage.*tag assignments/ });
@@ -57,7 +58,7 @@ describe('Account Tag Assignment Dialog', function () {
     });
 
     test('shall display accounts count', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page);
+      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
 
       const editButtons = page.getByRole('button', { name: /Manage.*tag assignments/ });
       await editButtons.first().click();
@@ -67,8 +68,10 @@ describe('Account Tag Assignment Dialog', function () {
   });
 
   describe('Account Selection', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display list of active accounts', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page);
+      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
 
       const tagRow = page.getByRole('row', { name: /Tag Balance Sheet - Current Asset/ });
       const editButton = tagRow.getByRole('button', { name: /Manage.*tag assignments/ });
@@ -85,7 +88,7 @@ describe('Account Tag Assignment Dialog', function () {
     });
 
     test('shall show checkmark for assigned accounts', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page);
+      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
 
       const tagRow = page.getByRole('row', { name: /Tag Balance Sheet - Current Asset/ });
       const editButton = tagRow.getByRole('button', { name: /Manage.*tag assignments/ });
@@ -99,7 +102,7 @@ describe('Account Tag Assignment Dialog', function () {
     });
 
     test('shall filter accounts by search query', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page);
+      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
 
       const tagRow = page.getByRole('row', { name: /Tag Balance Sheet - Current Asset/ });
       const editButton = tagRow.getByRole('button', { name: /Manage.*tag assignments/ });
@@ -117,8 +120,10 @@ describe('Account Tag Assignment Dialog', function () {
   });
 
   describe('Tag Assignment Operations', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall toggle tag assignment when clicking account row', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page);
+      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
 
       const tagRow = page.getByRole('row', { name: /Tag Balance Sheet - Current Asset/ });
       const editButton = tagRow.getByRole('button', { name: /Manage.*tag assignments/ });
@@ -132,7 +137,7 @@ describe('Account Tag Assignment Dialog', function () {
     });
 
     test('shall show unique tag warning for exclusive tags', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page);
+      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
 
       // Filter to "Fiscal Year Closing" category which has unique tags
       const accountTagsPanel = page.getByRole('tabpanel', { name: 'Account Tags' });
@@ -145,7 +150,6 @@ describe('Account Tag Assignment Dialog', function () {
       await page.keyboard.press('ArrowDown'); // Fiscal Year Closing
       await page.keyboard.press('Enter');
 
-      // Click on Retained Earning tag manage button (unique tag)
       const retainedEarningButton = page.getByRole('button', { name: /Manage Fiscal Year Closing - Retained Earning tag assignments/ });
       await retainedEarningButton.click();
 
@@ -159,8 +163,10 @@ describe('Account Tag Assignment Dialog', function () {
   });
 
   describe('Dialog Close Behavior', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall close dialog and update parent view when tag is assigned', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page);
+      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
 
       const tagRow = page.getByRole('row', { name: /Tag Balance Sheet - Current Asset/ });
       const editButton = tagRow.getByRole('button', { name: /Manage.*tag assignments/ });
@@ -179,15 +185,13 @@ describe('Account Tag Assignment Dialog', function () {
     });
 
     test('shall preserve search state after closing dialog', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page);
+      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
 
       const accountTagsPanel = page.getByRole('tabpanel', { name: 'Account Tags' });
 
-      // Search for Balance Sheet tags
       await accountTagsPanel.getByLabel('Search', { exact: true }).fill('Balance Sheet');
       await page.waitForTimeout(500);
 
-      // Click on a tag manage button
       const tagRow = page.getByRole('row', { name: /Tag Balance Sheet - Current Asset/ });
       const editButton = tagRow.getByRole('button', { name: /Manage.*tag assignments/ });
       await editButton.click();

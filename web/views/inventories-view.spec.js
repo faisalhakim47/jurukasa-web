@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/tools/fixture.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -11,7 +12,7 @@ describe('Inventories View - Price Edit Button', function () {
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display edit button beside unit price column', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -78,7 +79,7 @@ describe('Inventories View - Price Edit Button', function () {
   });
 
   test('it shall open price update dialog when edit button is clicked', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -141,7 +142,7 @@ describe('Inventories View - Price Edit Button', function () {
   });
 
   test('it shall update price and refresh table after successful update', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
@@ -228,7 +229,7 @@ describe('Inventories View - Price Edit Button', function () {
   });
 
   test('it shall show edit button for multiple inventories', async function ({ page }) {
-    await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
+    await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
       localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);

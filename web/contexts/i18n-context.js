@@ -5,6 +5,7 @@ import { DeviceContextElement } from '#web/contexts/device-context.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { provideContext, useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
+/** @import { EnTranslationPack } from '#web/lang/en/index.js' */
 
 export class I18nContextElement extends HTMLElement {
   constructor() {
@@ -43,6 +44,14 @@ export class I18nContextElement extends HTMLElement {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
+      });
+    });
+
+    this.time = useExposed(host, function createTimeFormatter() {
+      return new Intl.DateTimeFormat(device.locale, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
       });
     });
 

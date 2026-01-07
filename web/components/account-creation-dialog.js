@@ -144,19 +144,16 @@ export class AccountCreationDialogElement extends HTMLElement {
         const normalBalance = /** @type {string} */ (data.get('normalBalance'));
         const accountType = /** @type {string} */ (data.get('accountType'));
 
-        // Validate inputs
         if (isNaN(accountCode)) throw new Error('Invalid account code.');
         if (!name) throw new Error('Account name is required.');
         if (!['Debit', 'Credit'].includes(normalBalance)) throw new Error('Invalid normal balance.');
         if (!accountType) throw new Error('Account type is required.');
 
-        // Insert account
         await tx.sql`
           INSERT INTO accounts (account_code, name, normal_balance, control_account_code, create_time, update_time)
           VALUES (${accountCode}, ${name}, ${normalBalance === 'Debit' ? 0 : 1}, ${form.parentAccountCode}, ${Date.now()}, ${Date.now()});
         `;
 
-        // Insert account type tag
         await tx.sql`
           INSERT INTO account_tags (account_code, tag)
           VALUES (${accountCode}, ${accountType});
@@ -174,9 +171,10 @@ export class AccountCreationDialogElement extends HTMLElement {
         }));
 
         dialog.open = false;
-        // Reset form
+
         event.currentTarget.reset();
         clearParentAccount();
+
         form.normalBalance = null;
         form.accountType = null;
       } catch (error) {
