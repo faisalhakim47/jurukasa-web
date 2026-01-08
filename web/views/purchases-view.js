@@ -162,32 +162,6 @@ export class PurchasesViewElement extends HTMLElement {
       loadPurchases();
     }
 
-    /** @param {Event} event */
-    function handlePurchaseRowInteraction(event) {
-      if (purchaseDetailsDialog.value?.open) return;
-
-      if (!(event.target instanceof HTMLElement)) return;
-
-      const closestRow = event.target.closest('tr[data-purchase-id]');
-      if (!(closestRow instanceof HTMLTableRowElement)) return;
-
-      const purchaseId = Number(closestRow.dataset.purchaseId);
-      if (isNaN(purchaseId)) return;
-
-      const isOpeningAction = (event instanceof MouseEvent && event.type === 'click')
-        || (event instanceof KeyboardEvent && ['Enter', ' '].includes(event.key));
-
-      if (isOpeningAction) {
-        state.selectedPurchaseId = purchaseId;
-        purchaseDetailsDialog.value?.dispatchEvent(new CommandEvent('command', {
-          command: '--open',
-          bubbles: true,
-          cancelable: true,
-        }));
-        event.preventDefault();
-      }
-    }
-
     useEffect(host, loadPurchases);
 
     function renderLoadingIndicator() {

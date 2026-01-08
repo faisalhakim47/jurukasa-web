@@ -33,8 +33,6 @@ import '#web/components/material-symbols.js';
  * @fires fiscal-year-reversed - Fired when a fiscal year is successfully reversed. Detail: { beginTime: number }
  */
 export class FiscalYearReversalDialogElement extends HTMLElement {
-  static observedAttributes = ['begin-time'];
-
   constructor() {
     super();
 

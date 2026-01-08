@@ -37,8 +37,6 @@ import '#web/components/material-symbols.js';
  * @fires fiscal-year-closed - Fired when a fiscal year is successfully closed. Detail: { beginTime: number }
  */
 export class FiscalYearClosingDialogElement extends HTMLElement {
-  static observedAttributes = ['begin-time'];
-
   constructor() {
     super();
 

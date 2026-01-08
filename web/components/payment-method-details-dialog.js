@@ -40,10 +40,6 @@ import '#web/components/material-symbols.js';
  * @fires payment-method-deleted - Fired when a payment method is successfully deleted. Detail: { paymentMethodId: number }
  */
 export class PaymentMethodDetailsDialogElement extends HTMLElement {
-  static get observedAttributes() {
-    return ['payment-method-id'];
-  }
-
   constructor() {
     super();
 
@@ -60,7 +56,6 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
     useAdoptedStyleSheets(host, webStyleSheets);
 
     const state = reactive({
-      paymentMethodId: /** @type {number | null} */ (null),
       paymentMethod: /** @type {PaymentMethodDetails | null} */ (null),
       isLoading: false,
       loadError: /** @type {Error | null} */ (null),
@@ -76,20 +71,10 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
       error: /** @type {Error | null} */ (null),
     });
 
-    /** @param {string | null} attributeValue */
-    function updatePaymentMethodId(attributeValue) {
-      const newId = attributeValue !== null ? parseInt(attributeValue, 10) : null;
-      state.paymentMethodId = isNaN(newId) ? null : newId;
-    }
-
-    host.attributeChangedCallback = function attributeChangedCallback(name, oldValue, newValue) {
-      if (name === 'payment-method-id') {
-        updatePaymentMethodId(newValue);
-      }
-    };
-
     async function loadPaymentMethod() {
-      if (state.paymentMethodId === null) {
+      const paymentMethodId = parseInt(dialog.context?.dataset.paymentMethodId, 10);
+
+      if (isNaN(paymentMethodId)) {
         state.paymentMethod = null;
         return;
       }
@@ -98,7 +83,6 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
         state.isLoading = true;
         state.loadError = null;
 
-        const paymentMethodId = state.paymentMethodId;
         const result = await database.sql`
           SELECT
             pm.id,
@@ -168,7 +152,7 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
     }
 
     useEffect(host, function loadPaymentMethodOnOpen() {
-      if (dialog.open && state.paymentMethodId !== null) {
+      if (dialog.open && dialog.context) {
         state.isEditing = false;
         loadPaymentMethod();
       }

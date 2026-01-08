@@ -84,11 +84,11 @@ describe('Account Tags', function () {
       await expect(page.getByRole('treegrid', { name: 'Account Tags' })).toBeVisible();
 
       const treegrid = page.getByRole('treegrid', { name: 'Account Tags' });
-      await expect(treegrid.getByRole('row', { name: /Tag Asset/ })).toBeVisible();
-      await expect(treegrid.getByRole('row', { name: /Tag Liability/ })).toBeVisible();
-      await expect(treegrid.getByRole('row', { name: /Tag Equity/ })).toBeVisible();
-      await expect(treegrid.getByRole('row', { name: /Tag Revenue/ })).toBeVisible();
-      await expect(treegrid.getByRole('row', { name: /Tag Expense/ })).toBeVisible();
+      await expect(treegrid.getByRole('row', { name: 'Tag Asset' })).toBeVisible();
+      await expect(treegrid.getByRole('row', { name: 'Tag Liability' })).toBeVisible();
+      await expect(treegrid.getByRole('row', { name: 'Tag Equity' })).toBeVisible();
+      await expect(treegrid.getByRole('row', { name: 'Tag Revenue' })).toBeVisible();
+      await expect(treegrid.getByRole('row', { name: 'Tag Expense' })).toBeVisible();
     });
 
     test('shall display account count for each tag', async function ({ page }) {

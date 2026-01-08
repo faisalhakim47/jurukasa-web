@@ -30,12 +30,14 @@ export function useLibSQLiteClient() {
     }
     await mkdir(databaseDirectory, { recursive: true });
     client = createClient({ url: `file:${join(databaseDirectory, 'database.sqlite')}` });
-    await client.execute(`PRAGMA journal_mode = WAL;`);
-    await client.execute(`PRAGMA synchronous = FULL;`);
-    await client.execute(`PRAGMA foreign_keys = ON;`);
-    await client.execute(`PRAGMA temp_store = MEMORY;`);
-    await client.execute(`PRAGMA cache_size = -32000;`);
-    await client.execute(`PRAGMA mmap_size = 67108864;`);
+    await client.executeMultiple(`
+      PRAGMA journal_mode = WAL;
+      PRAGMA synchronous = FULL;
+      PRAGMA foreign_keys = ON;
+      PRAGMA temp_store = MEMORY;
+      PRAGMA cache_size = -32000;
+      PRAGMA mmap_size = 67108864;
+    `);
     const migrationFiles = [
       join(__dirname, '../../001-accounting.sql'),
       join(__dirname, '../../002-pos.sql'),
@@ -64,8 +66,8 @@ export function useLibSQLiteClient() {
 
   return function getClient() {
     if (client) {
-        Object.assign(client, { promise: currentPromise });
-        return /** @type {object} dinamically modified */ (client);
+      Object.assign(client, { promise: currentPromise });
+      return /** @type {object} dinamically modified */ (client);
     }
     return { promise: currentPromise };
   };

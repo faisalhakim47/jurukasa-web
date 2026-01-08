@@ -10,7 +10,6 @@ import { useAttribute } from '#web/hooks/use-attribute.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useElement } from '#web/hooks/use-element.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
@@ -45,8 +44,6 @@ import '#web/components/material-symbols.js';
  * @fires supplier-updated - Fired when supplier is updated
  */
 export class SupplierDetailsDialogElement extends HTMLElement {
-  static observedAttributes = ['supplier-id'];
-
   constructor() {
     super();
 
@@ -54,7 +51,6 @@ export class SupplierDetailsDialogElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const t = useTranslator(host);
 
-    const supplierIdAttr = useAttribute(host, 'supplier-id');
     const errorAlertDialog = useDialog(host);
     const deleteConfirmDialog = useDialog(host);
 
@@ -84,7 +80,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
     });
 
     async function loadSupplierDetails() {
-      const supplierId = Number(supplierIdAttr.value);
+      const supplierId = Number(dialog.context?.dataset.supplierId);
       if (isNaN(supplierId) || supplierId <= 0) return;
 
       try {
@@ -171,7 +167,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
     }
 
     useEffect(host, function loadOnOpen() {
-      if (dialog.open && supplierIdAttr.value) {
+      if (dialog.open && dialog.context?.dataset.supplierId) {
         loadSupplierDetails();
       }
     });

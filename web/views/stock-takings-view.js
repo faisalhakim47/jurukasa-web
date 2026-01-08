@@ -328,10 +328,7 @@ export class StockTakingsViewElement extends HTMLElement {
      */
     function renderStockTakingRow(stockTaking) {
       return html`
-        <tr
-          tabindex="0"
-          aria-label="${t('stock', 'stockTakingRowAriaLabel', stockTaking.id, stockTaking.inventory_name)}"
-        >
+        <tr aria-label="${t('stock', 'stockTakingRowAriaLabel', stockTaking.id, stockTaking.inventory_name)}">
           <td class="label-large" style="color: var(--md-sys-color-primary);">#${stockTaking.id}</td>
           <td style="white-space: nowrap;">${i18n.date.format(stockTaking.audit_time)}</td>
           <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">

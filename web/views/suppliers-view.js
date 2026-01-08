@@ -39,8 +39,6 @@ export class SuppliersViewElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
 
-    const supplierCreationDialog = useElement(host, SupplierCreationDialogElement);
-    const supplierDetailsDialog = useElement(host, SupplierDetailsDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -140,27 +138,6 @@ export class SuppliersViewElement extends HTMLElement {
       state.searchQuery = event.target.value;
       state.currentPage = 1;
       loadSuppliers();
-    }
-
-    /** @param {Event} event */
-    function handleSupplierRowInteraction(event) {
-      assertInstanceOf(HTMLTableRowElement, event.currentTarget);
-
-      const supplierId = parseInt(event.currentTarget.dataset.supplierId, 10);
-      if (isNaN(supplierId)) return;
-
-      const isOpeningAction = (event instanceof MouseEvent && event.type === 'click')
-        || (event instanceof KeyboardEvent && ['Enter', ' '].includes(event.key));
-
-      if (isOpeningAction) {
-        state.selectedSupplierId = supplierId;
-        supplierDetailsDialog.value?.dispatchEvent(new CommandEvent('command', {
-          command: '--open',
-          bubbles: true,
-          cancelable: true,
-        }));
-        event.preventDefault();
-      }
     }
 
     useEffect(host, loadSuppliers);
@@ -283,16 +260,17 @@ export class SuppliersViewElement extends HTMLElement {
      */
     function renderSupplierRow(supplier) {
       return html`
-        <tr
-          tabindex="0"
-          aria-label="${t('supplier', 'supplierRowAriaLabel', supplier.name)}"
-          data-supplier-id="${supplier.id}"
-          @click=${handleSupplierRowInteraction}
-          @keydown=${handleSupplierRowInteraction}
-          style="cursor: pointer;"
-        >
+        <tr aria-label="${t('supplier', 'supplierRowAriaLabel', supplier.name)}">
           <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            <span style="font-weight: 500;">${supplier.name}</span>
+            <button
+              role="button"
+              type="button"
+              class="text extra-small"
+              style="--md-sys-density: -4;"
+              commandfor="supplier-details-dialog"
+              command="--open"
+              data-supplier-id="${supplier.id}"
+            >${supplier.name}</button>
           </td>
           <td style="color: var(--md-sys-color-on-surface-variant);">
             ${supplier.phone_number || '—'}
@@ -446,15 +424,12 @@ export class SuppliersViewElement extends HTMLElement {
         </div>
 
         <supplier-creation-dialog
-          ${supplierCreationDialog}
           id="supplier-creation-dialog"
           @supplier-created=${loadSuppliers}
         ></supplier-creation-dialog>
 
         <supplier-details-dialog
-          ${supplierDetailsDialog}
           id="supplier-details-dialog"
-          supplier-id=${state.selectedSupplierId}
           @supplier-updated=${loadSuppliers}
         ></supplier-details-dialog>
       `);

@@ -73,6 +73,15 @@ export class DatabaseContextElement extends HTMLElement {
         const client = url === ':memory:'
           ? createClient({ url: 'file::memory:?cache=shared' })
           : createClient({ url, authToken });
+        await client.executeMultiple(`
+          -- Commented out pragmas are not supported in Turso
+          -- PRAGMA journal_mode = WAL;
+          -- PRAGMA synchronous = FULL;
+          PRAGMA foreign_keys = ON;
+          -- PRAGMA temp_store = MEMORY;
+          -- PRAGMA cache_size = -32000;
+          -- PRAGMA mmap_size = 67108864;
+        `);
         await autoMigrate(client);
         connection.state = 'connected';
         resolveClient(client);
@@ -120,12 +129,12 @@ export class DatabaseContextElement extends HTMLElement {
      * @param {Client} client
      * @param {string} path
      */
-    const migrate = async function (client, path) {
+    async function migrate(client, path) {
       const migrationSQLResponse = await fetch(path);
       const migrationSQLText = await migrationSQLResponse.text();
       const tx = await client.transaction('write');
       try {
-        tx.executeMultiple(migrationSQLText)
+        tx.executeMultiple(migrationSQLText);
         await tx.commit();
       }
       catch (error) {
@@ -136,30 +145,9 @@ export class DatabaseContextElement extends HTMLElement {
     };
 
     /**
-     * @param {string} sqlString
-     * @returns {Array<string>}
-     */
-    function cleanupMigrationSQLText(sqlString) {
-      return sqlString
-        .split('-- EOS')
-        .map(function (statement) {
-          return statement
-            .trim()
-            .split('\n')
-            .map(function (line) {
-              return line.split('-- ')[0]; // Remove inline comments
-            })
-            .filter(function (line) { return line.length > 0; })
-            .join('\n')
-            .trim();
-        })
-        .filter(function (statement) { return statement.length > 0; });
-    };
-
-    /**
      * @param {Client} client
      */
-    const getSchemaVersion = async function (client) {
+    async function getSchemaVersion(client) {
       try {
         const result = await client.execute('SELECT value FROM config WHERE key = ?', ['Schema Version']);
         if (result.rows.length === 0) return undefined;
@@ -172,7 +160,7 @@ export class DatabaseContextElement extends HTMLElement {
     };
 
     /** @param {SubmitEvent} event */
-    const submitDatabaseConfig = async function (event) {
+    async function submitDatabaseConfig(event) {
       try {
         event.preventDefault();
         form.state = 'submitting';
@@ -346,7 +334,7 @@ export class DatabaseContextElement extends HTMLElement {
      * @param {TemplateStringsArray} query
      * @param {Array<unknown>} params
      */
-    this.sql = async function (query, ...params) {
+    this.sql = async function sql(query, ...params) {
       if (!Array.isArray(query)) throw new TypeError('Expected TemplateStringsArray as the first argument.');
       const client = await clientPromise;
       return client.execute({

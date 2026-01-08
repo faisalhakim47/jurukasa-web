@@ -7,7 +7,6 @@ import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { readValue } from '#web/directives/read-value.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
-import { useAttribute } from '#web/hooks/use-attribute.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
@@ -59,8 +58,6 @@ import '#web/components/material-symbols.js';
     ></account-selector-dialog>
  */
 export class AccountSelectorDialogElement extends HTMLElement {
-  static observedAttributes = ['filter-tag'];
-
   constructor() {
     super();
 
@@ -69,7 +66,6 @@ export class AccountSelectorDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
     const searchInputElement = useElement(host, HTMLInputElement);
-    const filterTagAttr = useAttribute(host, 'filter-tag');
 
     const dialog = useDialog(host);
     const render = useRender(host);
@@ -94,7 +90,7 @@ export class AccountSelectorDialogElement extends HTMLElement {
       }
 
       const query = state.searchQuery.trim();
-      const filterTag = filterTagAttr.value || null;
+      const filterTag = dialog.context?.dataset.filterTag || null;
 
       try {
         state.isLoading = true;

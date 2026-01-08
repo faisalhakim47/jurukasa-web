@@ -1,10 +1,30 @@
 import { test, expect } from '@playwright/test';
-import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { setupDatabase } from '#test/tools/database.js';
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
 const { describe } = test;
+
+/** @param {string} tursoDatabaseUrl */
+async function setupView(tursoDatabaseUrl) {
+  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
+  localStorage.setItem('tursoDatabaseKey', '');
+  document.body.innerHTML = `
+    <ready-context>
+      <router-context>
+        <database-context>
+          <device-context>
+            <i18n-context>
+              <barcodes-view></barcodes-view>
+            </i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </ready-context>
+  `;
+}
 
 describe('Barcodes View', function () {
   // useConsoleOutput(test);
@@ -13,58 +33,24 @@ describe('Barcodes View', function () {
   test('it shall display empty state when no barcodes exist', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <barcodes-view></barcodes-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByText('No barcodes assigned yet')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Assign Barcode' }).first()).toBeVisible();
   });
 
   test('it shall display list of barcodes', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product B', 20000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('9876543210', 2)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product B', 20000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('9876543210', 2)`;
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: '1234567890' })).toBeVisible();
@@ -74,35 +60,17 @@ describe('Barcodes View', function () {
   });
 
   test('it shall search barcodes by code', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product B', 20000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('9876543210', 2)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product B', 20000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('9876543210', 2)`;
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await page.getByLabel('Search', { exact: true }).fill('1234');
 
@@ -111,35 +79,17 @@ describe('Barcodes View', function () {
   });
 
   test('it shall search barcodes by product name', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Laptop Dell', 10000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Mouse Wireless', 20000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('9876543210', 2)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Laptop Dell', 10000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Mouse Wireless', 20000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('9876543210', 2)`;
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await page.getByLabel('Search', { exact: true }).fill('laptop');
 
@@ -148,35 +98,17 @@ describe('Barcodes View', function () {
   });
 
   test('it shall clear search', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product B', 20000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('9876543210', 2)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product B', 20000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('9876543210', 2)`;
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await page.getByLabel('Search', { exact: true }).fill('9875');
     await expect(page.getByRole('row').filter({ hasText: '9876543210' })).not.toBeVisible();
@@ -188,33 +120,15 @@ describe('Barcodes View', function () {
   });
 
   test('it shall display empty state when search has no results', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await page.getByLabel('Search', { exact: true }).fill('Nonexistent Product');
 
@@ -222,36 +136,18 @@ describe('Barcodes View', function () {
   });
 
   test('it shall paginate barcodes list', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        // Insert 25 barcodes (page size is 20)
+        for (let index = 1; index <= 25; index++) {
+          await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES (${`Product ${index}`}, 10000, 'pcs', 11310, 0, 0)`;
+          await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES (${String(index).padStart(10, '0')}, ${index})`;
+        }
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      // Insert 25 barcodes (page size is 20)
-      for (let i = 1; i <= 25; i++) {
-        await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES (${`Product ${i}`}, 10000, 'pcs', 11310, 0, 0)`;
-        await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES (${String(i).padStart(10, '0')}, ${i})`;
-      }
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByText('1-20 of 25')).toBeVisible();
     await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Product 1', exact: true }) })).toBeVisible();
@@ -270,36 +166,18 @@ describe('Barcodes View', function () {
   });
 
   test('it shall disable pagination buttons appropriately', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        // Insert 25 barcodes (page size is 20)
+        for (let index = 1; index <= 25; index++) {
+          await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES (${`Product ${index}`}, 10000, 'pcs', 11310, 0, 0)`;
+          await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES (${String(index).padStart(10, '0')}, ${index})`;
+        }
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      // Insert 25 barcodes (page size is 20)
-      for (let i = 1; i <= 25; i++) {
-        await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES (${`Product ${i}`}, 10000, 'pcs', 11310, 0, 0)`;
-        await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES (${String(i).padStart(10, '0')}, ${i})`;
-      }
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByRole('button', { name: 'Previous page' })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Next page' })).toBeEnabled();
@@ -313,23 +191,7 @@ describe('Barcodes View', function () {
   test('it shall open barcode assignment dialog', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <barcodes-view></barcodes-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await page.getByRole('button', { name: 'Assign Barcode' }).first().click();
 
@@ -337,33 +199,15 @@ describe('Barcodes View', function () {
   });
 
   test('it shall unassign barcode with confirmation', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await page.getByRole('button', { name: 'Unassign barcode 1234567890' }).click();
 
@@ -380,33 +224,15 @@ describe('Barcodes View', function () {
   });
 
   test('it shall cancel unassign barcode', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
+      })
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await page.getByRole('button', { name: 'Unassign barcode 1234567890' }).click();
     await expect(page.getByRole('dialog', { name: 'Unassign Barcode' })).toBeVisible();
@@ -418,32 +244,14 @@ describe('Barcodes View', function () {
   });
 
   test('it shall reload barcodes after assignment', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
+      })
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByText('No barcodes assigned yet')).toBeVisible();
 
@@ -458,33 +266,21 @@ describe('Barcodes View', function () {
   });
 
   test('it shall display error dialog on unassign failure', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
+        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
+      })
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    await page.evaluate(async function simulateFaultyClient(tursoDatabaseUrl) {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
-      await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
-
       // Simulate error by corrupting database state
       const originalTransaction = database.transaction.bind(database);
-      database.transaction = async function () {
+      database.transaction = async function transaction() {
         const tx = await originalTransaction('write');
         const originalSql = tx.sql.bind(tx);
         /**
@@ -499,9 +295,6 @@ describe('Barcodes View', function () {
         };
         return tx;
       };
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
     }, tursoLibSQLiteServer().url);
 
     await page.getByRole('button', { name: 'Unassign barcode 1234567890' }).click();
@@ -516,36 +309,18 @@ describe('Barcodes View', function () {
   });
 
   test('it shall reset to first page on new search', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        // Insert 25 barcodes (page size is 20)
+        for (let index = 1; index <= 25; index++) {
+          await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES (${`Product ${index}`}, 10000, 'pcs', 11310, 0, 0)`;
+          await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES (${String(index).padStart(10, '0')}, ${index})`;
+        }
+      })
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
-      // Insert 25 barcodes (page size is 20)
-      for (let index = 1; index <= 25; index++) {
-        await database.sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES (${`Product ${index}`}, 10000, 'pcs', 11310, 0, 0)`;
-        await database.sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES (${String(index).padStart(10, '0')}, ${index})`;
-      }
-
-      const deepestContext = document.querySelector('i18n-context');
-      deepestContext.innerHTML = `<barcodes-view></barcodes-view>`;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await page.getByRole('button', { name: 'Next page' }).click();
     await expect(page.getByText('21-25 of 25')).toBeVisible();

@@ -30,10 +30,10 @@ async function setupPage(page, tursoDatabaseUrl, supplierId) {
                   type="button"
                   commandfor="supplier-details-dialog"
                   command="--open"
+                  data-supplier-id="${supplierId}"
                 >Open Supplier Details</button>
                 <supplier-details-dialog
                   id="supplier-details-dialog"
-                  supplier-id="${supplierId}"
                 ></supplier-details-dialog>
               </i18n-context>
             </device-context>
@@ -56,7 +56,6 @@ describe('Supplier Details Dialog', function () {
       await page.evaluate(async function () {
         /** @type {DatabaseContextElement} */
         const database = document.querySelector('database-context');
-        
         await database.sql`
           INSERT INTO accounts (account_code, name, normal_balance, is_posting_account, create_time, update_time)
           VALUES (11100, 'Inventory Account', 0, 1, 0, 0)
@@ -64,16 +63,13 @@ describe('Supplier Details Dialog', function () {
         await database.sql`
           INSERT INTO account_tags (account_code, tag) VALUES (11100, 'POS - Inventory')
         `;
-
         await database.sql`
           INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', '08123456789')
         `;
-
         await database.sql`
           INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code)
           VALUES (1, 'Test Product', 10000, 'piece', 11100)
         `;
-
         await database.sql`
           INSERT INTO supplier_inventories (supplier_id, inventory_id, quantity_conversion, name)
           VALUES (1, 1, 12, 'Supplier Product Name')
