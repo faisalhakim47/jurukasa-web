@@ -10,6 +10,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useElement } from '#web/hooks/use-element.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
@@ -40,6 +41,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const dialog = useDialog(host);
     const confirmDialog = useElement(host, HTMLDialogElement);
@@ -85,7 +87,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
         `;
 
         if (fyResult.rows.length === 0) {
-          state.error = new Error('Fiscal year not found');
+          state.error = new Error(t('fiscalYear', 'noFiscalYearSelected'));
           state.isLoading = false;
           return;
         }
@@ -191,13 +193,13 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
           <div class="container">
             <header>
               <h2 id="fiscal-year-reversal-dialog-title">
-                ${fy?.name || 'Fiscal Year'} Reversal
+                ${fy?.name || t('fiscalYear', 'reversalTitle')}
               </h2>
               <button
                 role="button"
                 type="button"
                 class="text"
-                aria-label="Close dialog"
+                aria-label="${t('fiscalYear', 'closeDialogLabel')}"
                 commandfor="fiscal-year-reversal-dialog"
                 command="close"
               ><material-symbols name="close"></material-symbols></button>
@@ -208,7 +210,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                   ?disabled=${state.reversalState !== 'idle'}
                   @click=${handleOpenConfirmDialog}
                 >
-                  ${state.reversalState === 'reversing' ? 'Reversing...' : state.reversalState === 'success' ? 'Reversed!' : 'Reverse Fiscal Year'}
+                  ${state.reversalState === 'reversing' ? t('fiscalYear', 'reversalLoadingLabel') : state.reversalState === 'success' ? t('fiscalYear', 'reversalSuccessLabel') : t('fiscalYear', 'reversalSubmitLabel')}
                 </button>
               ` : nothing}
             </header>
@@ -217,7 +219,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
               ${state.isLoading ? html`
                 <div
                   role="status"
-                  aria-label="Loading fiscal year details"
+                  aria-label="${t('fiscalYear', 'loadingDetailsLabel')}"
                   style="
                     display: flex;
                     flex-direction: column;
@@ -232,7 +234,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                       <div class="indicator"></div>
                     </div>
                   </div>
-                  <p>Loading fiscal year details...</p>
+                  <p>${t('fiscalYear', 'loadingDetailsLabel')}</p>
                 </div>
               ` : nothing}
 
@@ -250,7 +252,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                   "
                 >
                   <material-symbols name="error" size="48"></material-symbols>
-                  <h3 class="title-medium">Unable to load fiscal year</h3>
+                  <h3 class="title-medium">${t('fiscalYear', 'loadFiscalYearErrorTitle')}</h3>
                   <p style="color: var(--md-sys-color-on-surface-variant);">${state.error.message}</p>
                 </div>
               ` : nothing}
@@ -275,20 +277,20 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                       "
                     >
                       <material-symbols name="${isReversed ? 'history' : fy.post_time !== null ? 'lock' : 'lock_open'}" size="20" aria-hidden="true"></material-symbols>
-                      ${isReversed ? 'Reversed' : fy.post_time !== null ? 'Closed' : 'Open'}
+                      ${isReversed ? t('fiscalYear', 'statusReversed') : fy.post_time !== null ? t('fiscalYear', 'statusClosed') : t('fiscalYear', 'statusOpen')}
                     </span>
                   </div>
 
                   <!-- Period Info -->
                   <div class="card outlined" style="padding: 16px;">
-                    <h3 class="title-medium" style="margin-bottom: 12px;">Period</h3>
+                    <h3 class="title-medium" style="margin-bottom: 12px;">${t('fiscalYear', 'periodSectionTitle')}</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                       <div>
-                        <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Begin Date</p>
+                        <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fiscalYear', 'periodBeginDateLabel')}</p>
                         <p class="body-large">${i18n.date.format(fy.begin_time)}</p>
                       </div>
                       <div>
-                        <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">End Date</p>
+                        <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fiscalYear', 'periodEndDateLabel')}</p>
                         <p class="body-large">${i18n.date.format(fy.end_time)}</p>
                       </div>
                     </div>
@@ -297,15 +299,15 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                   ${fy.post_time !== null ? html`
                     <!-- Closing Details -->
                     <div class="card outlined" style="padding: 16px;">
-                      <h3 class="title-medium" style="margin-bottom: 12px;">Closing Details</h3>
+                      <h3 class="title-medium" style="margin-bottom: 12px;">${t('fiscalYear', 'closingDetailsSectionTitle')}</h3>
                       <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div style="display: flex; justify-content: space-between;">
-                          <span class="body-medium">Closed On</span>
+                          <span class="body-medium">${t('fiscalYear', 'closedOnLabel')}</span>
                           <span class="body-medium">${fy.post_time ? i18n.date.format(fy.post_time) : '—'}</span>
                         </div>
                         ${fy.closing_journal_entry_ref ? html`
                           <div style="display: flex; justify-content: space-between;">
-                            <span class="body-medium">Closing Entry</span>
+                            <span class="body-medium">${t('fiscalYear', 'closingEntryLabel')}</span>
                             <span class="body-medium" style="color: var(--md-sys-color-primary);">
                               #${fy.closing_journal_entry_ref}
                             </span>
@@ -318,15 +320,15 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                   ${isReversed ? html`
                     <!-- Reversal Details -->
                     <div class="card outlined" style="padding: 16px;">
-                      <h3 class="title-medium" style="margin-bottom: 12px;">Reversal Details</h3>
+                      <h3 class="title-medium" style="margin-bottom: 12px;">${t('fiscalYear', 'reversalDetailsSectionTitle')}</h3>
                       <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div style="display: flex; justify-content: space-between;">
-                          <span class="body-medium">Reversed On</span>
+                          <span class="body-medium">${t('fiscalYear', 'reversedOnLabel')}</span>
                           <span class="body-medium">${fy.reversal_time ? i18n.date.format(fy.reversal_time) : '—'}</span>
                         </div>
                         ${fy.reversal_journal_entry_ref ? html`
                           <div style="display: flex; justify-content: space-between;">
-                            <span class="body-medium">Reversal Entry</span>
+                            <span class="body-medium">${t('fiscalYear', 'reversalEntryLabel')}</span>
                             <span class="body-medium" style="color: var(--md-sys-color-primary);">
                               #${fy.reversal_journal_entry_ref}
                             </span>
@@ -351,18 +353,18 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                         <material-symbols name="warning" size="24" style="color: var(--md-sys-color-error);"></material-symbols>
                         <div>
                           <h3 class="title-small" style="margin-bottom: 8px; color: var(--md-sys-color-on-error-container);">
-                            About Reversal
+                            ${t('fiscalYear', 'reversalWarningTitle')}
                           </h3>
                           <p class="body-medium" style="color: var(--md-sys-color-on-error-container); margin-bottom: 12px;">
-                            Reversing a fiscal year will:
+                            ${t('fiscalYear', 'reversalWarningMessage')}
                           </p>
                           <ul style="margin: 0; padding-left: 24px; color: var(--md-sys-color-on-error-container);">
-                            <li>Create a reversal journal entry that undoes the closing entries</li>
-                            <li>Reopen the accounts that were closed</li>
-                            <li>Allow you to create a new fiscal year for the same period</li>
+                            <li>${t('fiscalYear', 'reversalWarningPoint1')}</li>
+                            <li>${t('fiscalYear', 'reversalWarningPoint2')}</li>
+                            <li>${t('fiscalYear', 'reversalWarningPoint3')}</li>
                           </ul>
                           <p class="body-medium" style="color: var(--md-sys-color-error); font-weight: 500; margin-top: 12px;">
-                            This should only be done if the fiscal year was closed incorrectly.
+                            ${t('fiscalYear', 'reversalWarningNote')}
                           </p>
                         </div>
                       </div>
@@ -380,8 +382,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                         <material-symbols name="info" size="24" style="color: var(--md-sys-color-primary);"></material-symbols>
                         <div>
                           <p class="body-medium">
-                            This fiscal year cannot be reversed because there are newer fiscal years that depend on it.
-                            You must reverse any subsequent fiscal years first.
+                            ${t('fiscalYear', 'cannotReverseMessage')}
                           </p>
                         </div>
                       </div>
@@ -389,7 +390,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                   ` : nothing}
                 </div>
               ` : html`
-                <p style="text-align: center; color: var(--md-sys-color-on-surface-variant);">No fiscal year selected</p>
+                <p style="text-align: center; color: var(--md-sys-color-on-surface-variant);">${t('fiscalYear', 'noFiscalYearSelected')}</p>
               `}
             </div>
           </div>
@@ -400,19 +401,19 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="warning" style="color: var(--md-sys-color-error);"></material-symbols>
             <header>
-              <h3 id="confirm-reversal-title">Reverse Fiscal Year?</h3>
+              <h3 id="confirm-reversal-title">${t('fiscalYear', 'confirmReversalTitle')}</h3>
             </header>
             <div class="content">
               <p>
-                This action will:
+                ${t('fiscalYear', 'confirmReversalMessage')}
               </p>
               <ul style="margin: 12px 0; padding-left: 24px;">
-                <li>Create a reversal journal entry to undo all closing entries</li>
-                <li>Restore account balances to their pre-closing state</li>
-                <li>Mark this fiscal year as reversed</li>
+                <li>${t('fiscalYear', 'confirmReversalPoint1')}</li>
+                <li>${t('fiscalYear', 'confirmReversalPoint2')}</li>
+                <li>${t('fiscalYear', 'confirmReversalPoint3')}</li>
               </ul>
               <p style="color: var(--md-sys-color-error); font-weight: 500;">
-                Only proceed if you need to correct an incorrectly closed fiscal year.
+                ${t('fiscalYear', 'confirmReversalWarning')}
               </p>
             </div>
             <menu>
@@ -423,7 +424,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                   class="text"
                   commandfor="confirm-reversal-dialog"
                   command="close"
-                >Cancel</button>
+                >${t('fiscalYear', 'cancelLabel')}</button>
               </li>
               <li>
                 <button
@@ -431,7 +432,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                   type="button"
                   class="filled error"
                   @click=${handleReverseFiscalYear}
-                >Reverse Fiscal Year</button>
+                >${t('fiscalYear', 'confirmReversalActionLabel')}</button>
               </li>
             </menu>
           </div>
@@ -442,7 +443,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('fiscalYear', 'errorTitle')}</h3>
             </header>
             <div class="content">
               <p>${state.reversalError?.message}</p>
@@ -454,7 +455,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('fiscalYear', 'dismissLabel')}</button>
               </li>
             </menu>
           </div>

@@ -13,6 +13,7 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { sleep } from '#web/tools/timing.js';
 
@@ -48,6 +49,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
     const time = useContext(host, TimeContextElement);
+    const t = useTranslator(host);
 
     const dialog = useDialog(host);
     const confirmationDialog = useDialog(host);
@@ -91,7 +93,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
           `;
 
           if (purchaseResult.rows.length === 0) {
-            throw new Error(`Purchase #${purchaseId} not found`);
+            throw new Error(t('purchase', 'purchaseNotFoundMessage', purchaseId));
           }
 
           const purchaseRow = purchaseResult.rows[0];
@@ -246,7 +248,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
       return html`
         <div role="alert">
           <material-symbols name="error" size="48"></material-symbols>
-          <h3>Unable to load purchase details</h3>
+          <h3>${t('purchase', 'unableToLoadPurchaseDetailsTitle')}</h3>
           <p>${state.error.message}</p>
         </div>
       `;
@@ -254,13 +256,13 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
 
     function renderLoadingIndicator() {
       return html`
-        <div role="status" aria-label="Loading purchase details">
+        <div role="status" aria-label=${t('purchase', 'loadingPurchaseDetailsAriaLabel')}>
           <div role="progressbar" class="linear indeterminate">
             <div class="track">
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading purchase details...</p>
+          <p>${t('purchase', 'loadingPurchaseDetailsMessage')}</p>
         </div>
       `;
     }
@@ -276,7 +278,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
           background-color: #E8F5E9;
           color: #1B5E20;
           font-size: 0.8em;
-        ">Posted</span>`;
+        ">${t('purchase', 'statusPosted')}</span>`;
       }
 
       return html`<span style="
@@ -286,7 +288,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
         background-color: #FFF3E0;
         color: #E65100;
         font-size: 0.8em;
-      ">Draft</span>`;
+      ">${t('purchase', 'statusDraft')}</span>`;
     }
 
     function renderDialogContent() {
@@ -295,13 +297,13 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
       return html`
         <section>
           <dl style="display: grid; grid-template-columns: max-content 1fr; gap: 8px 24px; margin: 0;">
-            <dt style="color: var(--md-sys-color-on-surface-variant);">Purchase Date</dt>
+            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('purchase', 'purchaseDetailsDateLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${i18n.date.format(state.purchase.purchase_time)}</dd>
 
-            <dt style="color: var(--md-sys-color-on-surface-variant);">Status</dt>
+            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('purchase', 'statusLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${renderStatusBadge()}</dd>
 
-            <dt style="color: var(--md-sys-color-on-surface-variant);">Supplier</dt>
+            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('purchase', 'supplierLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">
               <span style="font-weight: 500;">${state.purchase.supplier_name}</span>
               ${state.purchase.supplier_phone ? html`
@@ -310,19 +312,19 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
             </dd>
 
             ${isPosted ? html`
-              <dt style="color: var(--md-sys-color-on-surface-variant);">Posted Date</dt>
+              <dt style="color: var(--md-sys-color-on-surface-variant);">${t('purchase', 'postedDateLabel')}</dt>
               <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${i18n.date.format(state.purchase.post_time)}</dd>
             ` : nothing}
           </dl>
         </section>
         <div class="container" style="height: min(max(200px, 40vh), 400px); margin-top: 16px;">
-          <table role="table" aria-label="Purchase lines" style="--md-sys-density: -3;">
+          <table role="table" aria-label=${t('purchase', 'purchaseLinesTableAriaLabel')} style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col">Item</th>
-                <th scope="col" class="numeric">Supp. Qty</th>
-                <th scope="col" class="numeric">Int. Qty</th>
-                <th scope="col" class="numeric">Price</th>
+                <th scope="col">${t('purchase', 'tableHeaderItem')}</th>
+                <th scope="col" class="numeric">${t('purchase', 'tableHeaderSupplierQty')}</th>
+                <th scope="col" class="numeric">${t('purchase', 'tableHeaderInternalQty')}</th>
+                <th scope="col" class="numeric">${t('purchase', 'tableHeaderLineTotal')}</th>
               </tr>
             </thead>
             <tbody>
@@ -332,7 +334,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
                     <div style="display: flex; flex-direction: column;">
                       <span style="font-weight: 500;">${line.inventory_name}</span>
                       ${line.unit_of_measurement ? html`
-                        <span style="font-size: 0.8em; color: var(--md-sys-color-on-surface-variant);">per ${line.unit_of_measurement}</span>
+                        <span style="font-size: 0.8em; color: var(--md-sys-color-on-surface-variant);">${t('purchase', 'tableHeaderItemPerUnit', line.unit_of_measurement)}</span>
                       ` : nothing}
                     </div>
                   </td>
@@ -344,7 +346,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
             </tbody>
             <tfoot>
               <tr style="font-weight: bold; background-color: var(--md-sys-color-surface-container-low);">
-                <td colspan="3">Total</td>
+                <td colspan="3">${t('purchase', 'totalLabel')}</td>
                 <td class="numeric">${i18n.displayCurrency(state.purchase.total_amount)}</td>
               </tr>
             </tfoot>
@@ -354,7 +356,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
           <div style="margin-top: 16px; padding: 12px; background-color: var(--md-sys-color-surface-container); border-radius: var(--md-sys-shape-corner-medium);">
             <p class="body-small" style="margin: 0; color: var(--md-sys-color-on-surface-variant);">
               <material-symbols name="info" size="16" style="vertical-align: middle;"></material-symbols>
-              This purchase has been posted. Inventory quantities and costs have been updated, and journal entries have been created.
+              ${t('purchase', 'postedPurchaseInfoMessage')}
             </p>
           </div>
         ` : nothing}
@@ -372,10 +374,10 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
             type="button"
             class="tonal"
             @click=${handlePostClick}
-            aria-label="Post purchase"
+            aria-label=${t('purchase', 'postButtonAriaLabel')}
           >
             <material-symbols name="check_circle"></material-symbols>
-            Post
+            ${t('purchase', 'postButtonLabel')}
           </button>
           <button
             role="button"
@@ -383,10 +385,10 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
             class="text"
             style="color: var(--md-sys-color-error);"
             @click=${handleDiscardClick}
-            aria-label="Discard purchase"
+            aria-label=${t('purchase', 'discardButtonAriaLabel')}
           >
             <material-symbols name="delete"></material-symbols>
-            Discard
+            ${t('purchase', 'discardButtonLabel')}
           </button>
         `;
       }
@@ -400,17 +402,17 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
         return html`
           <material-symbols name="check_circle" style="color: var(--md-sys-color-primary);"></material-symbols>
           <header>
-            <h3>Post Purchase</h3>
+            <h3>${t('purchase', 'postPurchaseConfirmTitle')}</h3>
           </header>
           <div class="content">
-            <p>Are you sure you want to post purchase #${state.purchase?.id}?</p>
+            <p>${t('purchase', 'postPurchaseConfirmMessage', state.purchase?.id)}</p>
             <p style="color: var(--md-sys-color-on-surface-variant); font-size: 0.9em;">
-              This will update inventory quantities and costs, and create journal entries. Once posted, this purchase cannot be edited or deleted.
+              ${t('purchase', 'postPurchaseWarningMessage')}
             </p>
           </div>
           <menu>
-            <button role="button" type="button" class="text" @click=${handleCancelAction}>Cancel</button>
-            <button role="button" type="button" class="tonal" @click=${handleConfirmPost}>Post Purchase</button>
+            <button role="button" type="button" class="text" @click=${handleCancelAction}>${t('purchase', 'cancelActionButtonLabel')}</button>
+            <button role="button" type="button" class="tonal" @click=${handleConfirmPost}>${t('purchase', 'postPurchaseButtonLabel')}</button>
           </menu>
         `;
       }
@@ -419,17 +421,17 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
         return html`
           <material-symbols name="delete" style="color: var(--md-sys-color-error);"></material-symbols>
           <header>
-            <h3>Discard Purchase</h3>
+            <h3>${t('purchase', 'discardPurchaseConfirmTitle')}</h3>
           </header>
           <div class="content">
-            <p>Are you sure you want to discard purchase #${state.purchase?.id}?</p>
+            <p>${t('purchase', 'discardPurchaseConfirmMessage', state.purchase?.id)}</p>
             <p style="color: var(--md-sys-color-error); font-size: 0.9em;">
-              This action cannot be undone. The purchase and all its lines will be permanently deleted.
+              ${t('purchase', 'discardPurchaseWarningMessage')}
             </p>
           </div>
           <menu>
-            <button role="button" type="button" class="text" @click=${handleCancelAction}>Cancel</button>
-            <button role="button" type="button" class="tonal" style="background-color: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container);" @click=${handleConfirmDiscard}>Discard Purchase</button>
+            <button role="button" type="button" class="text" @click=${handleCancelAction}>${t('purchase', 'cancelActionButtonLabel')}</button>
+            <button role="button" type="button" class="tonal" style="background-color: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container);" @click=${handleConfirmDiscard}>${t('purchase', 'discardPurchaseButtonLabel')}</button>
           </menu>
         `;
       }
@@ -444,10 +446,10 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
             </div>
           </div>
           <header>
-            <h3>Processing...</h3>
+            <h3>${t('purchase', 'processingMessage')}</h3>
           </header>
           <div class="content">
-            <p>Please wait while processing your request.</p>
+            <p>${t('purchase', 'processingWaitMessage')}</p>
           </div>
         `;
       }
@@ -456,13 +458,13 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
         return html`
           <material-symbols name="error" style="color: var(--md-sys-color-error);"></material-symbols>
           <header>
-            <h3>Error</h3>
+            <h3>${t('purchase', 'errorDialogTitle')}</h3>
           </header>
           <div class="content">
             <p>${state.actionError?.message}</p>
           </div>
           <menu>
-            <button role="button" type="button" class="text" @click=${handleDismissError}>Dismiss</button>
+            <button role="button" type="button" class="text" @click=${handleDismissError}>${t('purchase', 'dismissButtonLabel')}</button>
           </menu>
         `;
       }
@@ -480,7 +482,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
         >
           <div class="container">
             <header>
-              <h2 id="purchase-details-dialog-title">${state.purchase ? `Purchase #${state.purchase.id}` : 'Purchase Details'}</h2>
+              <h2 id="purchase-details-dialog-title">${state.purchase ? t('purchase', 'detailsDialogTitle', state.purchase.id) : t('purchase', 'detailsDialogTitleDefault')}</h2>
             </header>
             <div class="content">
               ${state.isLoading ? renderLoadingIndicator() : nothing}
@@ -495,7 +497,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
                 class="text"
                 commandfor="purchase-details-dialog"
                 command="close"
-              >Close</button>
+              >${t('purchase', 'closeButtonLabel')}</button>
             </menu>
           </div>
         </dialog>

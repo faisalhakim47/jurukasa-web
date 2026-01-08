@@ -1,0 +1,132 @@
+/** @import { SupplierTranslation } from '#web/lang/en/supplier.js' */
+
+export default /** @type {Partial<SupplierTranslation>} */ ({
+  // Supplier Creation Dialog
+  createDialogTitle: 'Tambah Pemasok',
+  supplierNameLabel: 'Nama Pemasok',
+  supplierNameSupportingText: 'Nama unik untuk pemasok ini',
+  supplierNameExistsError: 'Nama pemasok sudah ada.',
+  supplierNameValidationError: 'Kesalahan memvalidasi nama pemasok.',
+  supplierNameRequiredError: 'Nama pemasok wajib diisi.',
+  phoneNumberLabel: 'Nomor Telepon (Opsional)',
+  phoneNumberSupportingText: 'Nomor kontak pemasok',
+  addressLabel: 'Alamat (Opsional)',
+  addressSupportingText: 'Alamat pemasok',
+  creatingSupplierMessage: 'Membuat pemasok...',
+  createSupplierButtonLabel: 'Tambah Pemasok',
+  cancelButtonLabel: 'Batal',
+  errorDialogTitle: 'Kesalahan',
+  dismissButtonLabel: 'Tutup',
+
+  // Supplier Details Dialog
+  detailsDialogTitle: 'Detail Pemasok',
+  loadingSupplierDetailsAriaLabel: 'Memuat detail pemasok',
+  loadingSupplierDetailsMessage: 'Memuat detail pemasok...',
+  supplierNotFoundTitle: 'Pemasok Tidak Ditemukan',
+  supplierNotFoundMessage: 'Pemasok yang diminta tidak dapat ditemukan.',
+  closeButtonAriaLabel: 'Tutup',
+  closeButtonLabel: 'Tutup',
+  editButtonLabel: 'Ubah',
+  saveChangesButtonLabel: 'Simpan Perubahan',
+  savingChangesMessage: 'Menyimpan perubahan...',
+  deleteButtonLabel: 'Hapus',
+  deleteButtonAriaLabel: 'Hapus pemasok',
+
+  // Supplier Details - Basic Information
+  basicInformationSectionTitle: 'Informasi Dasar',
+  nameFieldLabel: 'Nama',
+  phoneNumberFieldLabel: 'Nomor Telepon',
+  addressFieldLabel: 'Alamat',
+
+  // Supplier Details - Statistics
+  statisticsSectionTitle: 'Statistik',
+  totalPurchasesLabel: 'Total Pembelian',
+  totalAmountLabel: 'Total Jumlah',
+
+  // Supplier Details - Linked Inventories
+  linkedInventoriesSectionTitle: 'Inventaris Tertaut',
+  addMappingButtonLabel: 'Tambah Pemetaan',
+  noInventoriesLinkedMessage: 'Belum ada inventaris yang tertaut dengan pemasok ini. Klik "Tambah Pemetaan" untuk menautkan inventaris atau buat pesanan pembelian untuk menautkan otomatis.',
+  tableHeaderInventory: 'Inventaris',
+  tableHeaderSupplierName: 'Nama Pemasok',
+  tableHeaderConversion: 'Konversi',
+  editMappingAriaLabel: 'Ubah pemetaan untuk %s',
+  removeMappingAriaLabel: 'Hapus pemetaan untuk %s',
+  conversionUnitLabel: '%dx',
+  noSupplierNamePlaceholder: '—',
+
+  // Supplier Details - Add Inventory Mapping
+  addInventoryMappingTitle: 'Tambah Pemetaan Inventaris',
+  cancelButtonAriaLabel: 'Batal',
+  searchInventoryLabel: 'Cari Inventaris',
+  loadingInventoriesMessage: 'Memuat...',
+  noInventoriesFoundMessage: 'Tidak ada inventaris ditemukan.',
+  availableInventoriesAriaLabel: 'Inventaris tersedia',
+  inventoryUnitLabel: 'Satuan: %s',
+  changeInventoryAriaLabel: 'Ubah inventaris',
+  conversionLabel: 'Konversi',
+  conversionSupportingText: 'Satuan internal per satuan pemasok',
+  supplierNameOptionalLabel: 'Nama Pemasok (Opsional)',
+  supplierNameCatalogSupportingText: 'Nama seperti yang ditampilkan dalam katalog pemasok',
+  addMappingSubmitButtonLabel: 'Tambah Pemetaan',
+
+  // Supplier Details - Edit Inventory Mapping
+  editInventoryMappingTitle: 'Ubah Pemetaan Inventaris',
+  saveChangesInventoryButtonLabel: 'Simpan Perubahan',
+  inventoryMappingExistsError: 'Pemetaan inventaris dengan konversi kuantitas yang sama sudah ada untuk pemasok ini.',
+  autoLinkInventoryNote: 'Ini tidak akan menghapus inventaris itu sendiri, hanya tautan ke pemasok ini.',
+
+  // Supplier Details - Delete Inventory Mapping Confirmation
+  removeInventoryMappingTitle: 'Hapus Pemetaan Inventaris',
+  removeInventoryMappingMessage: 'Apakah Anda yakin ingin menghapus pemetaan untuk %s?',
+  removeInventoryMappingNote: 'Ini tidak akan menghapus inventaris itu sendiri, hanya tautan ke pemasok ini.',
+  removeButtonLabel: 'Hapus',
+
+  // Supplier Selector Dialog
+  selectDialogTitle: 'Pilih Pemasok',
+  searchSuppliersLabel: 'Cari pemasok',
+  loadingSuppliersAriaLabel: 'Memuat pemasok',
+  loadingSuppliersMessage: 'Memuat pemasok...',
+  unableToLoadSuppliersTitle: 'Tidak dapat memuat pemasok',
+  noSuppliersMatchSearchMessage: 'Tidak ada pemasok yang cocok dengan pencarian Anda',
+  noSuppliersAvailableMessage: 'Tidak ada pemasok tersedia',
+  availableSuppliersAriaLabel: 'Pemasok tersedia',
+
+  // Suppliers View
+  suppliersViewTitle: 'Pemasok',
+  searchLabel: 'Cari',
+  refreshAriaLabel: 'Muat ulang pemasok',
+  refreshButtonLabel: 'Muat Ulang',
+  addSupplierButtonLabel: 'Tambah Pemasok',
+  loadingSuppliersViewAriaLabel: 'Memuat pemasok',
+  loadingSuppliersViewMessage: 'Memuat pemasok...',
+  unableToLoadSuppliersViewTitle: 'Tidak dapat memuat pemasok',
+  retryButtonLabel: 'Coba Lagi',
+  noSuppliersFoundTitle: 'Tidak ada pemasok ditemukan',
+  adjustSearchMessage: 'Coba sesuaikan pencarian Anda.',
+  addFirstSupplierMessage: 'Mulai dengan menambahkan pemasok pertama Anda untuk mengelola pembelian.',
+  suppliersListAriaLabel: 'Daftar pemasok',
+  supplierRowAriaLabel: 'Pemasok %s',
+  tableHeaderName: 'Nama',
+  tableHeaderPhone: 'Telepon',
+  tableHeaderAddress: 'Alamat',
+  tableHeaderInventories: 'Item',
+  tableHeaderPurchases: 'Pembelian',
+  tableHeaderTotalAmount: 'Total Jumlah',
+  paginationAriaLabel: 'Paginasi',
+  showingItemsInfo: 'Menampilkan %d–%d dari %d',
+  firstPageAriaLabel: 'Halaman pertama',
+  previousPageAriaLabel: 'Halaman sebelumnya',
+  nextPageAriaLabel: 'Halaman selanjutnya',
+  lastPageAriaLabel: 'Halaman terakhir',
+  pageInfo: 'Halaman %d dari %d',
+
+  // Supplier Delete Confirmation
+  deleteConfirmTitle: 'Hapus Pemasok',
+  deleteConfirmMessage: 'Apakah Anda yakin ingin menghapus "%s"?',
+  deleteWarningMessage: 'Tindakan ini tidak dapat dibatalkan. Ini akan menghapus pemasok secara permanen.',
+  deletingMessage: 'Menghapus...',
+  deleteSupplierButtonLabel: 'Hapus Pemasok',
+  processingMessage: 'Memproses...',
+  processingWaitMessage: 'Mohon tunggu sementara permintaan Anda diproses.',
+});

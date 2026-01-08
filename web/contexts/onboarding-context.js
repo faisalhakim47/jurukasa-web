@@ -4,10 +4,10 @@ import { defineWebComponent } from '#web/component.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { useBusyStateUntil } from '#web/contexts/ready-context.js';
-import { translator as t } from '#web/directives/translator.js';
 import { provideContext, useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 
 export class OnboardingContextElement extends HTMLElement {
@@ -18,6 +18,8 @@ export class OnboardingContextElement extends HTMLElement {
 
     const host = this;
     const database = useContext(host, DatabaseContextElement);
+
+    const t = useTranslator(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 

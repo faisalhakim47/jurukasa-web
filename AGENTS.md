@@ -30,19 +30,9 @@ Application shall be written targeting modern chromium-based browser version 140
 
 - Our development environment is mostly without build step. We use importmaps feature to point to library and internal modules. We use prebuild step only for external libraries such as `lit-html` and `@vue/reactivity`. Not all exports from those libraries are used, see the `web/vendor/` directory for more details. The vendor build script is `scripts/build.sh`.
 
-## Development Workflow
-
-There are 2 main roles in the development workflow: Developer and Tester
-
-- Tester shall implement proper test cases according to documents provided in `docs/` directory
-- Tester shall evaluate feedback from developer written in `test/issues/` directory
-- Developer shall refer to `test/` as specification source-of-truth
-- Developer shall plan/implement/fix the application according to `test/`
-- Developer shall provide feedback to incorrect/inconsistent and put it in the `test/issues/` directory
-
 ## Test Overview
 
 - Test suite uses playwright
 - Test file is located in `test/` directory or alongside its implementation file with `.spec.js` suffix
-- Run all tests by command `npm test` or `npx playwright test` (slow)
-- Run a test by command `npm test $TEST_FILE_RELATIVE_PATH` or `npx playwright test $TEST_FILE_RELATIVE_PATH` (fast)
+- Run all tests by command `npx playwright test` (slow)
+- Run a test by command `npx playwright test $SPEC_FILE_RELATIVE_PATH` (fast)

@@ -75,7 +75,7 @@ describe('Inventories View - Price Edit Button', function () {
     await expect(page.getByRole('button', { name: 'Test Product', exact: true })).toBeVisible();
 
     // Verify edit button exists beside unit price
-    await expect(page.getByRole('button', { name: 'Edit price for Test Product' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Update unit price for Test Product' })).toBeVisible();
   });
 
   test('it shall open price update dialog when edit button is clicked', async function ({ page }) {
@@ -133,7 +133,7 @@ describe('Inventories View - Price Edit Button', function () {
     await expect(page.getByRole('table', { name: 'Inventories list' })).toBeVisible();
 
     // Click edit button
-    await page.getByRole('button', { name: 'Edit price for Test Product' }).click();
+    await page.getByRole('button', { name: 'Update unit price for Test Product' }).click();
 
     // Price update dialog should open
     await expect(page.getByRole('dialog', { name: 'Update Unit Price' })).toBeVisible();
@@ -200,7 +200,7 @@ describe('Inventories View - Price Edit Button', function () {
     await expect(tableRow).toContainText('IDR 10,000');
 
     // Click edit button
-    await page.getByRole('button', { name: 'Edit price for Test Product' }).click();
+    await page.getByRole('button', { name: 'Update unit price for Test Product' }).click();
 
     // Update price in dialog
     await page.getByLabel('New Unit Price').clear();
@@ -286,12 +286,12 @@ describe('Inventories View - Price Edit Button', function () {
     await expect(page.getByRole('table', { name: 'Inventories list' })).toBeVisible();
 
     // Verify edit buttons exist for all inventories
-    await expect(page.getByRole('button', { name: 'Edit price for Product A' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Edit price for Product B' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Edit price for Product C' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Update unit price for Product A' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Update unit price for Product B' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Update unit price for Product C' })).toBeVisible();
 
     // Click edit button for Product B
-    await page.getByRole('button', { name: 'Edit price for Product B' }).click();
+    await page.getByRole('button', { name: 'Update unit price for Product B' }).click();
 
     // Verify correct product is shown in dialog
     await expect(page.getByRole('dialog', { name: 'Update Unit Price' })).toBeVisible();

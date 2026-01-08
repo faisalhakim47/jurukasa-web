@@ -13,6 +13,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -47,6 +48,7 @@ export class InventoriesViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const inventoryCreationDialog = useElement(host, InventoryCreationDialogElement);
     const inventoryDetailsDialog = useElement(host, InventoryDetailsDialogElement);
@@ -179,7 +181,7 @@ export class InventoriesViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading inventories"
+          aria-label="${t('inventory', 'loadingInventoriesViewAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -195,7 +197,7 @@ export class InventoriesViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading inventories...</p>
+          <p>${t('inventory', 'loadingInventoriesViewMessage')}</p>
         </div>
       `;
     }
@@ -219,11 +221,11 @@ export class InventoriesViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load inventories</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('inventory', 'unableToLoadInventoriesViewTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadInventories}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('inventory', 'retryButtonLabel')}
           </button>
         </div>
       `;
@@ -236,7 +238,7 @@ export class InventoriesViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 200px; min-width: 160px;">
             <div class="container">
               <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="inventory-search-input">Search</label>
+              <label for="inventory-search-input">${t('inventory', 'searchLabel')}</label>
               <input
                 ${readValue(state, 'searchQuery')}
                 id="inventory-search-input"
@@ -251,7 +253,7 @@ export class InventoriesViewElement extends HTMLElement {
           <!-- Stock Filter -->
           <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 160px; anchor-name: --stock-filter-menu-anchor;">
             <div class="container">
-              <label for="stock-filter-input">Stock</label>
+              <label for="stock-filter-input">${t('inventory', 'stockFilterLabel')}</label>
               <input
                 id="stock-filter-input"
                 type="button"
@@ -267,6 +269,13 @@ export class InventoriesViewElement extends HTMLElement {
           </div>
           <menu role="menu" popover id="stock-filter-menu" class="dropdown" style="position-anchor: --stock-filter-menu-anchor;">
             ${stockFilterOptions.map(function (option) {
+              const filterLabelMap = {
+                'All': t('inventory', 'filterAll'),
+                'In Stock': t('inventory', 'filterInStock'),
+                'Low Stock': t('inventory', 'filterLowStock'),
+                'Out of Stock': t('inventory', 'filterOutOfStock'),
+                'Negative Stock': t('inventory', 'filterNegativeStock'),
+              };
               return html`
                 <li>
                   <button
@@ -278,7 +287,7 @@ export class InventoriesViewElement extends HTMLElement {
                     aria-selected=${option === state.stockFilter ? 'true' : 'false'}
                   >
                     ${option === state.stockFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
-                    ${option}
+                    ${filterLabelMap[option] || option}
                   </button>
                 </li>
               `;
@@ -303,11 +312,11 @@ export class InventoriesViewElement extends HTMLElement {
           "
         >
           <material-symbols name="inventory_2" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No inventories found</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('inventory', 'noInventoriesFoundTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
             ${state.searchQuery || state.stockFilter !== 'All'
-              ? 'Try adjusting your search or filters.'
-              : 'Start by adding your first inventory item to track stock levels.'}
+              ? t('inventory', 'adjustSearchOrFiltersMessage')
+              : t('inventory', 'addFirstInventoryMessage')}
           </p>
           ${!state.searchQuery && state.stockFilter === 'All' ? html`
             <button
@@ -318,7 +327,7 @@ export class InventoriesViewElement extends HTMLElement {
               command="--open"
             >
               <material-symbols name="add"></material-symbols>
-              Add Inventory
+              ${t('inventory', 'addInventoryButtonLabel')}
             </button>
           ` : nothing}
         </div>
@@ -339,10 +348,10 @@ export class InventoriesViewElement extends HTMLElement {
      * @param {number} stock
      */
     function getStockStatusText(stock) {
-      if (stock < 0) return 'Negative';
-      if (stock === 0) return 'Out of Stock';
-      if (stock <= 10) return 'Low Stock';
-      return 'In Stock';
+      if (stock < 0) return t('inventory', 'stockStatusNegativeStock');
+      if (stock === 0) return t('inventory', 'stockStatusOutOfStock');
+      if (stock <= 10) return t('inventory', 'stockStatusLowStock');
+      return t('inventory', 'stockStatusInStock');
     }
 
     /**
@@ -377,7 +386,7 @@ export class InventoriesViewElement extends HTMLElement {
                 commandfor="inventory-price-update-dialog"
                 command="--open"
                 data-inventory-id="${inventory.id}"
-                aria-label="Edit price for ${inventory.name}"
+                aria-label="${t('inventory', 'updatePriceAriaLabel', inventory.name)}"
               >
                 <material-symbols name="edit" size="18"></material-symbols>
               </button>
@@ -413,7 +422,7 @@ export class InventoriesViewElement extends HTMLElement {
                 commandfor="inventory-discounts-edit-dialog"
                 command="--open"
                 data-inventory-id="${inventory.id}"
-                aria-label="Edit discounts for ${inventory.name}"
+                aria-label="${t('inventory', 'editDiscountsAriaLabel', inventory.name)}"
               >
                 <material-symbols name="edit" size="18"></material-symbols>
               </button>
@@ -443,7 +452,7 @@ export class InventoriesViewElement extends HTMLElement {
           "
         >
           <span class="body-small" style="color: var(--md-sys-color-on-surface-variant);">
-            Showing ${startItem}–${endItem} of ${state.totalCount}
+            ${t('inventory', 'paginationInfo', startItem, endItem, state.totalCount)}
           </span>
           <div style="display: flex; gap: 8px; align-items: center;">
             <button
@@ -462,7 +471,7 @@ export class InventoriesViewElement extends HTMLElement {
               data-page="${state.currentPage - 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="Previous page"
+              aria-label="${t('inventory', 'previousPageAriaLabel')}"
             >
               <material-symbols name="chevron_left"></material-symbols>
             </button>
@@ -475,7 +484,7 @@ export class InventoriesViewElement extends HTMLElement {
               data-page="${state.currentPage + 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Next page"
+              aria-label="${t('inventory', 'nextPageAriaLabel')}"
             >
               <material-symbols name="chevron_right"></material-symbols>
             </button>
@@ -499,17 +508,17 @@ export class InventoriesViewElement extends HTMLElement {
 
       return html`
         <div>
-          <table aria-label="Inventories list" style="--md-sys-density: -3;">
+          <table aria-label="${t('inventory', 'inventoriesListAriaLabel')}" style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col">Name</th>
-                <th scope="col" class="numeric" style="width: 120px;">Unit Price</th>
-                <th scope="col" class="numeric" style="width: 80px;">Stock</th>
-                <th scope="col" class="center" style="width: 100px;">Status</th>
-                <th scope="col" class="numeric" style="width: 120px;">Total Cost</th>
-                <th scope="col" class="numeric" style="width: 120px;">Avg Cost</th>
-                <th scope="col" class="numeric" style="width: 80px;">Sales</th>
-                <th scope="col" class="center" style="width: 120px;">Discounts</th>
+                <th scope="col">${t('inventory', 'tableHeaderName')}</th>
+                <th scope="col" class="numeric" style="width: 120px;">${t('inventory', 'tableHeaderUnitPrice')}</th>
+                <th scope="col" class="numeric" style="width: 80px;">${t('inventory', 'tableHeaderStock')}</th>
+                <th scope="col" class="center" style="width: 100px;">${t('inventory', 'tableHeaderStatus')}</th>
+                <th scope="col" class="numeric" style="width: 120px;">${t('inventory', 'tableHeaderTotalCost')}</th>
+                <th scope="col" class="numeric" style="width: 120px;">${t('inventory', 'tableHeaderAvgCost')}</th>
+                <th scope="col" class="numeric" style="width: 80px;">${t('inventory', 'tableHeaderSales')}</th>
+                <th scope="col" class="center" style="width: 120px;">${t('inventory', 'tableHeaderDiscounts')}</th>
               </tr>
             </thead>
             <tbody>
@@ -527,13 +536,13 @@ export class InventoriesViewElement extends HTMLElement {
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>
-              <button role="button" class="text" @click=${loadInventories} aria-label="Refresh inventories">
+              <button role="button" class="text" @click=${loadInventories} aria-label="${t('inventory', 'refreshAriaLabel')}">
                 <material-symbols name="refresh"></material-symbols>
-                Refresh
+                ${t('inventory', 'refreshButtonLabel')}
               </button>
               <button role="button" type="button" class="tonal" commandfor="inventory-creation-dialog" command="--open">
                 <material-symbols name="add"></material-symbols>
-                Add Inventory
+                ${t('inventory', 'addInventoryButtonLabel')}
               </button>
             </div>
           </div>

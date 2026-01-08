@@ -10,6 +10,7 @@ import { useAttribute } from '#web/hooks/use-attribute.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useElement } from '#web/hooks/use-element.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { sleep } from '#web/tools/timing.js';
@@ -116,6 +117,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
 
+    const t = useTranslator(host);
     const errorAlertDialog = useElement(host, HTMLDialogElement);
 
     const dialog = useDialog(host);
@@ -313,7 +315,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading accounts"
+          aria-label="${t('account', 'loadingAccountsAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -329,7 +331,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading accounts...</p>
+          <p>${t('account', 'loadingAccountsMessage')}</p>
         </div>
       `;
     }
@@ -350,7 +352,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
         >
           <material-symbols name="search_off" size="48"></material-symbols>
           <p style="color: var(--md-sys-color-on-surface-variant);">
-            ${state.searchQuery ? 'No accounts match your search.' : 'No active accounts found.'}
+            ${state.searchQuery ? t('account', 'noAccountsMatchMessage') : t('account', 'noActiveAccountsMessage')}
           </p>
         </div>
       `;
@@ -406,17 +408,17 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
         <div style="display: flex; flex-direction: column; gap: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <p class="body-small" style="color: var(--md-sys-color-on-surface-variant);">
-              ${assignedCount} account${assignedCount !== 1 ? 's' : ''} assigned
-              ${isUniqueTag() ? html`<span style="color: var(--md-sys-color-error);"> (unique tag - only one account allowed)</span>` : nothing}
+              ${assignedCount === 1 ? t('account', 'accountsAssignedMessage', assignedCount) : t('account', 'accountsAssignedMessagePlural', assignedCount)}
+              ${isUniqueTag() ? html`<span style="color: var(--md-sys-color-error);">${' ' + t('account', 'uniqueTagWarning')}</span>` : nothing}
             </p>
           </div>
           <div style="max-height: 400px; overflow-y: auto;">
-            <table aria-label="Accounts list" style="--md-sys-density: -3;">
+            <table aria-label="${t('account', 'accountsListAriaLabel')}" style="--md-sys-density: -3;">
               <thead>
                 <tr>
                   <th scope="col" style="width: 48px;"></th>
-                  <th scope="col" style="width: 100px;">Code</th>
-                  <th scope="col">Name</th>
+                  <th scope="col" style="width: 100px;">${t('account', 'tableHeaderCode')}</th>
+                  <th scope="col">${t('account', 'tableHeaderName')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -440,7 +442,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
         >
           <div class="container">
             <header>
-              <h2 id="account-tag-assignment-dialog-title">Manage Tag: ${dialog.context?.dataset.tag || 'Unknown'}</h2>
+              <h2 id="account-tag-assignment-dialog-title">${t('account', 'manageTagDialogTitle', dialog.context?.dataset.tag || 'Unknown')}</h2>
               <button
                 role="button"
                 type="button"
@@ -461,7 +463,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
 
               ${category ? html`
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <span class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Category:</span>
+                  <span class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('account', 'categoryLabel')}</span>
                   <span
                     class="label-medium"
                     style="
@@ -479,7 +481,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
               <div class="outlined-text-field" style="--md-sys-density: -4;">
                 <div class="container">
                   <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-                  <label for="account-search-input">Search accounts</label>
+                  <label for="account-search-input">${t('account', 'searchAccountsLabel')}</label>
                   <input
                     id="account-search-input"
                     type="text"
@@ -499,7 +501,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('account', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${state.error?.message}</p>
@@ -511,7 +513,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('account', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>

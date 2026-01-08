@@ -7,6 +7,7 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useContext } from '#web/hooks/use-context.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { webStyleSheets } from '#web/styles.js';
@@ -44,6 +45,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const errorAlertDialog = useDialog(host);
 
@@ -198,10 +200,10 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
         for (let i = 0; i < state.discounts.length; i++) {
           const discount = state.discounts[i];
           if (discount.multiple_of_quantity < 1) {
-            throw new Error(`Row ${i + 1}: Multiple of Quantity must be at least 1.`);
+            throw new Error(t('inventory', 'discountValidationErrorPrefix', i + 1) + ' ' + t('inventory', 'multipleOfQuantityMinError'));
           }
           if (discount.amount <= 0) {
-            throw new Error(`Row ${i + 1}: Discount Amount must be greater than 0.`);
+            throw new Error(t('inventory', 'discountValidationErrorPrefix', i + 1) + ' ' + t('inventory', 'discountAmountPositiveError'));
           }
         }
 
@@ -209,7 +211,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
         const quantities = state.discounts.map(function (d) { return d.multiple_of_quantity; });
         const uniqueQuantities = new Set(quantities);
         if (quantities.length !== uniqueQuantities.size) {
-          throw new Error('Each discount must have a unique "Every N Items" value.');
+          throw new Error(t('inventory', 'uniqueQuantityError'));
         }
 
         // Delete all existing discounts for this inventory
@@ -263,7 +265,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading inventory discounts"
+          aria-label="${t('inventory', 'loadingInventoryAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -279,7 +281,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading discounts...</p>
+          <p>${t('inventory', 'loadingInventoryMessage')}</p>
         </div>
       `;
     }
@@ -299,8 +301,8 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
           "
         >
           <material-symbols name="inventory_2" size="48"></material-symbols>
-          <h3 class="title-large">Inventory Not Found</h3>
-          <p style="color: var(--md-sys-color-on-surface-variant);">The requested inventory could not be found.</p>
+          <h3 class="title-large">${t('inventory', 'inventoryNotFoundTitle')}</h3>
+          <p style="color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'inventoryNotFoundMessage')}</p>
         </div>
       `;
     }
@@ -332,7 +334,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
                 font-size: 14px;
                 box-sizing: border-box;
               "
-              aria-label="Every N Items for row ${index + 1}"
+              aria-label="${t('inventory', 'everyNItemsInputAriaLabel', index + 1)}"
             />
           </td>
           <td style="padding: 8px;">
@@ -354,7 +356,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
                 font-size: 14px;
                 box-sizing: border-box;
               "
-              aria-label="Discount Amount for row ${index + 1}"
+              aria-label="${t('inventory', 'discountAmountInputAriaLabel', index + 1)}"
             />
           </td>
           <td class="numeric" style="padding: 8px; white-space: nowrap;">
@@ -367,7 +369,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
               class="text"
               data-index="${index}"
               @click=${handleRemoveRow}
-              aria-label="Remove discount row ${index + 1}"
+              aria-label="${t('inventory', 'removeDiscountAriaLabel', index + 1)}"
               style="padding: 4px;"
             >
               <material-symbols name="delete" size="20"></material-symbols>
@@ -387,35 +389,34 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
             <div role="progressbar" class="linear indeterminate">
               <div class="track"><div class="indicator"></div></div>
             </div>
-            <p>Saving discounts...</p>
+            <p>${t('inventory', 'savingDiscountsMessage')}</p>
           </div>
         ` : nothing}
 
         <!-- Inventory Info -->
         <div style="background-color: var(--md-sys-color-primary-container); padding: 12px; border-radius: var(--md-sys-shape-corner-small); margin-bottom: 16px;">
-          <p class="label-small" style="margin: 0; color: var(--md-sys-color-on-primary-container);">Inventory</p>
+          <p class="label-small" style="margin: 0; color: var(--md-sys-color-on-primary-container);">${t('inventory', 'inventoryFieldLabel')}</p>
           <p class="body-large" style="margin: 0; font-weight: 500; color: var(--md-sys-color-on-primary-container);">${inventory.name}</p>
           <p class="body-small" style="margin: 4px 0 0 0; color: var(--md-sys-color-on-primary-container);">
-            Unit Price: ${i18n.displayCurrency(inventory.unit_price)}
+            ${t('inventory', 'unitPriceFieldLabel')}: ${i18n.displayCurrency(inventory.unit_price)}
           </p>
         </div>
 
         <!-- Discount Description -->
         <div style="background-color: var(--md-sys-color-surface-container); padding: 12px; border-radius: var(--md-sys-shape-corner-small); margin-bottom: 16px;">
           <p class="body-small" style="margin: 0; color: var(--md-sys-color-on-surface-variant);">
-            <strong>How discounts work:</strong> For "Every N Items", the discount applies per N items purchased. 
-            Example: If N=3 and discount is 500, buying 7 items gives (7÷3)×500 = 1000 off.
+            ${t('inventory', 'discountDescriptionText')}
           </p>
         </div>
 
         <!-- Discounts Table -->
         <div style="overflow-x: auto;">
-          <table aria-label="Inventory discounts" style="--md-sys-density: -2; width: 100%;">
+          <table aria-label="${t('inventory', 'discountsTableAriaLabel')}" style="--md-sys-density: -2; width: 100%;">
             <thead>
               <tr>
-                <th scope="col" style="width: 140px;">Every N Items</th>
-                <th scope="col" style="width: 140px;">Discount Amount</th>
-                <th scope="col" class="numeric" style="width: 140px;">Total Price</th>
+                <th scope="col" style="width: 140px;">${t('inventory', 'everyNItemsColumnLabel')}</th>
+                <th scope="col" style="width: 140px;">${t('inventory', 'discountAmountColumnLabel')}</th>
+                <th scope="col" class="numeric" style="width: 140px;">${t('inventory', 'totalPriceColumnLabel')}</th>
                 <th scope="col" style="width: 60px;"></th>
               </tr>
             </thead>
@@ -423,7 +424,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
               ${state.discounts.length === 0 ? html`
                 <tr>
                   <td colspan="4" style="text-align: center; padding: 24px; color: var(--md-sys-color-on-surface-variant);">
-                    No discounts configured. Click "Add Discount" to create one.
+                    ${t('inventory', 'noDiscountsConfiguredMessage')}
                   </td>
                 </tr>
               ` : state.discounts.map(renderDiscountRow)}
@@ -440,7 +441,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
             @click=${handleAddRow}
           >
             <material-symbols name="add"></material-symbols>
-            Add Discount
+            ${t('inventory', 'addDiscountButtonLabel')}
           </button>
         </div>
       `;
@@ -456,7 +457,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="inventory-discounts-edit-dialog-title">Edit Inventory Discounts</h2>
+              <h2 id="inventory-discounts-edit-dialog-title">${t('inventory', 'discountsEditDialogTitle')}</h2>
               <button
                 role="button"
                 type="button"
@@ -469,7 +470,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
                 type="submit"
                 name="action"
                 ?disabled=${form.state === 'submitting' || !state.inventory}
-              >Save</button>
+              >${t('inventory', 'saveButtonLabel')}</button>
             </header>
 
             <div class="content" style="max-width: 600px; margin: 0 auto; padding: 16px;">
@@ -484,7 +485,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('inventory', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${form.error?.message}</p>
@@ -496,7 +497,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('inventory', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>

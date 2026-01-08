@@ -10,6 +10,7 @@ import { useAttribute } from '#web/hooks/use-attribute.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
@@ -37,6 +38,7 @@ export class StockTakingDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const errorAlertDialog = useDialog(host);
 
@@ -200,7 +202,7 @@ export class StockTakingDialogElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading inventory"
+          aria-label="${t('stock', 'loadingInventoryAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -216,7 +218,7 @@ export class StockTakingDialogElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading inventory...</p>
+          <p>${t('stock', 'loadingInventoryMessage')}</p>
         </div>
       `;
     }
@@ -236,9 +238,9 @@ export class StockTakingDialogElement extends HTMLElement {
           "
         >
           <material-symbols name="inventory_2" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No inventory selected</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('stock', 'noInventorySelectedTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
-            Please select an inventory item from the list to perform stock taking.
+            ${t('stock', 'noInventorySelectedMessage')}
           </p>
         </div>
       `;
@@ -257,16 +259,16 @@ export class StockTakingDialogElement extends HTMLElement {
             <h3 class="title-medium" style="margin: 0 0 12px 0;">${state.inventory.name}</h3>
             ${state.inventory.unit_of_measurement ? html`
               <p class="body-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0 0 12px 0;">
-                Unit: ${state.inventory.unit_of_measurement}
+                ${t('stock', 'unitLabel')}: ${state.inventory.unit_of_measurement}
               </p>
             ` : nothing}
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">Current Stock</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">${t('stock', 'currentStockLabel')}</p>
                 <p class="body-large" style="margin: 0;">${state.inventory.stock}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">Current Cost</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">${t('stock', 'currentCostLabel')}</p>
                 <p class="body-large" style="margin: 0;">${i18n.displayCurrency(state.inventory.cost)}</p>
               </div>
             </div>
@@ -275,7 +277,7 @@ export class StockTakingDialogElement extends HTMLElement {
           <!-- Actual Stock Input -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="actual-stock-input">Actual Stock Count</label>
+              <label for="actual-stock-input">${t('stock', 'actualStockCountLabel')}</label>
               <input
                 id="actual-stock-input"
                 name="actualStock"
@@ -287,16 +289,16 @@ export class StockTakingDialogElement extends HTMLElement {
                 @input=${handleActualStockInput}
               />
             </div>
-            <div class="supporting-text">Enter the physically counted stock quantity</div>
+            <div class="supporting-text">${t('stock', 'actualStockCountSupportingText')}</div>
           </div>
 
           <!-- Variance Preview -->
           ${state.actualStock !== null ? html`
             <div style="background-color: var(--md-sys-color-surface-container-high); padding: 16px; border-radius: var(--md-sys-shape-corner-medium);">
-              <h4 class="title-small" style="margin: 0 0 12px 0;">Adjustment Preview</h4>
+              <h4 class="title-small" style="margin: 0 0 12px 0;">${t('stock', 'adjustmentPreviewTitle')}</h4>
               <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
                 <div>
-                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">Stock Variance</p>
+                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">${t('stock', 'stockVarianceLabel')}</p>
                   <p
                     class="body-large"
                     style="
@@ -308,7 +310,7 @@ export class StockTakingDialogElement extends HTMLElement {
                   </p>
                 </div>
                 <div>
-                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">Cost Adjustment</p>
+                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">${t('stock', 'costAdjustmentLabel')}</p>
                   <p
                     class="body-large"
                     style="
@@ -320,19 +322,19 @@ export class StockTakingDialogElement extends HTMLElement {
                   </p>
                 </div>
                 <div>
-                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">New Stock</p>
+                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">${t('stock', 'newStockLabel')}</p>
                   <p class="body-large" style="margin: 0;">${state.actualStock}</p>
                 </div>
                 <div>
-                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">New Cost</p>
+                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant); margin: 0;">${t('stock', 'newCostLabel')}</p>
                   <p class="body-large" style="margin: 0;">${i18n.displayCurrency(actualCost)}</p>
                 </div>
               </div>
               ${variance.cost !== 0 ? html`
                 <p class="body-small" style="margin: 12px 0 0 0; color: var(--md-sys-color-on-surface-variant);">
                   ${variance.cost > 0 
-                    ? 'A journal entry will be created to record the inventory gain.'
-                    : 'A journal entry will be created to record the inventory shrinkage.'}
+                    ? t('stock', 'inventoryGainJournalNote')
+                    : t('stock', 'inventoryShrinkageJournalNote')}
                 </p>
               ` : nothing}
             </div>
@@ -351,7 +353,7 @@ export class StockTakingDialogElement extends HTMLElement {
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="stock-taking-dialog-title">Stock Taking</h2>
+              <h2 id="stock-taking-dialog-title">${t('stock', 'stockTakingDialogTitle')}</h2>
               <button
                 role="button"
                 type="button"
@@ -364,7 +366,7 @@ export class StockTakingDialogElement extends HTMLElement {
                 type="submit"
                 name="action"
                 ?disabled=${!state.inventory || state.actualStock === null}
-              >Record Stock Taking</button>
+              >${t('stock', 'recordStockTakingButtonLabel')}</button>
             </header>
 
             <div class="content">
@@ -373,7 +375,7 @@ export class StockTakingDialogElement extends HTMLElement {
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
                   </div>
-                  <p>Recording stock taking...</p>
+                  <p>${t('stock', 'recordingStockTakingMessage')}</p>
                 </div>
               ` : nothing}
 
@@ -386,7 +388,7 @@ export class StockTakingDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('stock', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${form.error?.message}</p>
@@ -398,7 +400,7 @@ export class StockTakingDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('stock', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>

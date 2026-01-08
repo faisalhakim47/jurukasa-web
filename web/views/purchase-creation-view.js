@@ -12,6 +12,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
@@ -54,6 +55,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
     const router = useContext(host, RouterContextElement);
+    const t = useTranslator(host);
 
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -265,12 +267,12 @@ export class PurchaseCreationViewElement extends HTMLElement {
       event.preventDefault();
 
       if (!state.selectedSupplierId) {
-        form.error = new Error('Please select a supplier.');
+        form.error = new Error(t('purchase', 'selectSupplierError'));
         return;
       }
 
       if (state.lines.length === 0) {
-        form.error = new Error('Please add at least one item to the purchase.');
+        form.error = new Error(t('purchase', 'addAtLeastOneItemError'));
         return;
       }
 
@@ -435,11 +437,11 @@ export class PurchaseCreationViewElement extends HTMLElement {
           background-color: var(--md-sys-color-surface);
         ">
           <header style="padding: 16px; border-bottom: 1px solid var(--md-sys-color-outline-variant);">
-            <h3 class="title-medium" style="margin: 0 0 12px 0;">Products</h3>
+            <h3 class="title-medium" style="margin: 0 0 12px 0;">${t('purchase', 'productsLabel')}</h3>
             <div class="outlined-text-field" style="--md-sys-density: -4;">
               <div class="container">
                 <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-                <label for="inventory-search-input">Search</label>
+                <label for="inventory-search-input">${t('purchase', 'searchLabel')}</label>
                 <input
                   ${readValue(state, 'inventorySearchQuery')}
                   id="inventory-search-input"
@@ -463,7 +465,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
             ` : state.inventories.length === 0 ? html`
               <div style="text-align: center; padding: 24px; color: var(--md-sys-color-on-surface-variant);">
                 <material-symbols name="inventory_2" size="48"></material-symbols>
-                <p>No products found</p>
+                <p>${state.inventorySearchQuery ? t('purchase', 'noProductsFoundMessage') : t('purchase', 'noProductsAvailableMessage')}</p>
               </div>
             ` : html`
               <div role="list">
@@ -479,7 +481,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
                       <div class="content">
                         <span class="headline">${inventory.name}</span>
                         <span class="supporting-text">
-                          Stock: ${inventory.stock}${inventory.unit_of_measurement ? ` ${inventory.unit_of_measurement}` : ''} | ${i18n.displayCurrency(inventory.unit_price)}
+                          ${t('purchase', 'stockLabel')}: ${inventory.stock}${inventory.unit_of_measurement ? ` ${inventory.unit_of_measurement}` : ''} | ${i18n.displayCurrency(inventory.unit_price)}
                         </span>
                       </div>
                     </div>
@@ -498,7 +500,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 200px;">
             <div class="container">
               <material-symbols name="schedule" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="purchase-date-input">Purchase Date</label>
+              <label for="purchase-date-input">${t('purchase', 'purchaseDateLabel')}</label>
               <input
                 id="purchase-date-input"
                 type="date"
@@ -520,7 +522,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
               padding-inline: 12px;
             ">
               <div style="display: flex; gap: 4px; line-height: var(--md-sys-typescale-body-large-line-height);">
-                <span style="color: var(--md-sys-color-on-surface-variant);">Selected supplier: </span>
+                <span style="color: var(--md-sys-color-on-surface-variant);">${t('purchase', 'selectedSupplierLabel')} </span>
                 <span style="font-weight: 500;">${state.selectedSupplierName}</span>
                 ${state.selectedSupplierPhone ? html`<span style="color: var(--md-sys-color-on-surface-variant);">(${state.selectedSupplierPhone})</span>` : nothing}
               </div>
@@ -528,7 +530,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
                 role="button"
                 type="button"
                 class="text"
-                aria-label="Change supplier"
+                aria-label=${t('purchase', 'changeSupplierAriaLabel')}
                 commandfor="supplier-selector-dialog"
                 command="--open"
               >
@@ -545,7 +547,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
               command="--open"
             >
               <material-symbols name="local_shipping"></material-symbols>
-              Select Supplier
+              ${t('purchase', 'selectSupplierButtonLabel')}
             </button>
             <button
               role="button"
@@ -553,10 +555,10 @@ export class PurchaseCreationViewElement extends HTMLElement {
               class="filled-tonal"
               commandfor="supplier-creation-dialog"
               command="--open"
-              aria-label="Add new supplier"
+              aria-label=${t('purchase', 'newSupplierAriaLabel')}
             >
               <material-symbols name="person_add"></material-symbols>
-              New Supplier
+              ${t('purchase', 'newSupplierButtonLabel')}
             </button>
           `}
         </div>
@@ -567,10 +569,10 @@ export class PurchaseCreationViewElement extends HTMLElement {
       return html`
         <section style="margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h3 class="title-small" style="margin: 0;">Items</h3>
+            <h3 class="title-small" style="margin: 0;">${t('purchase', 'itemsLabel')}</h3>
             ${state.lines.length > 0 ? html`
               <span class="label-medium" style="color: var(--md-sys-color-on-surface-variant);">
-                ${state.lines.length} item${state.lines.length !== 1 ? 's' : ''}
+                ${state.lines.length === 1 ? t('purchase', 'itemsCountLabel', state.lines.length) : t('purchase', 'itemsCountPluralLabel', state.lines.length)}
               </span>
             ` : nothing}
           </div>
@@ -584,22 +586,22 @@ export class PurchaseCreationViewElement extends HTMLElement {
             ">
               ${!state.selectedSupplierId ? html`
                 <material-symbols name="local_shipping" size="48"></material-symbols>
-                <p style="margin: 8px 0 0 0;">No supplier selected</p>
-                <p class="body-small">Select a supplier to start adding items</p>
+                <p style="margin: 8px 0 0 0;">${t('purchase', 'noSupplierSelectedTitle')}</p>
+                <p class="body-small">${t('purchase', 'selectSupplierToStartMessage')}</p>
               ` : html`
                 <material-symbols name="shopping_cart" size="48"></material-symbols>
-                <p style="margin: 8px 0 0 0;">No items added yet</p>
-                <p class="body-small">Select products from the right panel</p>
+                <p style="margin: 8px 0 0 0;">${t('purchase', 'noItemsAddedTitle')}</p>
+                <p class="body-small">${t('purchase', 'selectProductsFromPanelMessage')}</p>
               `}
             </div>
           ` : html`
-            <table role="table" aria-label="Purchase items" style="--md-sys-density: -4; width: 100%;">
+            <table role="table" aria-label=${t('purchase', 'purchaseItemsTableAriaLabel')} style="--md-sys-density: -4; width: 100%;">
               <thead>
                 <tr>
-                  <th scope="col">Product</th>
-                  <th scope="col" class="numeric" style="width: 80px;">Supp. Qty</th>
-                  <th scope="col" class="numeric" style="width: 80px;">Int. Qty</th>
-                  <th scope="col" class="numeric" style="width: 100px;">Total</th>
+                  <th scope="col">${t('purchase', 'tableHeaderProduct')}</th>
+                  <th scope="col" class="numeric" style="width: 80px;">${t('purchase', 'tableHeaderSupplierQty')}</th>
+                  <th scope="col" class="numeric" style="width: 80px;">${t('purchase', 'tableHeaderInternalQty')}</th>
+                  <th scope="col" class="numeric" style="width: 100px;">${t('purchase', 'tableHeaderLineTotal')}</th>
                   <th scope="col" style="width: 48px;"></th>
                 </tr>
               </thead>
@@ -624,7 +626,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
                             class="text"
                             data-index="${index}"
                             @click=${handleDecrementLineQuantity}
-                            aria-label="Decrease quantity"
+                            aria-label=${t('purchase', 'decreaseQuantityAriaLabel')}
                             style="min-width: 32px; min-height: 32px; padding: 0;"
                           >
                             <material-symbols name="remove" size="20"></material-symbols>
@@ -635,7 +637,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
                             class="text"
                             data-index="${index}"
                             @click=${handleIncrementLineQuantity}
-                            aria-label="Increase quantity"
+                            aria-label=${t('purchase', 'increaseQuantityAriaLabel')}
                             style="min-width: 32px; min-height: 32px; padding: 0;"
                           >
                             <material-symbols name="add" size="20"></material-symbols>
@@ -646,7 +648,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
                             class="text"
                             data-index="${index}"
                             @click=${handleRemoveLine}
-                            aria-label="Remove item"
+                            aria-label=${t('purchase', 'removeItemAriaLabel')}
                             style="color: var(--md-sys-color-error); min-width: 32px; min-height: 32px; padding: 0;"
                           >
                             <material-symbols name="delete" size="20"></material-symbols>
@@ -659,7 +661,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">
-                  <td colspan="3">Total</td>
+                  <td colspan="3">${t('purchase', 'totalLabel')}</td>
                   <td class="numeric">${i18n.displayCurrency(getTotalAmount())}</td>
                   <td></td>
                 </tr>
@@ -674,7 +676,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
       return html`
         <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="title-medium" style="font-weight: 700;">Total</span>
+            <span class="title-medium" style="font-weight: 700;">${t('purchase', 'totalLabel')}</span>
             <span class="title-medium" style="font-weight: 700; color: var(--md-sys-color-primary);">
               ${i18n.displayCurrency(getTotalAmount())}
             </span>
@@ -696,7 +698,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
             ?disabled=${state.lines.length === 0}
           >
             <material-symbols name="delete_sweep"></material-symbols>
-            Clear
+            ${t('purchase', 'clearButtonLabel')}
           </button>
           <button
             role="button"
@@ -705,7 +707,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
             @click=${() => router.navigate({ pathname: '/procurement/purchases', replace: false })}
           >
             <material-symbols name="cancel"></material-symbols>
-            Cancel
+            ${t('purchase', 'cancelButtonLabel')}
           </button>
           <button
             role="button"
@@ -715,10 +717,10 @@ export class PurchaseCreationViewElement extends HTMLElement {
           >
             ${form.state === 'submitting' ? html`
               <material-symbols name="progress_activity"></material-symbols>
-              Saving...
+              ${t('purchase', 'savingMessage')}
             ` : html`
               <material-symbols name="save"></material-symbols>
-              Save Purchase
+              ${t('purchase', 'savePurchaseButtonLabel')}
             `}
           </button>
         </div>
@@ -737,7 +739,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
             <hgroup>
               <h1 style="display: flex; align-items: center; gap: 8px;">
                 <material-symbols name="add_shopping_cart" size="32"></material-symbols>
-                New Purchase
+                ${t('purchase', 'newPurchaseTitle')}
               </h1>
             </hgroup>
           </header>
@@ -784,7 +786,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('purchase', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${form.error?.message}</p>
@@ -796,7 +798,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('purchase', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>
@@ -806,10 +808,10 @@ export class PurchaseCreationViewElement extends HTMLElement {
           <div class="container">
             <material-symbols name="check_circle" style="color: var(--md-sys-color-primary);"></material-symbols>
             <header>
-              <h3>Purchase Saved</h3>
+              <h3>${t('purchase', 'purchaseSavedTitle')}</h3>
             </header>
             <div class="content">
-              <p>Purchase #${form.lastPurchaseId} has been saved successfully.</p>
+              <p>${t('purchase', 'purchaseSavedMessage', form.lastPurchaseId)}</p>
             </div>
           </div>
         </dialog>

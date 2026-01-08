@@ -12,6 +12,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -36,6 +37,7 @@ export class StockTakingCreationViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -148,7 +150,7 @@ export class StockTakingCreationViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading inventories"
+          aria-label="${t('stock', 'loadingInventoriesCreationAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -164,7 +166,7 @@ export class StockTakingCreationViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading inventories...</p>
+          <p>${t('stock', 'loadingInventoriesCreationMessage')}</p>
         </div>
       `;
     }
@@ -188,11 +190,11 @@ export class StockTakingCreationViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load inventories</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('stock', 'unableToLoadInventoriesCreationTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadInventories}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('stock', 'retryButtonLabel')}
           </button>
         </div>
       `;
@@ -205,7 +207,7 @@ export class StockTakingCreationViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 200px; min-width: 160px;">
             <div class="container">
               <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="inventory-search-input">Search</label>
+              <label for="inventory-search-input">${t('stock', 'searchLabel')}</label>
               <input
                 ${readValue(state, 'searchQuery')}
                 id="inventory-search-input"
@@ -235,11 +237,11 @@ export class StockTakingCreationViewElement extends HTMLElement {
           "
         >
           <material-symbols name="inventory_2" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No inventories found</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('stock', 'noInventoriesFoundCreationTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
             ${state.searchQuery
-              ? 'Try adjusting your search query.'
-              : 'Add inventory items first before performing stock taking.'}
+              ? t('stock', 'adjustSearchQueryMessage')
+              : t('stock', 'addInventoryFirstMessage')}
           </p>
         </div>
       `;
@@ -260,11 +262,11 @@ export class StockTakingCreationViewElement extends HTMLElement {
      * @param {number | null} latestStockTakingTime
      */
     function getAuditStatusText(latestStockTakingTime) {
-      if (latestStockTakingTime === null) return 'Never';
+      if (latestStockTakingTime === null) return t('stock', 'auditStatusNever');
       const daysSinceAudit = Math.floor((Date.now() - latestStockTakingTime) / (1000 * 60 * 60 * 24));
-      if (daysSinceAudit > 30) return 'Overdue';
-      if (daysSinceAudit > 7) return 'Due Soon';
-      return 'Recent';
+      if (daysSinceAudit > 30) return t('stock', 'auditStatusOverdue');
+      if (daysSinceAudit > 7) return t('stock', 'auditStatusDueSoon');
+      return t('stock', 'auditStatusRecent');
     }
 
     /**
@@ -292,7 +294,7 @@ export class StockTakingCreationViewElement extends HTMLElement {
                 data-inventory-id="${inventory.id}"
               >
                 <material-symbols name="fact_check"></material-symbols>
-                Audit
+                ${t('stock', 'auditButtonLabel')}
               </button>
             </span>
           </td>
@@ -337,7 +339,7 @@ export class StockTakingCreationViewElement extends HTMLElement {
           "
         >
           <span class="body-small" style="color: var(--md-sys-color-on-surface-variant);">
-            Showing ${startItem}–${endItem} of ${state.totalCount}
+            ${t('stock', 'showingPaginationInfo', startItem, endItem, state.totalCount)}
           </span>
           <div style="display: flex; gap: 8px; align-items: center;">
             <button
@@ -346,7 +348,7 @@ export class StockTakingCreationViewElement extends HTMLElement {
               data-page="1"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="First page"
+              aria-label="${t('stock', 'firstPageAriaLabel')}"
             >
               <material-symbols name="first_page"></material-symbols>
             </button>
@@ -356,12 +358,12 @@ export class StockTakingCreationViewElement extends HTMLElement {
               data-page="${state.currentPage - 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="Previous page"
+              aria-label="${t('stock', 'previousPageAriaLabel')}"
             >
               <material-symbols name="chevron_left"></material-symbols>
             </button>
             <span class="body-medium" style="min-width: 80px; text-align: center;">
-              Page ${state.currentPage} of ${totalPages}
+              ${t('stock', 'pageOfPageInfo', state.currentPage, totalPages)}
             </span>
             <button
               role="button"
@@ -369,7 +371,7 @@ export class StockTakingCreationViewElement extends HTMLElement {
               data-page="${state.currentPage + 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Next page"
+              aria-label="${t('stock', 'nextPageAriaLabel')}"
             >
               <material-symbols name="chevron_right"></material-symbols>
             </button>
@@ -379,7 +381,7 @@ export class StockTakingCreationViewElement extends HTMLElement {
               data-page="${totalPages}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Last page"
+              aria-label="${t('stock', 'lastPageAriaLabel')}"
             >
               <material-symbols name="last_page"></material-symbols>
             </button>
@@ -393,14 +395,14 @@ export class StockTakingCreationViewElement extends HTMLElement {
 
       return html`
         <div>
-          <table aria-label="Inventories for stock taking" style="--md-sys-density: -3;">
+          <table aria-label="${t('stock', 'inventoriesTableAriaLabel')}" style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col">Name</th>
-                <th scope="col" class="center numeric" style="width: 80px;">Stock</th>
-                <th scope="col" style="width: 140px;">Last Audit</th>
-                <th scope="col" class="numeric" style="width: 120px;">Cost</th>
-                <th scope="col" class="center" style="width: 120px;">Status</th>
+                <th scope="col">${t('stock', 'tableHeaderName')}</th>
+                <th scope="col" class="center numeric" style="width: 80px;">${t('stock', 'tableHeaderStock')}</th>
+                <th scope="col" style="width: 140px;">${t('stock', 'tableHeaderLastAudit')}</th>
+                <th scope="col" class="numeric" style="width: 120px;">${t('stock', 'tableHeaderCost')}</th>
+                <th scope="col" class="center" style="width: 120px;">${t('stock', 'tableHeaderStatus')}</th>
               </tr>
             </thead>
             <tbody>
@@ -417,8 +419,8 @@ export class StockTakingCreationViewElement extends HTMLElement {
         <div style="display: flex; flex-direction: column; height: 100%;">
           <header class="app-bar" style="max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;">
             <hgroup>
-              <h1>New Stock Taking</h1>
-              <p>Select an inventory item to perform stock audit.</p>
+              <h1>${t('stock', 'newStockTakingTitle')}</h1>
+              <p>${t('stock', 'newStockTakingDescription')}</p>
             </hgroup>
           </header>
           
@@ -434,7 +436,7 @@ export class StockTakingCreationViewElement extends HTMLElement {
                 <material-symbols name="info" size="24"></material-symbols>
                 <div>
                   <p class="body-medium" style="margin: 0;">
-                    Select an inventory item to perform stock taking. Items are sorted by audit priority—those never audited or with the oldest audits appear first.
+                    ${t('stock', 'stockTakingInfoMessage')}
                   </p>
                 </div>
               </div>
@@ -443,9 +445,9 @@ export class StockTakingCreationViewElement extends HTMLElement {
             <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
               ${renderFilterControls()}
               <div>
-                <button role="button" class="text" @click=${loadInventories} aria-label="Refresh inventories">
+                <button role="button" class="text" @click=${loadInventories} aria-label="${t('stock', 'refreshAriaLabel')}">
                   <material-symbols name="refresh"></material-symbols>
-                  Refresh
+                  ${t('stock', 'refreshButtonLabel')}
                 </button>
               </div>
             </div>

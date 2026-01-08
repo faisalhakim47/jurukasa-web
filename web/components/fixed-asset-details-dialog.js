@@ -10,6 +10,7 @@ import { TimeContextElement } from '#web/contexts/time-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
@@ -62,6 +63,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const time = useContext(host, TimeContextElement);
 
+    const t = useTranslator(host);
     const errorAlertDialog = useDialog(host);
     const confirmDeleteDialog = useDialog(host);
     const dialog = useDialog(host);
@@ -201,7 +203,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
         const description = /** @type {string} */ (data.get('description'))?.trim() || null;
 
         // Validate inputs
-        if (!name) throw new Error('Asset name is required.');
+        if (!name) throw new Error(t('fixedAsset', 'assetNameRequired'));
 
         const currentTime = time.currentDate().getTime();
 
@@ -251,7 +253,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
 
         // Check if asset can be deleted (no accumulated depreciation)
         if (state.asset.accumulated_depreciation > 0) {
-          throw new Error('Cannot delete fixed asset with accumulated depreciation.');
+          throw new Error(t('fixedAsset', 'cannotDeleteWithDepreciation'));
         }
 
         // Delete the fixed asset
@@ -308,7 +310,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading fixed asset details"
+          aria-label="${t('fixedAsset', 'loadingDetailsLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -324,7 +326,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading asset details...</p>
+          <p>${t('fixedAsset', 'loadingDetailsLabel')}</p>
         </div>
       `;
     }
@@ -344,8 +346,8 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           "
         >
           <material-symbols name="real_estate_agent" size="48"></material-symbols>
-          <h3 class="title-large">Fixed Asset Not Found</h3>
-          <p style="color: var(--md-sys-color-on-surface-variant);">The requested fixed asset could not be found.</p>
+          <h3 class="title-large">${t('fixedAsset', 'assetNotFoundTitle')}</h3>
+          <p style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'assetNotFoundMessage')}</p>
         </div>
       `;
     }
@@ -364,14 +366,14 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
         <div style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
           <!-- Basic Info -->
           <section>
-            <h3 class="title-medium" style="margin-bottom: 16px;">Basic Information</h3>
+            <h3 class="title-medium" style="margin-bottom: 16px;">${t('fixedAsset', 'basicInfoSectionTitle')}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Name</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'nameLabel')}</p>
                 <p class="body-large">${asset.name}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Status</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'statusLabel')}</p>
                 <p class="body-large">
                   <span
                     class="label-small"
@@ -383,12 +385,12 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
                         ? 'background-color: var(--md-sys-color-surface-container-highest); color: var(--md-sys-color-on-surface-variant);'
                         : 'background-color: #E8F5E9; color: #1B5E20;'}
                     "
-                  >${asset.is_fully_depreciated === 1 ? 'Fully Depreciated' : 'Active'}</span>
+                  >${asset.is_fully_depreciated === 1 ? t('fixedAsset', 'statusFullyDepreciated') : t('fixedAsset', 'statusActive')}</span>
                 </p>
               </div>
               ${asset.description ? html`
                 <div style="grid-column: span 2;">
-                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Description</p>
+                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'descriptionInfoLabel')}</p>
                   <p class="body-large">${asset.description}</p>
                 </div>
               ` : nothing}
@@ -397,30 +399,30 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
 
           <!-- Financial Info -->
           <section>
-            <h3 class="title-medium" style="margin-bottom: 16px;">Financial Information</h3>
+            <h3 class="title-medium" style="margin-bottom: 16px;">${t('fixedAsset', 'financialInfoSectionTitle')}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Acquisition Date</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'acquisitionDateInfoLabel')}</p>
                 <p class="body-large">${i18n.date.format(new Date(asset.acquisition_time))}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Acquisition Cost</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'acquisitionCostInfoLabel')}</p>
                 <p class="body-large">${i18n.displayCurrency(asset.acquisition_cost)}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Useful Life</p>
-                <p class="body-large">${asset.useful_life_years} years</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'usefulLifeInfoLabel')}</p>
+                <p class="body-large">${t('fixedAsset', 'usefulLifeYearsFormat', asset.useful_life_years)}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Salvage Value</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'salvageValueInfoLabel')}</p>
                 <p class="body-large">${i18n.displayCurrency(asset.salvage_value)}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Annual Depreciation</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'annualDepreciationLabel')}</p>
                 <p class="body-large">${i18n.displayCurrency(annualDepreciation)}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Depreciable Amount</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'depreciableAmountLabel')}</p>
                 <p class="body-large">${i18n.displayCurrency(depreciableAmount)}</p>
               </div>
             </div>
@@ -428,14 +430,14 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
 
           <!-- Depreciation Progress -->
           <section>
-            <h3 class="title-medium" style="margin-bottom: 16px;">Depreciation Progress</h3>
+            <h3 class="title-medium" style="margin-bottom: 16px;">${t('fixedAsset', 'depreciationProgressSectionTitle')}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px;">
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Accumulated Depreciation</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'accumulatedDepreciationLabel')}</p>
                 <p class="body-large">${i18n.displayCurrency(asset.accumulated_depreciation)}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Book Value</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'bookValueLabel')}</p>
                 <p class="body-large" style="font-weight: 500;">${i18n.displayCurrency(bookValue)}</p>
               </div>
             </div>
@@ -474,22 +476,22 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
 
           <!-- Account Assignment -->
           <section>
-            <h3 class="title-medium" style="margin-bottom: 16px;">Account Assignment</h3>
+            <h3 class="title-medium" style="margin-bottom: 16px;">${t('fixedAsset', 'accountAssignmentSectionTitle')}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Asset Account</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'assetAccountLabel')}</p>
                 <p class="body-large">${asset.asset_account_code} - ${asset.asset_account_name}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Accumulated Depreciation Account</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'accumulatedDepreciationAccountInfoLabel')}</p>
                 <p class="body-large">${asset.accumulated_depreciation_account_code} - ${asset.accumulated_depreciation_account_name}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Depreciation Expense Account</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'depreciationExpenseAccountInfoLabel')}</p>
                 <p class="body-large">${asset.depreciation_expense_account_code} - ${asset.depreciation_expense_account_name}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Payment Account</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'paymentAccountInfoLabel')}</p>
                 <p class="body-large">${asset.payment_account_code} - ${asset.payment_account_name}</p>
               </div>
             </div>
@@ -498,13 +500,13 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           <!-- Depreciation History -->
           ${state.depreciationHistory.length > 0 ? html`
             <section>
-              <h3 class="title-medium" style="margin-bottom: 16px;">Depreciation History</h3>
-              <table aria-label="Depreciation history" style="--md-sys-density: -3;">
+              <h3 class="title-medium" style="margin-bottom: 16px;">${t('fixedAsset', 'depreciationHistorySectionTitle')}</h3>
+              <table aria-label="${t('fixedAsset', 'depreciationHistorySectionTitle')}" style="--md-sys-density: -3;">
                 <thead>
                   <tr>
-                    <th scope="col">Date</th>
-                    <th scope="col">Note</th>
-                    <th scope="col" class="numeric">Amount</th>
+                    <th scope="col">${t('fixedAsset', 'dateColumnInfo')}</th>
+                    <th scope="col">${t('fixedAsset', 'noteColumnInfo')}</th>
+                    <th scope="col" class="numeric">${t('fixedAsset', 'amountColumnInfo')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -512,7 +514,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
                     return html`
                       <tr>
                         <td>${i18n.date.format(new Date(entry.entry_time))}</td>
-                        <td>${entry.note || '—'}</td>
+                        <td>${entry.note || t('fixedAsset', 'noNoteLabel')}</td>
                         <td class="numeric">${i18n.displayCurrency(entry.amount)}</td>
                       </tr>
                     `;
@@ -525,9 +527,9 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           <!-- Delete Button (only if no depreciation) -->
           ${asset.accumulated_depreciation === 0 ? html`
             <section style="border-top: 1px solid var(--md-sys-color-outline-variant); padding-top: 24px; margin-top: 8px;">
-              <h3 class="title-medium" style="margin-bottom: 8px; color: var(--md-sys-color-error);">Danger Zone</h3>
+              <h3 class="title-medium" style="margin-bottom: 8px; color: var(--md-sys-color-error);">${t('fixedAsset', 'dangerZoneSectionTitle')}</h3>
               <p class="body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px;">
-                Deleting this asset will also remove its acquisition journal entry.
+                ${t('fixedAsset', 'dangerZoneWarning')}
               </p>
               <button
                 role="button"
@@ -536,7 +538,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
                 @click=${handleDeleteClick}
               >
                 <material-symbols name="delete"></material-symbols>
-                Delete Asset
+                ${t('fixedAsset', 'deleteAssetActionLabel')}
               </button>
             </section>
           ` : nothing}
@@ -555,14 +557,14 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
               <div role="progressbar" class="linear indeterminate">
                 <div class="track"><div class="indicator"></div></div>
               </div>
-              <p>Saving changes...</p>
+              <p>${t('fixedAsset', 'savingChangesLabel')}</p>
             </div>
           ` : nothing}
 
           <!-- Asset Name -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="edit-name-input">Asset Name</label>
+              <label for="edit-name-input">${t('fixedAsset', 'assetNameLabel')}</label>
               <input
                 id="edit-name-input"
                 name="name"
@@ -577,7 +579,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           <!-- Description -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="edit-description-input">Description (Optional)</label>
+              <label for="edit-description-input">${t('fixedAsset', 'descriptionLabel')}</label>
               <textarea
                 id="edit-description-input"
                 name="description"
@@ -591,14 +593,14 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
             <div style="padding: 12px 16px; background-color: var(--md-sys-color-surface-container); border-radius: var(--md-sys-shape-corner-medium);">
               <p class="body-medium" style="color: var(--md-sys-color-on-surface-variant);">
                 <material-symbols name="info" size="18" style="vertical-align: middle; margin-right: 4px;"></material-symbols>
-                Financial details cannot be modified because this asset has accumulated depreciation.
+                ${t('fixedAsset', 'editInfoMessage')}
               </p>
             </div>
           ` : nothing}
 
           <div style="display: flex; gap: 12px; justify-content: flex-end;">
-            <button role="button" type="button" class="text" @click=${toggleEditMode}>Cancel</button>
-            <button role="button" type="submit" class="tonal">Save Changes</button>
+            <button role="button" type="button" class="text" @click=${toggleEditMode}>${t('fixedAsset', 'cancelActionLabel')}</button>
+            <button role="button" type="submit" class="tonal">${t('fixedAsset', 'saveChangesActionLabel')}</button>
           </div>
         </form>
       `;
@@ -615,7 +617,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           <div class="container">
             <header>
               <h2 id="fixed-asset-details-dialog-title">
-                ${state.asset ? state.asset.name : 'Fixed Asset Details'}
+                ${state.asset ? state.asset.name : t('fixedAsset', 'detailsTitle')}
               </h2>
               <button
                 role="button"
@@ -627,7 +629,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
               ${state.asset && !state.isEditing ? html`
                 <button role="button" type="button" @click=${toggleEditMode}>
                   <material-symbols name="edit"></material-symbols>
-                  Edit
+                  ${t('fixedAsset', 'editActionLabel')}
                 </button>
               ` : nothing}
             </header>
@@ -645,7 +647,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('fixedAsset', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${state.error?.message}</p>
@@ -657,7 +659,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('fixedAsset', 'dismissLabel')}</button>
               </li>
             </menu>
           </div>
@@ -667,10 +669,10 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="warning"></material-symbols>
             <header>
-              <h3>Delete Fixed Asset?</h3>
+              <h3>${t('fixedAsset', 'confirmDeleteTitle')}</h3>
             </header>
             <div class="content">
-              <p>Are you sure you want to delete "${state.asset?.name}"? This action cannot be undone.</p>
+              <p>${t('fixedAsset', 'confirmDeleteMessage', state.asset?.name)}</p>
             </div>
             <menu>
               <li>
@@ -679,7 +681,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleCancelDelete}
-                >Cancel</button>
+                >${t('fixedAsset', 'cancelActionLabel')}</button>
               </li>
               <li>
                 <button
@@ -689,7 +691,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
                   style="--md-sys-color-secondary-container: var(--md-sys-color-error-container); --md-sys-color-on-secondary-container: var(--md-sys-color-on-error-container);"
                   @click=${handleConfirmDelete}
                   ?disabled=${state.isDeleting}
-                >${state.isDeleting ? 'Deleting...' : 'Delete'}</button>
+                >${state.isDeleting ? t('fixedAsset', 'deletingLabel') : t('fixedAsset', 'deleteConfirmActionLabel')}</button>
               </li>
             </menu>
           </div>

@@ -4,7 +4,7 @@ import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 const { describe } = test;
 
 describe('Fiscal Years', function () {
-  useConsoleOutput(test);
+  // useConsoleOutput(test);
 
   /**
    * @param {import('@playwright/test').Page} page
@@ -87,7 +87,7 @@ describe('Fiscal Years', function () {
     test('shall display Refresh button', async function ({ page }) {
       await setupDatabaseAndNavigateToFiscalYears(page, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('button', { name: 'Refresh fiscal years' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
     });
   });
 
@@ -195,7 +195,7 @@ describe('Fiscal Years', function () {
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
 
-      await expect(page.getByRole('dialog', { name: /FY 2025 Details/ })).toBeVisible();
+      await expect(page.getByRole('dialog', { name: /Fiscal Year Details/ })).toBeVisible();
     });
 
     test('shall display fiscal year details in dialog', async function ({ page }) {
@@ -211,7 +211,7 @@ describe('Fiscal Years', function () {
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
 
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await expect(detailsDialog.getByText('Period')).toBeVisible();
       await expect(detailsDialog.getByText('Financial Summary')).toBeVisible();
       await expect(detailsDialog.getByText('Total Revenue')).toBeVisible();
@@ -232,7 +232,7 @@ describe('Fiscal Years', function () {
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
 
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await expect(detailsDialog.getByRole('button', { name: 'Close Fiscal Year' })).toBeVisible();
     });
 
@@ -249,7 +249,7 @@ describe('Fiscal Years', function () {
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
 
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await expect(detailsDialog.getByText('Closing Requirements')).toBeVisible();
     });
   });
@@ -270,7 +270,7 @@ describe('Fiscal Years', function () {
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
 
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
 
       await expect(page.getByRole('alertdialog', { name: /Close Fiscal Year/ })).toBeVisible();
@@ -289,7 +289,7 @@ describe('Fiscal Years', function () {
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
 
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
 
       const confirmDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
@@ -311,7 +311,7 @@ describe('Fiscal Years', function () {
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
 
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
       const confirmDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
       await confirmDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
@@ -335,14 +335,14 @@ describe('Fiscal Years', function () {
       await expect(creationDialog).not.toBeVisible();
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
-      let detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      let detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
       const confirmDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
       await confirmDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
       await detailsDialog.getByRole('button', { name: 'Close dialog' }).click();
 
       await page.getByRole('table', { name: 'Fiscal years list' }).getByRole('button', { name: 'FY 2025', exact: true }).click();
-      detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
 
       await expect(detailsDialog.getByRole('button', { name: 'Close Fiscal Year' })).not.toBeVisible();
     });
@@ -362,7 +362,7 @@ describe('Fiscal Years', function () {
       await creationDialog.getByRole('button', { name: 'Create' }).click();
       await expect(creationDialog).not.toBeVisible();
 
-      await page.getByRole('button', { name: 'Refresh fiscal years' }).click();
+      await page.getByRole('button', { name: 'Refresh' }).click();
 
       await expect(page.getByRole('table', { name: 'Fiscal years list' })).toBeVisible();
       await expect(page.getByRole('row', { name: /FY 2025/ })).toBeVisible();
@@ -384,7 +384,7 @@ describe('Fiscal Years', function () {
       await expect(creationDialog).not.toBeVisible();
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
       const confirmDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
       await confirmDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
@@ -409,7 +409,7 @@ describe('Fiscal Years', function () {
       await expect(creationDialog).not.toBeVisible();
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
-      let detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      let detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
       const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
       await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
@@ -421,7 +421,7 @@ describe('Fiscal Years', function () {
       const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
       await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
 
-      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      const reversalDialog = page.getByRole('dialog', { name: 'FY 2025', exact: true });
       await expect(reversalDialog).toBeVisible();
     });
 
@@ -437,7 +437,7 @@ describe('Fiscal Years', function () {
       await expect(creationDialog).not.toBeVisible();
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
       const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
       await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
@@ -448,7 +448,7 @@ describe('Fiscal Years', function () {
       const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
       await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
 
-      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      const reversalDialog = page.getByRole('dialog', { name: 'FY 2025', exact: true });
       await expect(reversalDialog.getByText('About Reversal')).toBeVisible();
       await expect(reversalDialog.getByText(/This should only be done if the fiscal year was closed incorrectly/)).toBeVisible();
     });
@@ -465,7 +465,7 @@ describe('Fiscal Years', function () {
       await expect(creationDialog).not.toBeVisible();
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
       const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
       await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
@@ -475,7 +475,7 @@ describe('Fiscal Years', function () {
 
       const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
       await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
-      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      const reversalDialog = page.getByRole('dialog', { name: 'FY 2025', exact: true });
       await expect(reversalDialog).toBeVisible();
 
       await reversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
@@ -497,7 +497,7 @@ describe('Fiscal Years', function () {
       await expect(creationDialog).not.toBeVisible();
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
       const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
       await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
@@ -507,7 +507,7 @@ describe('Fiscal Years', function () {
 
       const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
       await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
-      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      const reversalDialog = page.getByRole('dialog', { name: 'FY 2025', exact: true });
       await reversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
 
       const confirmReversalDialog = page.getByRole('alertdialog', { name: /Reverse Fiscal Year/ });
@@ -529,7 +529,7 @@ describe('Fiscal Years', function () {
       await expect(creationDialog).not.toBeVisible();
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
       const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
       await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
@@ -539,7 +539,7 @@ describe('Fiscal Years', function () {
 
       const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
       await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
-      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      const reversalDialog = page.getByRole('dialog', { name: 'FY 2025', exact: true });
       await reversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
       const confirmReversalDialog = page.getByRole('alertdialog', { name: /Reverse Fiscal Year/ });
       await confirmReversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
@@ -563,7 +563,7 @@ describe('Fiscal Years', function () {
       await expect(creationDialog).not.toBeVisible();
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
-      let detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      let detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
       const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
       await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
@@ -573,7 +573,7 @@ describe('Fiscal Years', function () {
 
       const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
       await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
-      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      const reversalDialog = page.getByRole('dialog', { name: 'FY 2025', exact: true });
       await reversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
       const confirmReversalDialog = page.getByRole('alertdialog', { name: /Reverse Fiscal Year/ });
       await confirmReversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
@@ -584,7 +584,7 @@ describe('Fiscal Years', function () {
       await expect(fiscalYearRow.getByRole('button', { name: /Reverse/ })).not.toBeVisible();
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
-      detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await expect(detailsDialog.getByText('history Reversed')).toBeVisible();
     });
 
@@ -600,7 +600,7 @@ describe('Fiscal Years', function () {
       await expect(creationDialog).not.toBeVisible();
 
       await page.getByRole('button', { name: /FY 2025/ }).click();
-      const detailsDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const detailsDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await detailsDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
       const confirmCloseDialog = page.getByRole('alertdialog', { name: /Close Fiscal Year/ });
       await confirmCloseDialog.getByRole('button', { name: 'Close Fiscal Year' }).click();
@@ -610,7 +610,7 @@ describe('Fiscal Years', function () {
 
       const fiscalYearRow = page.getByRole('row', { name: /FY 2025/ });
       await fiscalYearRow.getByRole('button', { name: /Reverse/ }).click();
-      const reversalDialog = page.getByRole('dialog', { name: /FY 2025 Reversal/ });
+      const reversalDialog = page.getByRole('dialog', { name: 'FY 2025', exact: true });
       await reversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
       const confirmReversalDialog = page.getByRole('alertdialog', { name: /Reverse Fiscal Year/ });
       await confirmReversalDialog.getByRole('button', { name: 'Reverse Fiscal Year' }).click();
@@ -619,7 +619,7 @@ describe('Fiscal Years', function () {
       await reversalDialog.getByRole('button', { name: 'Close dialog' }).click();
       await page.getByRole('button', { name: /FY 2025/ }).click();
 
-      const reopenedDialog = page.getByRole('dialog', { name: /FY 2025 Details/ });
+      const reopenedDialog = page.getByRole('dialog', { name: /Fiscal Year Details/ });
       await expect(reopenedDialog.getByText('Reversal Details')).toBeVisible();
       await expect(reopenedDialog.getByText('Reversed On')).toBeVisible();
     });

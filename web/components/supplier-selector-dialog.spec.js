@@ -7,7 +7,7 @@ import { loadEmptyFixture } from '#test/tools/fixture.js';
 const { describe } = test;
 
 describe('Supplier Selector Dialog', function () {
-  useConsoleOutput(test);
+  // useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall make a choice', async function ({ page }) {

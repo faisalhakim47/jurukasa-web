@@ -8,6 +8,7 @@ import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
@@ -26,6 +27,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
 
     const host = this;
     const database = useContext(host, DatabaseContextElement);
+    const t = useTranslator(host);
 
     const errorAlertDialog = useDialog(host);
 
@@ -51,10 +53,10 @@ export class InventoryCreationDialogElement extends HTMLElement {
           const result = await database.sql`
             SELECT 1 FROM inventories WHERE name = ${name} LIMIT 1;
           `;
-          if (result.rows.length > 0) input.setCustomValidity('Inventory name already exists.');
+          if (result.rows.length > 0) input.setCustomValidity(t('inventory', 'inventoryNameExistsError'));
         }
         catch (error) {
-          input.setCustomValidity('Error validating inventory name.');
+          input.setCustomValidity(t('inventory', 'inventoryNameValidationError'));
         }
       }
     }
@@ -88,9 +90,9 @@ export class InventoryCreationDialogElement extends HTMLElement {
         const unitOfMeasurement = /** @type {string} */ (data.get('unitOfMeasurement'))?.trim() || null;
 
         // Validate inputs
-        if (!name) throw new Error('Inventory name is required.');
-        if (isNaN(unitPrice) || unitPrice < 0) throw new Error('Invalid unit price.');
-        if (!form.accountCode) throw new Error('Please select an inventory account.');
+        if (!name) throw new Error(t('inventory', 'inventoryNameRequiredError'));
+        if (isNaN(unitPrice) || unitPrice < 0) throw new Error(t('inventory', 'invalidUnitPriceError'));
+        if (!form.accountCode) throw new Error(t('inventory', 'selectInventoryAccountError'));
 
         // Verify account has POS - Inventory tag
         const accountCheck = await tx.sql`
@@ -100,7 +102,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
           LIMIT 1;
         `;
         if (accountCheck.rows.length === 0) {
-          throw new Error('Selected account must be tagged as "POS - Inventory".');
+          throw new Error(t('inventory', 'accountNotTaggedError'));
         }
 
         // Insert inventory
@@ -156,7 +158,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="inventory-creation-dialog-title">Add Inventory</h2>
+              <h2 id="inventory-creation-dialog-title">${t('inventory', 'createDialogTitle')}</h2>
               <button
                 role="button"
                 type="button"
@@ -164,7 +166,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
                 commandfor="inventory-creation-dialog"
                 command="close"
               ><material-symbols name="close"></material-symbols></button>
-              <button role="button" type="submit" name="action">Add Inventory</button>
+              <button role="button" type="submit" name="action">${t('inventory', 'createDialogSubmitLabel')}</button>
             </header>
 
             <div class="content">
@@ -173,7 +175,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
                   </div>
-                  <p>Creating inventory...</p>
+                  <p>${t('inventory', 'creatingInventoryMessage')}</p>
                 </div>
               ` : nothing}
 
@@ -182,7 +184,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
                 <!-- Inventory Name -->
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="inventory-name-input">Inventory Name</label>
+                    <label for="inventory-name-input">${t('inventory', 'inventoryNameLabel')}</label>
                     <input
                       id="inventory-name-input"
                       name="name"
@@ -192,13 +194,13 @@ export class InventoryCreationDialogElement extends HTMLElement {
                       @blur=${validateInventoryName}
                     />
                   </div>
-                  <div class="supporting-text">Unique name for this inventory item</div>
+                  <div class="supporting-text">${t('inventory', 'inventoryNameSupportingText')}</div>
                 </div>
 
                 <!-- Unit Price -->
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="unit-price-input">Unit Price</label>
+                    <label for="unit-price-input">${t('inventory', 'unitPriceLabel')}</label>
                     <input
                       id="unit-price-input"
                       name="unitPrice"
@@ -209,13 +211,13 @@ export class InventoryCreationDialogElement extends HTMLElement {
                       required
                     />
                   </div>
-                  <div class="supporting-text">Selling price per unit (in lowest denomination)</div>
+                  <div class="supporting-text">${t('inventory', 'unitPriceSupportingText')}</div>
                 </div>
 
                 <!-- Unit of Measurement -->
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="unit-of-measurement-input">Unit of Measurement (Optional)</label>
+                    <label for="unit-of-measurement-input">${t('inventory', 'unitOfMeasurementLabel')}</label>
                     <input
                       id="unit-of-measurement-input"
                       name="unitOfMeasurement"
@@ -223,13 +225,13 @@ export class InventoryCreationDialogElement extends HTMLElement {
                       placeholder=" "
                     />
                   </div>
-                  <div class="supporting-text">e.g., piece, kg, liter, pack</div>
+                  <div class="supporting-text">${t('inventory', 'unitOfMeasurementSupportingText')}</div>
                 </div>
 
                 <!-- Inventory Account -->
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="account-input">Inventory Account</label>
+                    <label for="account-input">${t('inventory', 'inventoryAccountLabel')}</label>
                     <input
                       id="account-input"
                       type="button"
@@ -245,7 +247,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
                         type="button"
                         class="trailing-icon"
                         @click=${clearAccount}
-                        aria-label="Clear account"
+                        aria-label="${t('inventory', 'clearAccountAriaLabel')}"
                       ><material-symbols name="close"></material-symbols></button>
                     ` : html`
                       <button
@@ -253,11 +255,11 @@ export class InventoryCreationDialogElement extends HTMLElement {
                         class="trailing-icon"
                         commandfor="account-selector-dialog"
                         command="--open"
-                        aria-label="Select account"
+                        aria-label="${t('inventory', 'selectAccountAriaLabel')}"
                       ><material-symbols name="search"></material-symbols></button>
                     `}
                   </div>
-                  <div class="supporting-text">Account must be tagged as "POS - Inventory"</div>
+                  <div class="supporting-text">${t('inventory', 'inventoryAccountSupportingText')}</div>
                 </div>
 
               </div>
@@ -269,7 +271,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('inventory', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${form.error?.message}</p>
@@ -281,7 +283,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('inventory', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>

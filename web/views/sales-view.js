@@ -13,6 +13,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -45,6 +46,7 @@ export class SalesViewElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
     const router = useContext(host, RouterContextElement);
+    const t = useTranslator(host);
 
     const saleDetailsDialog = useElement(host, SaleDetailsDialogElement);
     const render = useRender(host);
@@ -174,7 +176,7 @@ export class SalesViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading sales"
+          aria-label="${t('sale', 'loadingSalesAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -190,7 +192,7 @@ export class SalesViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading sales...</p>
+          <p>${t('sale', 'loadingSalesMessage')}</p>
         </div>
       `;
     }
@@ -212,11 +214,11 @@ export class SalesViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load sales</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('sale', 'unableToLoadSalesTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadSales}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('sale', 'retryButtonLabel')}
           </button>
         </div>
       `;
@@ -229,7 +231,7 @@ export class SalesViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 200px; min-width: 160px;">
             <div class="container">
               <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="sale-search-input">Search</label>
+              <label for="sale-search-input">${t('sale', 'searchLabel')}</label>
               <input
                 ${readValue(state, 'searchQuery')}
                 id="sale-search-input"
@@ -244,7 +246,7 @@ export class SalesViewElement extends HTMLElement {
           <!-- Status Filter -->
           <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 160px; anchor-name: --status-filter-menu-anchor;">
             <div class="container">
-              <label for="status-filter-input">Status</label>
+              <label for="status-filter-input">${t('sale', 'statusFilterLabel')}</label>
               <input
                 id="status-filter-input"
                 type="button"
@@ -260,6 +262,7 @@ export class SalesViewElement extends HTMLElement {
           </div>
           <menu role="menu" popover id="status-filter-menu" class="dropdown" style="position-anchor: --status-filter-menu-anchor;">
             ${statusFilterOptions.map(function (option) {
+              const optionText = option === 'All' ? t('sale', 'filterAll') : option === 'Posted' ? t('sale', 'filterPosted') : t('sale', 'filterDraft');
               return html`
                 <li>
                   <button
@@ -271,7 +274,7 @@ export class SalesViewElement extends HTMLElement {
                     aria-selected=${option === state.statusFilter ? 'true' : 'false'}
                   >
                     ${option === state.statusFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
-                    ${option}
+                    ${optionText}
                   </button>
                 </li>
               `;
@@ -296,11 +299,11 @@ export class SalesViewElement extends HTMLElement {
           "
         >
           <material-symbols name="receipt_long" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No sales found</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('sale', 'noSalesFoundTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
             ${state.searchQuery || state.statusFilter !== 'All'
-              ? 'Try adjusting your search or filters.'
-              : 'Start by creating your first sale from the Point-of-Sale.'}
+              ? t('sale', 'adjustSearchOrFiltersMessage')
+              : t('sale', 'startCreatingFirstSaleMessage')}
           </p>
           ${!state.searchQuery && state.statusFilter === 'All' ? html`
             <router-link
@@ -309,7 +312,7 @@ export class SalesViewElement extends HTMLElement {
               href="/sale/point-of-sales"
             >
               <material-symbols name="point_of_sale"></material-symbols>
-              Go to Point-of-Sale
+              ${t('sale', 'goToPointOfSaleButtonLabel')}
             </router-link>
           ` : nothing}
         </div>
@@ -321,7 +324,7 @@ export class SalesViewElement extends HTMLElement {
      */
     function renderSaleRow(sale) {
       const isPosted = sale.post_time !== null;
-      const statusText = isPosted ? 'Posted' : 'Draft';
+      const statusText = isPosted ? t('sale', 'statusPosted') : t('sale', 'statusDraft');
       const itemsSummary = sale.items_summary || '—';
       const truncatedSummary = itemsSummary.length > 40 ? itemsSummary.substring(0, 40) + '...' : itemsSummary;
 
@@ -341,7 +344,7 @@ export class SalesViewElement extends HTMLElement {
           <td style="white-space: nowrap;">${i18n.date.format(sale.sale_time)}</td>
           <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${itemsSummary}">
             ${truncatedSummary}
-            ${sale.line_count > 3 ? html`<span style="color: var(--md-sys-color-on-surface-variant);"> (+${sale.line_count - 3} more)</span>` : nothing}
+            ${sale.line_count > 3 ? html`<span style="color: var(--md-sys-color-on-surface-variant);"> ${t('sale', 'moreItemsIndicator', sale.line_count - 3)}</span>` : nothing}
           </td>
           <td class="numeric">${i18n.displayCurrency(sale.gross_amount)}</td>
           <td class="numeric" style="color: ${sale.discount_amount > 0 ? 'var(--md-sys-color-tertiary)' : 'inherit'};">
@@ -374,7 +377,7 @@ export class SalesViewElement extends HTMLElement {
       return html`
         <nav
           role="navigation"
-          aria-label="Pagination"
+          aria-label="${t('sale', 'paginationAriaLabel')}"
           style="
             display: flex;
             justify-content: space-between;
@@ -384,7 +387,7 @@ export class SalesViewElement extends HTMLElement {
           "
         >
           <span class="body-small" style="color: var(--md-sys-color-on-surface-variant);">
-            Showing ${startItem}–${endItem} of ${state.totalCount}
+            ${t('sale', 'showingItemsInfo', startItem, endItem, state.totalCount)}
           </span>
           <div style="display: flex; gap: 8px; align-items: center;">
             <button
@@ -393,7 +396,7 @@ export class SalesViewElement extends HTMLElement {
               data-page="1"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="First page"
+              aria-label="${t('sale', 'firstPageAriaLabel')}"
             >
               <material-symbols name="first_page"></material-symbols>
             </button>
@@ -403,12 +406,12 @@ export class SalesViewElement extends HTMLElement {
               data-page="${state.currentPage - 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="Previous page"
+              aria-label="${t('sale', 'previousPageAriaLabel')}"
             >
               <material-symbols name="chevron_left"></material-symbols>
             </button>
             <span class="body-medium" style="min-width: 80px; text-align: center;">
-              Page ${state.currentPage} of ${totalPages}
+              ${t('sale', 'pageInfo', state.currentPage, totalPages)}
             </span>
             <button
               role="button"
@@ -416,7 +419,7 @@ export class SalesViewElement extends HTMLElement {
               data-page="${state.currentPage + 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Next page"
+              aria-label="${t('sale', 'nextPageAriaLabel')}"
             >
               <material-symbols name="chevron_right"></material-symbols>
             </button>
@@ -426,7 +429,7 @@ export class SalesViewElement extends HTMLElement {
               data-page="${totalPages}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Last page"
+              aria-label="${t('sale', 'lastPageAriaLabel')}"
             >
               <material-symbols name="last_page"></material-symbols>
             </button>
@@ -440,16 +443,16 @@ export class SalesViewElement extends HTMLElement {
 
       return html`
         <div>
-          <table aria-label="Sales list" style="--md-sys-density: -3;">
+          <table aria-label="${t('sale', 'salesListAriaLabel')}" style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col" style="width: 60px;">ID</th>
-                <th scope="col" style="width: 120px;">Date</th>
-                <th scope="col">Items Summary</th>
-                <th scope="col" class="numeric" style="width: 120px;">Subtotal</th>
-                <th scope="col" class="numeric" style="width: 100px;">Discounts</th>
-                <th scope="col" class="numeric" style="width: 120px;">Total</th>
-                <th scope="col" class="center" style="width: 100px;">Status</th>
+                <th scope="col" style="width: 60px;">${t('sale', 'tableHeaderId')}</th>
+                <th scope="col" style="width: 120px;">${t('sale', 'tableHeaderDate')}</th>
+                <th scope="col">${t('sale', 'tableHeaderItemsSummary')}</th>
+                <th scope="col" class="numeric" style="width: 120px;">${t('sale', 'tableHeaderSubtotal')}</th>
+                <th scope="col" class="numeric" style="width: 100px;">${t('sale', 'tableHeaderDiscounts')}</th>
+                <th scope="col" class="numeric" style="width: 120px;">${t('sale', 'tableHeaderTotal')}</th>
+                <th scope="col" class="center" style="width: 100px;">${t('sale', 'tableHeaderStatus')}</th>
               </tr>
             </thead>
             <tbody>
@@ -467,9 +470,9 @@ export class SalesViewElement extends HTMLElement {
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>
-              <button role="button" class="text" @click=${loadSales} aria-label="Refresh sales">
+              <button role="button" class="text" @click=${loadSales} aria-label="${t('sale', 'refreshSalesAriaLabel')}">
                 <material-symbols name="refresh"></material-symbols>
-                Refresh
+                ${t('sale', 'refreshButtonLabel')}
               </button>
               <router-link
                 role="button"
@@ -477,7 +480,7 @@ export class SalesViewElement extends HTMLElement {
                 href="/sale/point-of-sales"
               >
                 <material-symbols name="point_of_sale"></material-symbols>
-                Point-of-Sale
+                ${t('sale', 'pointOfSaleButtonLabel')}
               </router-link>
             </div>
           </div>

@@ -11,6 +11,7 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -60,6 +61,7 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const inventorySelectorDialog = useElement(host, HTMLElement);
+    const t = useTranslator(host);
 
     const dialog = useDialog(host);
     const errorAlertDialog = useDialog(host);
@@ -124,10 +126,10 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
         if (existingCheck.rows.length > 0) {
           const existingInventoryId = Number(existingCheck.rows[0].inventory_id);
           if (existingInventoryId === inventoryId) {
-            throw new Error('This barcode is already assigned to this inventory.');
+            throw new Error(t('barcode', 'barcodeAlreadyAssignedToThisError'));
           }
           else {
-            throw new Error('This barcode is already assigned to another inventory.');
+            throw new Error(t('barcode', 'barcodeAlreadyAssignedToAnotherError'));
           }
         }
 
@@ -173,13 +175,13 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="barcode-assignment-dialog-title">Assign Barcode</h2>
+              <h2 id="barcode-assignment-dialog-title">${t('barcode', 'assignDialogTitle')}</h2>
             </header>
 
             <div class="content">
               <div class="outlined-text-field" style="--md-sys-density: -4; margin-bottom: 16px;">
                 <div class="container">
-                  <label for="barcode-input">Barcode</label>
+                  <label for="barcode-input">${t('barcode', 'barcodeLabel')}</label>
                   <input
                     ${readValue(form, 'barcodeCode')}
                     id="barcode-input"
@@ -194,7 +196,7 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
 
               <div class="outlined-text-field" style="--md-sys-density: -4;">
                 <div class="container">
-                  <label for="inventory-input">Inventory</label>
+                  <label for="inventory-input">${t('barcode', 'inventoryLabel')}</label>
                   <input
                     id="inventory-input"
                     type="button"
@@ -211,7 +213,7 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
                       type="button"
                       class="trailing-icon"
                       @click=${clearInventory}
-                      aria-label="Clear inventory"
+                      aria-label="${t('barcode', 'clearInventoryAriaLabel')}"
                       ?disabled=${form.isSaving}
                     ><material-symbols name="close"></material-symbols></button>
                   ` : html`
@@ -220,7 +222,7 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
                       class="trailing-icon"
                       commandfor="inventory-selector-dialog"
                       command="--open"
-                      aria-label="Select inventory"
+                      aria-label="${t('barcode', 'selectInventoryAriaLabel')}"
                       ?disabled=${form.isSaving}
                     ><material-symbols name="search"></material-symbols></button>
                   `}
@@ -237,7 +239,7 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
                   commandfor="barcode-assignment-dialog"
                   command="close"
                   ?disabled=${form.isSaving}
-                >Cancel</button>
+                >${t('barcode', 'cancelButtonLabel')}</button>
               </li>
               <li>
                 <button
@@ -253,7 +255,7 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
                   ` : html`
                     <material-symbols name="check"></material-symbols>
                   `}
-                  Assign
+                  ${t('barcode', 'assignButtonLabel')}
                 </button>
               </li>
             </menu>
@@ -264,10 +266,10 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
           <div class="container">
             <header>
               <material-symbols name="error" size="24"></material-symbols>
-              <h2 id="error-alert-dialog-title">Error</h2>
+              <h2 id="error-alert-dialog-title">${t('barcode', 'errorDialogTitle')}</h2>
             </header>
             <section class="content">
-              <p>${form.error instanceof Error ? form.error.message : 'An error occurred'}</p>
+              <p>${form.error instanceof Error ? form.error.message : t('barcode', 'errorOccurredMessage')}</p>
             </section>
             <menu>
               <li>
@@ -276,7 +278,7 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('barcode', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>

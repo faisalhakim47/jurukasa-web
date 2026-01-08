@@ -10,13 +10,19 @@ describe('Onboarding Context', function () {
 
     await page.evaluate(async function () {
       document.body.innerHTML = `
-        <router-context>
-          <database-context>
-            <onboarding-context>
-              <p>Application Ready</p>
-            </onboarding-context>
-          </database-context>
-        </router-context>
+        <ready-context>
+          <router-context>
+            <database-context>
+              <device-context>
+                <i18n-context>
+                  <onboarding-context>
+                    <p>Application Ready</p>
+                  </onboarding-context>
+                </i18n-context>
+              </device-context>
+            </database-context>
+          </router-context>
+        </ready-context>
       `;
     });
 
@@ -27,7 +33,7 @@ describe('Onboarding Context', function () {
 
     // 2. Configure Business (Onboarding)
     await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();
-    
+
     await page.getByLabel('Business Name').fill('My Awesome Store');
     await page.getByLabel('Business Type').fill('Retail');
     await page.getByLabel('Currency Code').fill('USD');

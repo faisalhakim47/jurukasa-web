@@ -4,6 +4,7 @@ import { html, nothing } from 'lit-html';
 import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useContext } from '#web/hooks/use-context.js';
@@ -44,6 +45,7 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const dialog = useDialog(host);
     const confirmDialog = useElement(host, HTMLDialogElement);
@@ -246,13 +248,13 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
           <div class="container">
             <header>
               <h2 id="fiscal-year-closing-dialog-title">
-                ${fy?.name || 'Fiscal Year'} Details
+                ${fy?.name || t('fiscalYear', 'closingDefaultTitle')} ${t('fiscalYear', 'closingDetailsTitle')}
               </h2>
               <button
                 role="button"
                 type="button"
                 class="text"
-                aria-label="Close dialog"
+                aria-label="${t('fiscalYear', 'closeDialogLabel')}"
                 commandfor="fiscal-year-closing-dialog"
                 command="close"
               ><material-symbols name="close"></material-symbols></button>
@@ -263,7 +265,7 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                   ?disabled=${!canClose || state.closingState !== 'idle'}
                   @click=${handleOpenConfirmDialog}
                 >
-                  ${state.closingState === 'closing' ? 'Closing...' : state.closingState === 'success' ? 'Closed!' : 'Close Fiscal Year'}
+                  ${state.closingState === 'closing' ? t('fiscalYear', 'closingLoadingLabel') : state.closingState === 'success' ? t('fiscalYear', 'closingSuccessLabel') : t('fiscalYear', 'closingSubmitLabel')}
                 </button>
               ` : nothing}
             </header>
@@ -272,7 +274,7 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
               ${state.isLoading ? html`
                 <div
                   role="status"
-                  aria-label="Loading fiscal year details"
+                  aria-label="${t('fiscalYear', 'loadingFiscalYearLabel')}"
                   style="
                     display: flex;
                     flex-direction: column;
@@ -288,7 +290,7 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                       <div class="indicator"></div>
                     </div>
                   </div>
-                  <p>Loading fiscal year details...</p>
+                  <p>${t('fiscalYear', 'loadingDetailsLabel')}</p>
                 </div>
               ` : state.error instanceof Error ? html`
                 <div
@@ -305,7 +307,7 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                   "
                 >
                   <material-symbols name="error" size="48"></material-symbols>
-                  <h3 class="title-large" style="color: var(--md-sys-color-on-surface);">Error</h3>
+                  <h3 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('fiscalYear', 'errorTitle')}</h3>
                   <p style="color: var(--md-sys-color-on-surface-variant);">${state.error.message}</p>
                 </div>
               ` : fy !== null ? html`
@@ -329,20 +331,20 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                       "
                     >
                       <material-symbols name="${isReversed ? 'history' : fy.post_time !== null ? 'lock' : 'lock_open'}" size="20" aria-hidden="true"></material-symbols>
-                      ${isReversed ? 'Reversed' : fy.post_time !== null ? 'Closed' : 'Open'}
+                      ${isReversed ? t('fiscalYear', 'statusReversed') : fy.post_time !== null ? t('fiscalYear', 'statusClosed') : t('fiscalYear', 'statusOpen')}
                     </span>
                   </div>
 
                   <!-- Period Info -->
                   <div class="card outlined" style="padding: 16px;">
-                    <h3 class="title-medium" style="margin-bottom: 12px;">Period</h3>
+                    <h3 class="title-medium" style="margin-bottom: 12px;">${t('fiscalYear', 'periodSectionTitle')}</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                       <div>
-                        <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Begin Date</p>
+                        <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fiscalYear', 'periodBeginDateLabel')}</p>
                         <p class="body-large">${i18n.date.format(fy.begin_time)}</p>
                       </div>
                       <div>
-                        <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">End Date</p>
+                        <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fiscalYear', 'periodEndDateLabel')}</p>
                         <p class="body-large">${i18n.date.format(fy.end_time)}</p>
                       </div>
                     </div>
@@ -350,23 +352,23 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
 
                   <!-- Financial Summary -->
                   <div class="card outlined" style="padding: 16px;">
-                    <h3 class="title-medium" style="margin-bottom: 12px;">Financial Summary</h3>
+                    <h3 class="title-medium" style="margin-bottom: 12px;">${t('fiscalYear', 'financialSummarySectionTitle')}</h3>
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                       <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="body-medium">Total Revenue</span>
+                        <span class="body-medium">${t('fiscalYear', 'totalRevenueLabel')}</span>
                         <span class="body-large" style="color: var(--md-sys-color-primary);">
                           ${i18n.displayCurrency(fy.total_revenue)}
                         </span>
                       </div>
                       <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="body-medium">Total Expenses</span>
+                        <span class="body-medium">${t('fiscalYear', 'totalExpensesLabel')}</span>
                         <span class="body-large" style="color: var(--md-sys-color-error);">
                           (${i18n.displayCurrency(fy.total_expense)})
                         </span>
                       </div>
                       <hr style="border: none; border-top: 1px solid var(--md-sys-color-outline-variant);">
                       <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="title-small">Net Income</span>
+                        <span class="title-small">${t('fiscalYear', 'netIncomeLabel')}</span>
                         <span
                           class="title-medium"
                           style="color: ${fy.net_income >= 0 ? '#2E7D32' : '#C62828'};"
@@ -380,15 +382,15 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                   ${isReversed ? html`
                     <!-- Reversal Details -->
                     <div class="card outlined" style="padding: 16px;">
-                      <h3 class="title-medium" style="margin-bottom: 12px;">Reversal Details</h3>
+                      <h3 class="title-medium" style="margin-bottom: 12px;">${t('fiscalYear', 'reversalDetailsSectionTitle')}</h3>
                       <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div style="display: flex; justify-content: space-between;">
-                          <span class="body-medium">Reversed On</span>
+                          <span class="body-medium">${t('fiscalYear', 'reversedOnLabel')}</span>
                           <span class="body-medium">${fy.reversal_time ? i18n.date.format(fy.reversal_time) : '—'}</span>
                         </div>
                         ${fy.reversal_journal_entry_ref ? html`
                           <div style="display: flex; justify-content: space-between;">
-                            <span class="body-medium">Reversal Entry</span>
+                            <span class="body-medium">${t('fiscalYear', 'reversalEntryLabel')}</span>
                             <span class="body-medium" style="color: var(--md-sys-color-primary);">
                               #${fy.reversal_journal_entry_ref}
                             </span>
@@ -401,7 +403,7 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                   ${fy.post_time === null ? html`
                     <!-- Closing Requirements -->
                     <div class="card outlined" style="padding: 16px;">
-                      <h3 class="title-medium" style="margin-bottom: 12px;">Closing Requirements</h3>
+                      <h3 class="title-medium" style="margin-bottom: 12px;">${t('fiscalYear', 'closingRequirementsSectionTitle')}</h3>
                       ${hasUnpostedEntries ? html`
                         <div
                           role="alert"
@@ -417,10 +419,9 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                         >
                           <material-symbols name="warning" size="24"></material-symbols>
                           <div>
-                            <p class="body-medium" style="font-weight: 500;">Unposted Entries</p>
+                            <p class="body-medium" style="font-weight: 500;">${t('fiscalYear', 'unpostedEntriesWarningTitle')}</p>
                             <p class="body-small">
-                              There are ${fy.unposted_entries_count} unposted journal entries within this fiscal year period.
-                              All entries must be posted before closing.
+                              ${t('fiscalYear', 'unpostedEntriesWarningMessage').replace('%d', String(fy.unposted_entries_count))}
                             </p>
                           </div>
                         </div>
@@ -438,9 +439,9 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                         >
                           <material-symbols name="check_circle" size="24"></material-symbols>
                           <div>
-                            <p class="body-medium" style="font-weight: 500;">Ready to Close</p>
+                            <p class="body-medium" style="font-weight: 500;">${t('fiscalYear', 'readyToCloseTitle')}</p>
                             <p class="body-small">
-                              All journal entries within this fiscal year are posted. You can proceed with closing.
+                              ${t('fiscalYear', 'readyToCloseMessage')}
                             </p>
                           </div>
                         </div>
@@ -449,15 +450,15 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                   ` : html`
                     <!-- Closing Details -->
                     <div class="card outlined" style="padding: 16px;">
-                      <h3 class="title-medium" style="margin-bottom: 12px;">Closing Details</h3>
+                      <h3 class="title-medium" style="margin-bottom: 12px;">${t('fiscalYear', 'closingDetailsSectionTitle')}</h3>
                       <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div style="display: flex; justify-content: space-between;">
-                          <span class="body-medium">Closed On</span>
+                          <span class="body-medium">${t('fiscalYear', 'closedOnLabel')}</span>
                           <span class="body-medium">${fy.post_time ? i18n.date.format(fy.post_time) : '—'}</span>
                         </div>
                         ${fy.closing_journal_entry_ref ? html`
                           <div style="display: flex; justify-content: space-between;">
-                            <span class="body-medium">Closing Entry</span>
+                            <span class="body-medium">${t('fiscalYear', 'closingEntryLabel')}</span>
                             <span class="body-medium" style="color: var(--md-sys-color-primary);">
                               #${fy.closing_journal_entry_ref}
                             </span>
@@ -480,19 +481,19 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="warning" style="color: var(--md-sys-color-error);"></material-symbols>
             <header>
-              <h3 id="confirm-close-title">Close Fiscal Year?</h3>
+              <h3 id="confirm-close-title">${t('fiscalYear', 'confirmClosingTitle')}</h3>
             </header>
             <div class="content">
               <p>
-                This action will:
+                ${t('fiscalYear', 'confirmClosingMessage')}
               </p>
               <ul style="margin: 12px 0; padding-left: 24px;">
-                <li>Create closing journal entries to zero out revenue and expense accounts</li>
-                <li>Transfer net income to retained earnings</li>
-                <li>Lock the fiscal year from further modifications</li>
+                <li>${t('fiscalYear', 'confirmClosingPoint1')}</li>
+                <li>${t('fiscalYear', 'confirmClosingPoint2')}</li>
+                <li>${t('fiscalYear', 'confirmClosingPoint3')}</li>
               </ul>
               <p style="color: var(--md-sys-color-error); font-weight: 500;">
-                This action cannot be undone.
+                ${t('fiscalYear', 'confirmClosingWarning')}
               </p>
             </div>
             <menu>
@@ -503,14 +504,14 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                   class="text"
                   commandfor="confirm-close-dialog"
                   command="close"
-                >Cancel</button>
+                >${t('fiscalYear', 'cancelLabel')}</button>
               </li>
               <li>
                 <button
                   role="button"
                   type="button"
                   @click=${handleCloseFiscalYear}
-                >Close Fiscal Year</button>
+                >${t('fiscalYear', 'confirmClosingActionLabel')}</button>
               </li>
             </menu>
           </div>
@@ -521,7 +522,7 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('fiscalYear', 'errorTitle')}</h3>
             </header>
             <div class="content">
               <p>${state.closingError?.message}</p>
@@ -533,7 +534,7 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('fiscalYear', 'dismissLabel')}</button>
               </li>
             </menu>
           </div>

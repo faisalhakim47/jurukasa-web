@@ -1,6 +1,7 @@
 import { html } from 'lit-html';
 
 import { defineWebComponent } from '#web/component.js';
+import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useReady } from '#web/contexts/ready-context.js';
 import { RouterContextElement } from '#web/contexts/router-context.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
@@ -10,6 +11,7 @@ import { useElement } from '#web/hooks/use-element.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useMounted } from '#web/hooks/use-mounted.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { scrollIntoView } from '#web/tools/dom.js';
@@ -25,6 +27,8 @@ export class ProcurementViewElement extends HTMLElement {
 
     const host = this;
     const router = useContext(host, RouterContextElement);
+    const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -76,25 +80,25 @@ export class ProcurementViewElement extends HTMLElement {
         <div style="height: 100%; display: flex; flex-direction: column;">
           <header class="app-bar" style="max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;">
             <hgroup>
-              <h1>Procurement</h1>
-              <p>Manage your suppliers, purchases, and supplier orders.</p>
+              <h1>${t('common', 'procurementTitle')}</h1>
+              <p>${t('common', 'procurementDescription')}</p>
             </hgroup>
           </header>
           <nav
             role="tablist"
-            aria-label="Procurement sections"
+            aria-label=${t('common', 'procurementSectionsAriaLabel')}
             style="position: sticky; top: 0; z-index: 1; max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;"
           >
             <router-link role="tab" id="purchases-tab" aria-controls="purchases-panel" href="/procurement/purchases" replace>
               <span class="content">
                 <material-symbols name="shopping_cart" size="24"></material-symbols>
-                Purchases
+                ${t('common', 'purchasesTabLabel')}
               </span>
             </router-link>
             <router-link role="tab" id="suppliers-tab" aria-controls="suppliers-panel" href="/procurement/suppliers" replace>
               <span class="content">
                 <material-symbols name="local_shipping" size="24"></material-symbols>
-                Suppliers
+                ${t('common', 'suppliersTabLabel')}
               </span>
             </router-link>
           </nav>
@@ -154,16 +158,16 @@ export class ProcurementViewElement extends HTMLElement {
         <dialog ${notfoundDialog.element} id="notfound-dialog">
           <div class="container">
             <header>
-              <h2>Page Not Found</h2>
+              <h2>${t('common', 'pageNotFoundTitle')}</h2>
             </header>
             <section class="content">
-              <p>The page you are looking for does not exist.</p>
+              <p>${t('common', 'pageNotFoundMessage')}</p>
             </section>
             <menu>
               <router-link
                 href="/procurement/purchases"
                 replace
-              >Go to Purchases</router-link>
+              >${t('common', 'goToPurchasesButtonLabel')}</router-link>
             </menu>
           </div>
         </dialog>

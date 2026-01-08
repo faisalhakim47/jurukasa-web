@@ -10,6 +10,7 @@ import { useElement } from '#web/hooks/use-element.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useMounted } from '#web/hooks/use-mounted.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { scrollIntoView } from '#web/tools/dom.js';
@@ -26,6 +27,7 @@ export class SaleViewElement extends HTMLElement {
 
     const host = this;
     const router = useContext(host, RouterContextElement);
+    const t = useTranslator(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -74,25 +76,25 @@ export class SaleViewElement extends HTMLElement {
         <div style="height: 100%; display: flex; flex-direction: column;">
           <header class="app-bar" style="max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;">
             <hgroup>
-              <h1>Sale</h1>
-              <p>Manage your sales transactions and point-of-sale operations.</p>
+              <h1>${t('sale', 'saleViewTitle')}</h1>
+              <p>${t('sale', 'saleViewDescription')}</p>
             </hgroup>
           </header>
           <nav
             role="tablist"
-            aria-label="Sale sections"
+            aria-label="${t('sale', 'saleSectionsAriaLabel')}"
             style="position: sticky; top: 0; z-index: 1; max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;"
           >
             <router-link role="tab" id="sales-tab" aria-controls="sales-panel" href="/sale/sales" replace>
               <span class="content">
                 <material-symbols name="receipt_long" size="24"></material-symbols>
-                Sales
+                ${t('sale', 'salesTabLabel')}
               </span>
             </router-link>
             <router-link role="tab" id="discounts-tab" aria-controls="discounts-panel" href="/sale/discounts" replace>
               <span class="content">
                 <material-symbols name="percent" size="24"></material-symbols>
-                Discounts
+                ${t('sale', 'discountsTabLabel')}
               </span>
             </router-link>
           </nav>
@@ -152,16 +154,16 @@ export class SaleViewElement extends HTMLElement {
         <dialog ${notfoundDialog.element} id="notfound-dialog">
           <div class="container">
             <header>
-              <h2>Page Not Found</h2>
+              <h2>${t('sale', 'pageNotFoundTitle')}</h2>
             </header>
             <section class="content">
-              <p>The page you are looking for does not exist.</p>
+              <p>${t('sale', 'pageNotFoundMessage')}</p>
             </section>
             <menu>
               <router-link
                 href="/sale/sales"
                 replace
-              >Go to Sales</router-link>
+              >${t('sale', 'goToSalesButtonLabel')}</router-link>
             </menu>
           </div>
         </dialog>

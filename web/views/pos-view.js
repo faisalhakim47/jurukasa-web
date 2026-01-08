@@ -11,6 +11,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
@@ -83,6 +84,7 @@ export class POSViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -532,10 +534,10 @@ export class POSViewElement extends HTMLElement {
         form.state = 'submitting';
         form.error = null;
 
-        if (state.lines.length === 0) throw new Error('Please add at least one item to the sale.');
+        if (state.lines.length === 0) throw new Error(t('pos', 'atLeastOneItemErrorMessage'));
 
         const remaining = getRemainingBalance();
-        if (remaining > 0) throw new Error(`Payment is incomplete. Remaining balance: ${i18n.displayCurrency(remaining)}`);
+        if (remaining > 0) throw new Error(t('pos', 'paymentIncompleteErrorMessage', i18n.displayCurrency(remaining)));
 
         const saleTime = new Date(state.saleTime).getTime();
         const customerName = state.customerName.trim() || null;
@@ -764,11 +766,11 @@ export class POSViewElement extends HTMLElement {
           background-color: var(--md-sys-color-surface);
         ">
           <header style="padding: 16px; border-bottom: 1px solid var(--md-sys-color-outline-variant);">
-            <h3 class="title-medium" style="margin: 0 0 12px 0;">Products</h3>
+            <h3 class="title-medium" style="margin: 0 0 12px 0;">${t('pos', 'productsTitle')}</h3>
             <div class="outlined-text-field" style="--md-sys-density: -4;">
               <div class="container">
                 <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-                <label for="inventory-search-input">Search</label>
+                <label for="inventory-search-input">${t('pos', 'searchLabel')}</label>
                 <input
                   ${readValue(state, 'inventorySearchQuery')}
                   id="inventory-search-input"
@@ -785,14 +787,14 @@ export class POSViewElement extends HTMLElement {
           <div style="flex: 1; overflow-y: auto;">
             ${state.isLoadingInventories ? html`
               <div style="display: flex; justify-content: center; padding: 24px;">
-                <div role="progressbar" class="linear indeterminate" style="width: 100px;">
+                <div role="progressbar" class="linear indeterminate" style="width: 100px;" aria-label="${t('pos', 'loadingIndicatorAriaLabel')}">
                   <div class="track"><div class="indicator"></div></div>
                 </div>
               </div>
             ` : state.inventories.length === 0 ? html`
               <div style="text-align: center; padding: 24px; color: var(--md-sys-color-on-surface-variant);">
                 <material-symbols name="inventory_2" size="48"></material-symbols>
-                <p>No products found</p>
+                <p>${t('pos', 'noProductsFoundMessage')}</p>
               </div>
             ` : html`
               <div role="list">
@@ -812,7 +814,7 @@ export class POSViewElement extends HTMLElement {
                       <div class="content">
                         <span class="headline">${inventory.name}</span>
                         <span class="supporting-text" style="color: ${stockColor};">
-                          Stock: ${inventory.stock}${inventory.unit_of_measurement ? ` ${inventory.unit_of_measurement}` : ''}
+                          ${t('pos', 'stockLabel')}: ${inventory.stock}${inventory.unit_of_measurement ? ` ${inventory.unit_of_measurement}` : ''}
                         </span>
                       </div>
                       <div class="trailing text">
@@ -836,7 +838,7 @@ export class POSViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 300px;">
             <div class="container">
               <material-symbols name="schedule" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="sale-time-input">Sale Time</label>
+              <label for="sale-time-input">${t('pos', 'saleTimeLabel')}</label>
               <input
                 id="sale-time-input"
                 type="datetime-local"
@@ -849,7 +851,7 @@ export class POSViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; flex: 1; min-width: 200px;">
             <div class="container">
               <material-symbols name="person" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="customer-name-input">Customer Name</label>
+              <label for="customer-name-input">${t('pos', 'customerNameLabel')}</label>
               <input
                 ${readValue(state, 'customerName')}
                 id="customer-name-input"
@@ -867,10 +869,10 @@ export class POSViewElement extends HTMLElement {
       return html`
         <section style="margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h3 class="title-small" style="margin: 0;">Items</h3>
+            <h3 class="title-small" style="margin: 0;">${t('pos', 'itemsSectionTitle')}</h3>
             ${state.lines.length > 0 ? html`
               <span class="label-medium" style="color: var(--md-sys-color-on-surface-variant);">
-                ${state.lines.length} item${state.lines.length !== 1 ? 's' : ''}
+                ${state.lines.length === 1 ? t('pos', 'itemsCountLabel', state.lines.length) : t('pos', 'itemsCountLabelPlural', state.lines.length)}
               </span>
             ` : nothing}
           </div>
@@ -883,17 +885,17 @@ export class POSViewElement extends HTMLElement {
               color: var(--md-sys-color-on-surface-variant);
             ">
               <material-symbols name="shopping_basket" size="48"></material-symbols>
-              <p style="margin: 8px 0 0 0;">No items added yet</p>
-              <p class="body-small">Select products from the right panel</p>
+              <p style="margin: 8px 0 0 0;">${t('pos', 'noItemsAddedTitle')}</p>
+              <p class="body-small">${t('pos', 'noItemsAddedMessage')}</p>
             </div>
           ` : html`
-            <table role="table" aria-label="Sale items" style="--md-sys-density: -4; width: 100%;">
+            <table role="table" aria-label="${t('pos', 'itemsTableAriaLabel')}" style="--md-sys-density: -4; width: 100%;">
               <thead>
                 <tr>
-                  <th scope="col">Product</th>
-                  <th scope="col" class="numeric" style="width: 100px;">Unit Price</th>
-                  <th scope="col" class="center" style="width: 120px;">Quantity</th>
-                  <th scope="col" class="numeric" style="width: 100px;">Total</th>
+                  <th scope="col">${t('pos', 'tableHeaderProduct')}</th>
+                  <th scope="col" class="numeric" style="width: 100px;">${t('pos', 'tableHeaderUnitPrice')}</th>
+                  <th scope="col" class="center" style="width: 120px;">${t('pos', 'tableHeaderQuantity')}</th>
+                  <th scope="col" class="numeric" style="width: 100px;">${t('pos', 'tableHeaderTotal')}</th>
                   <th scope="col" style="width: 48px;"></th>
                 </tr>
               </thead>
@@ -917,7 +919,7 @@ export class POSViewElement extends HTMLElement {
                             style="--md-sys-density: -4;"
                             data-index="${index}"
                             @click=${handleDecrementLineQuantity}
-                            aria-label="Decrease quantity"
+                            aria-label="${t('pos', 'decreaseQuantityAriaLabel')}"
                           >
                             <material-symbols name="remove" size="20"></material-symbols>
                           </button>
@@ -929,7 +931,7 @@ export class POSViewElement extends HTMLElement {
                             style="--md-sys-density: -4;"
                             data-index="${index}"
                             @click=${handleIncrementLineQuantity}
-                            aria-label="Increase quantity"
+                            aria-label="${t('pos', 'increaseQuantityAriaLabel')}"
                           >
                             <material-symbols name="add" size="20"></material-symbols>
                           </button>
@@ -944,7 +946,7 @@ export class POSViewElement extends HTMLElement {
                           style="--md-sys-density: -4; color: var(--md-sys-color-error);"
                           data-index="${index}"
                           @click=${handleRemoveLine}
-                          aria-label="Remove item"
+                          aria-label="${t('pos', 'removeItemAriaLabel')}"
                         >
                           <material-symbols name="delete" size="20"></material-symbols>
                         </button>
@@ -955,7 +957,7 @@ export class POSViewElement extends HTMLElement {
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">
-                  <td colspan="3">Subtotal</td>
+                  <td colspan="3">${t('pos', 'subtotalLabel')}</td>
                   <td class="numeric">${i18n.displayCurrency(getGrossAmount())}</td>
                   <td></td>
                 </tr>
@@ -972,7 +974,7 @@ export class POSViewElement extends HTMLElement {
       return html`
         <section style="margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h3 class="title-small" style="margin: 0;">Discounts</h3>
+            <h3 class="title-small" style="margin: 0;">${t('pos', 'discountsSectionTitle')}</h3>
             <div style="display: flex; align-items: center; gap: 16px;">
               <label for="auto-apply-discounts-checkbox" style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                 <input
@@ -982,12 +984,12 @@ export class POSViewElement extends HTMLElement {
                   .checked=${state.autoApplyDiscounts}
                   @change=${handleAutoApplyDiscountsToggle}
                 />
-                <span class="label-small">Auto apply discounts</span>
+                <span class="label-small">${t('pos', 'autoApplyDiscountsLabel')}</span>
               </label>
               ${!state.addingDiscount && generalDiscounts.length > 0 ? html`
                 <button role="button" type="button" class="text" @click=${startAddingDiscount}>
                   <material-symbols name="add" size="20"></material-symbols>
-                  Add Discount
+                  ${t('pos', 'addDiscountButtonLabel')}
                 </button>
               ` : nothing}
             </div>
@@ -1000,7 +1002,7 @@ export class POSViewElement extends HTMLElement {
               margin-bottom: 8px;
             ">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span class="label-medium">Select Discount</span>
+                <span class="label-medium">${t('pos', 'selectDiscountLabel')}</span>
                 <button role="button" type="button" class="text" @click=${cancelAddingDiscount}>
                   <material-symbols name="close" size="20"></material-symbols>
                 </button>
@@ -1032,14 +1034,14 @@ export class POSViewElement extends HTMLElement {
               border-radius: var(--md-sys-shape-corner-medium);
               color: var(--md-sys-color-on-surface-variant);
             ">
-              <p class="body-small" style="margin: 0;">No discounts applied</p>
+              <p class="body-small" style="margin: 0;">${t('pos', 'noDiscountsAppliedMessage')}</p>
             </div>
           ` : html`
-            <table role="table" aria-label="Discounts" style="--md-sys-density: -4; width: 100%;">
+            <table role="table" aria-label="${t('pos', 'discountsTableAriaLabel')}" style="--md-sys-density: -4; width: 100%;">
               <thead>
                 <tr>
-                  <th scope="col">Discount</th>
-                  <th scope="col" class="numeric" style="width: 120px;">Amount</th>
+                  <th scope="col">${t('pos', 'tableHeaderDiscount')}</th>
+                  <th scope="col" class="numeric" style="width: 120px;">${t('pos', 'tableHeaderAmount')}</th>
                   <th scope="col" style="width: 48px;"></th>
                 </tr>
               </thead>
@@ -1058,7 +1060,7 @@ export class POSViewElement extends HTMLElement {
                           class="text"
                           data-index="${index}"
                           @click=${handleRemoveDiscount}
-                          aria-label="Remove discount"
+                          aria-label="${t('pos', 'removeDiscountAriaLabel')}"
                           style="color: var(--md-sys-color-error);"
                         >
                           <material-symbols name="close" size="20"></material-symbols>
@@ -1070,7 +1072,7 @@ export class POSViewElement extends HTMLElement {
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">
-                  <td>Total Discount</td>
+                  <td>${t('pos', 'totalDiscountLabel')}</td>
                   <td class="numeric" style="color: var(--md-sys-color-tertiary);">
                     -${i18n.displayCurrency(getTotalDiscount())}
                   </td>
@@ -1087,7 +1089,7 @@ export class POSViewElement extends HTMLElement {
       return html`
         <section style="margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h3 class="title-small" style="margin: 0;">Payments</h3>
+            <h3 class="title-small" style="margin: 0;">${t('pos', 'paymentsSectionTitle')}</h3>
             <div style="display: flex; align-items: center; gap: 16px;">
               <label for="auto-apply-cash-payment-checkbox" style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                 <input
@@ -1097,12 +1099,12 @@ export class POSViewElement extends HTMLElement {
                   .checked=${state.autoApplyCashPayment}
                   @change=${handleAutoApplyCashPaymentToggle}
                 />
-                <span class="label-small">Auto-apply Cash Payment</span>
+                <span class="label-small">${t('pos', 'autoApplyCashPaymentLabel')}</span>
               </label>
               ${!state.addingPayment && !state.autoApplyCashPayment && state.paymentMethods.length > 0 && getRemainingBalance() > 0 ? html`
                 <button role="button" type="button" class="text extra-small" style="--md-sys-density: -4;" @click=${startAddingPayment}>
                   <material-symbols name="add" size="20"></material-symbols>
-                  Add Payment
+                  ${t('pos', 'addPaymentButtonLabel')}
                 </button>
               ` : nothing}
             </div>
@@ -1115,14 +1117,14 @@ export class POSViewElement extends HTMLElement {
               margin-bottom: 8px;
             ">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <span class="label-medium">Add Payment</span>
+                <span class="label-medium">${t('pos', 'addPaymentTitle')}</span>
                 <button role="button" type="button" class="text" @click=${cancelAddingPayment}>
                   <material-symbols name="close" size="20"></material-symbols>
                 </button>
               </div>
               <div style="margin-bottom: 12px;">
                 <span class="label-small" style="color: var(--md-sys-color-on-surface-variant); display: block; margin-bottom: 8px;">
-                  Payment Method
+                  ${t('pos', 'paymentMethodLabel')}
                 </span>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                   ${state.paymentMethods.map(function (method) {
@@ -1145,7 +1147,7 @@ export class POSViewElement extends HTMLElement {
                 <div style="display: flex; gap: 12px; align-items: flex-end;">
                   <div class="outlined-text-field" style="--md-sys-density: -4; flex: 1;">
                     <div class="container">
-                      <label for="payment-amount-input">Amount</label>
+                      <label for="payment-amount-input">${t('pos', 'amountLabel')}</label>
                       <input
                         id="payment-amount-input"
                         type="number"
@@ -1165,7 +1167,7 @@ export class POSViewElement extends HTMLElement {
                     ?disabled=${!state.paymentAmount || state.paymentAmount <= 0}
                   >
                     <material-symbols name="check" size="20"></material-symbols>
-                    Add
+                    ${t('pos', 'addButtonLabel')}
                   </button>
                 </div>
               ` : nothing}
@@ -1179,15 +1181,15 @@ export class POSViewElement extends HTMLElement {
               border-radius: var(--md-sys-shape-corner-medium);
               color: var(--md-sys-color-on-surface-variant);
             ">
-              <p class="body-small" style="margin: 0;">No payments added</p>
+              <p class="body-small" style="margin: 0;">${t('pos', 'noPaymentsAddedMessage')}</p>
             </div>
           ` : html`
-            <table role="table" aria-label="Payments" style="--md-sys-density: -4; width: 100%;">
+            <table role="table" aria-label="${t('pos', 'paymentsTableAriaLabel')}" style="--md-sys-density: -4; width: 100%;">
               <thead>
                 <tr>
-                  <th scope="col">Method</th>
-                  <th scope="col" class="numeric" style="width: 100px;">Amount</th>
-                  <th scope="col" class="numeric" style="width: 80px;">Fee</th>
+                  <th scope="col">${t('pos', 'tableHeaderMethod')}</th>
+                  <th scope="col" class="numeric" style="width: 100px;">${t('pos', 'tableHeaderAmount')}</th>
+                  <th scope="col" class="numeric" style="width: 80px;">${t('pos', 'tableHeaderFee')}</th>
                   <th scope="col" style="width: 48px;"></th>
                 </tr>
               </thead>
@@ -1198,7 +1200,7 @@ export class POSViewElement extends HTMLElement {
                     <tr>
                       <td>
                         ${payment.paymentMethodName}
-                        ${isAutoCash ? html`<span class="label-small" style="color: var(--md-sys-color-primary);"> (Auto)</span>` : nothing}
+                        ${isAutoCash ? html`<span class="label-small" style="color: var(--md-sys-color-primary);">${t('pos', 'autoPaymentIndicator')}</span>` : nothing}
                       </td>
                       <td class="numeric">${i18n.displayCurrency(payment.amount)}</td>
                       <td class="numeric" style="color: var(--md-sys-color-error);">
@@ -1212,7 +1214,7 @@ export class POSViewElement extends HTMLElement {
                             class="text"
                             data-index="${index}"
                             @click=${handleRemovePayment}
-                            aria-label="Remove payment"
+                            aria-label="${t('pos', 'removePaymentAriaLabel')}"
                             style="color: var(--md-sys-color-error);"
                           >
                             <material-symbols name="close" size="20"></material-symbols>
@@ -1225,7 +1227,7 @@ export class POSViewElement extends HTMLElement {
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">
-                  <td>Total Paid</td>
+                  <td>${t('pos', 'totalPaidLabel')}</td>
                   <td class="numeric">${i18n.displayCurrency(getTotalPaid())}</td>
                   <td class="numeric" style="color: var(--md-sys-color-error);">
                     ${getTotalFees() > 0 ? `-${i18n.displayCurrency(getTotalFees())}` : '—'}
@@ -1248,19 +1250,19 @@ export class POSViewElement extends HTMLElement {
       return html`
         <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="title-medium" style="font-weight: 700;">Total</span>
+            <span class="title-medium" style="font-weight: 700;">${t('pos', 'totalLabel')}</span>
             <span class="title-medium" style="font-weight: 700; color: var(--md-sys-color-primary);">
               ${i18n.displayCurrency(invoiceAmount)}
             </span>
           </div>
           ${state.payments.length > 0 ? html`
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span class="body-small">Paid</span>
+              <span class="body-small">${t('pos', 'paidLabel')}</span>
               <span class="body-small">${i18n.displayCurrency(getTotalPaid())}</span>
             </div>
             ${!isFullyPaid ? html`
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="body-small" style="color: var(--md-sys-color-error);">Remaining</span>
+                <span class="body-small" style="color: var(--md-sys-color-error);">${t('pos', 'remainingLabel')}</span>
                 <span class="body-small" style="color: var(--md-sys-color-error);">
                   ${i18n.displayCurrency(remaining)}
                 </span>
@@ -1268,7 +1270,7 @@ export class POSViewElement extends HTMLElement {
             ` : nothing}
             ${change > 0 ? html`
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="label-large" style="color: var(--md-sys-color-tertiary);">Change</span>
+                <span class="label-large" style="color: var(--md-sys-color-tertiary);">${t('pos', 'changeLabel')}</span>
                 <span class="label-large" style="color: var(--md-sys-color-tertiary);">
                   ${i18n.displayCurrency(change)}
                 </span>
@@ -1293,7 +1295,7 @@ export class POSViewElement extends HTMLElement {
             ?disabled=${state.lines.length === 0 && state.payments.length === 0}
           >
             <material-symbols name="delete_sweep"></material-symbols>
-            Clear
+            ${t('pos', 'clearButtonLabel')}
           </button>
           <button
             role="button"
@@ -1303,10 +1305,10 @@ export class POSViewElement extends HTMLElement {
           >
             ${form.state === 'submitting' ? html`
               <material-symbols name="progress_activity"></material-symbols>
-              Processing...
+              ${t('pos', 'processingButtonLabel')}
             ` : html`
               <material-symbols name="point_of_sale"></material-symbols>
-              Complete Sale
+              ${t('pos', 'completeSaleButtonLabel')}
             `}
           </button>
         </div>
@@ -1325,7 +1327,7 @@ export class POSViewElement extends HTMLElement {
             <hgroup>
               <h1 style="display: flex; align-items: center; gap: 8px;">
                 <material-symbols name="point_of_sale" size="32"></material-symbols>
-                POS Cashier
+                ${t('pos', 'posTitle')}
               </h1>
             </hgroup>
           </header>
@@ -1364,7 +1366,7 @@ export class POSViewElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('pos', 'errorTitle')}</h3>
             </header>
             <div class="content">
               <p>${form.error?.message}</p>
@@ -1376,7 +1378,7 @@ export class POSViewElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('pos', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>
@@ -1386,10 +1388,10 @@ export class POSViewElement extends HTMLElement {
           <div class="container">
             <material-symbols name="check_circle" style="color: var(--md-sys-color-primary);"></material-symbols>
             <header>
-              <h3>Sale Complete</h3>
+              <h3>${t('pos', 'saleCompleteTitle')}</h3>
             </header>
             <div class="content">
-              <p>Sale #${form.lastSaleId} has been recorded successfully.</p>
+              <p>${t('pos', 'saleCompleteMessage', form.lastSaleId)}</p>
             </div>
           </div>
         </dialog>

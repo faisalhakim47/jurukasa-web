@@ -4,7 +4,7 @@ import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 const { describe } = test;
 
 describe('Fixed Assets', function () {
-  useConsoleOutput(test);
+  // useConsoleOutput(test);
 
   /**
    * @param {import('@playwright/test').Page} page
@@ -84,7 +84,7 @@ describe('Fixed Assets', function () {
       await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
 
       const fixedAssetsPanel = page.getByRole('tabpanel', { name: 'Fixed Assets' });
-      await expect(fixedAssetsPanel.getByRole('button', { name: 'Refresh fixed assets' })).toBeVisible();
+      await expect(fixedAssetsPanel.getByRole('button', { name: 'Refresh' })).toBeVisible();
     });
 
     test('shall display search field', async function ({ page }) {
@@ -139,7 +139,7 @@ describe('Fixed Assets', function () {
       const dialog = page.getByRole('dialog', { name: 'Add Fixed Asset' });
       await expect(dialog).toBeVisible();
 
-      await dialog.getByRole('button', { name: 'Close dialog' }).click();
+      await dialog.getByRole('button', { name: 'Close' }).click();
 
       await expect(dialog).not.toBeVisible();
     });
@@ -174,7 +174,7 @@ describe('Fixed Assets', function () {
       await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
 
       const fixedAssetsPanel = page.getByRole('tabpanel', { name: 'Fixed Assets' });
-      await fixedAssetsPanel.getByRole('button', { name: 'Refresh fixed assets' }).click();
+      await fixedAssetsPanel.getByRole('button', { name: 'Refresh' }).click();
 
       // After refresh, the view should still show empty state (no assets yet)
       await expect(fixedAssetsPanel.getByRole('heading', { name: 'No fixed assets found' })).toBeVisible();

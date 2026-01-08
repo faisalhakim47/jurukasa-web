@@ -10,6 +10,7 @@ import { TimeContextElement } from '#web/contexts/time-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
@@ -31,6 +32,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const time = useContext(host, TimeContextElement);
 
+    const t = useTranslator(host);
     const errorAlertDialog = useDialog(host);
     const dialog = useDialog(host);
     const render = useRender(host);
@@ -142,18 +144,18 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
         const salvageValue = parseInt(/** @type {string} */ (data.get('salvageValue')) || '0', 10);
 
         // Validate inputs
-        if (!name) throw new Error('Asset name is required.');
-        if (!acquisitionDateStr) throw new Error('Acquisition date is required.');
-        if (isNaN(acquisitionCost) || acquisitionCost <= 0) throw new Error('Acquisition cost must be positive.');
-        if (isNaN(usefulLifeYears) || usefulLifeYears <= 0) throw new Error('Useful life must be positive.');
-        if (isNaN(salvageValue) || salvageValue < 0) throw new Error('Salvage value cannot be negative.');
-        if (salvageValue >= acquisitionCost) throw new Error('Salvage value must be less than acquisition cost.');
+        if (!name) throw new Error(t('fixedAsset', 'assetNameRequired'));
+        if (!acquisitionDateStr) throw new Error(t('fixedAsset', 'acquisitionDateRequired'));
+        if (isNaN(acquisitionCost) || acquisitionCost <= 0) throw new Error(t('fixedAsset', 'acquisitionCostPositive'));
+        if (isNaN(usefulLifeYears) || usefulLifeYears <= 0) throw new Error(t('fixedAsset', 'usefulLifePositive'));
+        if (isNaN(salvageValue) || salvageValue < 0) throw new Error(t('fixedAsset', 'salvageValueNegative'));
+        if (salvageValue >= acquisitionCost) throw new Error(t('fixedAsset', 'salvageValueTooHigh'));
 
         // Validate account selections
-        if (!form.assetAccountCode) throw new Error('Please select a fixed asset account.');
-        if (!form.accumulatedDepreciationAccountCode) throw new Error('Please select an accumulated depreciation account.');
-        if (!form.depreciationExpenseAccountCode) throw new Error('Please select a depreciation expense account.');
-        if (!form.paymentAccountCode) throw new Error('Please select a payment account.');
+        if (!form.assetAccountCode) throw new Error(t('fixedAsset', 'assetAccountRequired'));
+        if (!form.accumulatedDepreciationAccountCode) throw new Error(t('fixedAsset', 'accumulatedDepreciationAccountRequired'));
+        if (!form.depreciationExpenseAccountCode) throw new Error(t('fixedAsset', 'depreciationExpenseAccountRequired'));
+        if (!form.paymentAccountCode) throw new Error(t('fixedAsset', 'paymentAccountRequired'));
 
         // Validate accounts are different
         const accountCodes = [
@@ -162,7 +164,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
           form.depreciationExpenseAccountCode,
         ];
         if (new Set(accountCodes).size !== accountCodes.length) {
-          throw new Error('Asset, accumulated depreciation, and expense accounts must be different.');
+          throw new Error(t('fixedAsset', 'accountsMustBeDifferent'));
         }
 
         // Parse acquisition date
@@ -170,7 +172,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
         acquisitionDate.setHours(0, 0, 0, 0);
         const acquisitionTime = acquisitionDate.getTime();
 
-        if (acquisitionTime <= 0) throw new Error('Invalid acquisition date.');
+        if (acquisitionTime <= 0) throw new Error(t('fixedAsset', 'invalidAcquisitionDate'));
 
         const currentTime = time.currentDate().getTime();
 
@@ -272,7 +274,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                 type="button"
                 class="trailing-icon"
                 @click=${onClear}
-                aria-label="Clear account selection"
+                aria-label="${t('fixedAsset', 'clearAccountLabel')}"
               ><material-symbols name="close"></material-symbols></button>
             ` : html`
               <button
@@ -281,7 +283,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                 @click=${onSelect}
                 commandfor="fixed-asset-account-selector-dialog"
                 command="--open"
-                aria-label="Open account selector"
+                aria-label="${t('fixedAsset', 'openAccountSelectorLabel')}"
               ><material-symbols name="search"></material-symbols></button>
             `}
           </div>
@@ -302,16 +304,16 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="fixed-asset-creation-dialog-title">Add Fixed Asset</h2>
+              <h2 id="fixed-asset-creation-dialog-title">${t('fixedAsset', 'creationTitle')}</h2>
               <button
                 role="button"
                 type="button"
                 class="text"
                 commandfor="fixed-asset-creation-dialog"
                 command="close"
-                aria-label="Close dialog"
+                aria-label="${t('fixedAsset', 'closeActionLabel')}"
               ><material-symbols name="close"></material-symbols></button>
-              <button role="button" type="submit" name="action">Add Asset</button>
+              <button role="button" type="submit" name="action">${t('fixedAsset', 'addAssetActionLabel')}</button>
             </header>
 
             <div class="content">
@@ -320,7 +322,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
                   </div>
-                  <p>Creating fixed asset...</p>
+                  <p>${t('fixedAsset', 'creatingAssetLabel')}</p>
                 </div>
               ` : nothing}
 
@@ -328,12 +330,12 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
 
                 <!-- Basic Information Section -->
                 <section>
-                  <h3 class="title-medium" style="margin-bottom: 16px;">Basic Information</h3>
+                  <h3 class="title-medium" style="margin-bottom: 16px;">${t('fixedAsset', 'basicInfoSectionTitle')}</h3>
                   
                   <!-- Asset Name -->
                   <div class="outlined-text-field" style="margin-bottom: 16px;">
                     <div class="container">
-                      <label for="fixed-asset-name-input">Asset Name</label>
+                      <label for="fixed-asset-name-input">${t('fixedAsset', 'assetNameLabel')}</label>
                       <input
                         id="fixed-asset-name-input"
                         name="name"
@@ -342,13 +344,13 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                         required
                       />
                     </div>
-                    <div class="supporting-text">A descriptive name for this fixed asset</div>
+                    <div class="supporting-text">${t('fixedAsset', 'assetNameSupportingText')}</div>
                   </div>
 
                   <!-- Description -->
                   <div class="outlined-text-field" style="margin-bottom: 16px;">
                     <div class="container">
-                      <label for="fixed-asset-description-input">Description (Optional)</label>
+                      <label for="fixed-asset-description-input">${t('fixedAsset', 'descriptionLabel')}</label>
                       <textarea
                         id="fixed-asset-description-input"
                         name="description"
@@ -356,18 +358,18 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                         rows="2"
                       ></textarea>
                     </div>
-                    <div class="supporting-text">Additional details about the asset</div>
+                    <div class="supporting-text">${t('fixedAsset', 'descriptionSupportingText')}</div>
                   </div>
                 </section>
 
                 <!-- Financial Information Section -->
                 <section>
-                  <h3 class="title-medium" style="margin-bottom: 16px;">Financial Information</h3>
+                  <h3 class="title-medium" style="margin-bottom: 16px;">${t('fixedAsset', 'financialInfoSectionTitle')}</h3>
                   
                   <!-- Acquisition Date -->
                   <div class="outlined-text-field" style="margin-bottom: 16px;">
                     <div class="container">
-                      <label for="acquisition-date-input">Acquisition Date</label>
+                      <label for="acquisition-date-input">${t('fixedAsset', 'acquisitionDateLabel')}</label>
                       <input
                         id="acquisition-date-input"
                         name="acquisitionDate"
@@ -377,13 +379,13 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                         max="${todayStr}"
                       />
                     </div>
-                    <div class="supporting-text">Date when the asset was acquired</div>
+                    <div class="supporting-text">${t('fixedAsset', 'acquisitionDateSupportingText')}</div>
                   </div>
 
                   <!-- Acquisition Cost -->
                   <div class="outlined-text-field" style="margin-bottom: 16px;">
                     <div class="container">
-                      <label for="acquisition-cost-input">Acquisition Cost</label>
+                      <label for="acquisition-cost-input">${t('fixedAsset', 'acquisitionCostLabel')}</label>
                       <input
                         id="acquisition-cost-input"
                         name="acquisitionCost"
@@ -394,13 +396,13 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                         required
                       />
                     </div>
-                    <div class="supporting-text">Total cost of acquiring the asset (in lowest denomination)</div>
+                    <div class="supporting-text">${t('fixedAsset', 'acquisitionCostSupportingText')}</div>
                   </div>
 
                   <!-- Useful Life Years -->
                   <div class="outlined-text-field" style="margin-bottom: 16px;">
                     <div class="container">
-                      <label for="useful-life-input">Useful Life (Years)</label>
+                      <label for="useful-life-input">${t('fixedAsset', 'usefulLifeLabel')}</label>
                       <input
                         id="useful-life-input"
                         name="usefulLifeYears"
@@ -411,13 +413,13 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                         required
                       />
                     </div>
-                    <div class="supporting-text">Expected useful life of the asset in years</div>
+                    <div class="supporting-text">${t('fixedAsset', 'usefulLifeSupportingText')}</div>
                   </div>
 
                   <!-- Salvage Value -->
                   <div class="outlined-text-field" style="margin-bottom: 16px;">
                     <div class="container">
-                      <label for="salvage-value-input">Salvage Value</label>
+                      <label for="salvage-value-input">${t('fixedAsset', 'salvageValueLabel')}</label>
                       <input
                         id="salvage-value-input"
                         name="salvageValue"
@@ -428,52 +430,52 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                         placeholder=" "
                       />
                     </div>
-                    <div class="supporting-text">Estimated value at end of useful life (default: 0)</div>
+                    <div class="supporting-text">${t('fixedAsset', 'salvageValueSupportingText')}</div>
                   </div>
                 </section>
 
                 <!-- Account Assignment Section -->
                 <section>
-                  <h3 class="title-medium" style="margin-bottom: 16px;">Account Assignment</h3>
+                  <h3 class="title-medium" style="margin-bottom: 16px;">${t('fixedAsset', 'accountAssignmentSectionTitle')}</h3>
                   
                   ${renderAccountSelector(
-                    'Fixed Asset Account',
+                    t('fixedAsset', 'fixedAssetAccountLabel'),
                     'asset-account-input',
                     form.assetAccountCode,
                     form.assetAccountName,
                     handleSelectAssetAccount,
                     clearAssetAccount,
-                    'Asset account (e.g., Equipment, Vehicles)'
+                    t('fixedAsset', 'fixedAssetAccountSupportingText')
                   )}
 
                   ${renderAccountSelector(
-                    'Accumulated Depreciation Account',
+                    t('fixedAsset', 'accumulatedDepreciationAccountLabel'),
                     'accumulated-depreciation-input',
                     form.accumulatedDepreciationAccountCode,
                     form.accumulatedDepreciationAccountName,
                     handleSelectAccumulatedAccount,
                     clearAccumulatedAccount,
-                    'Contra asset account for accumulated depreciation'
+                    t('fixedAsset', 'accumulatedDepreciationAccountSupportingText')
                   )}
 
                   ${renderAccountSelector(
-                    'Depreciation Expense Account',
+                    t('fixedAsset', 'depreciationExpenseAccountLabel'),
                     'depreciation-expense-input',
                     form.depreciationExpenseAccountCode,
                     form.depreciationExpenseAccountName,
                     handleSelectExpenseAccount,
                     clearExpenseAccount,
-                    'Expense account for recording depreciation'
+                    t('fixedAsset', 'depreciationExpenseAccountSupportingText')
                   )}
 
                   ${renderAccountSelector(
-                    'Payment Account',
+                    t('fixedAsset', 'paymentAccountLabel'),
                     'payment-account-input',
                     form.paymentAccountCode,
                     form.paymentAccountName,
                     handleSelectPaymentAccount,
                     clearPaymentAccount,
-                    'Cash or bank account used for payment'
+                    t('fixedAsset', 'paymentAccountSupportingText')
                   )}
                 </section>
 
@@ -486,7 +488,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('fixedAsset', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${form.error?.message}</p>
@@ -498,7 +500,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('fixedAsset', 'dismissLabel')}</button>
               </li>
             </menu>
           </div>

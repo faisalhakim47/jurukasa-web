@@ -10,6 +10,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useMounted } from '#web/hooks/use-mounted.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
@@ -28,6 +29,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const time = useContext(host, TimeContextElement);
+    const t = useTranslator(host);
 
     const dialog = useDialog(host);
     const errorAlertDialog = useDialog(host);
@@ -144,11 +146,11 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
       // Validate duration (30-400 days as per schema)
       const durationDays = (endTime - beginTime) / (24 * 60 * 60 * 1000);
       if (durationDays < 30) {
-        endDateInput.setCustomValidity('Fiscal year must be at least 30 days');
+        endDateInput.setCustomValidity(t('fiscalYear', 'minDurationError'));
         return;
       }
       if (durationDays > 400) {
-        endDateInput.setCustomValidity('Fiscal year cannot exceed 400 days');
+        endDateInput.setCustomValidity(t('fiscalYear', 'maxDurationError'));
         return;
       }
 
@@ -160,11 +162,11 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
           LIMIT 1
         `;
         if (result.rows.length > 0) {
-          beginDateInput.setCustomValidity('Fiscal year periods cannot overlap with existing fiscal years');
+          beginDateInput.setCustomValidity(t('fiscalYear', 'overlapError'));
         }
       }
       catch (error) {
-        beginDateInput.setCustomValidity('Error validating date range');
+        beginDateInput.setCustomValidity(t('fiscalYear', 'validationError'));
       }
     }
 
@@ -238,16 +240,16 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="fiscal-year-creation-dialog-title">Create Fiscal Year</h2>
+              <h2 id="fiscal-year-creation-dialog-title">${t('fiscalYear', 'creationTitle')}</h2>
               <button
                 role="button"
                 type="button"
                 class="text"
-                aria-label="Close dialog"
+                aria-label="${t('fiscalYear', 'closeDialogLabel')}"
                 commandfor="fiscal-year-creation-dialog"
                 command="close"
               ><material-symbols name="close"></material-symbols></button>
-              <button role="button" type="submit" name="action" ?disabled=${defaultDates.isLoading}>Create</button>
+              <button role="button" type="submit" name="action" ?disabled=${defaultDates.isLoading}>${t('fiscalYear', 'creationSubmitLabel')}</button>
             </header>
 
             <div class="content">
@@ -256,7 +258,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
                   </div>
-                  <p>${form.state === 'submitting' ? 'Creating fiscal year...' : form.state === 'success' ? 'Fiscal year created!' : ''}</p>
+                  <p>${form.state === 'submitting' ? t('fiscalYear', 'creationLoadingLabel') : form.state === 'success' ? t('fiscalYear', 'creationSuccessLabel') : ''}</p>
                 </div>
               ` : nothing}
 
@@ -265,7 +267,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
                   </div>
-                  <p>Loading form...</p>
+                  <p>${t('fiscalYear', 'loadingFormLabel')}</p>
                 </div>
               ` : html`
                 <div style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0px; max-width: 600px; margin: 0 auto;">
@@ -273,7 +275,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
                   <!-- Fiscal Year Name -->
                   <div class="outlined-text-field">
                     <div class="container">
-                      <label for="fiscal-year-name-input">Name (Optional)</label>
+                      <label for="fiscal-year-name-input">${t('fiscalYear', 'nameLabel')}</label>
                       <input
                         id="fiscal-year-name-input"
                         name="name"
@@ -282,13 +284,13 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
                         autocomplete="off"
                       />
                     </div>
-                    <div class="supporting-text">e.g., "FY 2025" or "Fiscal Year 2025"</div>
+                    <div class="supporting-text">${t('fiscalYear', 'nameHelperText')}</div>
                   </div>
 
                   <!-- Begin Date -->
                   <div class="outlined-text-field">
                     <div class="container">
-                      <label for="begin-date-input">Begin Date</label>
+                      <label for="begin-date-input">${t('fiscalYear', 'beginDateLabel')}</label>
                       <input
                         id="begin-date-input"
                         name="beginDate"
@@ -300,13 +302,13 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
                         @blur=${validateDateRange}
                       />
                     </div>
-                    <div class="supporting-text">First day of the fiscal year</div>
+                    <div class="supporting-text">${t('fiscalYear', 'beginDateHelperText')}</div>
                   </div>
 
                   <!-- End Date -->
                   <div class="outlined-text-field">
                     <div class="container">
-                      <label for="end-date-input">End Date</label>
+                      <label for="end-date-input">${t('fiscalYear', 'endDateLabel')}</label>
                       <input
                         id="end-date-input"
                         name="endDate"
@@ -318,7 +320,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
                         @blur=${validateDateRange}
                       />
                     </div>
-                    <div class="supporting-text">Last day of the fiscal year (30-400 days from begin date)</div>
+                    <div class="supporting-text">${t('fiscalYear', 'endDateHelperText')}</div>
                   </div>
 
                 </div>
@@ -331,7 +333,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('fiscalYear', 'errorTitle')}</h3>
             </header>
             <div class="content">
               <p>${form.error}</p>
@@ -343,7 +345,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('fiscalYear', 'dismissLabel')}</button>
               </li>
             </menu>
           </div>

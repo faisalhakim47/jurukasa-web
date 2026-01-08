@@ -8,6 +8,7 @@ import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { readValue } from '#web/directives/read-value.js';
 import { useContext } from '#web/hooks/use-context.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { webStyleSheets } from '#web/styles.js';
@@ -47,6 +48,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const errorAlertDialog = useDialog(host);
     const deleteConfirmDialog = useDialog(host);
@@ -237,18 +239,18 @@ export class DiscountDetailsDialogElement extends HTMLElement {
         const amount = parseInt(/** @type {string} */(data.get('amount')) || '0', 10);
         const inventoryId = state.editDiscountType === 'inventory' ? state.selectedInventoryId : null;
 
-        if (!name) throw new Error('Discount name is required.');
-        if (multipleOfQuantity < 1) throw new Error('Multiple of quantity must be at least 1.');
-        if (amount <= 0) throw new Error('Discount amount must be greater than 0.');
+        if (!name) throw new Error(t('discount', 'discountNameRequiredError'));
+        if (multipleOfQuantity < 1) throw new Error(t('discount', 'multipleOfQuantityMinError'));
+        if (amount <= 0) throw new Error(t('discount', 'discountAmountPositiveError'));
         if (state.editDiscountType === 'inventory' && !inventoryId) {
-          throw new Error('Please select an inventory for inventory-specific discount.');
+          throw new Error(t('discount', 'selectInventoryError'));
         }
 
         const duplicateCheck = await tx.sql`
           SELECT 1 FROM discounts WHERE name = ${name} AND id != ${state.discount.id} LIMIT 1;
         `;
         if (duplicateCheck.rows.length > 0) {
-          throw new Error('Discount name already exists.');
+          throw new Error(t('discount', 'discountNameExistsError'));
         }
 
         await tx.sql`
@@ -303,7 +305,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
         `;
 
         if (usageCheck.rows.length > 0) {
-          throw new Error('Cannot delete discount that has been used in sales.');
+          throw new Error(t('discount', 'cannotDeleteUsedDiscountError'));
         }
 
         await tx.sql`
@@ -344,7 +346,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading discount details"
+          aria-label="${t('discount', 'loadingDiscountDetailsAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -360,7 +362,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading discount details...</p>
+          <p>${t('discount', 'loadingDiscountDetailsMessage')}</p>
         </div>
       `;
     }
@@ -380,8 +382,8 @@ export class DiscountDetailsDialogElement extends HTMLElement {
           "
         >
           <material-symbols name="percent" size="48"></material-symbols>
-          <h3 class="title-large">Discount Not Found</h3>
-          <p style="color: var(--md-sys-color-on-surface-variant);">The requested discount could not be found.</p>
+          <h3 class="title-large">${t('discount', 'discountNotFoundTitle')}</h3>
+          <p style="color: var(--md-sys-color-on-surface-variant);">${t('discount', 'discountNotFoundMessage')}</p>
         </div>
       `;
     }
@@ -391,20 +393,20 @@ export class DiscountDetailsDialogElement extends HTMLElement {
       const discount = state.discount;
 
       const isGlobal = discount.inventory_id === null;
-      const typeLabel = isGlobal ? 'Global' : 'Inventory-specific';
+      const typeLabel = isGlobal ? t('discount', 'globalTypeLabel') : t('discount', 'inventorySpecificTypeLabel');
 
       return html`
         <div style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
           <!-- Basic Info -->
           <section>
-            <h3 class="title-medium" style="margin-bottom: 16px;">Discount Information</h3>
+            <h3 class="title-medium" style="margin-bottom: 16px;">${t('discount', 'discountInformationSectionTitle')}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Name</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('discount', 'nameFieldLabel')}</p>
                 <p class="body-large">${discount.name}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Type</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('discount', 'typeFieldLabel')}</p>
                 <p class="body-large">
                   <span
                     class="label-small"
@@ -420,7 +422,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
               </div>
               ${discount.inventory_id !== null ? html`
                 <div style="grid-column: span 2;">
-                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Inventory</p>
+                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('discount', 'inventoryFieldLabel')}</p>
                   <p class="body-large" style="display: flex; align-items: center; gap: 8px;">
                     <material-symbols name="inventory_2" size="20"></material-symbols>
                     ${discount.inventory_name}
@@ -435,14 +437,14 @@ export class DiscountDetailsDialogElement extends HTMLElement {
 
           <!-- Discount Rules -->
           <section>
-            <h3 class="title-medium" style="margin-bottom: 16px;">Discount Rules</h3>
+            <h3 class="title-medium" style="margin-bottom: 16px;">${t('discount', 'discountRulesSectionTitle')}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Every N Items</p>
-                <p class="body-large" role="status" aria-label="Every N Items value">${discount.multiple_of_quantity} item(s)</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('discount', 'everyNItemsFieldLabel')}</p>
+                <p class="body-large" role="status" aria-label="${t('discount', 'everyNItemsFieldLabel')} value">${t('discount', 'everyNItemsValue', discount.multiple_of_quantity)}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Discount Amount</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('discount', 'discountAmountFieldLabel')}</p>
                 <p class="body-large" style="color: var(--md-sys-color-primary); font-weight: 500;" role="status" aria-label="Discount Amount value">
                   ${i18n.displayCurrency(discount.amount)}
                 </p>
@@ -451,27 +453,24 @@ export class DiscountDetailsDialogElement extends HTMLElement {
 
             <!-- Discount Example -->
             <div style="margin-top: 16px; padding: 16px; background-color: var(--md-sys-color-surface-container); border-radius: var(--md-sys-shape-corner-medium);">
-              <p class="label-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 8px;">How it works:</p>
+              <p class="label-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 8px;">${t('discount', 'howItWorksLabel')}</p>
               <p class="body-medium">
-                For every <strong>${discount.multiple_of_quantity}</strong> ${discount.inventory_name || 'item(s)'} purchased, 
-                the customer gets <strong>${i18n.displayCurrency(discount.amount)}</strong> off.
+                ${t('discount', 'howItWorksDescription', discount.multiple_of_quantity, discount.inventory_name || t('discount', 'howItWorksItemLabel'), discount.amount)}
               </p>
               <p class="body-small" style="color: var(--md-sys-color-on-surface-variant); margin-top: 8px;">
-                Example: Buying ${discount.multiple_of_quantity * 2 + 1} items = 
-                ${Math.floor((discount.multiple_of_quantity * 2 + 1) / discount.multiple_of_quantity)} × ${i18n.displayCurrency(discount.amount)} = 
-                ${i18n.displayCurrency(Math.floor((discount.multiple_of_quantity * 2 + 1) / discount.multiple_of_quantity) * discount.amount)} discount
+                ${t('discount', 'exampleLabel', discount.multiple_of_quantity * 2 + 1, Math.floor((discount.multiple_of_quantity * 2 + 1) / discount.multiple_of_quantity), discount.amount, Math.floor((discount.multiple_of_quantity * 2 + 1) / discount.multiple_of_quantity) * discount.amount)}
               </p>
             </div>
           </section>
 
           <!-- Delete Section -->
           <section style="border-top: 1px solid var(--md-sys-color-outline-variant); padding-top: 24px;">
-            <h3 class="title-medium" style="margin-bottom: 16px; color: var(--md-sys-color-error);">Danger Zone</h3>
+            <h3 class="title-medium" style="margin-bottom: 16px; color: var(--md-sys-color-error);">${t('discount', 'dangerZoneSectionTitle')}</h3>
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background-color: var(--md-sys-color-error-container); border-radius: var(--md-sys-shape-corner-medium);">
               <div>
-                <p class="body-medium" style="font-weight: 500; color: var(--md-sys-color-on-error-container);">Delete this discount</p>
+                <p class="body-medium" style="font-weight: 500; color: var(--md-sys-color-on-error-container);">${t('discount', 'deleteDiscountTitle')}</p>
                 <p class="body-small" style="color: var(--md-sys-color-on-error-container);">
-                  This action cannot be undone. Discounts that have been used in sales cannot be deleted.
+                  ${t('discount', 'deleteDiscountDescription')}
                 </p>
               </div>
               <button
@@ -482,7 +481,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                 @click=${handleDeleteConfirm}
               >
                 <material-symbols name="delete"></material-symbols>
-                Delete
+                ${t('discount', 'deleteButtonLabel')}
               </button>
             </div>
           </section>
@@ -501,14 +500,14 @@ export class DiscountDetailsDialogElement extends HTMLElement {
               <div role="progressbar" class="linear indeterminate">
                 <div class="track"><div class="indicator"></div></div>
               </div>
-              <p>Saving changes...</p>
+              <p>${t('discount', 'savingChangesMessage')}</p>
             </div>
           ` : nothing}
 
           <!-- Discount Name -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="edit-name-input">Discount Name</label>
+              <label for="edit-name-input">${t('discount', 'discountNameLabel')}</label>
               <input
                 id="edit-name-input"
                 name="name"
@@ -522,7 +521,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
 
           <!-- Discount Type -->
           <fieldset style="border: 1px solid var(--md-sys-color-outline-variant); border-radius: var(--md-sys-shape-corner-medium); padding: 16px; margin: 0;">
-            <legend class="label-medium" style="padding: 0 8px; color: var(--md-sys-color-on-surface-variant);">Discount Type</legend>
+            <legend class="label-medium" style="padding: 0 8px; color: var(--md-sys-color-on-surface-variant);">${t('discount', 'discountTypeLegend')}</legend>
             <div style="display: flex; flex-direction: column; gap: 12px;">
               <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
                 <input
@@ -533,9 +532,9 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                   @change=${handleDiscountTypeChange}
                 />
                 <div>
-                  <span class="body-medium" style="font-weight: 500;">Global Discount</span>
+                  <span class="body-medium" style="font-weight: 500;">${t('discount', 'globalDiscountLabel')}</span>
                   <p class="body-small" style="margin: 4px 0 0 0; color: var(--md-sys-color-on-surface-variant);">
-                    Can be applied to any sale regardless of items
+                    ${t('discount', 'globalDiscountDescription')}
                   </p>
                 </div>
               </label>
@@ -548,9 +547,9 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                   @change=${handleDiscountTypeChange}
                 />
                 <div>
-                  <span class="body-medium" style="font-weight: 500;">Inventory-specific Discount</span>
+                  <span class="body-medium" style="font-weight: 500;">${t('discount', 'inventorySpecificDiscountLabel')}</span>
                   <p class="body-small" style="margin: 4px 0 0 0; color: var(--md-sys-color-on-surface-variant);">
-                    Only applies when the specific inventory is in the sale
+                    ${t('discount', 'inventorySpecificDiscountDescription')}
                   </p>
                 </div>
               </label>
@@ -558,14 +557,14 @@ export class DiscountDetailsDialogElement extends HTMLElement {
 
             ${state.editDiscountType === 'inventory' ? html`
               <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px; padding: 16px; background-color: var(--md-sys-color-surface-container); border-radius: var(--md-sys-shape-corner-medium);">
-                <label class="label-medium" style="color: var(--md-sys-color-on-surface-variant);">Select Inventory</label>
+                <label class="label-medium" style="color: var(--md-sys-color-on-surface-variant);">${t('discount', 'selectInventoryLabel')}</label>
                 
                 ${!state.selectedInventory ? html`
                   <!-- Inventory Search -->
                   <div class="outlined-text-field" style="--md-sys-density: -4;">
                     <div class="container">
                       <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-                      <label for="edit-inventory-search-input">Search Inventory</label>
+                      <label for="edit-inventory-search-input">${t('discount', 'searchInventoryLabel')}</label>
                       <input
                         ${readValue(state, 'inventorySearchQuery')}
                         id="edit-inventory-search-input"
@@ -581,11 +580,11 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                   <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--md-sys-color-outline-variant); border-radius: var(--md-sys-shape-corner-medium);">
                     ${state.isLoadingInventories ? html`
                       <div style="padding: 16px; text-align: center; color: var(--md-sys-color-on-surface-variant);">
-                        Loading...
+                        ${t('discount', 'loadingInventoriesMessage')}
                       </div>
                     ` : state.availableInventories.length === 0 ? html`
                       <div style="padding: 16px; text-align: center; color: var(--md-sys-color-on-surface-variant);">
-                        No inventories found.
+                        ${t('discount', 'noInventoriesFoundMessage')}
                       </div>
                     ` : html`
                       <ul role="listbox" aria-label="Available inventories" style="list-style: none; padding: 0; margin: 0;">
@@ -607,7 +606,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                               <p style="margin: 0; font-weight: 500;">${inv.name}</p>
                               ${inv.unit_of_measurement ? html`
                                 <p style="margin: 0; font-size: 0.875rem; color: var(--md-sys-color-on-surface-variant);">
-                                  Unit: ${inv.unit_of_measurement}
+                                  ${t('discount', 'unitLabel')}: ${inv.unit_of_measurement}
                                 </p>
                               ` : nothing}
                             </li>
@@ -624,7 +623,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                       <p class="body-medium" style="margin: 0; font-weight: 500; color: var(--md-sys-color-on-primary-container);">${state.selectedInventory.name}</p>
                       ${state.selectedInventory.unit_of_measurement ? html`
                         <p class="body-small" style="margin: 4px 0 0 0; color: var(--md-sys-color-on-primary-container);">
-                          Unit: ${state.selectedInventory.unit_of_measurement}
+                          ${t('discount', 'unitLabel')}: ${state.selectedInventory.unit_of_measurement}
                         </p>
                       ` : nothing}
                     </div>
@@ -633,7 +632,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                       type="button"
                       class="text"
                       @click=${handleClearInventorySelection}
-                      aria-label="Change inventory"
+                      aria-label="${t('discount', 'changeInventoryAriaLabel')}"
                     >
                       <material-symbols name="edit"></material-symbols>
                     </button>
@@ -646,7 +645,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
           <!-- Quantity Multiplier -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="edit-multiple-of-quantity-input">Every N Items</label>
+              <label for="edit-multiple-of-quantity-input">${t('discount', 'everyNItemsLabel')}</label>
               <input
                 id="edit-multiple-of-quantity-input"
                 name="multipleOfQuantity"
@@ -658,13 +657,13 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                 required
               />
             </div>
-            <div class="supporting-text">Discount applies for every N items purchased</div>
+            <div class="supporting-text">${t('discount', 'everyNItemsSupportingText')}</div>
           </div>
 
           <!-- Discount Amount -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="edit-amount-input">Discount Amount</label>
+              <label for="edit-amount-input">${t('discount', 'discountAmountLabel')}</label>
               <input
                 id="edit-amount-input"
                 name="amount"
@@ -679,8 +678,8 @@ export class DiscountDetailsDialogElement extends HTMLElement {
           </div>
 
           <div style="display: flex; gap: 12px; justify-content: flex-end;">
-            <button role="button" type="button" class="text" @click=${toggleEditMode}>Cancel</button>
-            <button role="button" type="submit" class="tonal" ?disabled=${state.isSaving}>Save Changes</button>
+            <button role="button" type="button" class="text" @click=${toggleEditMode}>${t('discount', 'cancelButtonLabel')}</button>
+            <button role="button" type="submit" class="tonal" ?disabled=${state.isSaving}>${t('discount', 'saveChangesButtonLabel')}</button>
           </div>
         </form>
       `;
@@ -697,7 +696,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
           <div class="container">
             <header>
               <h2 id="discount-details-dialog-title">
-                ${state.discount ? state.discount.name : 'Discount Details'}
+                ${state.discount ? state.discount.name : t('discount', 'detailsDialogTitle')}
               </h2>
               <button
                 role="button"
@@ -709,7 +708,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
               ${state.discount && !state.isEditing ? html`
                 <button role="button" type="button" @click=${toggleEditMode}>
                   <material-symbols name="edit"></material-symbols>
-                  Edit
+                  ${t('discount', 'editButtonLabel')}
                 </button>
               ` : nothing}
             </header>
@@ -727,7 +726,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('discount', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${state.error?.message}</p>
@@ -739,7 +738,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('discount', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>
@@ -749,12 +748,12 @@ export class DiscountDetailsDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="delete"></material-symbols>
             <header>
-              <h3 id="delete-confirm-title">Delete Discount</h3>
+              <h3 id="delete-confirm-title">${t('discount', 'deleteConfirmDialogTitle')}</h3>
             </header>
             <div class="content">
-              <p>Are you sure you want to delete <strong>${state.discount?.name}</strong>?</p>
+              <p>${t('discount', 'deleteConfirmMessage', state.discount?.name || '')}</p>
               <p style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;">
-                This action cannot be undone. Discounts that have been used in sales cannot be deleted.
+                ${t('discount', 'deleteConfirmWarning')}
               </p>
             </div>
             <menu>
@@ -764,7 +763,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDeleteCancel}
-                >Cancel</button>
+                >${t('discount', 'deleteConfirmCancelButton')}</button>
               </li>
               <li>
                 <button
@@ -774,7 +773,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                   style="color: var(--md-sys-color-error);"
                   @click=${handleDelete}
                   ?disabled=${state.isDeleting}
-                >Delete</button>
+                >${t('discount', 'deleteConfirmDeleteButton')}</button>
               </li>
             </menu>
           </div>

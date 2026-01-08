@@ -7,6 +7,7 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useContext } from '#web/hooks/use-context.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 
 import '#web/components/material-symbols.js';
@@ -19,6 +20,7 @@ export class DashboardViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -159,7 +161,7 @@ export class DashboardViewElement extends HTMLElement {
         state.recentSales = recentSalesResult.rows.map(function (row, index) {
           return {
             id: /** @type {number} */ (row.id),
-            name: 'Sale #' + row.id,
+            name: t('dashboard', 'saleNamePrefix', row.id),
             amount: /** @type {number} */ (row.invoice_amount) || 0,
           };
         });
@@ -177,7 +179,7 @@ export class DashboardViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading dashboard"
+          aria-label="${t('dashboard', 'loadingDashboardAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -193,7 +195,7 @@ export class DashboardViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading dashboard...</p>
+          <p>${t('dashboard', 'loadingDashboardMessage')}</p>
         </div>
       `;
     }
@@ -220,11 +222,11 @@ export class DashboardViewElement extends HTMLElement {
           <h2
             class="title-large"
             style="margin: 0; color: var(--md-sys-color-on-surface);"
-          >Unable to load dashboard</h2>
+          >${t('dashboard', 'unableToLoadDashboardTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadDashboardData}>
             <material-symbols name="refresh" style="color: var(--md-sys-color-error);"></material-symbols>
-            Retry
+            ${t('dashboard', 'retryButtonLabel')}
           </button>
         </div>
       `;
@@ -237,8 +239,8 @@ export class DashboardViewElement extends HTMLElement {
             <header>
               <material-symbols name="calendar_today"></material-symbols>
               <hgroup>
-                <h3>Fiscal Year</h3>
-                <p>No active fiscal year</p>
+                <h3>${t('dashboard', 'fiscalYearTitle')}</h3>
+                <p>${t('dashboard', 'noActiveFiscalYearMessage')}</p>
               </hgroup>
             </header>
             <section style="flex: 1;">
@@ -257,7 +259,7 @@ export class DashboardViewElement extends HTMLElement {
                 "
               >
                 <material-symbols name="calendar_month" size="32"></material-symbols>
-                <p>Set up a fiscal year to start tracking your accounting period.</p>
+                <p>${t('dashboard', 'setupFiscalYearMessage')}</p>
               </div>
             </section>
           </article>
@@ -271,7 +273,7 @@ export class DashboardViewElement extends HTMLElement {
           <header>
             <material-symbols name="calendar_today"></material-symbols>
             <hgroup>
-              <h3>Fiscal Year</h3>
+              <h3>${t('dashboard', 'fiscalYearTitle')}</h3>
               <p>${name}</p>
             </hgroup>
           </header>
@@ -287,14 +289,14 @@ export class DashboardViewElement extends HTMLElement {
               aria-valuenow="${Math.round(progress)}"
               aria-valuemin="0"
               aria-valuemax="100"
-              aria-label="Fiscal year progress"
+              aria-label="${t('dashboard', 'fiscalYearProgressAriaLabel')}"
               style="--progress: ${progress}%"
             >
               <div class="track">
                 <div class="indicator"></div>
               </div>
             </div>
-            <p class="body-small" style="color: var(--md-sys-color-on-surface-variant); margin-top: 8px;">${Math.round(progress)}% of fiscal year completed</p>
+            <p class="body-small" style="color: var(--md-sys-color-on-surface-variant); margin-top: 8px;">${t('dashboard', 'fiscalYearCompletedText', Math.round(progress))}</p>
           </section>
         </article>
       `;
@@ -302,11 +304,11 @@ export class DashboardViewElement extends HTMLElement {
 
     function renderMetricCards() {
       return html`
-        <div role="region" aria-label="Financial metrics" style="display: flex; gap: 16px;">
+        <div role="region" aria-label="${t('dashboard', 'financialMetricsAriaLabel')}" style="display: flex; gap: 16px;">
           <article class="card elevated metric" style="flex: 1;">
             <header>
               <material-symbols name="payments"></material-symbols>
-              <h3>Net Revenue</h3>
+              <h3>${t('dashboard', 'netRevenueLabel')}</h3>
             </header>
             <section>
               <span role="heading" aria-level="4">${i18n.displayCurrency(state.netRevenue)}</span>
@@ -316,7 +318,7 @@ export class DashboardViewElement extends HTMLElement {
           <article class="card elevated metric" style="flex: 1;">
             <header>
               <material-symbols name="account_balance_wallet"></material-symbols>
-              <h3>Cash Balance</h3>
+              <h3>${t('dashboard', 'cashBalanceLabel')}</h3>
             </header>
             <section>
               <span role="heading" aria-level="4">${i18n.displayCurrency(state.cashBalance)}</span>
@@ -326,7 +328,7 @@ export class DashboardViewElement extends HTMLElement {
           <article class="card elevated metric" style="flex: 1;">
             <header>
               <material-symbols name="account_balance"></material-symbols>
-              <h3>Bank Balance</h3>
+              <h3>${t('dashboard', 'bankBalanceLabel')}</h3>
             </header>
             <section>
               <span role="heading" aria-level="4">${i18n.displayCurrency(state.bankBalance)}</span>
@@ -336,7 +338,7 @@ export class DashboardViewElement extends HTMLElement {
           <article class="card elevated metric" style="flex: 1;">
             <header>
               <material-symbols name="receipt_long"></material-symbols>
-              <h3>Accounts Payable</h3>
+              <h3>${t('dashboard', 'accountsPayableLabel')}</h3>
             </header>
             <section>
               <span role="heading" aria-level="4">${i18n.displayCurrency(state.payableBalance)}</span>
@@ -353,8 +355,8 @@ export class DashboardViewElement extends HTMLElement {
             <header>
               <material-symbols name="inventory_2"></material-symbols>
               <hgroup>
-                <h3>Stock Alerts</h3>
-                <p>Low stock items</p>
+                <h3>${t('dashboard', 'stockAlertsTitle')}</h3>
+                <p>${t('dashboard', 'lowStockItemsSubtitle')}</p>
               </hgroup>
             </header>
             <section style="flex: 1;">
@@ -371,7 +373,7 @@ export class DashboardViewElement extends HTMLElement {
                 color: var(--md-sys-color-on-surface-variant);"
               >
                 <material-symbols name="check_circle" size="32"></material-symbols>
-                <p>All items are well stocked</p>
+                <p>${t('dashboard', 'allItemsWellStockedMessage')}</p>
               </div>
             </section>
           </article>
@@ -383,17 +385,17 @@ export class DashboardViewElement extends HTMLElement {
           <header>
             <material-symbols name="inventory_2"></material-symbols>
             <hgroup>
-              <h3>Stock Alerts</h3>
-              <p>${state.stockAlerts.length} item${state.stockAlerts.length !== 1 ? 's' : ''} running low</p>
+              <h3>${t('dashboard', 'stockAlertsTitle')}</h3>
+              <p>${t('dashboard', 'itemsRunningLowSubtitle', state.stockAlerts.length)}</p>
             </hgroup>
           </header>
           <section style="flex: 1;">
-            <ul role="list" aria-label="Low stock items">
+            <ul role="list" aria-label="${t('dashboard', 'lowStockItemsAriaLabel')}">
               ${state.stockAlerts.map((item) => html`
                 <li role="listitem">
                   <div class="content">
                     <p class="headline">${item.name}</p>
-                    <p class="supporting-text" data-status="${item.isVeryLow ? 'negative' : 'warning'}">${item.stock} remaining</p>
+                    <p class="supporting-text" data-status="${item.isVeryLow ? 'negative' : 'warning'}">${t('dashboard', 'remainingStockText', item.stock)}</p>
                   </div>
                   <div class="trailing">
                     <material-symbols
@@ -407,7 +409,7 @@ export class DashboardViewElement extends HTMLElement {
           </section>
           <footer>
             <router-link role="button" href="/stock" class="button text">
-              View all stock
+              ${t('dashboard', 'viewAllStockButtonLabel')}
               <material-symbols name="arrow_forward"></material-symbols>
             </router-link>
           </footer>
@@ -422,20 +424,20 @@ export class DashboardViewElement extends HTMLElement {
             <header>
               <material-symbols name="point_of_sale"></material-symbols>
               <hgroup>
-                <h3>Recent Sales</h3>
-                <p>Latest transactions</p>
+                <h3>${t('dashboard', 'recentSalesTitle')}</h3>
+                <p>${t('dashboard', 'latestTransactionsSubtitle')}</p>
               </hgroup>
             </header>
             <section>
               <div class="empty-state">
                 <material-symbols name="storefront" size="32"></material-symbols>
-                <p>No sales recorded yet</p>
+                <p>${t('dashboard', 'noSalesRecordedMessage')}</p>
               </div>
             </section>
             <footer>
               <router-link role="button" href="/pos" class="button tonal">
                 <material-symbols name="add"></material-symbols>
-                New Sale
+                ${t('dashboard', 'newSaleButtonLabel')}
               </router-link>
             </footer>
           </article>
@@ -447,12 +449,12 @@ export class DashboardViewElement extends HTMLElement {
           <header>
             <material-symbols name="point_of_sale"></material-symbols>
             <hgroup>
-              <h3>Recent Sales</h3>
-              <p>Latest transactions</p>
+              <h3>${t('dashboard', 'recentSalesTitle')}</h3>
+              <p>${t('dashboard', 'latestTransactionsSubtitle')}</p>
             </hgroup>
           </header>
           <section>
-            <ul role="list" aria-label="Recent sales">
+            <ul role="list" aria-label="${t('dashboard', 'recentSalesAriaLabel')}">
               ${state.recentSales.map((sale) => html`
                 <li role="listitem">
                   <button
@@ -481,7 +483,7 @@ export class DashboardViewElement extends HTMLElement {
           </section>
           <footer>
             <router-link role="button" href="/sale" class="button text">
-              View all sales
+              ${t('dashboard', 'viewAllSalesButtonLabel')}
               <material-symbols name="arrow_forward"></material-symbols>
             </router-link>
           </footer>
@@ -497,8 +499,8 @@ export class DashboardViewElement extends HTMLElement {
           ${!state.isLoading && !(state.error instanceof Error) ? html`
             <header class="app-bar">
               <hgroup>
-                <h1>Dashboard</h1>
-                <p>Welcome to JuruKasa</p>
+                <h1>${t('dashboard', 'dashboardTitle')}</h1>
+                <p>${t('dashboard', 'dashboardDescription')}</p>
               </hgroup>
             </header>
             ${renderMetricCards()}

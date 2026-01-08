@@ -12,6 +12,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -115,6 +116,7 @@ export class AccountTagsViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const accountTagAssignmentDialog = useElement(host, AccountTagAssignmentDialogElement);
     const render = useRender(host);
@@ -283,7 +285,7 @@ export class AccountTagsViewElement extends HTMLElement {
       }
       catch (error) {
         console.error('Failed to remove tag:', error);
-        alert('Failed to remove tag: ' + (error instanceof Error ? error.message : String(error)));
+        alert(t('account', 'removeTagFailedMessage', error instanceof Error ? error.message : String(error)));
       }
     }
 
@@ -302,7 +304,7 @@ export class AccountTagsViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading account tags"
+          aria-label="${t('account', 'loadingAccountTagsAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -318,7 +320,7 @@ export class AccountTagsViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading account tags...</p>
+          <p>${t('account', 'loadingAccountTagsMessage')}</p>
         </div>
       `;
     }
@@ -342,11 +344,11 @@ export class AccountTagsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load account tags</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('account', 'unableToLoadAccountTagsTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadAccountTags}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('account', 'retryButtonLabel')}
           </button>
         </div>
       `;
@@ -367,11 +369,11 @@ export class AccountTagsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="label" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No account tags found</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('account', 'noAccountTagsFoundTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
             ${state.searchQuery
-          ? 'Try adjusting your search or filters.'
-          : 'Account tags are used to categorize accounts for financial reporting. Create accounts and assign tags to organize your chart of accounts.'}
+          ? t('account', 'noAccountTagsFoundMessage')
+          : t('account', 'noAccountTagsFoundEmptyMessage')}
           </p>
         </div>
       `;
@@ -384,7 +386,7 @@ export class AccountTagsViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 200px; min-width: 160px;">
             <div class="container">
               <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="tag-search-input">Search</label>
+              <label for="tag-search-input">${t('account', 'searchLabel')}</label>
               <input
                 ${readValue(state, 'searchQuery')}
                 id="tag-search-input"
@@ -399,7 +401,7 @@ export class AccountTagsViewElement extends HTMLElement {
           <!-- Category Filter -->
           <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 180px; anchor-name: --category-menu-anchor;">
             <div class="container">
-              <label for="category-filter-input">Category</label>
+              <label for="category-filter-input">${t('account', 'categoryFilterLabel')}</label>
               <input
                 id="category-filter-input"
                 type="button"
@@ -413,7 +415,7 @@ export class AccountTagsViewElement extends HTMLElement {
               </label>
             </div>
           </div>
-          <menu role="menu" popover id="category-filter-menu" aria-label="Category filter" class="dropdown" style="position-anchor: --category-menu-anchor;">
+          <menu role="menu" popover id="category-filter-menu" aria-label="${t('account', 'categoryFilterAriaLabel')}" class="dropdown" style="position-anchor: --category-menu-anchor;">
             ${categoryOptions.map(function (category) {
         return html`
                 <li>
@@ -477,7 +479,7 @@ export class AccountTagsViewElement extends HTMLElement {
       rows.push(html`
         <tr
           tabindex="0"
-          aria-label="Tag ${summary.tag}"
+          aria-label="${t('account', 'tagAriaLabel', summary.tag)}"
           style="cursor: ${hasAccounts ? 'pointer' : 'default'};"
           data-tag="${summary.tag}"
           @click=${hasAccounts ? toggleTagExpanded : nothing}
@@ -523,8 +525,8 @@ export class AccountTagsViewElement extends HTMLElement {
             <button
               role="button"
               class="text extra-small"
-              title="Manage tag assignments"
-              aria-label="Manage ${summary.tag} tag assignments"
+              title="${t('account', 'manageTagAssignmentsTitle')}"
+              aria-label="${t('account', 'manageTagAssignmentsAriaLabel', summary.tag)}"
               commandfor="account-tag-assignment-dialog"
               command="--open"
               data-tag="${summary.tag}"
@@ -539,7 +541,7 @@ export class AccountTagsViewElement extends HTMLElement {
       if (isExpanded && hasAccounts) {
         for (const account of summary.accounts) {
           rows.push(html`
-            <tr class="nested-row" aria-label="Account ${account.account_name}" style="background-color: var(--md-sys-color-surface-container-low);">
+            <tr class="nested-row" aria-label="${t('account', 'accountNestedAriaLabel', account.account_name)}" style="background-color: var(--md-sys-color-surface-container-low);">
               <td style="padding-left: 52px;">
                 <span style="display: flex; align-items: center; gap: 8px;">
                   <span class="label-large" style="color: var(--md-sys-color-primary);">${account.account_code}</span>
@@ -551,8 +553,8 @@ export class AccountTagsViewElement extends HTMLElement {
                 <button
                   role="button"
                   class="text extra-small"
-                  title="Remove tag from account"
-                  aria-label="Remove ${summary.tag} tag from ${account.account_name}"
+                  title="${t('account', 'removeTagFromAccountTitle')}"
+                  aria-label="${t('account', 'removeTagFromAccountAriaLabel', summary.tag, account.account_name)}"
                   @click=${handleRemoveTagClick(account.account_code, summary.tag)}
                 >
                   <material-symbols name="close" size="18"></material-symbols>
@@ -571,12 +573,12 @@ export class AccountTagsViewElement extends HTMLElement {
 
       return html`
         <div>
-          <table role="treegrid" aria-label="Account Tags" style="--md-sys-density: -4;">
+          <table role="treegrid" aria-label="${t('account', 'accountTagsTableAriaLabel')}" style="--md-sys-density: -4;">
             <thead>
               <tr>
-                <th scope="col">Tag</th>
-                <th scope="col" class="center" style="width: 100px;">Accounts</th>
-                <th scope="col" class="center" style="width: 80px;">Actions</th>
+                <th scope="col">${t('account', 'tableHeaderTag')}</th>
+                <th scope="col" class="center" style="width: 100px;">${t('account', 'tableHeaderAccounts')}</th>
+                <th scope="col" class="center" style="width: 80px;">${t('account', 'tableHeaderActions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -593,15 +595,15 @@ export class AccountTagsViewElement extends HTMLElement {
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>
-              <button role="button" class="text" @click=${expandAll} aria-label="Expand all tags" title="Expand All">
+              <button role="button" class="text" @click=${expandAll} aria-label="${t('account', 'expandAllTagsAriaLabel')}" title="${t('account', 'expandAllTitle')}">
                 <material-symbols name="unfold_more"></material-symbols>
               </button>
-              <button role="button" class="text" @click=${collapseAll} aria-label="Collapse all tags" title="Collapse All">
+              <button role="button" class="text" @click=${collapseAll} aria-label="${t('account', 'collapseAllTagsAriaLabel')}" title="${t('account', 'collapseAllTitle')}">
                 <material-symbols name="unfold_less"></material-symbols>
               </button>
-              <button role="button" class="text" @click=${loadAccountTags} aria-label="Refresh account tags">
+              <button role="button" class="text" @click=${loadAccountTags} aria-label="${t('account', 'refreshAccountTagsAriaLabel')}">
                 <material-symbols name="refresh"></material-symbols>
-                Refresh
+                ${t('account', 'refreshButtonLabel')}
               </button>
             </div>
           </div>

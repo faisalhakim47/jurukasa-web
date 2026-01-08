@@ -9,6 +9,7 @@ import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
@@ -35,6 +36,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const errorAlertDialog = useDialog(host);
 
@@ -110,7 +112,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
         const unitPrice = parseInt(/** @type {string} */(data.get('unitPrice')), 10);
 
         // Validate inputs
-        if (isNaN(unitPrice) || unitPrice < 0) throw new Error('Invalid unit price.');
+        if (isNaN(unitPrice) || unitPrice < 0) throw new Error(t('inventory', 'invalidUnitPriceError'));
 
         // Update inventory unit price
         await tx.sql`
@@ -154,7 +156,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading inventory"
+          aria-label="${t('inventory', 'loadingInventoryAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -170,7 +172,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading inventory...</p>
+          <p>${t('inventory', 'loadingInventoryMessage')}</p>
         </div>
       `;
     }
@@ -190,8 +192,8 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
           "
         >
           <material-symbols name="inventory_2" size="48"></material-symbols>
-          <h3 class="title-large">Inventory Not Found</h3>
-          <p style="color: var(--md-sys-color-on-surface-variant);">The requested inventory could not be found.</p>
+          <h3 class="title-large">${t('inventory', 'inventoryNotFoundTitle')}</h3>
+          <p style="color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'inventoryNotFoundMessage')}</p>
         </div>
       `;
     }
@@ -205,26 +207,26 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
             <div role="progressbar" class="linear indeterminate">
               <div class="track"><div class="indicator"></div></div>
             </div>
-            <p>Updating price...</p>
+            <p>${t('inventory', 'updatingPriceMessage')}</p>
           </div>
         ` : nothing}
 
         <!-- Inventory Name (Read-only) -->
         <div style="background-color: var(--md-sys-color-primary-container); padding: 12px; border-radius: var(--md-sys-shape-corner-small);">
-          <p class="label-small" style="margin: 0; color: var(--md-sys-color-on-primary-container);">Inventory</p>
+          <p class="label-small" style="margin: 0; color: var(--md-sys-color-on-primary-container);">${t('inventory', 'inventoryFieldLabel')}</p>
           <p class="body-large" style="margin: 0; font-weight: 500; color: var(--md-sys-color-on-primary-container);">${inventory.name}</p>
         </div>
 
         <!-- Current Price -->
         <div style="margin: 20px 0 12px 0;">
-          <p class="label-small" style="margin: 0 0 4px 0; color: var(--md-sys-color-on-surface-variant);">Current Unit Price</p>
+          <p class="label-small" style="margin: 0 0 4px 0; color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'currentUnitPriceLabel')}</p>
           <p class="headline-small" style="margin: 0;">${i18n.displayCurrency(inventory.unit_price)} / <small>${inventory.unit_of_measurement}</small></p>
         </div>
 
         <!-- New Unit Price -->
         <div class="outlined-text-field">
           <div class="container">
-            <label for="unit-price-input">New Unit Price</label>
+            <label for="unit-price-input">${t('inventory', 'newUnitPriceLabel')}</label>
             <input
               id="unit-price-input"
               name="unitPrice"
@@ -236,7 +238,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
               value="${inventory.unit_price}"
             />
           </div>
-          <div class="supporting-text">Selling price per unit (in lowest denomination)</div>
+          <div class="supporting-text">${t('inventory', 'unitPriceSupportingText')}</div>
         </div>
       `;
     }
@@ -250,7 +252,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="inventory-price-update-dialog-title">Update Unit Price</h2>
+              <h2 id="inventory-price-update-dialog-title">${t('inventory', 'priceUpdateDialogTitle')}</h2>
             </header>
 
             <div class="content">
@@ -267,12 +269,12 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
                 commandfor="inventory-price-update-dialog"
                 command="close"
                 ?disabled=${form.state === 'submitting'}
-              >Cancel</button>
+              >${t('inventory', 'cancelButtonLabel')}</button>
               <button
                 role="button"
                 type="submit"
                 ?disabled=${form.state === 'submitting' || !state.inventory}
-              >Update Price</button>
+              >${t('inventory', 'updatePriceButtonLabel')}</button>
             </menu>
           </form>
         </dialog>
@@ -281,7 +283,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('inventory', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${form.error?.message}</p>
@@ -293,7 +295,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('inventory', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>

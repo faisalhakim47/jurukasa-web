@@ -12,6 +12,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useElement } from '#web/hooks/use-element.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -38,6 +39,7 @@ export class FiscalYearsViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const fiscalYearClosingDialog = useElement(host, FiscalYearClosingDialogElement);
     const fiscalYearReversalDialog = useElement(host, FiscalYearReversalDialogElement);
@@ -99,7 +101,7 @@ export class FiscalYearsViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading fiscal years"
+          aria-label="${t('fiscalYear', 'loadingFiscalYearLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -115,7 +117,7 @@ export class FiscalYearsViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading fiscal years...</p>
+          <p>${t('fiscalYear', 'loadingLabel')}</p>
         </div>
       `;
     }
@@ -139,11 +141,11 @@ export class FiscalYearsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load fiscal years</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('fiscalYear', 'loadErrorTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadFiscalYears}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('fiscalYear', 'retryActionLabel')}
           </button>
         </div>
       `;
@@ -164,9 +166,9 @@ export class FiscalYearsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="calendar_month" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No fiscal years defined</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('fiscalYear', 'emptyStateTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
-            Create your first fiscal year to organize your accounting periods and enable income statement reporting.
+            ${t('fiscalYear', 'emptyStateMessage')}
           </p>
           <button
             role="button"
@@ -176,7 +178,7 @@ export class FiscalYearsViewElement extends HTMLElement {
             command="--open"
           >
             <material-symbols name="add"></material-symbols>
-            Create Fiscal Year
+            ${t('fiscalYear', 'createActionLabel')}
           </button>
         </div>
       `;
@@ -186,8 +188,8 @@ export class FiscalYearsViewElement extends HTMLElement {
      * @param {FiscalYearRow} fiscalYear
      */
     function renderFiscalYearRow(fiscalYear) {
-      const statusText = fiscalYear.reversal_time ? 'Reversed' : fiscalYear.post_time ? 'Closed' : 'Open';
-      const displayName = fiscalYear.name || `FY ${new Date(fiscalYear.begin_time).getFullYear()}`;
+      const statusText = fiscalYear.reversal_time ? t('fiscalYear', 'statusReversed') : fiscalYear.post_time ? t('fiscalYear', 'statusClosed') : t('fiscalYear', 'statusOpen');
+      const displayName = fiscalYear.name || t('fiscalYear', 'fiscalYearDefaultName', new Date(fiscalYear.begin_time).getFullYear());
       const canReverse = fiscalYear.post_time && !fiscalYear.reversal_time;
 
       return html`
@@ -215,11 +217,11 @@ export class FiscalYearsViewElement extends HTMLElement {
                   gap: 4px;
                   padding: 4px 8px;
                   border-radius: var(--md-sys-shape-corner-small);
-                  background-color: ${statusText === 'Reversed' ? 'var(--md-sys-color-error-container)' : statusText === 'Closed' ? 'var(--md-sys-color-tertiary-container)' : 'var(--md-sys-color-secondary-container)'};
-                  color: ${statusText === 'Reversed' ? 'var(--md-sys-color-on-error-container)' : statusText === 'Closed' ? 'var(--md-sys-color-on-tertiary-container)' : 'var(--md-sys-color-on-secondary-container)'};
+                  background-color: ${fiscalYear.reversal_time ? 'var(--md-sys-color-error-container)' : fiscalYear.post_time ? 'var(--md-sys-color-tertiary-container)' : 'var(--md-sys-color-secondary-container)'};
+                  color: ${fiscalYear.reversal_time ? 'var(--md-sys-color-on-error-container)' : fiscalYear.post_time ? 'var(--md-sys-color-on-tertiary-container)' : 'var(--md-sys-color-on-secondary-container)'};
                 "
               >
-                <material-symbols name="${statusText === 'Reversed' ? 'history' : fiscalYear.post_time ? 'lock' : 'lock_open'}" size="16" aria-hidden="true"></material-symbols>
+                <material-symbols name="${fiscalYear.reversal_time ? 'history' : fiscalYear.post_time ? 'lock' : 'lock_open'}" size="16" aria-hidden="true"></material-symbols>
                 ${statusText}
               </span>
               ${canReverse ? html`
@@ -231,10 +233,10 @@ export class FiscalYearsViewElement extends HTMLElement {
                   commandfor="fiscal-year-reversal-dialog"
                   command="--open"
                   data-begin-time="${fiscalYear.begin_time}"
-                  aria-label="Reverse ${displayName}"
+                  aria-label="${t('fiscalYear', 'reverseActionLabel')} ${displayName}"
                 >
                   <material-symbols name="history" size="18"></material-symbols>
-                  Reverse
+                  ${t('fiscalYear', 'reverseActionLabel')}
                 </button>
               ` : nothing}
             </div>
@@ -255,12 +257,12 @@ export class FiscalYearsViewElement extends HTMLElement {
         <table aria-label="Fiscal years list" style="--md-sys-density: -3;">
           <thead>
             <tr>
-              <th scope="col">Name</th>
-              <th scope="col" style="width: 140px;">Begin Date</th>
-              <th scope="col" style="width: 140px;">End Date</th>
-              <th scope="col" class="center" style="width: 100px;">Status</th>
-              <th scope="col" style="width: 140px;">Closed On</th>
-              <th scope="col" class="center" style="width: 120px;">Closing Entry</th>
+              <th scope="col">${t('fiscalYear', 'nameColumn')}</th>
+              <th scope="col" style="width: 140px;">${t('fiscalYear', 'beginDateColumn')}</th>
+              <th scope="col" style="width: 140px;">${t('fiscalYear', 'endDateColumn')}</th>
+              <th scope="col" class="center" style="width: 100px;">${t('fiscalYear', 'statusColumn')}</th>
+              <th scope="col" style="width: 140px;">${t('fiscalYear', 'closedOnColumn')}</th>
+              <th scope="col" class="center" style="width: 120px;">${t('fiscalYear', 'closingEntryColumn')}</th>
             </tr>
           </thead>
           <tbody>
@@ -278,13 +280,13 @@ export class FiscalYearsViewElement extends HTMLElement {
               <!-- Future: Add filters here if needed -->
             </div>
             <div style="display: flex; flex-direction: row; gap: 12px; align-items: center;">
-              <button role="button" class="text" @click=${loadFiscalYears} aria-label="Refresh fiscal years">
+              <button role="button" class="text" @click=${loadFiscalYears} aria-label="${t('fiscalYear', 'refreshActionLabel')}">
                 <material-symbols name="refresh"></material-symbols>
-                Refresh
+                ${t('fiscalYear', 'refreshActionLabel')}
               </button>
               <button role="button" type="button" class="tonal" commandfor="fiscal-year-creation-dialog" command="--open">
                 <material-symbols name="add"></material-symbols>
-                New Fiscal Year
+                ${t('fiscalYear', 'newFiscalYearActionLabel')}
               </button>
             </div>
           </header>

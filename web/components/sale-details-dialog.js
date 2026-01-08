@@ -11,6 +11,7 @@ import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { sleep } from '#web/tools/timing.js';
 
@@ -64,6 +65,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
     const time = useContext(host, TimeContextElement);
+    const t = useTranslator(host);
 
     const dialog = useDialog(host);
     const confirmationDialog = useDialog(host);
@@ -107,7 +109,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
           `;
 
           if (saleResult.rows.length === 0) {
-            throw new Error(`Sale #${saleId} not found`);
+            throw new Error(t('sale', 'saleNotFoundMessage', saleId));
           }
 
           const saleRow = saleResult.rows[0];
@@ -319,7 +321,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
       return html`
         <div role="alert">
           <material-symbols name="error" size="48"></material-symbols>
-          <h3>Unable to load sale details</h3>
+          <h3>${t('sale', 'unableToLoadSaleDetailsTitle')}</h3>
           <p>${state.error.message}</p>
         </div>
       `;
@@ -327,13 +329,13 @@ export class SaleDetailsDialogElement extends HTMLElement {
 
     function renderLoadingIndicator() {
       return html`
-        <div role="status" aria-label="Loading sale details">
+        <div role="status" aria-label="${t('sale', 'loadingSaleDetailsAriaLabel')}">
           <div role="progressbar" class="linear indeterminate">
             <div class="track">
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading sale details...</p>
+          <p>${t('sale', 'loadingSaleDetailsMessage')}</p>
         </div>
       `;
     }
@@ -349,7 +351,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
           background-color: #E8F5E9;
           color: #1B5E20;
           font-size: 0.8em;
-        ">Posted</span>`;
+        ">${t('sale', 'statusPosted')}</span>`;
       }
 
       return html`<span style="
@@ -359,7 +361,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
         background-color: #FFF3E0;
         color: #E65100;
         font-size: 0.8em;
-      ">Draft</span>`;
+      ">${t('sale', 'statusDraft')}</span>`;
     }
 
     function renderDialogContent() {
@@ -368,21 +370,21 @@ export class SaleDetailsDialogElement extends HTMLElement {
       return html`
         <section>
           <dl style="display: grid; grid-template-columns: max-content 1fr; gap: 8px 24px; margin: 0;">
-            <dt style="color: var(--md-sys-color-on-surface-variant);">Sale Date</dt>
+            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('sale', 'saleDateLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${i18n.date.format(state.sale.sale_time)}</dd>
 
-            <dt style="color: var(--md-sys-color-on-surface-variant);">Status</dt>
+            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('sale', 'statusLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${renderStatusBadge()}</dd>
 
             ${state.sale.customer_name ? html`
-              <dt style="color: var(--md-sys-color-on-surface-variant);">Customer</dt>
+              <dt style="color: var(--md-sys-color-on-surface-variant);">${t('sale', 'customerLabel')}</dt>
               <dd style="margin: 0; color: var(--md-sys-color-on-surface);">
                 <span style="font-weight: 500;">${state.sale.customer_name}</span>
               </dd>
             ` : nothing}
 
             ${isPosted ? html`
-              <dt style="color: var(--md-sys-color-on-surface-variant);">Posted Date</dt>
+              <dt style="color: var(--md-sys-color-on-surface-variant);">${t('sale', 'postedDateLabel')}</dt>
               <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${i18n.date.format(state.sale.post_time)}</dd>
             ` : nothing}
           </dl>
@@ -390,12 +392,12 @@ export class SaleDetailsDialogElement extends HTMLElement {
 
         <!-- Sale Lines Table -->
         <div class="container" style="height: min(max(150px, 25vh), 300px); margin-top: 16px;">
-          <table role="table" aria-label="Sale lines" style="--md-sys-density: -3;">
+          <table role="table" aria-label="${t('sale', 'saleLinesTableAriaLabel')}" style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col">Item</th>
-                <th scope="col" class="numeric">Qty</th>
-                <th scope="col" class="numeric">Price</th>
+                <th scope="col">${t('sale', 'tableHeaderItem')}</th>
+                <th scope="col" class="numeric">${t('sale', 'tableHeaderQuantity')}</th>
+                <th scope="col" class="numeric">${t('sale', 'tableHeaderPrice')}</th>
               </tr>
             </thead>
             <tbody>
@@ -405,7 +407,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
                     <div style="display: flex; flex-direction: column;">
                       <span style="font-weight: 500;">${line.inventory_name}</span>
                       ${line.unit_of_measurement ? html`
-                        <span style="font-size: 0.8em; color: var(--md-sys-color-on-surface-variant);">per ${line.unit_of_measurement}</span>
+                        <span style="font-size: 0.8em; color: var(--md-sys-color-on-surface-variant);">${t('sale', 'itemPerUnit', line.unit_of_measurement)}</span>
                       ` : nothing}
                     </div>
                   </td>
@@ -416,7 +418,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
             </tbody>
             <tfoot>
               <tr style="font-weight: 500;">
-                <td colspan="2">Subtotal</td>
+                <td colspan="2">${t('sale', 'subtotalLabel')}</td>
                 <td class="numeric">${i18n.displayCurrency(state.sale.gross_amount)}</td>
               </tr>
             </tfoot>
@@ -426,8 +428,8 @@ export class SaleDetailsDialogElement extends HTMLElement {
         <!-- Discounts Section -->
         ${state.saleDiscounts.length > 0 ? html`
           <div style="margin-top: 16px;">
-            <h4 class="title-small" style="margin: 0 0 8px 0;">Discounts</h4>
-            <table role="table" aria-label="Sale discounts" style="--md-sys-density: -3;">
+            <h4 class="title-small" style="margin: 0 0 8px 0;">${t('sale', 'discountsSectionTitle')}</h4>
+            <table role="table" aria-label="${t('sale', 'saleDiscountsAriaLabel')}" style="--md-sys-density: -3;">
               <tbody>
                 ${state.saleDiscounts.map((discount) => html`
                   <tr>
@@ -438,7 +440,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">
-                  <td>Total Discounts</td>
+                  <td>${t('sale', 'totalDiscountsLabel')}</td>
                   <td class="numeric" style="color: var(--md-sys-color-tertiary);">-${i18n.displayCurrency(state.sale.discount_amount)}</td>
                 </tr>
               </tfoot>
@@ -449,13 +451,13 @@ export class SaleDetailsDialogElement extends HTMLElement {
         <!-- Payments Section -->
         ${state.salePayments.length > 0 ? html`
           <div style="margin-top: 16px;">
-            <h4 class="title-small" style="margin: 0 0 8px 0;">Payments</h4>
-            <table role="table" aria-label="Sale payments" style="--md-sys-density: -3;">
+            <h4 class="title-small" style="margin: 0 0 8px 0;">${t('sale', 'paymentsSectionTitle')}</h4>
+            <table role="table" aria-label="${t('sale', 'salePaymentsAriaLabel')}" style="--md-sys-density: -3;">
               <thead>
                 <tr>
-                  <th scope="col">Method</th>
-                  <th scope="col" class="numeric">Amount</th>
-                  <th scope="col" class="numeric">Fee</th>
+                  <th scope="col">${t('sale', 'tableHeaderMethod')}</th>
+                  <th scope="col" class="numeric">${t('sale', 'tableHeaderAmount')}</th>
+                  <th scope="col" class="numeric">${t('sale', 'tableHeaderFee')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -472,7 +474,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
               ${state.sale.fee_amount > 0 ? html`
                 <tfoot>
                   <tr style="font-weight: 500;">
-                    <td>Total Fees</td>
+                    <td>${t('sale', 'totalFeesLabel')}</td>
                     <td></td>
                     <td class="numeric" style="color: var(--md-sys-color-error);">-${i18n.displayCurrency(state.sale.fee_amount)}</td>
                   </tr>
@@ -490,7 +492,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
           border-radius: var(--md-sys-shape-corner-medium);
         ">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="title-medium" style="font-weight: 700;">Invoice Total</span>
+            <span class="title-medium" style="font-weight: 700;">${t('sale', 'invoiceTotalLabel')}</span>
             <span class="title-medium" style="font-weight: 700; color: var(--md-sys-color-primary);">
               ${i18n.displayCurrency(state.sale.invoice_amount)}
             </span>
@@ -501,7 +503,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
           <div style="margin-top: 16px; padding: 12px; background-color: var(--md-sys-color-surface-container); border-radius: var(--md-sys-shape-corner-medium);">
             <p class="body-small" style="margin: 0; color: var(--md-sys-color-on-surface-variant);">
               <material-symbols name="info" size="16" style="vertical-align: middle;"></material-symbols>
-              This sale has been posted. Inventory quantities and costs have been updated, and journal entries have been created.
+              ${t('sale', 'postedSaleInfoMessage')}
             </p>
           </div>
         ` : nothing}
@@ -519,10 +521,10 @@ export class SaleDetailsDialogElement extends HTMLElement {
             type="button"
             class="tonal"
             @click=${handlePostClick}
-            aria-label="Post sale"
+            aria-label="${t('sale', 'postButtonAriaLabel')}"
           >
             <material-symbols name="check_circle"></material-symbols>
-            Post
+            ${t('sale', 'postButtonLabel')}
           </button>
           <button
             role="button"
@@ -530,10 +532,10 @@ export class SaleDetailsDialogElement extends HTMLElement {
             class="text"
             style="color: var(--md-sys-color-error);"
             @click=${handleDiscardClick}
-            aria-label="Discard sale"
+            aria-label="${t('sale', 'discardButtonAriaLabel')}"
           >
             <material-symbols name="delete"></material-symbols>
-            Discard
+            ${t('sale', 'discardButtonLabel')}
           </button>
         `;
       }
@@ -547,17 +549,17 @@ export class SaleDetailsDialogElement extends HTMLElement {
         return html`
           <material-symbols name="check_circle" style="color: var(--md-sys-color-primary);"></material-symbols>
           <header>
-            <h3>Post Sale</h3>
+            <h3>${t('sale', 'postSaleConfirmTitle')}</h3>
           </header>
           <div class="content">
-            <p>Are you sure you want to post sale #${state.sale?.id}?</p>
+            <p>${t('sale', 'postSaleConfirmMessage', state.sale?.id)}</p>
             <p style="color: var(--md-sys-color-on-surface-variant); font-size: 0.9em;">
-              This will update inventory quantities and costs, and create journal entries. Once posted, this sale cannot be edited or deleted.
+              ${t('sale', 'postSaleWarningMessage')}
             </p>
           </div>
           <menu>
-            <button role="button" type="button" class="text" @click=${handleCancelAction}>Cancel</button>
-            <button role="button" type="button" class="tonal" @click=${handleConfirmPost}>Post Sale</button>
+            <button role="button" type="button" class="text" @click=${handleCancelAction}>${t('sale', 'cancelActionButtonLabel')}</button>
+            <button role="button" type="button" class="tonal" @click=${handleConfirmPost}>${t('sale', 'postSaleButtonLabel')}</button>
           </menu>
         `;
       }
@@ -566,17 +568,17 @@ export class SaleDetailsDialogElement extends HTMLElement {
         return html`
           <material-symbols name="delete" style="color: var(--md-sys-color-error);"></material-symbols>
           <header>
-            <h3>Discard Sale</h3>
+            <h3>${t('sale', 'discardSaleConfirmTitle')}</h3>
           </header>
           <div class="content">
-            <p>Are you sure you want to discard sale #${state.sale?.id}?</p>
+            <p>${t('sale', 'discardSaleConfirmMessage', state.sale?.id)}</p>
             <p style="color: var(--md-sys-color-error); font-size: 0.9em;">
-              This action cannot be undone. The sale and all its lines, discounts, and payments will be permanently deleted.
+              ${t('sale', 'discardSaleWarningMessage')}
             </p>
           </div>
           <menu>
-            <button role="button" type="button" class="text" @click=${handleCancelAction}>Cancel</button>
-            <button role="button" type="button" class="tonal" style="background-color: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container);" @click=${handleConfirmDiscard}>Discard Sale</button>
+            <button role="button" type="button" class="text" @click=${handleCancelAction}>${t('sale', 'cancelActionButtonLabel')}</button>
+            <button role="button" type="button" class="tonal" style="background-color: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container);" @click=${handleConfirmDiscard}>${t('sale', 'discardSaleButtonLabel')}</button>
           </menu>
         `;
       }
@@ -591,10 +593,10 @@ export class SaleDetailsDialogElement extends HTMLElement {
             </div>
           </div>
           <header>
-            <h3>Processing...</h3>
+            <h3>${t('sale', 'processingTitle')}</h3>
           </header>
           <div class="content">
-            <p>Please wait while processing your request.</p>
+            <p>${t('sale', 'processingMessage')}</p>
           </div>
         `;
       }
@@ -603,13 +605,13 @@ export class SaleDetailsDialogElement extends HTMLElement {
         return html`
           <material-symbols name="error" style="color: var(--md-sys-color-error);"></material-symbols>
           <header>
-            <h3>Error</h3>
+            <h3>${t('sale', 'errorTitle')}</h3>
           </header>
           <div class="content">
             <p>${state.actionError?.message}</p>
           </div>
           <menu>
-            <button role="button" type="button" class="text" @click=${handleDismissError}>Dismiss</button>
+            <button role="button" type="button" class="text" @click=${handleDismissError}>${t('sale', 'dismissButtonLabel')}</button>
           </menu>
         `;
       }
@@ -627,7 +629,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
         >
           <div class="container">
             <header>
-              <h2 id="sale-details-dialog-title">${state.sale ? `Sale #${state.sale.id}` : 'Sale Details'}</h2>
+              <h2 id="sale-details-dialog-title">${state.sale ? t('sale', 'detailsDialogTitle', state.sale.id) : t('sale', 'detailsDialogTitleDefault')}</h2>
             </header>
             <div class="content">
               ${state.isLoading ? renderLoadingIndicator() : nothing}
@@ -642,7 +644,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
                 class="text"
                 commandfor="sale-details-dialog"
                 command="close"
-              >Close</button>
+              >${t('sale', 'closeButtonLabel')}</button>
             </menu>
           </div>
         </dialog>

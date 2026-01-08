@@ -1,6 +1,7 @@
 import { html } from 'lit-html';
 
 import { defineWebComponent } from '#web/component.js';
+import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useReady } from '#web/contexts/ready-context.js';
 import { RouterContextElement } from '#web/contexts/router-context.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
@@ -9,6 +10,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { scrollIntoView } from '#web/tools/dom.js';
@@ -29,6 +31,7 @@ export class BooksViewElement extends HTMLElement {
 
     const host = this;
     const router = useContext(host, RouterContextElement);
+    const t = useTranslator(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -101,49 +104,49 @@ export class BooksViewElement extends HTMLElement {
         <div style="height: 100%; display: flex; flex-direction: column; max-width: 1280px; margin: 0 auto;">
           <header class="app-bar" style="width: 100%; flex-shrink: 0;">
             <hgroup>
-              <h1>Accounting</h1>
-              <p>Manage your journal entries, chart of accounts, and reports.</p>
+              <h1>${t('common', 'booksTitle')}</h1>
+              <p>${t('common', 'booksDescription')}</p>
             </hgroup>
           </header>
           <nav
             role="tablist"
-            aria-label="Accounting sections"
+            aria-label="${t('common', 'booksSectionsAriaLabel')}"
             style="position: sticky; top: 0; z-index: 1; width: 100%; flex-shrink: 0;"
           >
             <router-link role="tab" id="journal-entries-tab" aria-controls="journal-entries-panel" href="/books/journal-entries" replace>
               <span class="content">
                 <material-symbols name="receipt_long" size="24"></material-symbols>
-                Journal Entries
+                ${t('common', 'journalEntriesTabLabel')}
               </span>
             </router-link>
             <router-link role="tab" id="chart-of-accounts-tab" aria-controls="chart-of-accounts-panel" href="/books/chart-of-accounts" replace>
               <span class="content">
                 <material-symbols name="account_tree" size="24"></material-symbols>
-                Chart of Accounts
+                ${t('common', 'chartOfAccountsTabLabel')}
               </span>
             </router-link>
             <router-link role="tab" id="account-tags-tab" aria-controls="account-tags-panel" href="/books/account-tags" replace>
               <span class="content">
                 <material-symbols name="label" size="24"></material-symbols>
-                Account Tags
+                ${t('common', 'accountTagsTabLabel')}
               </span>
             </router-link>
             <router-link role="tab" id="reports-tab" aria-controls="reports-panel" href="/books/reports" replace>
               <span class="content">
                 <material-symbols name="assignment" size="24"></material-symbols>
-                Reports
+                ${t('common', 'reportsTabLabel')}
               </span>
             </router-link>
             <router-link role="tab" id="fiscal-years-tab" aria-controls="fiscal-years-panel" href="/books/fiscal-years" replace>
               <span class="content">
                 <material-symbols name="calendar_month" size="24"></material-symbols>
-                Fiscal Years
+                ${t('common', 'fiscalYearsTabLabel')}
               </span>
             </router-link>
             <router-link role="tab" id="fixed-assets-tab" aria-controls="fixed-assets-panel" href="/books/fixed-assets" replace>
               <span class="content">
                 <material-symbols name="real_estate_agent" size="24"></material-symbols>
-                Fixed Assets
+                ${t('common', 'fixedAssetsTabLabel')}
               </span>
             </router-link>
           </nav>
@@ -271,16 +274,16 @@ export class BooksViewElement extends HTMLElement {
         <dialog ${notfoundDialog} id="notfound-dialog">
           <div class="container">
             <header>
-              <h2>Page Not Found</h2>
+              <h2>${t('common', 'pageNotFoundTitle')}</h2>
             </header>
             <section class="content">
-              <p>The page you are looking for does not exist.</p>
+              <p>${t('common', 'pageNotFoundMessage')}</p>
             </section>
             <menu>
               <router-link
                 href="/books/journal-entries"
                 replace
-              >Go to Journal Entries</router-link>
+              >${t('common', 'goToJournalEntriesButtonLabel')}</router-link>
             </menu>
           </div>
         </dialog>

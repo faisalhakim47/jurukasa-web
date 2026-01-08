@@ -9,6 +9,7 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -40,6 +41,7 @@ export class JournalEntriesViewElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
 
+    const t = useTranslator(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -156,7 +158,7 @@ export class JournalEntriesViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading journal entries"
+          aria-label=${t('journalEntry', 'loadingEntriesLabel')}
           style="
             display: flex;
             flex-direction: column;
@@ -172,7 +174,7 @@ export class JournalEntriesViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading journal entries...</p>
+          <p>${t('journalEntry', 'loadingEntriesLabel')}</p>
         </div>
       `;
     }
@@ -196,11 +198,11 @@ export class JournalEntriesViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load journal entries</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('journalEntry', 'loadEntriesErrorTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadJournalEntries}>
             <material-symbols name="refresh" style="color: var(--md-sys-color-error);"></material-symbols>
-            Retry
+            ${t('journalEntry', 'retryActionLabel')}
           </button>
         </div>
       `;
@@ -227,8 +229,8 @@ export class JournalEntriesViewElement extends HTMLElement {
           "
         >
           <material-symbols name="receipt_long" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No journal entries yet</h2>
-          <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">Create your first journal entry to start tracking your financial transactions.</p>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('journalEntry', 'emptyStateTitle')}</h2>
+          <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'emptyStateMessage')}</p>
           <button
             role="button"
             type="button"
@@ -237,7 +239,7 @@ export class JournalEntriesViewElement extends HTMLElement {
             command="--open"
           >
             <material-symbols name="add" style="color: var(--md-sys-color-on-surface-variant);"></material-symbols>
-            New Entry
+            ${t('journalEntry', 'newEntryActionLabel')}
           </button>
         </div>
       `;
@@ -248,7 +250,12 @@ export class JournalEntriesViewElement extends HTMLElement {
      */
     function renderJournalEntryRow(journalEntry) {
       const isPosted = journalEntry.post_time !== null;
-      const statusText = isPosted ? 'Posted' : 'Draft';
+      const statusLabel = isPosted ? t('journalEntry', 'statusPosted') : t('journalEntry', 'statusDraft');
+
+      let sourceLabel = journalEntry.source_type;
+      if (journalEntry.source_type === 'Manual') sourceLabel = t('journalEntry', 'filterSourceManual');
+      else if (journalEntry.source_type === 'System') sourceLabel = t('journalEntry', 'filterSourceSystem');
+      else if (journalEntry.source_type === 'LLM') sourceLabel = t('journalEntry', 'filterSourceLLM');
 
       return html`
         <tr>
@@ -280,7 +287,7 @@ export class JournalEntriesViewElement extends HTMLElement {
                 ${journalEntry.source_type === 'System' ? 'background-color: var(--md-sys-color-secondary-container);' : nothing}
                 ${journalEntry.source_type === 'System' ? 'color: var(--md-sys-color-on-secondary-container);' : nothing}
               "
-            >${journalEntry.source_type}</span>
+            >${sourceLabel}</span>
           </td>
           <td class="numeric">${i18n.displayCurrency(journalEntry.total_amount)}</td>
           <td class="center">
@@ -290,12 +297,12 @@ export class JournalEntriesViewElement extends HTMLElement {
                 display: inline-flex;
                 padding: 4px 8px;
                 border-radius: var(--md-sys-shape-corner-small);
-                ${statusText === 'Posted' ? 'background-color: #E8F5E9;' : nothing}
-                ${statusText === 'Posted' ? 'color: #1B5E20;' : nothing}
-                ${statusText === 'Draft' ? 'background-color: #FFF3E0;' : nothing}
-                ${statusText === 'Draft' ? 'color: #E65100;' : nothing}
+                ${isPosted ? 'background-color: #E8F5E9;' : nothing}
+                ${isPosted ? 'color: #1B5E20;' : nothing}
+                ${!isPosted ? 'background-color: #FFF3E0;' : nothing}
+                ${!isPosted ? 'color: #E65100;' : nothing}
               "
-            >${statusText}</span>
+            >${statusLabel}</span>
           </td>
         </tr>
       `;
@@ -311,7 +318,7 @@ export class JournalEntriesViewElement extends HTMLElement {
       return html`
         <nav
           role="navigation"
-          aria-label="Pagination"
+          aria-label=${t('journalEntry', 'paginationShowing', startItem, endItem, state.totalCount)}
           style="
             display: flex;
             justify-content: space-between;
@@ -321,7 +328,7 @@ export class JournalEntriesViewElement extends HTMLElement {
           "
         >
           <span class="body-small" style="color: var(--md-sys-color-on-surface-variant);">
-            Showing ${startItem}–${endItem} of ${state.totalCount}
+            ${t('journalEntry', 'paginationShowing', startItem, endItem, state.totalCount)}
           </span>
           <div style="display: flex; gap: 8px; align-items: center;">
             <button
@@ -330,7 +337,7 @@ export class JournalEntriesViewElement extends HTMLElement {
               data-page="1"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="First page"
+              aria-label=${t('journalEntry', 'paginationFirst')}
             >
               <material-symbols name="first_page"></material-symbols>
             </button>
@@ -340,12 +347,12 @@ export class JournalEntriesViewElement extends HTMLElement {
               data-page="${state.currentPage - 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="Previous page"
+              aria-label=${t('journalEntry', 'paginationPrevious')}
             >
               <material-symbols name="chevron_left"></material-symbols>
             </button>
             <span class="body-medium" style="min-width: 80px; text-align: center;">
-              Page ${state.currentPage} of ${totalPages}
+              ${t('journalEntry', 'paginationPage', state.currentPage, totalPages)}
             </span>
             <button
               role="button"
@@ -353,7 +360,7 @@ export class JournalEntriesViewElement extends HTMLElement {
               data-page="${state.currentPage + 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Next page"
+              aria-label=${t('journalEntry', 'paginationNext')}
             >
               <material-symbols name="chevron_right"></material-symbols>
             </button>
@@ -363,7 +370,7 @@ export class JournalEntriesViewElement extends HTMLElement {
               data-page="${totalPages}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Last page"
+              aria-label=${t('journalEntry', 'paginationLast')}
             >
               <material-symbols name="last_page"></material-symbols>
             </button>
@@ -378,12 +385,12 @@ export class JournalEntriesViewElement extends HTMLElement {
         <table aria-label="Journal entries list" style="--md-sys-density: -3;">
           <thead>
             <tr>
-              <th scope="col" style="width: 32px;">Ref</th>
-              <th scope="col" style="width: 128px;">Date</th>
-              <th scope="col">Note</th>
-              <th scope="col" class="center" style="width: 128px;">Source</th>
-              <th scope="col" class="numeric" style="width: 128px;">Amount</th>
-              <th scope="col" class="center" style="width: 128px;">Status</th>
+              <th scope="col" style="width: 32px;">${t('journalEntry', 'refColumn')}</th>
+              <th scope="col" style="width: 128px;">${t('journalEntry', 'dateLabel')}</th>
+              <th scope="col">${t('journalEntry', 'noteLabel')}</th>
+              <th scope="col" class="center" style="width: 128px;">${t('journalEntry', 'sourceLabel')}</th>
+              <th scope="col" class="numeric" style="width: 128px;">${t('journalEntry', 'amountColumn')}</th>
+              <th scope="col" class="center" style="width: 128px;">${t('journalEntry', 'statusLabel')}</th>
             </tr>
           </thead>
           <tbody>
@@ -392,6 +399,23 @@ export class JournalEntriesViewElement extends HTMLElement {
         </table>
         ${renderPaginationControls()}
       `;
+    }
+
+    /** @param {SourceType} sourceType */
+    function getSourceLabel(sourceType) {
+      if (sourceType === 'All') return t('journalEntry', 'filterSourceAll');
+      if (sourceType === 'Manual') return t('journalEntry', 'filterSourceManual');
+      if (sourceType === 'System') return t('journalEntry', 'filterSourceSystem');
+      if (sourceType === 'LLM') return t('journalEntry', 'filterSourceLLM');
+      return sourceType;
+    }
+
+    /** @param {StatusType} statusType */
+    function getStatusLabel(statusType) {
+      if (statusType === 'All') return t('journalEntry', 'filterStatusAll');
+      if (statusType === 'Posted') return t('journalEntry', 'statusPosted');
+      if (statusType === 'Draft') return t('journalEntry', 'statusDraft');
+      return statusType;
     }
 
     useEffect(host, function renderJournalEntriesView() {
@@ -403,11 +427,11 @@ export class JournalEntriesViewElement extends HTMLElement {
                 <!-- Source Filter -->
                 <div class="outlined-text-field" style="min-width: 160px; anchor-name: --source-menu-anchor">
                   <div class="container">
-                    <label for="source-filter-input">Source</label>
+                    <label for="source-filter-input">${t('journalEntry', 'sourceLabel')}</label>
                     <input
                       id="source-filter-input"
                       type="button"
-                      value="${state.sourceFilter}"
+                      value="${getSourceLabel(state.sourceFilter)}"
                       popovertarget="source-menu"
                       popovertargetaction="show"
                       placeholder=" "
@@ -429,7 +453,7 @@ export class JournalEntriesViewElement extends HTMLElement {
                         popovertargetaction="hide"
                       >
                         ${sourceType === state.sourceFilter ? html`<material-symbols name="check"></material-symbols>` : nothing}
-                        ${sourceType}
+                        ${getSourceLabel(sourceType)}
                       </button>
                     </li>
                   `)}
@@ -437,11 +461,11 @@ export class JournalEntriesViewElement extends HTMLElement {
                 <!-- Status Filter -->
                 <div class="outlined-text-field" style="min-width: 160px; anchor-name: --status-menu-anchor;">
                   <div class="container">
-                    <label for="status-filter-input">Status</label>
+                    <label for="status-filter-input">${t('journalEntry', 'statusLabel')}</label>
                     <input
                       id="status-filter-input"
                       type="button"
-                      value="${state.statusFilter.trim()}"
+                      value="${getStatusLabel(state.statusFilter)}"
                       popovertarget="status-menu"
                       popovertargetaction="show"
                       placeholder=" "
@@ -464,20 +488,20 @@ export class JournalEntriesViewElement extends HTMLElement {
                         @click=${handleStatusFilterChange}
                       >
                         ${state.statusFilter === statusType ? html`<material-symbols name="check"></material-symbols>` : nothing}
-                        ${statusType}
+                        ${getStatusLabel(statusType)}
                       </button>
                     </li>
                   `)}
                 </menu>
               </div>
               <div style="display: flex; flex-direction: row; gap: 12px; align-items: center;">
-                <button role="button" class="text" @click=${loadJournalEntries} aria-label="Refresh entries">
+                <button role="button" class="text" @click=${loadJournalEntries} aria-label=${t('journalEntry', 'refreshActionLabel')}>
                   <material-symbols name="refresh"></material-symbols>
-                  Refresh
+                  ${t('journalEntry', 'refreshActionLabel')}
                 </button>
                 <button role="button" type="button" class="tonal" commandfor="journal-entry-creation-dialog" command="--open">
                   <material-symbols name="add"></material-symbols>
-                  New Entry
+                  ${t('journalEntry', 'newEntryActionLabel')}
                 </button>
               </div>
             </div>

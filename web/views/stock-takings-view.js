@@ -9,6 +9,7 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 
 import '#web/components/material-symbols.js';
@@ -39,6 +40,7 @@ export class StockTakingsViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -57,6 +59,19 @@ export class StockTakingsViewElement extends HTMLElement {
     useBusyStateUntil(host, function firstLoad() {
       return state.isLoading === false;
     });
+
+    /**
+     * @param {VarianceFilter} filter
+     */
+    function translateVarianceFilter(filter) {
+      switch (filter) {
+        case 'All': return t('stock', 'varianceFilterAll');
+        case 'Gains Only': return t('stock', 'varianceFilterGainsOnly');
+        case 'Losses Only': return t('stock', 'varianceFilterLossesOnly');
+        case 'No Change': return t('stock', 'varianceFilterNoChange');
+        default: return filter;
+      }
+    }
 
     function getTotalPages() {
       return Math.max(1, Math.ceil(state.totalCount / pageSize));
@@ -153,7 +168,7 @@ export class StockTakingsViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading stock takings"
+          aria-label="${t('stock', 'loadingStockTakingsAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -169,7 +184,7 @@ export class StockTakingsViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading stock takings...</p>
+          <p>${t('stock', 'loadingStockTakingsMessage')}</p>
         </div>
       `;
     }
@@ -193,11 +208,11 @@ export class StockTakingsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load stock takings</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('stock', 'unableToLoadStockTakingsTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadStockTakings}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('stock', 'retryButtonLabel')}
           </button>
         </div>
       `;
@@ -209,11 +224,11 @@ export class StockTakingsViewElement extends HTMLElement {
           <!-- Variance Filter -->
           <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 160px; anchor-name: --variance-filter-menu-anchor;">
             <div class="container">
-              <label for="variance-filter-input">Variance</label>
+              <label for="variance-filter-input">${t('stock', 'varianceFilterLabel')}</label>
               <input
                 id="variance-filter-input"
                 type="button"
-                value="${state.varianceFilter}"
+                value="${translateVarianceFilter(state.varianceFilter)}"
                 popovertarget="variance-filter-menu"
                 popovertargetaction="show"
                 placeholder=" "
@@ -236,7 +251,7 @@ export class StockTakingsViewElement extends HTMLElement {
                     aria-selected=${option === state.varianceFilter ? 'true' : 'false'}
                   >
                     ${option === state.varianceFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
-                    ${option}
+                    ${translateVarianceFilter(option)}
                   </button>
                 </li>
               `;
@@ -261,11 +276,11 @@ export class StockTakingsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="fact_check" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No stock takings found</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('stock', 'noStockTakingsFoundTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
             ${state.varianceFilter !== 'All'
-              ? 'Try adjusting your filter.'
-              : 'Perform stock taking to audit your inventory and reconcile discrepancies.'}
+              ? t('stock', 'adjustFilterMessage')
+              : t('stock', 'performStockTakingMessage')}
           </p>
           ${state.varianceFilter === 'All' ? html`
             <router-link
@@ -274,7 +289,7 @@ export class StockTakingsViewElement extends HTMLElement {
               href="/stock/stock-taking-creation"
             >
               <material-symbols name="add"></material-symbols>
-              New Stock Taking
+              ${t('stock', 'newStockTakingButtonLabel')}
             </router-link>
           ` : nothing}
         </div>
@@ -303,9 +318,9 @@ export class StockTakingsViewElement extends HTMLElement {
      * @param {number} variance
      */
     function getVarianceStatusText(variance) {
-      if (variance > 0) return 'Gain';
-      if (variance < 0) return 'Loss';
-      return 'No Change';
+      if (variance > 0) return t('stock', 'statusGain');
+      if (variance < 0) return t('stock', 'statusLoss');
+      return t('stock', 'statusNoChange');
     }
 
     /**
@@ -315,7 +330,7 @@ export class StockTakingsViewElement extends HTMLElement {
       return html`
         <tr
           tabindex="0"
-          aria-label="Stock taking ${stockTaking.id} for ${stockTaking.inventory_name}"
+          aria-label="${t('stock', 'stockTakingRowAriaLabel', stockTaking.id, stockTaking.inventory_name)}"
         >
           <td class="label-large" style="color: var(--md-sys-color-primary);">#${stockTaking.id}</td>
           <td style="white-space: nowrap;">${i18n.date.format(stockTaking.audit_time)}</td>
@@ -365,7 +380,7 @@ export class StockTakingsViewElement extends HTMLElement {
           "
         >
           <span class="body-small" style="color: var(--md-sys-color-on-surface-variant);">
-            Showing ${startItem}–${endItem} of ${state.totalCount}
+            ${t('stock', 'paginationInfo', startItem, endItem, state.totalCount)}
           </span>
           <div style="display: flex; gap: 8px; align-items: center;">
             <button
@@ -374,7 +389,7 @@ export class StockTakingsViewElement extends HTMLElement {
               data-page="1"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="First page"
+              aria-label="${t('stock', 'firstPageAriaLabel')}"
             >
               <material-symbols name="first_page"></material-symbols>
             </button>
@@ -384,12 +399,12 @@ export class StockTakingsViewElement extends HTMLElement {
               data-page="${state.currentPage - 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="Previous page"
+              aria-label="${t('stock', 'previousPageAriaLabel')}"
             >
               <material-symbols name="chevron_left"></material-symbols>
             </button>
             <span class="body-medium" style="min-width: 80px; text-align: center;">
-              Page ${state.currentPage} of ${totalPages}
+              ${t('stock', 'pageInfo', state.currentPage, totalPages)}
             </span>
             <button
               role="button"
@@ -397,7 +412,7 @@ export class StockTakingsViewElement extends HTMLElement {
               data-page="${state.currentPage + 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Next page"
+              aria-label="${t('stock', 'nextPageAriaLabel')}"
             >
               <material-symbols name="chevron_right"></material-symbols>
             </button>
@@ -407,7 +422,7 @@ export class StockTakingsViewElement extends HTMLElement {
               data-page="${totalPages}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Last page"
+              aria-label="${t('stock', 'lastPageAriaLabel')}"
             >
               <material-symbols name="last_page"></material-symbols>
             </button>
@@ -424,14 +439,14 @@ export class StockTakingsViewElement extends HTMLElement {
           <table aria-label="Stock takings list" style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col" style="width: 60px;">ID</th>
-                <th scope="col" style="width: 120px;">Date</th>
-                <th scope="col">Inventory</th>
-                <th scope="col" class="numeric" style="width: 100px;">Expected</th>
-                <th scope="col" class="numeric" style="width: 100px;">Actual</th>
-                <th scope="col" class="numeric" style="width: 100px;">Qty Var</th>
-                <th scope="col" class="numeric" style="width: 120px;">Cost Var</th>
-                <th scope="col" class="center" style="width: 100px;">Status</th>
+                <th scope="col" style="width: 60px;">${t('stock', 'tableHeaderId')}</th>
+                <th scope="col" style="width: 120px;">${t('stock', 'tableHeaderDate')}</th>
+                <th scope="col">${t('stock', 'tableHeaderInventory')}</th>
+                <th scope="col" class="numeric" style="width: 100px;">${t('stock', 'tableHeaderExpected')}</th>
+                <th scope="col" class="numeric" style="width: 100px;">${t('stock', 'tableHeaderActual')}</th>
+                <th scope="col" class="numeric" style="width: 100px;">${t('stock', 'tableHeaderQtyVar')}</th>
+                <th scope="col" class="numeric" style="width: 120px;">${t('stock', 'tableHeaderCostVar')}</th>
+                <th scope="col" class="center" style="width: 100px;">${t('stock', 'tableHeaderStatus')}</th>
               </tr>
             </thead>
             <tbody>
@@ -449,13 +464,13 @@ export class StockTakingsViewElement extends HTMLElement {
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>
-              <button role="button" class="text" @click=${loadStockTakings} aria-label="Refresh stock takings">
+              <button role="button" class="text" @click=${loadStockTakings} aria-label="${t('stock', 'refreshAriaLabel')}">
                 <material-symbols name="refresh"></material-symbols>
-                Refresh
+                ${t('stock', 'refreshButtonLabel')}
               </button>
               <router-link role="button" class="tonal" href="/stock/stock-taking-creation">
                 <material-symbols name="add"></material-symbols>
-                New Stock Taking
+                ${t('stock', 'newStockTakingButtonLabel')}
               </router-link>
             </div>
           </div>

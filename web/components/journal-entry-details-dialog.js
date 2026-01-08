@@ -6,13 +6,13 @@ import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { TimeContextElement } from '#web/contexts/time-context.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
-import { useAttribute } from '#web/hooks/use-attribute.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { sleep } from '#web/tools/timing.js';
 
@@ -50,9 +50,10 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const time = useContext(host, TimeContextElement);
 
+    const t = useTranslator(host);
     const dialog = useDialog(host);
-    const confirmationDialog = useElement(host, HTMLDialogElement);
     const render = useRender(host);
+    const confirmationDialog = useElement(host, HTMLDialogElement);
     useAdoptedStyleSheets(host, webStyleSheets);
 
     this.open = useExposed(host, function readPopoverState() {
@@ -96,7 +97,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
             GROUP BY je.ref
           `;
 
-        if (journalEntryResult.rows.length === 0) throw new Error(`Journal entry #${journalEntryRef} not found`);
+        if (journalEntryResult.rows.length === 0) throw new Error(t('journalEntry', 'entryNotFound', journalEntryRef));
 
         const journalEntryRow = journalEntryResult.rows[0];
         state.journalEntry = {
@@ -245,7 +246,8 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
         const postTime = entryTime;
         const originalRef = state.journalEntry.ref;
         const originalNote = state.journalEntry.note;
-        const reversalNote = `Reversal of Journal Entry #${originalRef}${originalNote ? ` - ${originalNote}` : ''}`;
+        let reversalNote = t('journalEntry', 'reversalNote', originalRef);
+        if (originalNote) reversalNote += ` - ${originalNote}`;
 
         // Create reversal journal entry
         const insertResult = await tx.sql`
@@ -319,7 +321,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
       return html`
         <div role="alert">
           <material-symbols name="error" size="48"></material-symbols>
-          <h3>Unable to load entry details</h3>
+          <h3>${t('journalEntry', 'loadErrorTitle')}</h3>
           <p>${state.error.message}</p>
         </div>
       `;
@@ -327,13 +329,13 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
 
     function renderLoadingIndicator() {
       return html`
-        <div role="status" aria-label="Loading entry details">
+        <div role="status" aria-label=${t('journalEntry', 'loadingDetailsLabel')}>
           <div role="progressbar" class="linear indeterminate">
             <div class="track">
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading entry details...</p>
+          <p>${t('journalEntry', 'loadingDetailsLabel')}</p>
         </div>
       `;
     }
@@ -351,7 +353,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
           background-color: #FFEBEE;
           color: #B71C1C;
           font-size: 0.8em;
-        ">Reversed by #${state.journalEntry.reversed_by_ref}</span>`;
+        ">${t('journalEntry', 'statusReversedBy', state.journalEntry.reversed_by_ref)}</span>`;
       }
 
       if (isReversal) {
@@ -362,7 +364,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
           background-color: #E3F2FD;
           color: #0D47A1;
           font-size: 0.8em;
-        ">Reversal of #${state.journalEntry.reversal_of_ref}</span>`;
+        ">${t('journalEntry', 'statusReversalOf', state.journalEntry.reversal_of_ref)}</span>`;
       }
 
       if (isPosted) {
@@ -373,7 +375,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
           background-color: #E8F5E9;
           color: #1B5E20;
           font-size: 0.8em;
-        ">Posted</span>`;
+        ">${t('journalEntry', 'statusPosted')}</span>`;
       }
 
       return html`<span style="
@@ -392,19 +394,19 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
       return html`
         <section>
           <dl style="display: grid; grid-template-columns: max-content 1fr; gap: 8px 24px; margin: 0;">
-            <dt style="color: var(--md-sys-color-on-surface-variant);">Date</dt>
+            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'dateLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${i18n.date.format(state.journalEntry.entry_time)}</dd>
 
-            <dt style="color: var(--md-sys-color-on-surface-variant);">Status</dt>
+            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'statusLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${renderStatusBadge()}</dd>
 
-            <dt style="color: var(--md-sys-color-on-surface-variant);">Source</dt>
+            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'sourceLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${state.journalEntry.source_type}</dd>
 
-            <dt style="color: var(--md-sys-color-on-surface-variant);">Posted Date</dt>
-            <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${isPosted ? i18n.date.format(state.journalEntry.post_time) : 'Unposted'}</dd>
+            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'postedDateLabel')}</dt>
+            <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${isPosted ? i18n.date.format(state.journalEntry.post_time) : t('journalEntry', 'unpostedLabel')}</dd>
 
-            <dt style="color: var(--md-sys-color-on-surface-variant);">Note</dt>
+            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'noteLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${state.journalEntry.note ? state.journalEntry.note : '—'}</dd>
           </dl>
         </section>
@@ -412,9 +414,9 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
           <table role="table" aria-label="Journal entry lines" style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col">Account</th>
-                <th scope="col" class="numeric">Debit</th>
-                <th scope="col" class="numeric">Credit</th>
+                <th scope="col">${t('journalEntry', 'accountColumnInfo')}</th>
+                <th scope="col" class="numeric">${t('journalEntry', 'debitColumnInfo')}</th>
+                <th scope="col" class="numeric">${t('journalEntry', 'creditColumnInfo')}</th>
               </tr>
             </thead>
             <tbody>
@@ -434,7 +436,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
             </tbody>
             <tfoot>
               <tr style="font-weight: bold; background-color: var(--md-sys-color-surface-container-low);">
-                <td>Total</td>
+                <td>${t('journalEntry', 'totalLabel')}</td>
                 <td class="numeric">${i18n.displayCurrency(state.journalEntry.total_amount)}</td>
                 <td class="numeric">${i18n.displayCurrency(state.journalEntry.total_amount)}</td>
               </tr>
@@ -456,10 +458,10 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
             type="button"
             class="tonal"
             @click=${handlePostClick}
-            aria-label="Post journal entry"
+            aria-label=${t('journalEntry', 'postActionLabel')}
           >
             <material-symbols name="check_circle"></material-symbols>
-            Post
+            ${t('journalEntry', 'postActionLabel')}
           </button>
           <button
             role="button"
@@ -467,10 +469,10 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
             class="text"
             style="color: var(--md-sys-color-error);"
             @click=${handleDiscardClick}
-            aria-label="Discard journal entry"
+            aria-label=${t('journalEntry', 'discardActionLabel')}
           >
             <material-symbols name="delete"></material-symbols>
-            Discard
+            ${t('journalEntry', 'discardActionLabel')}
           </button>
         `;
       }
@@ -484,10 +486,10 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
             class="text"
             style="color: var(--md-sys-color-error);"
             @click=${handleReverseClick}
-            aria-label="Reverse journal entry"
+            aria-label=${t('journalEntry', 'reverseActionLabel')}
           >
             <material-symbols name="undo"></material-symbols>
-            Reverse
+            ${t('journalEntry', 'reverseActionLabel')}
           </button>
         `;
       }
@@ -501,17 +503,17 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
         return html`
           <material-symbols name="check_circle" style="color: var(--md-sys-color-primary);"></material-symbols>
           <header>
-            <h3>Post Journal Entry</h3>
+            <h3>${t('journalEntry', 'confirmPostTitle')}</h3>
           </header>
           <div class="content">
-            <p>Are you sure you want to post journal entry #${state.journalEntry?.ref}?</p>
+            <p>${t('journalEntry', 'confirmPostMessage', state.journalEntry?.ref)}</p>
             <p style="color: var(--md-sys-color-on-surface-variant); font-size: 0.9em;">
-              Once posted, this entry cannot be edited or deleted. You can only reverse it.
+              ${t('journalEntry', 'confirmPostWarning')}
             </p>
           </div>
           <menu>
-            <button role="button" type="button" class="text" @click=${handleCancelAction}>Cancel</button>
-            <button role="button" type="button" class="tonal" @click=${handleConfirmPost}>Post Entry</button>
+            <button role="button" type="button" class="text" @click=${handleCancelAction}>${t('journalEntry', 'cancelActionLabel')}</button>
+            <button role="button" type="button" class="tonal" @click=${handleConfirmPost}>${t('journalEntry', 'confirmPostActionLabel')}</button>
           </menu>
         `;
       }
@@ -520,17 +522,17 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
         return html`
           <material-symbols name="delete" style="color: var(--md-sys-color-error);"></material-symbols>
           <header>
-            <h3>Discard Journal Entry</h3>
+            <h3>${t('journalEntry', 'confirmDiscardTitle')}</h3>
           </header>
           <div class="content">
-            <p>Are you sure you want to discard journal entry #${state.journalEntry?.ref}?</p>
+            <p>${t('journalEntry', 'confirmDiscardMessage', state.journalEntry?.ref)}</p>
             <p style="color: var(--md-sys-color-error); font-size: 0.9em;">
-              This action cannot be undone. The entry will be permanently deleted.
+              ${t('journalEntry', 'confirmDiscardWarning')}
             </p>
           </div>
           <menu>
-            <button role="button" type="button" class="text" @click=${handleCancelAction}>Cancel</button>
-            <button role="button" type="button" class="tonal" style="background-color: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container);" @click=${handleConfirmDiscard}>Discard Entry</button>
+            <button role="button" type="button" class="text" @click=${handleCancelAction}>${t('journalEntry', 'cancelActionLabel')}</button>
+            <button role="button" type="button" class="tonal" style="background-color: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container);" @click=${handleConfirmDiscard}>${t('journalEntry', 'confirmDiscardActionLabel')}</button>
           </menu>
         `;
       }
@@ -539,24 +541,24 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
         return html`
           <material-symbols name="undo" style="color: var(--md-sys-color-error);"></material-symbols>
           <header>
-            <h3>Reverse Journal Entry</h3>
+            <h3>${t('journalEntry', 'confirmReverseTitle')}</h3>
           </header>
           <div class="content">
-            <p>Are you sure you want to reverse journal entry #${state.journalEntry?.ref}?</p>
+            <p>${t('journalEntry', 'confirmReverseMessage', state.journalEntry?.ref)}</p>
             <p style="color: var(--md-sys-color-on-surface-variant); font-size: 0.9em;">
-              This will create a new journal entry with opposite debits and credits to nullify the effect of this entry.
+              ${t('journalEntry', 'confirmReverseWarning')}
             </p>
           </div>
           <menu>
-            <button role="button" type="button" class="text" @click=${handleCancelAction}>Cancel</button>
-            <button role="button" type="button" class="tonal" @click=${handleConfirmReverse}>Reverse Entry</button>
+            <button role="button" type="button" class="text" @click=${handleCancelAction}>${t('journalEntry', 'cancelActionLabel')}</button>
+            <button role="button" type="button" class="tonal" @click=${handleConfirmReverse}>${t('journalEntry', 'confirmReverseActionLabel')}</button>
           </menu>
         `;
       }
 
       if (state.actionState === 'processing') {
         return html`
-          <div role="status" aria-label="Processing">
+          <div role="status" aria-label=${t('journalEntry', 'processingTitle')}>
             <div role="progressbar" class="linear indeterminate">
               <div class="track">
                 <div class="indicator"></div>
@@ -564,10 +566,10 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
             </div>
           </div>
           <header>
-            <h3>Processing...</h3>
+            <h3>${t('journalEntry', 'processingTitle')}</h3>
           </header>
           <div class="content">
-            <p>Please wait while processing your request.</p>
+            <p>${t('journalEntry', 'processingMessage')}</p>
           </div>
         `;
       }
@@ -576,13 +578,13 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
         return html`
           <material-symbols name="error" style="color: var(--md-sys-color-error);"></material-symbols>
           <header>
-            <h3>Error</h3>
+            <h3>${t('journalEntry', 'dialogErrorTitle')}</h3>
           </header>
           <div class="content">
             <p>${state.actionError?.message}</p>
           </div>
           <menu>
-            <button role="button" type="button" class="text" @click=${handleDismissError}>Dismiss</button>
+            <button role="button" type="button" class="text" @click=${handleDismissError}>${t('journalEntry', 'dismissLabel')}</button>
           </menu>
         `;
       }
@@ -601,7 +603,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="receipt_long"></material-symbols>
             <header>
-              <h2 id="journal-entry-details-dialog-title">${state.journalEntry ? `Journal Entry #${state.journalEntry.ref}` : 'Journal Entry Details'}</h2>
+              <h2 id="journal-entry-details-dialog-title">${state.journalEntry ? t('journalEntry', 'detailsTitleWithRef', state.journalEntry.ref) : t('journalEntry', 'detailsTitle')}</h2>
             </header>
             <div class="content">
               ${state.isLoading ? renderLoadingIndicator() : nothing}
@@ -616,7 +618,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
                 class="text"
                 commandfor="journal-entry-details-dialog"
                 command="close"
-              >Close</button>
+              >${t('journalEntry', 'closeActionLabel')}</button>
             </menu>
           </div>
         </dialog>

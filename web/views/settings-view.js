@@ -12,6 +12,7 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useMounted } from '#web/hooks/use-mounted.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
@@ -48,6 +49,7 @@ export class SettingsViewElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
     const router = useContext(host, RouterContextElement);
+    const t = useTranslator(host);
 
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -87,7 +89,8 @@ export class SettingsViewElement extends HTMLElement {
       if (!(notfoundDialog.value instanceof HTMLDialogElement)) return;
       notfoundDialog.value.close();
       const pathname = router.route.pathname;
-      if (pathname === '/settings' || pathname === '/settings/') { /** evaluate default path on mounted */ }
+      // Skip sync if we're at the base /settings or /settings/ - the mounted hook will redirect
+      if (pathname === '/settings' || pathname === '/settings/') return;
       if (pathname.startsWith('/settings/accounting')) scrollIntoView(accountingTabpanel.value);
       else if (pathname.startsWith('/settings/payments')) scrollIntoView(paymentsTabpanel.value);
       else {
@@ -338,7 +341,7 @@ export class SettingsViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading"
+          aria-label="${t('settings', 'loadingAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -354,7 +357,7 @@ export class SettingsViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading...</p>
+          <p>${t('settings', 'loadingMessage')}</p>
         </div>
       `;
     }
@@ -379,11 +382,11 @@ export class SettingsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load data</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('settings', 'unableToLoadDataTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${retryFn}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('settings', 'retryButtonLabel')}
           </button>
         </div>
       `;
@@ -400,7 +403,7 @@ export class SettingsViewElement extends HTMLElement {
               <div role="progressbar" class="linear indeterminate">
                 <div class="track"><div class="indicator"></div></div>
               </div>
-              <p style="text-align: center; color: var(--md-sys-color-on-surface-variant);">Saving configuration...</p>
+              <p style="text-align: center; color: var(--md-sys-color-on-surface-variant);">${t('settings', 'savingConfigurationMessage')}</p>
             </div>
           ` : nothing}
 
@@ -417,7 +420,7 @@ export class SettingsViewElement extends HTMLElement {
                     <input
                       id="${inputId}"
                       type="button"
-                      value="${item.value || 'Select...'}"
+                      value="${item.value || t('settings', 'selectPlaceholder')}"
                       popovertarget="${inputId}-menu"
                       popovertargetaction="show"
                       placeholder=" "
@@ -492,7 +495,7 @@ export class SettingsViewElement extends HTMLElement {
               ?disabled=${state.configFormState === 'submitting'}
             >
               <material-symbols name="refresh"></material-symbols>
-              Reset
+              ${t('settings', 'resetButtonLabel')}
             </button>
             <button
               role="button"
@@ -501,7 +504,7 @@ export class SettingsViewElement extends HTMLElement {
               ?disabled=${state.configFormState === 'submitting'}
             >
               <material-symbols name="save"></material-symbols>
-              Save Changes
+              ${t('settings', 'saveChangesButtonLabel')}
             </button>
           </div>
         </form>
@@ -523,10 +526,9 @@ export class SettingsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="payments" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No payment methods configured</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('settings', 'noPaymentMethodsTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
-            Add payment methods to enable different payment options in the POS system.
-            Each payment method is linked to an account for proper accounting.
+            ${t('settings', 'noPaymentMethodsMessage')}
           </p>
           <button
             role="button"
@@ -536,7 +538,7 @@ export class SettingsViewElement extends HTMLElement {
             command="--open"
           >
             <material-symbols name="add"></material-symbols>
-            Add Payment Method
+            ${t('settings', 'addPaymentMethodButtonLabel')}
           </button>
         </div>
       `;
@@ -591,7 +593,7 @@ export class SettingsViewElement extends HTMLElement {
                   background-color: var(--md-sys-color-surface-container-high);
                   color: var(--md-sys-color-on-surface-variant);
                 "
-              >No fee</span>
+              >${t('settings', 'noFeeLabel')}</span>
             `}
           </td>
         </tr>
@@ -607,9 +609,9 @@ export class SettingsViewElement extends HTMLElement {
         <table aria-label="Payment methods list" style="--md-sys-density: -3;">
           <thead>
             <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Account</th>
-              <th scope="col" class="center" style="width: 200px;">Fee</th>
+              <th scope="col">${t('settings', 'nameColumnHeader')}</th>
+              <th scope="col">${t('settings', 'accountColumnHeader')}</th>
+              <th scope="col" class="center" style="width: 200px;">${t('settings', 'feeColumnHeader')}</th>
             </tr>
           </thead>
           <tbody>
@@ -624,25 +626,25 @@ export class SettingsViewElement extends HTMLElement {
         <div style="height: 100%; display: flex; flex-direction: column;">
           <header class="app-bar" style="max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;">
             <hgroup>
-              <h1>Settings</h1>
-              <p>Configure accounting and POS settings.</p>
+              <h1>${t('settings', 'settingsTitle')}</h1>
+              <p>${t('settings', 'settingsDescription')}</p>
             </hgroup>
           </header>
           <nav
             role="tablist"
-            aria-label="Settings sections"
+            aria-label="${t('settings', 'settingsSectionsAriaLabel')}"
             style="position: sticky; top: 0; z-index: 1; max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;"
           >
             <router-link role="tab" aria-controls="accounting-panel" href="/settings/accounting" replace>
               <span class="content">
                 <material-symbols name="settings" size="24"></material-symbols>
-                Accounting Config
+                ${t('settings', 'accountingConfigTabLabel')}
               </span>
             </router-link>
             <router-link role="tab" aria-controls="payments-panel" href="/settings/payments" replace>
               <span class="content">
                 <material-symbols name="payments" size="24"></material-symbols>
-                Payment Methods
+                ${t('settings', 'paymentMethodsTabLabel')}
               </span>
             </router-link>
           </nav>
@@ -667,7 +669,7 @@ export class SettingsViewElement extends HTMLElement {
               ${accountingTabpanel}
               id="accounting-panel"
               role="tabpanel"
-              aria-labelledby="accounting-tab"
+              aria-label="${t('settings', 'accountingConfigTabLabel')}"
               aria-hidden="${router.route.pathname.startsWith('/settings/accounting') ? 'false' : 'true'}"
               tabindex="${router.route.pathname.startsWith('/settings/accounting') ? '0' : '-1'}"
               ?inert=${router.route.pathname.startsWith('/settings/accounting') === false}
@@ -683,10 +685,10 @@ export class SettingsViewElement extends HTMLElement {
               "
             >
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                <h2 class="title-large" style="margin: 0;">Accounting Configuration</h2>
-                <button role="button" class="text" @click=${loadConfig} aria-label="Refresh configuration">
+                <h2 class="title-large" style="margin: 0;">${t('settings', 'accountingConfigurationTitle')}</h2>
+                <button role="button" class="text" @click=${loadConfig} aria-label="${t('settings', 'refreshConfigurationAriaLabel')}">
                   <material-symbols name="refresh"></material-symbols>
-                  Refresh
+                  ${t('settings', 'refreshButtonLabel')}
                 </button>
               </div>
               ${renderAccountingConfigPanel()}
@@ -695,7 +697,7 @@ export class SettingsViewElement extends HTMLElement {
               ${paymentsTabpanel}
               id="payments-panel"
               role="tabpanel"
-              aria-labelledby="payments-tab"
+              aria-label="${t('settings', 'paymentMethodsTabLabel')}"
               aria-hidden="${router.route.pathname.startsWith('/settings/payments') ? 'false' : 'true'}"
               tabindex="${router.route.pathname.startsWith('/settings/payments') ? '0' : '-1'}"
               ?inert=${router.route.pathname.startsWith('/settings/payments') === false}
@@ -711,11 +713,11 @@ export class SettingsViewElement extends HTMLElement {
               "
             >
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                <h2 class="title-large" style="margin: 0;">Payment Methods</h2>
+                <h2 class="title-large" style="margin: 0;">${t('settings', 'paymentMethodsTitle')}</h2>
                 <div style="display: flex; gap: 12px; align-items: center;">
-                  <button role="button" class="text" @click=${loadPaymentMethods} aria-label="Refresh payment methods">
+                  <button role="button" class="text" @click=${loadPaymentMethods} aria-label="${t('settings', 'refreshPaymentMethodsAriaLabel')}">
                     <material-symbols name="refresh"></material-symbols>
-                    Refresh
+                    ${t('settings', 'refreshButtonLabel')}
                   </button>
                   <button
                     role="button"
@@ -725,7 +727,7 @@ export class SettingsViewElement extends HTMLElement {
                     command="--open"
                   >
                     <material-symbols name="add"></material-symbols>
-                    Add Payment Method
+                    ${t('settings', 'addPaymentMethodButtonLabel')}
                   </button>
                 </div>
               </div>
@@ -737,28 +739,28 @@ export class SettingsViewElement extends HTMLElement {
         <dialog ${notfoundDialog} id="notfound-dialog">
           <div class="container">
             <header>
-              <h2>Page Not Found</h2>
+              <h2>${t('settings', 'pageNotFoundTitle')}</h2>
             </header>
             <section class="content">
-              <p>The settings page you are looking for does not exist.</p>
+              <p>${t('settings', 'pageNotFoundMessage')}</p>
             </section>
             <menu>
               <router-link
                 href="/settings/accounting"
                 replace
-              >Go to Accounting Config</router-link>
+              >${t('settings', 'goToAccountingConfigButtonLabel')}</router-link>
             </menu>
           </div>
         </dialog>
 
-        <dialog ${successDialog} id="success-dialog" role="alertdialog">
+        <dialog ${successDialog} id="success-dialog" aria-labelledby="success-dialog-title">
           <div class="container">
             <material-symbols name="check_circle" style="color: var(--md-sys-color-primary);"></material-symbols>
             <header>
-              <h3>Settings Saved</h3>
+              <h3 id="success-dialog-title">${t('settings', 'settingsSavedTitle')}</h3>
             </header>
             <div class="content">
-              <p>Configuration has been updated successfully.</p>
+              <p>${t('settings', 'settingsSavedMessage')}</p>
             </div>
           </div>
         </dialog>
@@ -767,7 +769,7 @@ export class SettingsViewElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('settings', 'errorOccurredTitle')}</h3>
             </header>
             <div class="content">
               <p>${state.configFormError?.message}</p>
@@ -779,7 +781,7 @@ export class SettingsViewElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('settings', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>

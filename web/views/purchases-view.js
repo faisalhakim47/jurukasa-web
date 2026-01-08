@@ -13,6 +13,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -42,6 +43,7 @@ export class PurchasesViewElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
     const router = useContext(host, RouterContextElement);
+    const t = useTranslator(host);
 
     const purchaseDetailsDialog = useElement(host, PurchaseDetailsDialogElement);
     const render = useRender(host);
@@ -192,7 +194,7 @@ export class PurchasesViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading purchases"
+          aria-label=${t('purchase', 'loadingPurchasesAriaLabel')}
           style="
             display: flex;
             flex-direction: column;
@@ -208,7 +210,7 @@ export class PurchasesViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading purchases...</p>
+          <p>${t('purchase', 'loadingPurchasesMessage')}</p>
         </div>
       `;
     }
@@ -230,11 +232,11 @@ export class PurchasesViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load purchases</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('purchase', 'unableToLoadPurchasesTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadPurchases}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('purchase', 'retryButtonLabel')}
           </button>
         </div>
       `;
@@ -247,7 +249,7 @@ export class PurchasesViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 200px; min-width: 160px;">
             <div class="container">
               <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="purchase-search-input">Search</label>
+              <label for="purchase-search-input">${t('purchase', 'searchLabel')}</label>
               <input
                 ${readValue(state, 'searchQuery')}
                 id="purchase-search-input"
@@ -262,11 +264,11 @@ export class PurchasesViewElement extends HTMLElement {
           <!-- Status Filter -->
           <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 160px; anchor-name: --status-filter-menu-anchor;">
             <div class="container">
-              <label for="status-filter-input">Status</label>
+              <label for="status-filter-input">${t('purchase', 'statusFilterLabel')}</label>
               <input
                 id="status-filter-input"
                 type="button"
-                value="${state.statusFilter}"
+                value="${state.statusFilter === 'All' ? t('purchase', 'filterAll') : state.statusFilter === 'Posted' ? t('purchase', 'filterPosted') : t('purchase', 'filterDraft')}"
                 popovertarget="status-filter-menu"
                 popovertargetaction="show"
                 placeholder=" "
@@ -278,6 +280,9 @@ export class PurchasesViewElement extends HTMLElement {
           </div>
           <menu role="menu" popover id="status-filter-menu" class="dropdown" style="position-anchor: --status-filter-menu-anchor;">
             ${statusFilterOptions.map(function (option) {
+              const optionLabel = option === 'All' ? t('purchase', 'filterAll')
+                : option === 'Posted' ? t('purchase', 'filterPosted')
+                : t('purchase', 'filterDraft');
               return html`
                 <li>
                   <button
@@ -289,7 +294,7 @@ export class PurchasesViewElement extends HTMLElement {
                     aria-selected=${option === state.statusFilter ? 'true' : 'false'}
                   >
                     ${option === state.statusFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
-                    ${option}
+                    ${optionLabel}
                   </button>
                 </li>
               `;
@@ -314,11 +319,11 @@ export class PurchasesViewElement extends HTMLElement {
           "
         >
           <material-symbols name="shopping_cart" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No purchases found</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('purchase', 'noPurchasesFoundTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
             ${state.searchQuery || state.statusFilter !== 'All'
-              ? 'Try adjusting your search or filters.'
-              : 'Start by recording your first purchase to track inventory costs.'}
+              ? t('purchase', 'adjustSearchOrFiltersMessage')
+              : t('purchase', 'startRecordingFirstPurchaseMessage')}
           </p>
           ${!state.searchQuery && state.statusFilter === 'All' ? html`
             <router-link
@@ -327,7 +332,7 @@ export class PurchasesViewElement extends HTMLElement {
               href="/procurement/purchase-creation"
             >
               <material-symbols name="add"></material-symbols>
-              New Purchase
+              ${t('purchase', 'newPurchaseButtonLabel')}
             </router-link>
           ` : nothing}
         </div>
@@ -339,7 +344,7 @@ export class PurchasesViewElement extends HTMLElement {
      */
     function renderPurchaseRow(purchase) {
       const isPosted = purchase.post_time !== null;
-      const statusText = isPosted ? 'Posted' : 'Draft';
+      const statusText = isPosted ? t('purchase', 'statusPosted') : t('purchase', 'statusDraft');
       return html`
         <tr>
           <td class="label-large" style="color: var(--md-sys-color-primary);">
@@ -381,10 +386,10 @@ export class PurchasesViewElement extends HTMLElement {
                 display: inline-flex;
                 padding: 4px 8px;
                 border-radius: var(--md-sys-shape-corner-small);
-                ${statusText === 'Posted' ? 'background-color: #E8F5E9;' : nothing}
-                ${statusText === 'Posted' ? 'color: #1B5E20;' : nothing}
-                ${statusText === 'Draft' ? 'background-color: #FFF3E0;' : nothing}
-                ${statusText === 'Draft' ? 'color: #E65100;' : nothing}
+                ${isPosted ? 'background-color: #E8F5E9;' : nothing}
+                ${isPosted ? 'color: #1B5E20;' : nothing}
+                ${!isPosted ? 'background-color: #FFF3E0;' : nothing}
+                ${!isPosted ? 'color: #E65100;' : nothing}
               "
             >${statusText}</span>
           </td>
@@ -400,7 +405,7 @@ export class PurchasesViewElement extends HTMLElement {
       return html`
         <nav
           role="navigation"
-          aria-label="Pagination"
+          aria-label=${t('purchase', 'paginationAriaLabel')}
           style="
             display: flex;
             justify-content: space-between;
@@ -410,7 +415,7 @@ export class PurchasesViewElement extends HTMLElement {
           "
         >
           <span class="body-small" style="color: var(--md-sys-color-on-surface-variant);">
-            Showing ${startItem}–${endItem} of ${state.totalCount}
+            ${t('purchase', 'showingItemsInfo', startItem, endItem, state.totalCount)}
           </span>
           <div style="display: flex; gap: 8px; align-items: center;">
             <button
@@ -419,7 +424,7 @@ export class PurchasesViewElement extends HTMLElement {
               data-page="1"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="First page"
+              aria-label=${t('purchase', 'firstPageAriaLabel')}
             >
               <material-symbols name="first_page"></material-symbols>
             </button>
@@ -429,12 +434,12 @@ export class PurchasesViewElement extends HTMLElement {
               data-page="${state.currentPage - 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="Previous page"
+              aria-label=${t('purchase', 'previousPageAriaLabel')}
             >
               <material-symbols name="chevron_left"></material-symbols>
             </button>
             <span class="body-medium" style="min-width: 80px; text-align: center;">
-              Page ${state.currentPage} of ${totalPages}
+              ${t('purchase', 'pageInfo', state.currentPage, totalPages)}
             </span>
             <button
               role="button"
@@ -442,7 +447,7 @@ export class PurchasesViewElement extends HTMLElement {
               data-page="${state.currentPage + 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Next page"
+              aria-label=${t('purchase', 'nextPageAriaLabel')}
             >
               <material-symbols name="chevron_right"></material-symbols>
             </button>
@@ -452,7 +457,7 @@ export class PurchasesViewElement extends HTMLElement {
               data-page="${totalPages}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Last page"
+              aria-label=${t('purchase', 'lastPageAriaLabel')}
             >
               <material-symbols name="last_page"></material-symbols>
             </button>
@@ -466,15 +471,15 @@ export class PurchasesViewElement extends HTMLElement {
 
       return html`
         <div>
-          <table aria-label="Purchases list" style="--md-sys-density: -3;">
+          <table aria-label=${t('purchase', 'purchasesListAriaLabel')} style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col" style="width: 60px;">ID</th>
-                <th scope="col" style="width: 120px;">Date</th>
-                <th scope="col">Supplier</th>
-                <th scope="col" class="numeric" style="width: 80px;">Items</th>
-                <th scope="col" class="numeric" style="width: 140px;">Total</th>
-                <th scope="col" class="center" style="width: 100px;">Status</th>
+                <th scope="col" style="width: 60px;">${t('purchase', 'tableHeaderId')}</th>
+                <th scope="col" style="width: 120px;">${t('purchase', 'tableHeaderDate')}</th>
+                <th scope="col">${t('purchase', 'tableHeaderSupplier')}</th>
+                <th scope="col" class="numeric" style="width: 80px;">${t('purchase', 'tableHeaderItems')}</th>
+                <th scope="col" class="numeric" style="width: 140px;">${t('purchase', 'tableHeaderTotal')}</th>
+                <th scope="col" class="center" style="width: 100px;">${t('purchase', 'tableHeaderStatus')}</th>
               </tr>
             </thead>
             <tbody>
@@ -492,9 +497,9 @@ export class PurchasesViewElement extends HTMLElement {
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>
-              <button role="button" class="text" @click=${loadPurchases} aria-label="Refresh purchases">
+              <button role="button" class="text" @click=${loadPurchases} aria-label=${t('purchase', 'refreshAriaLabel')}>
                 <material-symbols name="refresh"></material-symbols>
-                Refresh
+                ${t('purchase', 'refreshButtonLabel')}
               </button>
               <router-link
                 role="button"
@@ -502,7 +507,7 @@ export class PurchasesViewElement extends HTMLElement {
                 href="/procurement/purchase-creation"
               >
                 <material-symbols name="add"></material-symbols>
-                New Purchase
+                ${t('purchase', 'newPurchaseButtonLabel')}
               </router-link>
             </div>
           </div>

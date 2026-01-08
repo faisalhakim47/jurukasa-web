@@ -5,6 +5,7 @@ import { defineWebComponent } from '#web/component.js';
 import { SupplierCreationDialogElement } from '#web/components/supplier-creation-dialog.js';
 import { SupplierDetailsDialogElement } from '#web/components/supplier-details-dialog.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
+import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useBusyStateUntil } from '#web/contexts/ready-context.js';
 import { readValue } from '#web/directives/read-value.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
@@ -12,6 +13,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -34,6 +36,8 @@ export class SuppliersViewElement extends HTMLElement {
 
     const host = this;
     const database = useContext(host, DatabaseContextElement);
+    const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const supplierCreationDialog = useElement(host, SupplierCreationDialogElement);
     const supplierDetailsDialog = useElement(host, SupplierDetailsDialogElement);
@@ -165,7 +169,7 @@ export class SuppliersViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading suppliers"
+          aria-label=${t('supplier', 'loadingSuppliersViewAriaLabel')}
           style="
             display: flex;
             flex-direction: column;
@@ -181,7 +185,7 @@ export class SuppliersViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading suppliers...</p>
+          <p>${t('supplier', 'loadingSuppliersViewMessage')}</p>
         </div>
       `;
     }
@@ -205,11 +209,11 @@ export class SuppliersViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load suppliers</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('supplier', 'unableToLoadSuppliersViewTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadSuppliers}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('supplier', 'retryButtonLabel')}
           </button>
         </div>
       `;
@@ -222,7 +226,7 @@ export class SuppliersViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 250px; min-width: 160px;">
             <div class="container">
               <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="supplier-search-input">Search</label>
+              <label for="supplier-search-input">${t('supplier', 'searchLabel')}</label>
               <input
                 ${readValue(state, 'searchQuery')}
                 id="supplier-search-input"
@@ -252,11 +256,11 @@ export class SuppliersViewElement extends HTMLElement {
           "
         >
           <material-symbols name="local_shipping" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No suppliers found</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('supplier', 'noSuppliersFoundTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
             ${state.searchQuery
-          ? 'Try adjusting your search.'
-          : 'Start by adding your first supplier to manage your inventory sources.'}
+          ? t('supplier', 'adjustSearchMessage')
+          : t('supplier', 'addFirstSupplierMessage')}
           </p>
           ${!state.searchQuery ? html`
             <button
@@ -267,7 +271,7 @@ export class SuppliersViewElement extends HTMLElement {
               command="--open"
             >
               <material-symbols name="add"></material-symbols>
-              Add Supplier
+              ${t('supplier', 'addSupplierButtonLabel')}
             </button>
           ` : nothing}
         </div>
@@ -281,7 +285,7 @@ export class SuppliersViewElement extends HTMLElement {
       return html`
         <tr
           tabindex="0"
-          aria-label="Supplier ${supplier.name}"
+          aria-label="${t('supplier', 'supplierRowAriaLabel', supplier.name)}"
           data-supplier-id="${supplier.id}"
           @click=${handleSupplierRowInteraction}
           @keydown=${handleSupplierRowInteraction}
@@ -339,7 +343,7 @@ export class SuppliersViewElement extends HTMLElement {
       return html`
         <nav
           role="navigation"
-          aria-label="Pagination"
+          aria-label=${t('supplier', 'paginationAriaLabel')}
           style="
             display: flex;
             justify-content: space-between;
@@ -349,7 +353,7 @@ export class SuppliersViewElement extends HTMLElement {
           "
         >
           <span class="body-small" style="color: var(--md-sys-color-on-surface-variant);">
-            Showing ${startItem}–${endItem} of ${state.totalCount}
+            ${t('supplier', 'showingItemsInfo', startItem, endItem, state.totalCount)}
           </span>
           <div style="display: flex; gap: 8px; align-items: center;">
             <button
@@ -357,7 +361,7 @@ export class SuppliersViewElement extends HTMLElement {
               class="text"
               @click=${handleFirstPage}
               ?disabled=${state.currentPage === 1}
-              aria-label="First page"
+              aria-label=${t('supplier', 'firstPageAriaLabel')}
             >
               <material-symbols name="first_page"></material-symbols>
             </button>
@@ -366,19 +370,19 @@ export class SuppliersViewElement extends HTMLElement {
               class="text"
               @click=${handlePreviousPage}
               ?disabled=${state.currentPage === 1}
-              aria-label="Previous page"
+              aria-label=${t('supplier', 'previousPageAriaLabel')}
             >
               <material-symbols name="chevron_left"></material-symbols>
             </button>
             <span class="body-medium" style="min-width: 80px; text-align: center;">
-              Page ${state.currentPage} of ${totalPages}
+              ${t('supplier', 'pageInfo', state.currentPage, totalPages)}
             </span>
             <button
               role="button"
               class="text"
               @click=${handleNextPage}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Next page"
+              aria-label=${t('supplier', 'nextPageAriaLabel')}
             >
               <material-symbols name="chevron_right"></material-symbols>
             </button>
@@ -387,7 +391,7 @@ export class SuppliersViewElement extends HTMLElement {
               class="text"
               @click=${handleLastPage}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Last page"
+              aria-label=${t('supplier', 'lastPageAriaLabel')}
             >
               <material-symbols name="last_page"></material-symbols>
             </button>
@@ -401,13 +405,13 @@ export class SuppliersViewElement extends HTMLElement {
 
       return html`
         <div>
-          <table aria-label="Suppliers list" style="--md-sys-density: -3;">
+          <table aria-label=${t('supplier', 'suppliersListAriaLabel')} style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col">Name</th>
-                <th scope="col" style="width: 180px;">Phone Number</th>
-                <th scope="col" class="numeric" style="width: 100px;">Items</th>
-                <th scope="col" class="numeric" style="width: 100px;">Purchases</th>
+                <th scope="col">${t('supplier', 'tableHeaderName')}</th>
+                <th scope="col" style="width: 180px;">${t('supplier', 'tableHeaderPhone')}</th>
+                <th scope="col" class="numeric" style="width: 100px;">${t('supplier', 'tableHeaderInventories')}</th>
+                <th scope="col" class="numeric" style="width: 100px;">${t('supplier', 'tableHeaderPurchases')}</th>
               </tr>
             </thead>
             <tbody>
@@ -425,13 +429,13 @@ export class SuppliersViewElement extends HTMLElement {
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>
-              <button role="button" class="text" @click=${loadSuppliers} aria-label="Refresh suppliers">
+              <button role="button" class="text" @click=${loadSuppliers} aria-label=${t('supplier', 'refreshAriaLabel')}>
                 <material-symbols name="refresh"></material-symbols>
-                Refresh
+                ${t('supplier', 'refreshButtonLabel')}
               </button>
               <button role="button" type="button" class="tonal" commandfor="supplier-creation-dialog" command="--open">
                 <material-symbols name="add"></material-symbols>
-                Add Supplier
+                ${t('supplier', 'addSupplierButtonLabel')}
               </button>
             </div>
           </div>

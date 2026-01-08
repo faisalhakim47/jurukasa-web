@@ -11,6 +11,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useElement } from '#web/hooks/use-element.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { sleep } from '#web/tools/timing.js';
@@ -48,6 +49,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const errorAlertDialog = useDialog(host);
 
@@ -155,15 +157,15 @@ export class InventoryDetailsDialogElement extends HTMLElement {
         const unitOfMeasurement = /** @type {string} */ (data.get('unitOfMeasurement'))?.trim() || null;
 
         // Validate inputs
-        if (!name) throw new Error('Inventory name is required.');
-        if (isNaN(unitPrice) || unitPrice < 0) throw new Error('Invalid unit price.');
+        if (!name) throw new Error(t('inventory', 'inventoryNameRequiredError'));
+        if (isNaN(unitPrice) || unitPrice < 0) throw new Error(t('inventory', 'invalidUnitPriceError'));
 
         // Check for duplicate name (excluding current inventory)
         const duplicateCheck = await tx.sql`
           SELECT 1 FROM inventories WHERE name = ${name} AND id != ${state.inventory.id} LIMIT 1;
         `;
         if (duplicateCheck.rows.length > 0) {
-          throw new Error('Inventory name already exists.');
+          throw new Error(t('inventory', 'inventoryNameExistsError'));
         }
 
         // Update inventory
@@ -215,10 +217,10 @@ export class InventoryDetailsDialogElement extends HTMLElement {
         if (existingCheck.rows.length > 0) {
           const existingInventoryId = Number(existingCheck.rows[0].inventory_id);
           if (existingInventoryId === state.inventory.id) {
-            throw new Error('This barcode is already assigned to this inventory.');
+            throw new Error(t('barcode', 'barcodeAlreadyAssignedToThisError'));
           }
           else {
-            throw new Error('This barcode is already assigned to another inventory.');
+            throw new Error(t('barcode', 'barcodeAlreadyAssignedToAnotherError'));
           }
         }
 
@@ -281,7 +283,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading inventory details"
+          aria-label="${t('inventory', 'loadingInventoryDetailsAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -297,7 +299,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading inventory details...</p>
+          <p>${t('inventory', 'loadingInventoryDetailsMessage')}</p>
         </div>
       `;
     }
@@ -317,8 +319,8 @@ export class InventoryDetailsDialogElement extends HTMLElement {
           "
         >
           <material-symbols name="inventory_2" size="48"></material-symbols>
-          <h3 class="title-large">Inventory Not Found</h3>
-          <p style="color: var(--md-sys-color-on-surface-variant);">The requested inventory could not be found.</p>
+          <h3 class="title-large">${t('inventory', 'inventoryNotFoundTitle')}</h3>
+          <p style="color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'inventoryNotFoundMessage')}</p>
         </div>
       `;
     }
@@ -332,22 +334,22 @@ export class InventoryDetailsDialogElement extends HTMLElement {
         <div style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
           <!-- Basic Info -->
           <section>
-            <h3 class="title-medium" style="margin-bottom: 16px;">Basic Information</h3>
+            <h3 class="title-medium" style="margin-bottom: 16px;">${t('inventory', 'basicInformationSectionTitle')}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Name</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'nameFieldLabel')}</p>
                 <p class="body-large">${inv.name}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Unit Price</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'unitPriceFieldLabel')}</p>
                 <p class="body-large">${i18n.displayCurrency(inv.unit_price)}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Unit of Measurement</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'unitOfMeasurementFieldLabel')}</p>
                 <p class="body-large">${inv.unit_of_measurement || '—'}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Inventory Account</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'inventoryAccountFieldLabel')}</p>
                 <p class="body-large">${inv.account_code} - ${inv.account_name}</p>
               </div>
             </div>
@@ -355,22 +357,22 @@ export class InventoryDetailsDialogElement extends HTMLElement {
 
           <!-- Stock Info -->
           <section>
-            <h3 class="title-medium" style="margin-bottom: 16px;">Stock Information</h3>
+            <h3 class="title-medium" style="margin-bottom: 16px;">${t('inventory', 'stockInformationSectionTitle')}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Current Stock</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'currentStockLabel')}</p>
                 <p class="body-large" style="color: ${inv.stock < 0 ? 'var(--md-sys-color-error)' : 'inherit'};">${inv.stock}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Total Cost</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'totalCostLabel')}</p>
                 <p class="body-large">${i18n.displayCurrency(inv.cost)}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Average Cost per Unit</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'averageCostPerUnitLabel')}</p>
                 <p class="body-large">${inv.stock > 0 ? i18n.displayCurrency(avgCost) : '—'}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Total Sales</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('inventory', 'totalSalesLabel')}</p>
                 <p class="body-large">${inv.num_of_sales}</p>
               </div>
             </div>
@@ -378,7 +380,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
 
           <!-- Barcodes -->
           <section>
-            <h3 class="title-medium" style="margin-bottom: 16px;">Barcodes</h3>
+            <h3 class="title-medium" style="margin-bottom: 16px;">${t('barcode', 'barcodesSection')}</h3>
             ${state.barcodes.length > 0 ? html`
               <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
                 ${state.barcodes.map((barcode) => html`
@@ -399,7 +401,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
                       style="padding: 0; min-width: auto;"
                       data-barcode-code="${barcode.code}"
                       @click=${handleRemoveBarcode}
-                      aria-label="Remove barcode ${barcode.code}"
+                      aria-label="${t('barcode', 'removeBarcodeAriaLabel', barcode.code)}"
                     >
                       <material-symbols name="close" size="16"></material-symbols>
                     </button>
@@ -407,12 +409,12 @@ export class InventoryDetailsDialogElement extends HTMLElement {
                 `)}
               </div>
             ` : html`
-              <p style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px;">No barcodes assigned.</p>
+              <p style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px;">${t('barcode', 'noBarcodesAssignedText')}</p>
             `}
             <div style="display: flex; gap: 8px; align-items: flex-end;">
               <div class="outlined-text-field" style="flex: 1;">
                 <div class="container">
-                  <label for="new-barcode-input">Add Barcode</label>
+                  <label for="new-barcode-input">${t('barcode', 'addBarcodeLabel')}</label>
                   <input
                     id="new-barcode-input"
                     type="text"
@@ -429,7 +431,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
                 ?disabled=${!state.newBarcode.trim()}
               >
                 <material-symbols name="add"></material-symbols>
-                Add
+                ${t('barcode', 'addButtonLabel')}
               </button>
             </div>
           </section>
@@ -448,14 +450,14 @@ export class InventoryDetailsDialogElement extends HTMLElement {
               <div role="progressbar" class="linear indeterminate">
                 <div class="track"><div class="indicator"></div></div>
               </div>
-              <p>Saving changes...</p>
+              <p>${t('inventory', 'savingChangesMessage')}</p>
             </div>
           ` : nothing}
 
           <!-- Inventory Name -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="edit-name-input">Inventory Name</label>
+              <label for="edit-name-input">${t('inventory', 'inventoryNameLabel')}</label>
               <input
                 id="edit-name-input"
                 name="name"
@@ -470,7 +472,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
           <!-- Unit Price -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="edit-unit-price-input">Unit Price</label>
+              <label for="edit-unit-price-input">${t('inventory', 'unitPriceLabel')}</label>
               <input
                 id="edit-unit-price-input"
                 name="unitPrice"
@@ -487,7 +489,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
           <!-- Unit of Measurement -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="edit-unit-of-measurement-input">Unit of Measurement</label>
+              <label for="edit-unit-of-measurement-input">${t('inventory', 'unitOfMeasurementLabel')}</label>
               <input
                 id="edit-unit-of-measurement-input"
                 name="unitOfMeasurement"
@@ -499,8 +501,8 @@ export class InventoryDetailsDialogElement extends HTMLElement {
           </div>
 
           <div style="display: flex; gap: 12px; justify-content: flex-end;">
-            <button role="button" type="button" class="text" @click=${toggleEditMode}>Cancel</button>
-            <button role="button" type="submit" class="tonal">Save Changes</button>
+            <button role="button" type="button" class="text" @click=${toggleEditMode}>${t('inventory', 'cancelButtonLabel')}</button>
+            <button role="button" type="submit" class="tonal">${t('inventory', 'saveChangesButtonLabel')}</button>
           </div>
         </form>
       `;
@@ -517,7 +519,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
           <div class="container">
             <header>
               <h2 id="inventory-details-dialog-title">
-                ${state.inventory ? state.inventory.name : 'Inventory Details'}
+                ${state.inventory ? state.inventory.name : t('inventory', 'detailsDialogTitle')}
               </h2>
               <button
                 role="button"
@@ -529,7 +531,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
               ${state.inventory && !state.isEditing ? html`
                 <button role="button" type="button" @click=${toggleEditMode}>
                   <material-symbols name="edit"></material-symbols>
-                  Edit
+                  ${t('inventory', 'editButtonLabel')}
                 </button>
               ` : nothing}
             </header>
@@ -547,7 +549,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('inventory', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${state.error?.message}</p>
@@ -559,7 +561,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('inventory', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>

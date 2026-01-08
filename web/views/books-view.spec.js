@@ -60,7 +60,7 @@ describe('Journal Entries', function () {
       await setupDatabaseAndNavigate(page, tursoLibSQLiteServer().url);
 
       const journalEntriesPanel = page.getByRole('tabpanel', { name: 'Journal Entries' });
-      await expect(journalEntriesPanel.getByRole('button', { name: 'Refresh entries' })).toBeVisible();
+      await expect(journalEntriesPanel.getByRole('button', { name: 'Refresh' })).toBeVisible();
     });
   });
 
@@ -126,7 +126,7 @@ async function setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteSer
 }
 
 describe('Chart of Accounts', function () {
-  useConsoleOutput(test);
+  // useConsoleOutput(test);
 
   describe('Chart of Accounts Display', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);

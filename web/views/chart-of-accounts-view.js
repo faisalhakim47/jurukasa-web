@@ -12,6 +12,7 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -55,6 +56,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -352,7 +354,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading accounts"
+          aria-label="${t('account', 'loadingAccountsViewAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -368,7 +370,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading accounts...</p>
+          <p>${t('account', 'loadingAccountsViewMessage')}</p>
         </div>
       `;
     }
@@ -392,11 +394,11 @@ export class ChartOfAccountsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load accounts</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('account', 'unableToLoadAccountsViewTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadAccounts}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('account', 'retryButtonLabel')}
           </button>
         </div>
       `;
@@ -409,7 +411,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 180px; min-width: 160px;">
             <div class="container">
               <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="account-search-input">Search</label>
+              <label for="account-search-input">${t('account', 'searchLabel')}</label>
               <input
                 ${readValue(state, 'searchQuery')}
                 id="account-search-input"
@@ -424,7 +426,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
           <!-- Type Filter -->
           <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 160px; anchor-name: --type-menu-anchor;">
             <div class="container">
-              <label for="type-filter-input">Type</label>
+              <label for="type-filter-input">${t('account', 'typeFilterLabel')}</label>
               <input
                 id="type-filter-input"
                 type="button"
@@ -438,7 +440,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
               </label>
             </div>
           </div>
-          <menu role="menu" popover id="type-filter-menu" aria-label="Account type filter" class="dropdown" style="position-anchor: --type-menu-anchor;">
+          <menu role="menu" popover id="type-filter-menu" aria-label="${t('account', 'accountTypeFilterAriaLabel')}" class="dropdown" style="position-anchor: --type-menu-anchor;">
             ${accountTypes.map((accountType) => html`
               <li>
                 <button
@@ -459,7 +461,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
           <!-- Status Filter -->
           <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 160px; anchor-name: --status-menu-anchor;">
             <div class="container">
-              <label for="status-filter-input">Status</label>
+              <label for="status-filter-input">${t('account', 'statusFilterLabel')}</label>
               <input
                 id="status-filter-input"
                 type="button"
@@ -510,9 +512,9 @@ export class ChartOfAccountsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="account_tree" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No accounts found</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('account', 'noAccountsFoundTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
-            ${state.searchQuery ? 'Try adjusting your search or filters.' : 'Your chart of accounts is empty.'}
+            ${state.searchQuery ? t('account', 'noAccountsFoundMessage') : t('account', 'noAccountsFoundEmptyMessage')}
           </p>
         </div>
       `;
@@ -560,11 +562,11 @@ export class ChartOfAccountsViewElement extends HTMLElement {
       const hasChildren = node.children.length > 0;
       const isExpanded = node.expanded;
       const indentPadding = node.level * 24;
-      const normalBalanceText = account.normal_balance === 0 ? 'Dr' : 'Cr';
+      const normalBalanceText = account.normal_balance === 0 ? t('account', 'normalBalanceShortDebit') : t('account', 'normalBalanceShortCredit');
       return html`
         <tr
           tabindex="0"
-          aria-label="Account ${account.name}"
+          aria-label="${t('account', 'accountAriaLabel', account.name)}"
           style="cursor: ${hasChildren ? 'pointer' : 'default'};"
           data-account-code="${account.account_code}"
           data-has-children="${hasChildren ? 'true' : 'false'}"
@@ -623,7 +625,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
                 background-color: ${account.is_active ? '#E8F5E9' : 'var(--md-sys-color-surface-container-highest)'};
                 color: ${account.is_active ? '#1B5E20' : 'var(--md-sys-color-on-surface-variant)'};
               "
-            >${account.is_active ? 'Active' : 'Inactive'}</span>
+            >${account.is_active ? t('account', 'accountStatusActive') : t('account', 'accountStatusInactive')}</span>
           </td>
           <td class="center">
             <span
@@ -635,7 +637,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
                 background-color: ${account.is_posting_account ? '#E8F5E9' : '#FFF3E0'};
                 color: ${account.is_posting_account ? '#2E7D32' : '#E65100'};
               "
-            >${account.is_posting_account ? 'Posting' : 'Control'}</span>
+            >${account.is_posting_account ? t('account', 'accountKindPosting') : t('account', 'accountKindControl')}</span>
           </td>
         </tr>
       `;
@@ -644,16 +646,16 @@ export class ChartOfAccountsViewElement extends HTMLElement {
     function renderAccountsTable() {
       if (state.accountTree.length === 0) return renderEmptyState();
       return html`
-        <table role="treegrid" aria-label="Chart of Accounts" style="--md-sys-density: -3;">
+        <table role="treegrid" aria-label="${t('account', 'chartOfAccountsTreeAriaLabel')}" style="--md-sys-density: -3;">
           <thead>
             <tr>
-              <th scope="col" style="width: 150px;">Code</th>
-              <th scope="col">Name</th>
-              <th scope="col" class="center" style="width: 100px;">Type</th>
-              <th scope="col" class="center" style="width: 80px;">Normal</th>
-              <th scope="col" class="numeric" style="width: 140px;">Balance</th>
-              <th scope="col" class="center" style="width: 90px;">Status</th>
-              <th scope="col" class="center" style="width: 90px;">Kind</th>
+              <th scope="col" style="width: 150px;">${t('account', 'tableHeaderCode')}</th>
+              <th scope="col">${t('account', 'tableHeaderName')}</th>
+              <th scope="col" class="center" style="width: 100px;">${t('account', 'tableHeaderType')}</th>
+              <th scope="col" class="center" style="width: 80px;">${t('account', 'tableHeaderNormal')}</th>
+              <th scope="col" class="numeric" style="width: 140px;">${t('account', 'tableHeaderBalance')}</th>
+              <th scope="col" class="center" style="width: 90px;">${t('account', 'tableHeaderStatus')}</th>
+              <th scope="col" class="center" style="width: 90px;">${t('account', 'tableHeaderKind')}</th>
             </tr>
           </thead>
           <tbody>
@@ -669,19 +671,19 @@ export class ChartOfAccountsViewElement extends HTMLElement {
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>
-              <button role="button" class="text" @click=${expandAll} aria-label="Expand all accounts" title="Expand All">
+              <button role="button" class="text" @click=${expandAll} aria-label="${t('account', 'expandAllAriaLabel')}" title="${t('account', 'expandAllTitle')}">
                 <material-symbols name="unfold_more"></material-symbols>
               </button>
-              <button role="button" class="text" @click=${collapseAll} aria-label="Collapse all accounts" title="Collapse All">
+              <button role="button" class="text" @click=${collapseAll} aria-label="${t('account', 'collapseAllAriaLabel')}" title="${t('account', 'collapseAllTitle')}">
                 <material-symbols name="unfold_less"></material-symbols>
               </button>
-              <button role="button" class="text" @click=${loadAccounts} aria-label="Refresh accounts">
+              <button role="button" class="text" @click=${loadAccounts} aria-label="${t('account', 'refreshAriaLabel')}">
                 <material-symbols name="refresh"></material-symbols>
-                Refresh
+                ${t('account', 'refreshButtonLabel')}
               </button>
               <button role="button" class="tonal" commandfor="account-creation-dialog" command="--open">
                 <material-symbols name="add"></material-symbols>
-                Create Account
+                ${t('account', 'createAccountButtonLabel')}
               </button>
             </div>
           </div>

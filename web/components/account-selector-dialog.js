@@ -14,6 +14,7 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 
 import '#web/components/material-symbols.js';
@@ -66,6 +67,7 @@ export class AccountSelectorDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
     const searchInputElement = useElement(host, HTMLInputElement);
     const filterTagAttr = useAttribute(host, 'filter-tag');
 
@@ -179,13 +181,13 @@ export class AccountSelectorDialogElement extends HTMLElement {
 
     function renderLoadingIndicator() {
       return html`
-        <section class="loading-state" role="status" aria-live="polite" aria-label="Loading accounts">
+        <section class="loading-state" role="status" aria-live="polite" aria-label="${t('account', 'loadingAccountsAriaLabel')}">
           <div role="progressbar" class="linear indeterminate">
             <div class="track">
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading accounts...</p>
+          <p>${t('account', 'loadingAccountsMessage')}</p>
         </section>
       `;
     }
@@ -194,7 +196,7 @@ export class AccountSelectorDialogElement extends HTMLElement {
       return html`
         <section role="alert" aria-live="assertive">
           <material-symbols name="error" size="48"></material-symbols>
-          <h3>Unable to load accounts</h3>
+          <h3>${t('account', 'unableToLoadAccountsTitle')}</h3>
           <p>${state.error.message}</p>
         </section>
       `;
@@ -205,11 +207,11 @@ export class AccountSelectorDialogElement extends HTMLElement {
       if (filteredAccounts.length === 0) return html`
         <section aria-live="polite" style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
           <material-symbols name="search_off" size="48"></material-symbols>
-          <p>${state.searchQuery ? 'No accounts match your search' : 'No accounts available'}</p>
+          <p>${state.searchQuery ? t('account', 'noAccountsMatchSearchMessage') : t('account', 'noAccountsAvailableMessage')}</p>
         </section>
       `;
       else return html`
-        <menu role="list" aria-label="Available accounts" style="max-height: 320px; overflow-y: auto;">
+        <menu role="list" aria-label="${t('account', 'availableAccountsAriaLabel')}" style="max-height: 320px; overflow-y: auto;">
           ${repeat(filteredAccounts, account => account.account_code, account => html`
             <li
               role="menuitemradio"
@@ -246,14 +248,14 @@ export class AccountSelectorDialogElement extends HTMLElement {
         >
           <form class="container" style="max-width: min(320px, 90vw);">
             <header>
-              <h2 id="account-selector-dialog-title">Select Account</h2>
+              <h2 id="account-selector-dialog-title">${t('account', 'selectDialogTitle')}</h2>
             </header>
 
             <div class="content">
               <div class="outlined-text-field" style="--md-sys-density: -4;">
                 <div class="container">
                   <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-                  <label for="account-search">Search accounts</label>
+                  <label for="account-search">${t('account', 'searchAccountsLabel')}</label>
                   <input
                     ${searchInputElement}
                     ${readValue(state, 'searchQuery')}
@@ -278,7 +280,7 @@ export class AccountSelectorDialogElement extends HTMLElement {
                   commandfor="account-selector-dialog"
                   command="close"
                   style="--sys-md-density: -4;"
-                >Cancel</button>
+                >${t('account', 'cancelButtonLabel')}</button>
               </li>
             </menu>
           </form>

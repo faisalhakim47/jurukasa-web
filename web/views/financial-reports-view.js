@@ -9,6 +9,7 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -63,7 +64,7 @@ import '#web/components/material-symbols.js';
  * @property {number | null} post_time
  */
 
-const reportTypes = /** @type {const} */ (['Trial Balance', 'Balance Sheet', 'Income Statement']);
+const reportTypes = /** @type {const} */ (['trialBalance', 'balanceSheet', 'incomeStatement']);
 const reportTypeValues = /** @type {const} */ (['Period End', 'Monthly', 'Quarterly', 'Annual', 'Ad Hoc']);
 
 /** @typedef {typeof reportTypes[number]} ReportType */
@@ -76,6 +77,7 @@ export class FinancialReportsViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -83,7 +85,7 @@ export class FinancialReportsViewElement extends HTMLElement {
     const state = reactive({
       isLoading: true,
       error: /** @type {Error | null} */ (null),
-      selectedReportType: /** @type {ReportType} */ ('Trial Balance'),
+      selectedReportType: /** @type {ReportType} */ ('trialBalance'),
       balanceReports: /** @type {BalanceReportRow[]} */ ([]),
       selectedBalanceReportId: /** @type {number | null} */ (null),
       trialBalanceLines: /** @type {TrialBalanceRow[]} */ ([]),
@@ -97,6 +99,37 @@ export class FinancialReportsViewElement extends HTMLElement {
     useBusyStateUntil(host, function firstLoad() {
       return state.isLoading === false;
     });
+
+    /**
+     * @param {string} classification
+     * @returns {string}
+     */
+    function translateClassification(classification) {
+      const map = {
+        'Assets': 'classificationAssets',
+        'Liabilities': 'classificationLiabilities',
+        'Equity': 'classificationEquity',
+        'Revenue': 'classificationRevenue',
+        'Cost of Goods Sold': 'classificationCostOfGoodsSold',
+        'Expenses': 'classificationExpenses',
+      };
+      return t('financialReport', map[classification] || classification);
+    }
+
+    /**
+     * @param {string} category
+     * @returns {string}
+     */
+    function translateCategory(category) {
+      const map = {
+        'Current Assets': 'categoryCurrentAssets',
+        'Non-Current Assets': 'categoryNonCurrentAssets',
+        'Current Liabilities': 'categoryCurrentLiabilities',
+        'Non-Current Liabilities': 'categoryNonCurrentLiabilities',
+        'Equity': 'categoryEquity',
+      };
+      return t('financialReport', map[category] || category);
+    }
 
     async function loadBalanceReports() {
       try {
@@ -294,11 +327,11 @@ export class FinancialReportsViewElement extends HTMLElement {
           state.selectedFiscalYear = state.fiscalYears[0].begin_time;
         }
 
-        if (state.selectedReportType === 'Trial Balance') {
+        if (state.selectedReportType === 'trialBalance') {
           await loadTrialBalance();
-        } else if (state.selectedReportType === 'Balance Sheet') {
+        } else if (state.selectedReportType === 'balanceSheet') {
           await loadBalanceSheet();
-        } else if (state.selectedReportType === 'Income Statement') {
+        } else if (state.selectedReportType === 'incomeStatement') {
           await loadIncomeStatement();
         }
 
@@ -315,7 +348,7 @@ export class FinancialReportsViewElement extends HTMLElement {
         const now = Date.now();
         await database.sql`
           INSERT INTO balance_reports (report_time, report_type, name, create_time)
-          VALUES (${now}, 'Ad Hoc', ${'Report ' + i18n.date.format(now)}, ${now})
+          VALUES (${now}, 'Ad Hoc', ${t('financialReport', 'adHocReportNameFormat', i18n.date.format(now))}, ${now})
         `;
         await loadReportData();
         state.isGenerating = false;
@@ -352,7 +385,7 @@ export class FinancialReportsViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading reports"
+          aria-label="${t('financialReport', 'loadingReportsLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -368,7 +401,7 @@ export class FinancialReportsViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading reports...</p>
+          <p>${t('financialReport', 'loadingReportsLabel')}</p>
         </div>
       `;
     }
@@ -392,11 +425,11 @@ export class FinancialReportsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load reports</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('financialReport', 'unableToLoadReportsTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadReportData}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('financialReport', 'retryActionLabel')}
           </button>
         </div>
       `;
@@ -406,12 +439,12 @@ export class FinancialReportsViewElement extends HTMLElement {
       return html`
         <div class="outlined-text-field" style="min-width: 180px; anchor-name: --report-type-menu-anchor;">
           <div class="container">
-            <label for="report-type-input">Report Type</label>
+            <label for="report-type-input">${t('financialReport', 'reportTypeLabel')}</label>
             <input
               id="report-type-input"
               type="button"
               value=""
-              .value="${state.selectedReportType}"
+              .value="${t('financialReport', state.selectedReportType === 'trialBalance' ? 'reportTypeTrialBalance' : state.selectedReportType === 'balanceSheet' ? 'reportTypeBalanceSheet' : 'reportTypeIncomeStatement')}"
               popovertarget="report-type-menu"
               popovertargetaction="show"
               placeholder=" "
@@ -421,7 +454,7 @@ export class FinancialReportsViewElement extends HTMLElement {
             </label>
           </div>
         </div>
-        <menu role="menu" popover id="report-type-menu" aria-label="Report type menu" class="dropdown" style="position-anchor: --report-type-menu-anchor;">
+        <menu role="menu" popover id="report-type-menu" aria-label="${t('financialReport', 'reportTypeMenuLabel')}" class="dropdown" style="position-anchor: --report-type-menu-anchor;">
           ${reportTypes.map((reportType) => html`
             <li>
               <button
@@ -434,7 +467,7 @@ export class FinancialReportsViewElement extends HTMLElement {
                 @click=${handleReportTypeChange}
               >
                 ${reportType === state.selectedReportType ? html`<material-symbols name="check"></material-symbols>` : nothing}
-                ${reportType}
+                ${t('financialReport', reportType === 'trialBalance' ? 'reportTypeTrialBalance' : reportType === 'balanceSheet' ? 'reportTypeBalanceSheet' : 'reportTypeIncomeStatement')}
               </button>
             </li>
           `)}
@@ -443,19 +476,19 @@ export class FinancialReportsViewElement extends HTMLElement {
     }
 
     function renderBalanceReportSelector() {
-      if (state.selectedReportType === 'Income Statement') return nothing;
+      if (state.selectedReportType === 'incomeStatement') return nothing;
 
       const selectedReport = state.balanceReports.find(function (report) {
         return report.id === state.selectedBalanceReportId;
       });
       const displayValue = selectedReport
         ? (selectedReport.name || i18n.date.format(selectedReport.report_time))
-        : 'Select Report';
+        : t('financialReport', 'selectReportLabel');
 
       return html`
         <div class="outlined-text-field" style="min-width: 200px; anchor-name: --balance-report-menu-anchor;">
           <div class="container">
-            <label for="balance-report-input">Report Date</label>
+            <label for="balance-report-input">${t('financialReport', 'reportDateLabel')}</label>
             <input
               id="balance-report-input"
               type="button"
@@ -469,10 +502,10 @@ export class FinancialReportsViewElement extends HTMLElement {
             </label>
           </div>
         </div>
-        <menu role="menu" popover id="balance-report-menu" aria-label="Report date menu" class="dropdown" style="position-anchor: --balance-report-menu-anchor; max-height: 300px; overflow-y: auto;">
+        <menu role="menu" popover id="balance-report-menu" aria-label="${t('financialReport', 'reportDateMenuLabel')}" class="dropdown" style="position-anchor: --balance-report-menu-anchor; max-height: 300px; overflow-y: auto;">
           ${state.balanceReports.length === 0 ? html`
             <li style="padding: 12px 16px; color: var(--md-sys-color-on-surface-variant);">
-              No reports available
+              ${t('financialReport', 'noReportsAvailable')}
             </li>
           ` : nothing}
           ${state.balanceReports.map((report) => html`
@@ -487,9 +520,9 @@ export class FinancialReportsViewElement extends HTMLElement {
               >
                 ${report.id === state.selectedBalanceReportId ? html`<material-symbols name="check"></material-symbols>` : nothing}
                 <span style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
-                  <span>${report.name || 'Report #' + report.id}</span>
+                  <span>${report.name || t('financialReport', 'reportIdFormat', report.id)}</span>
                   <span class="label-small" style="color: var(--md-sys-color-on-surface-variant);">
-                    ${i18n.date.format(report.report_time)} • ${report.report_type}
+                    ${t('financialReport', 'reportDetailsWithDate', i18n.date.format(report.report_time), report.report_type)}
                   </span>
                 </span>
               </button>
@@ -500,19 +533,19 @@ export class FinancialReportsViewElement extends HTMLElement {
     }
 
     function renderFiscalYearSelector() {
-      if (state.selectedReportType !== 'Income Statement') return nothing;
+      if (state.selectedReportType !== 'incomeStatement') return nothing;
 
       const selectedFY = state.fiscalYears.find(function (fy) {
         return fy.begin_time === state.selectedFiscalYear;
       });
       const displayValue = selectedFY
-        ? (selectedFY.name || i18n.date.format(selectedFY.begin_time) + ' - ' + i18n.date.format(selectedFY.end_time))
-        : 'Select Fiscal Year';
+        ? (selectedFY.name || t('financialReport', 'fiscalYearDateRange', i18n.date.format(selectedFY.begin_time), i18n.date.format(selectedFY.end_time)))
+        : t('financialReport', 'selectFiscalYearLabel');
 
       return html`
         <div class="outlined-text-field" style="min-width: 200px; anchor-name: --fiscal-year-menu-anchor;">
           <div class="container">
-            <label for="fiscal-year-input">Fiscal Year</label>
+            <label for="fiscal-year-input">${t('financialReport', 'fiscalYearLabel')}</label>
             <input
               id="fiscal-year-input"
               type="button"
@@ -529,7 +562,7 @@ export class FinancialReportsViewElement extends HTMLElement {
         <menu role="menu" popover id="fiscal-year-menu" class="dropdown" style="position-anchor: --fiscal-year-menu-anchor; max-height: 300px; overflow-y: auto;">
           ${state.fiscalYears.length === 0 ? html`
             <li style="padding: 12px 16px; color: var(--md-sys-color-on-surface-variant);">
-              No fiscal years defined
+              ${t('financialReport', 'noFiscalYearsDefined')}
             </li>
           ` : nothing}
           ${state.fiscalYears.map((fy) => html`
@@ -544,10 +577,10 @@ export class FinancialReportsViewElement extends HTMLElement {
               >
                 ${fy.begin_time === state.selectedFiscalYear ? html`<material-symbols name="check"></material-symbols>` : nothing}
                 <span style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
-                  <span>${fy.name || 'Fiscal Year'}</span>
+                  <span>${fy.name || t('financialReport', 'fiscalYearDefaultName')}</span>
                   <span class="label-small" style="color: var(--md-sys-color-on-surface-variant);">
-                    ${i18n.date.format(fy.begin_time)} – ${i18n.date.format(fy.end_time)}
-                    ${fy.post_time !== null ? ' • Closed' : ' • Open'}
+                    ${t('financialReport', 'fiscalYearDateRange', i18n.date.format(fy.begin_time), i18n.date.format(fy.end_time))}
+                    ${fy.post_time !== null ? ' • ' + t('financialReport', 'fiscalYearStatusClosed') : ' • ' + t('financialReport', 'fiscalYearStatusOpen')}
                   </span>
                 </span>
               </button>
@@ -558,7 +591,7 @@ export class FinancialReportsViewElement extends HTMLElement {
     }
 
     function renderEmptyState() {
-      if (state.selectedReportType === 'Income Statement') {
+      if (state.selectedReportType === 'incomeStatement') {
         return html`
           <div
             style="
@@ -573,11 +606,11 @@ export class FinancialReportsViewElement extends HTMLElement {
             "
           >
             <material-symbols name="assignment" size="64"></material-symbols>
-            <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No income statement data</h2>
+            <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('financialReport', 'noIncomeStatementDataTitle')}</h2>
             <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
               ${state.fiscalYears.length === 0
-                ? 'Create a fiscal year to generate income statements.'
-                : 'No revenue or expense transactions found for the selected fiscal year.'}
+                ? t('financialReport', 'noIncomeStatementFiscalYearMessage')
+                : t('financialReport', 'noIncomeStatementTransactionsMessage')}
             </p>
           </div>
         `;
@@ -597,9 +630,9 @@ export class FinancialReportsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="assignment" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No reports generated</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('financialReport', 'noReportsGeneratedTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
-            Generate a new balance report to view trial balance and balance sheet.
+            ${t('financialReport', 'noReportsGeneratedMessage')}
           </p>
           <button
             role="button"
@@ -615,7 +648,7 @@ export class FinancialReportsViewElement extends HTMLElement {
               </div>
             ` : html`
               <material-symbols name="add"></material-symbols>
-              Generate Report
+              ${t('financialReport', 'generateReportActionLabel')}
             `}
           </button>
         </div>
@@ -635,14 +668,14 @@ export class FinancialReportsViewElement extends HTMLElement {
 
       return html`
         <div style="overflow-x: auto;">
-          <table aria-label="Trial Balance" style="--md-sys-density: -3; min-width: 600px;">
+          <table aria-label="${t('financialReport', 'trialBalanceTableLabel')}" style="--md-sys-density: -3; min-width: 600px;">
             <thead>
               <tr>
-                <th scope="col" style="width: 100px;">Code</th>
-                <th scope="col">Account Name</th>
-                <th scope="col" class="center" style="width: 80px;">Normal</th>
-                <th scope="col" class="numeric" style="width: 140px;">Debit</th>
-                <th scope="col" class="numeric" style="width: 140px;">Credit</th>
+                <th scope="col" style="width: 100px;">${t('financialReport', 'codeColumnHeader')}</th>
+                <th scope="col">${t('financialReport', 'accountNameColumnHeader')}</th>
+                <th scope="col" class="center" style="width: 80px;">${t('financialReport', 'normalColumnHeader')}</th>
+                <th scope="col" class="numeric" style="width: 140px;">${t('financialReport', 'debitColumnHeader')}</th>
+                <th scope="col" class="numeric" style="width: 140px;">${t('financialReport', 'creditColumnHeader')}</th>
               </tr>
             </thead>
             <tbody>
@@ -660,16 +693,16 @@ export class FinancialReportsViewElement extends HTMLElement {
                         background-color: ${line.normal_balance === 0 ? 'var(--md-sys-color-custom-asset-container, #E3F2FD)' : 'var(--md-sys-color-custom-liability-container, #FCE4EC)'};
                         color: ${line.normal_balance === 0 ? 'var(--md-sys-color-custom-on-asset-container, #1565C0)' : 'var(--md-sys-color-custom-on-liability-container, #C2185B)'};
                       "
-                    >${line.normal_balance === 0 ? 'Dr' : 'Cr'}</span>
+                    >${line.normal_balance === 0 ? t('financialReport', 'normalBalanceDebit') : t('financialReport', 'normalBalanceCredit')}</span>
                   </td>
-                  <td class="numeric">${line.debit > 0 ? i18n.displayCurrency(line.debit) : '—'}</td>
-                  <td class="numeric">${line.credit > 0 ? i18n.displayCurrency(line.credit) : '—'}</td>
+                  <td class="numeric">${line.debit > 0 ? i18n.displayCurrency(line.debit) : t('financialReport', 'noAmountLabel')}</td>
+                  <td class="numeric">${line.credit > 0 ? i18n.displayCurrency(line.credit) : t('financialReport', 'noAmountLabel')}</td>
                 </tr>
               `)}
             </tbody>
             <tfoot>
               <tr style="font-weight: 600; border-top: 2px solid var(--md-sys-color-outline);">
-                <td colspan="3" style="text-align: right; padding-right: 16px;">Total</td>
+                <td colspan="3" style="text-align: right; padding-right: 16px;">${t('financialReport', 'totalRowLabel')}</td>
                 <td class="numeric">${i18n.displayCurrency(totalDebit)}</td>
                 <td class="numeric">${i18n.displayCurrency(totalCredit)}</td>
               </tr>
@@ -725,7 +758,7 @@ export class FinancialReportsViewElement extends HTMLElement {
         return html`
           <tr style="background-color: var(--md-sys-color-surface-container);">
             <th colspan="3" scope="colgroup" class="title-medium" style="text-align: left; padding: 12px 16px; color: ${colorToken};">
-              ${classification}
+              ${translateClassification(classification)}
             </th>
           </tr>
           ${Array.from(categories.entries()).map(([category, lines]) => {
@@ -736,7 +769,7 @@ export class FinancialReportsViewElement extends HTMLElement {
             return html`
               <tr style="background-color: var(--md-sys-color-surface-container-low);">
                 <th colspan="3" scope="colgroup" class="label-large" style="text-align: left; padding: 8px 16px 8px 32px; color: var(--md-sys-color-on-surface-variant);">
-                  ${category}
+                  ${translateCategory(category)}
                 </th>
               </tr>
               ${lines.map((line) => html`
@@ -750,7 +783,7 @@ export class FinancialReportsViewElement extends HTMLElement {
               `)}
               <tr style="border-top: 1px solid var(--md-sys-color-outline-variant);">
                 <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 500;">
-                  Total ${category}
+                  ${t('financialReport', 'totalCategoryFormat', translateCategory(category))}
                 </td>
                 <td class="numeric" style="font-weight: 500;">${i18n.displayCurrency(categoryTotal)}</td>
               </tr>
@@ -758,7 +791,7 @@ export class FinancialReportsViewElement extends HTMLElement {
           })}
           <tr style="border-top: 2px solid var(--md-sys-color-outline); background-color: var(--md-sys-color-surface-container-high);">
             <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 600;">
-              Total ${classification}
+              ${t('financialReport', 'totalClassificationFormat', translateClassification(classification))}
             </td>
             <td class="numeric" style="font-weight: 600; color: ${colorToken};">${i18n.displayCurrency(classificationTotal)}</td>
           </tr>
@@ -767,12 +800,12 @@ export class FinancialReportsViewElement extends HTMLElement {
 
       return html`
         <div style="overflow-x: auto;">
-          <table aria-label="Balance Sheet" style="--md-sys-density: -3; min-width: 500px;">
+          <table aria-label="${t('financialReport', 'balanceSheetTableLabel')}" style="--md-sys-density: -3; min-width: 500px;">
             <thead>
               <tr>
-                <th scope="col" style="width: 100px;">Code</th>
-                <th scope="col">Account Name</th>
-                <th scope="col" class="numeric" style="width: 160px;">Amount</th>
+                <th scope="col" style="width: 100px;">${t('financialReport', 'codeColumnHeader')}</th>
+                <th scope="col">${t('financialReport', 'accountNameColumnHeader')}</th>
+                <th scope="col" class="numeric" style="width: 160px;">${t('financialReport', 'amountColumnHeader')}</th>
               </tr>
             </thead>
             <tbody>
@@ -783,7 +816,7 @@ export class FinancialReportsViewElement extends HTMLElement {
             <tfoot>
               <tr style="border-top: 3px double var(--md-sys-color-outline);">
                 <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 600;">
-                  Liabilities + Equity
+                  ${t('financialReport', 'liabilitiesEquityTotalLabel')}
                 </td>
                 <td class="numeric" style="font-weight: 600;">${i18n.displayCurrency(totalLiabilities + totalEquity)}</td>
               </tr>
@@ -802,7 +835,7 @@ export class FinancialReportsViewElement extends HTMLElement {
                     "
                   >
                     <material-symbols name="${isBalanced ? 'check_circle' : 'error'}" size="20"></material-symbols>
-                    ${isBalanced ? 'Assets = Liabilities + Equity' : 'Balance Sheet is out of balance by ' + i18n.displayCurrency(Math.abs(totalAssets - totalLiabilities - totalEquity))}
+                    ${isBalanced ? t('financialReport', 'balanceSheetBalancedMessage') : t('financialReport', 'balanceSheetOutOfBalanceMessage', i18n.displayCurrency(Math.abs(totalAssets - totalLiabilities - totalEquity)))}
                   </span>
                 </td>
               </tr>
@@ -859,7 +892,7 @@ export class FinancialReportsViewElement extends HTMLElement {
         return html`
           <tr style="background-color: var(--md-sys-color-surface-container);">
             <th colspan="3" scope="colgroup" class="title-medium" style="text-align: left; padding: 12px 16px; color: ${colorToken};">
-              ${classification}
+              ${translateClassification(classification)}
             </th>
           </tr>
           ${Array.from(categories.entries()).map(([category, lines]) => {
@@ -887,7 +920,7 @@ export class FinancialReportsViewElement extends HTMLElement {
               ${category !== classification ? html`
                 <tr style="border-top: 1px solid var(--md-sys-color-outline-variant);">
                   <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 500;">
-                    Total ${category}
+                    ${t('financialReport', 'totalCategoryFormat', category)}
                   </td>
                   <td class="numeric" style="font-weight: 500;">${i18n.displayCurrency(categoryTotal)}</td>
                 </tr>
@@ -896,7 +929,7 @@ export class FinancialReportsViewElement extends HTMLElement {
           })}
           <tr style="border-top: 2px solid var(--md-sys-color-outline); background-color: var(--md-sys-color-surface-container-high);">
             <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 600;">
-              Total ${classification}
+              ${t('financialReport', 'totalClassificationFormat', translateClassification(classification))}
             </td>
             <td class="numeric" style="font-weight: 600; color: ${colorToken};">${i18n.displayCurrency(classificationTotal)}</td>
           </tr>
@@ -905,12 +938,12 @@ export class FinancialReportsViewElement extends HTMLElement {
 
       return html`
         <div style="overflow-x: auto;">
-          <table aria-label="Income Statement" style="--md-sys-density: -3; min-width: 500px;">
+          <table aria-label="${t('financialReport', 'incomeStatementTableLabel')}" style="--md-sys-density: -3; min-width: 500px;">
             <thead>
               <tr>
-                <th scope="col" style="width: 100px;">Code</th>
-                <th scope="col">Account Name</th>
-                <th scope="col" class="numeric" style="width: 160px;">Amount</th>
+                <th scope="col" style="width: 100px;">${t('financialReport', 'codeColumnHeader')}</th>
+                <th scope="col">${t('financialReport', 'accountNameColumnHeader')}</th>
+                <th scope="col" class="numeric" style="width: 160px;">${t('financialReport', 'amountColumnHeader')}</th>
               </tr>
             </thead>
             <tbody>
@@ -918,7 +951,7 @@ export class FinancialReportsViewElement extends HTMLElement {
               ${renderIncomeSection('Cost of Goods Sold', 'var(--md-sys-color-custom-on-expense-container, #D84315)')}
               <tr style="border-top: 3px double var(--md-sys-color-outline); background-color: var(--md-sys-color-secondary-container);">
                 <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 700;">
-                  Gross Profit
+                  ${t('financialReport', 'grossProfitLabel')}
                 </td>
                 <td class="numeric" style="font-weight: 700; color: ${grossProfit >= 0 ? '#2E7D32' : '#C62828'};">
                   ${grossProfit < 0 ? '(' + i18n.displayCurrency(Math.abs(grossProfit)) + ')' : i18n.displayCurrency(grossProfit)}
@@ -929,7 +962,7 @@ export class FinancialReportsViewElement extends HTMLElement {
             <tfoot>
               <tr style="border-top: 3px double var(--md-sys-color-outline); background-color: ${netIncome >= 0 ? '#E8F5E9' : '#FFEBEE'};">
                 <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 700;">
-                  Net Income
+                  ${t('financialReport', 'netIncomeLabel')}
                 </td>
                 <td class="numeric" style="font-weight: 700; color: ${netIncome >= 0 ? '#2E7D32' : '#C62828'};">
                   ${netIncome < 0 ? '(' + i18n.displayCurrency(Math.abs(netIncome)) + ')' : i18n.displayCurrency(netIncome)}
@@ -942,11 +975,11 @@ export class FinancialReportsViewElement extends HTMLElement {
     }
 
     function renderReportContent() {
-      if (state.selectedReportType === 'Trial Balance') {
+      if (state.selectedReportType === 'trialBalance') {
         return renderTrialBalance();
-      } else if (state.selectedReportType === 'Balance Sheet') {
+      } else if (state.selectedReportType === 'balanceSheet') {
         return renderBalanceSheet();
-      } else if (state.selectedReportType === 'Income Statement') {
+      } else if (state.selectedReportType === 'incomeStatement') {
         return renderIncomeStatement();
       }
       return nothing;
@@ -964,9 +997,9 @@ export class FinancialReportsViewElement extends HTMLElement {
             <div style="display: flex; flex-direction: row; gap: 12px; align-items: center;">
               <button role="button" class="text" @click=${loadReportData} aria-label="Refresh report">
                 <material-symbols name="refresh"></material-symbols>
-                Refresh
+                ${t('financialReport', 'refreshActionLabel')}
               </button>
-              ${state.selectedReportType !== 'Income Statement' ? html`
+              ${state.selectedReportType !== 'incomeStatement' ? html`
                 <button
                   role="button"
                   class="tonal"
@@ -984,7 +1017,7 @@ export class FinancialReportsViewElement extends HTMLElement {
                   ` : html`
                     <material-symbols name="add"></material-symbols>
                   `}
-                  Generate Report
+                  ${t('financialReport', 'generateReportActionLabel')}
                 </button>
               ` : nothing}
             </div>

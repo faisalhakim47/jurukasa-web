@@ -10,9 +10,10 @@ import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { TimeContextElement } from '#web/contexts/time-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { useConnectedCallback } from '#web/hooks/use-lifecycle.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useElement } from '#web/hooks/use-element.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { conditionalClass } from '#web/tools/dom.js';
@@ -57,6 +58,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
     const totalCreditCell = useElement(host, HTMLTableCellElement);
     const errorAlertDialog = useElement(host, HTMLDialogElement);
 
+    const t = useTranslator(host);
     const dialog = useDialog(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -78,10 +80,10 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
           if (existingAccountResult.rows.length === 1) {
             accountNameLabel.textContent = String(existingAccountResult.rows[0].name);
           }
-          else input.setCustomValidity('Account code not found.');
+          else input.setCustomValidity(t('journalEntry', 'accountCodeNotFound'));
         }
         catch (error) {
-          input.setCustomValidity('Error validating account code.');
+          input.setCustomValidity(t('journalEntry', 'accountCodeValidationError'));
         }
       }
     }
@@ -115,8 +117,8 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
       assertInstanceOf(HTMLInputElement, creditInput);
       if (debitInput.value.trim()) {
         const value = parseInt(debitInput.value, 10);
-        if (isNaN(value)) debitInput.setCustomValidity('Invalid debit amount.');
-        else if (value < 0) debitInput.setCustomValidity('Debit amount cannot be negative.');
+        if (isNaN(value)) debitInput.setCustomValidity(t('journalEntry', 'invalidDebitAmount'));
+        else if (value < 0) debitInput.setCustomValidity(t('journalEntry', 'negativeDebitAmount'));
         else if (value === 0) creditInput.readOnly = false;
         else if (value > 0) {
           creditInput.readOnly = true;
@@ -134,8 +136,8 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
       assertInstanceOf(HTMLInputElement, debitInput);
       if (creditInput.value.trim()) {
         const value = parseInt(creditInput.value, 10);
-        if (isNaN(value)) creditInput.setCustomValidity('Invalid credit amount.');
-        else if (value < 0) creditInput.setCustomValidity('Credit amount cannot be negative.');
+        if (isNaN(value)) creditInput.setCustomValidity(t('journalEntry', 'invalidCreditAmount'));
+        else if (value < 0) creditInput.setCustomValidity(t('journalEntry', 'negativeCreditAmount'));
         else if (value === 0) debitInput.readOnly = false;
         else if (value > 0) {
           debitInput.readOnly = true;
@@ -218,10 +220,10 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
           if (!accountCode && debit === 0 && credit === 0) continue;
 
           // Validate journal entry line
-          if (!accountCode) throw new Error(`Line ${index + 1}: Account code is required.`);
-          if (debit < 0 || credit < 0) throw new Error(`Line ${index + 1}: Amounts cannot be negative.`);
-          if (debit === 0 && credit === 0) throw new Error(`Line ${index + 1}: Either debit or credit amount must be greater than zero.`);
-          if (debit > 0 && credit > 0) throw new Error(`Line ${index + 1}: Only one of debit or credit amount can be greater than zero.`);
+          if (!accountCode) throw new Error(t('journalEntry', 'lineAccountCodeRequired', index + 1));
+          if (debit < 0 || credit < 0) throw new Error(t('journalEntry', 'lineAmountsNegative', index + 1));
+          if (debit === 0 && credit === 0) throw new Error(t('journalEntry', 'lineAmountsZero', index + 1));
+          if (debit > 0 && credit > 0) throw new Error(t('journalEntry', 'lineAmountsBothPositive', index + 1));
 
           journalEntryLines.push({ accountCode, debit, credit });
           totalDebit += debit;
@@ -230,13 +232,13 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
 
         if (journalEntryLines.length === 0) {
           form.state = 'error';
-          form.error = new Error('At least one journal entry line is required.');
+          form.error = new Error(t('journalEntry', 'linesRequired'));
           return;
         }
 
         if (totalDebit !== totalCredit) {
           form.state = 'error';
-          form.error = new Error('Journal entry must be balanced to post.');
+          form.error = new Error(t('journalEntry', 'unbalancedEntry'));
           return;
         }
 
@@ -293,7 +295,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
         <dialog ${dialog.element} id="journal-entry-creation-dialog" class="full-screen">
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2>Create Journal Entry</h2>
+              <h2>${t('journalEntry', 'creationParamsTitle')}</h2>
               <button
                 role="button"
                 type="button"
@@ -301,7 +303,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                 commandfor="journal-entry-creation-dialog"
                 command="close"
               ><material-symbols name="close"></material-symbols></button>
-              <button role="button" type="submit" name="action">Draft Entry</button>
+              <button role="button" type="submit" name="action">${t('journalEntry', 'creationSubmitLabel')}</button>
             </header>
 
             <div class="content">
@@ -310,7 +312,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
                   </div>
-                  <p>Creating journal entry...</p>
+                  <p>${t('journalEntry', 'creationLoadingLabel')}</p>
                 </div>
               ` : nothing}
 
@@ -318,7 +320,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                 <div style="display: flex; gap: 16px;">
                   <div class="outlined-text-field" style="flex: 1; --md-sys-density: -3;">
                     <div class="container">
-                      <label for="journal-entry-date">Entry Date</label>
+                      <label for="journal-entry-date">${t('journalEntry', 'entryDateLabel')}</label>
                       <input
                         id="journal-entry-date"
                         name="entryTime"
@@ -332,7 +334,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
 
                   <div class="outlined-text-field" style="flex: 3; --md-sys-density: -3;">
                     <div class="container">
-                      <label for="journal-entry-note">Note (optional)</label>
+                      <label for="journal-entry-note">${t('journalEntry', 'noteLabel')}</label>
                       <input id="journal-entry-note" name="note" type="text" placeholder=" "/>
                     </div>
                   </div>
@@ -344,21 +346,21 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
               <!-- Journal Entry Lines Section -->
               <section>
                 <header style="display: flex; align-items: center; justify-content: space-between;">
-                  <h3 class="body-large">Entry Lines</h3>
+                  <h3 class="body-large">${t('journalEntry', 'linesSectionTitle')}</h3>
                   <button role="button" type="button" class="outlined" @click=${addJournalEntryLine}>
                     <material-symbols name="add"></material-symbols>
-                    Add Line
+                    ${t('journalEntry', 'addLineLabel')}
                   </button>
                 </header>
 
                 <table aria-label="Journal entry lines" style="--md-sys-density: -4;">
                   <thead>
                     <tr>
-                      <th scope="col" id="jel-line-number-col" style="text-align: center; width: 64px;">#</th>
-                      <th scope="col" id="jel-account-code-col" style="text-align: left; width: 128px;">Account Code</th>
-                      <th scope="col" id="jel-account-name-col" style="text-align: left; width: 256px;">Account Name</th>
-                      <th scope="col" id="jel-debit-col" style="text-align: right; width: 128px;">Debit</th>
-                      <th scope="col" id="jel-credit-col" style="text-align: right; width: 128px;">Credit</th>
+                      <th scope="col" id="jel-line-number-col" style="text-align: center; width: 64px;">${t('journalEntry', 'lineNumberColumnInfo')}</th>
+                      <th scope="col" id="jel-account-code-col" style="text-align: left; width: 128px;">${t('journalEntry', 'accountCodeColumnInfo')}</th>
+                      <th scope="col" id="jel-account-name-col" style="text-align: left; width: 256px;">${t('journalEntry', 'accountNameColumnInfo')}</th>
+                      <th scope="col" id="jel-debit-col" style="text-align: right; width: 128px;">${t('journalEntry', 'debitColumnInfo')}</th>
+                      <th scope="col" id="jel-credit-col" style="text-align: right; width: 128px;">${t('journalEntry', 'creditColumnInfo')}</th>
                       <th scope="col" id="jel-action-col" style="text-align: center; width: 64px;"></th>
                     </tr>
                   </thead>
@@ -442,7 +444,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colspan="3" class="label-medium" style="text-align: right;">Total</td>
+                      <td colspan="3" class="label-medium" style="text-align: right;">${t('journalEntry', 'totalLabel')}</td>
                       <td ${totalDebitCell} class="label-medium" style="text-align: right;"></td>
                       <td ${totalCreditCell} class="label-medium" style="text-align: right;"></td>
                       <td></td>
@@ -460,7 +462,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('journalEntry', 'dialogErrorTitle')}</h3>
             </header>
             <div class="content">
               <p>${form.error?.message}</p>
@@ -472,7 +474,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('journalEntry', 'dismissLabel')}</button>
               </li>
             </menu>
           </div>

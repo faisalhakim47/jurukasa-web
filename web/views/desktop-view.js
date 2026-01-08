@@ -1,10 +1,12 @@
 import { html } from 'lit-html';
 import { defineWebComponent } from '#web/component.js';
+import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { RouterContextElement } from '#web/contexts/router-context.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 
 import '#web/components/material-symbols.js';
@@ -32,6 +34,7 @@ export class DesktopViewElement extends HTMLElement {
 
     const host = this;
     const router = useContext(host, RouterContextElement);
+    const t = useTranslator(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -55,8 +58,8 @@ export class DesktopViewElement extends HTMLElement {
       else if (pathname.startsWith('/settings')) return html`<settings-view></settings-view>`;
       else return html`
         <div style="padding: 32px;">
-          <h1>404 - Page Not Found</h1>
-          <p>The page you are looking for does not exist.</p>
+          <h1>${t('common', 'pageNotFound404Title')}</h1>
+          <p>${t('common', 'pageNotFoundMessage')}</p>
         </div>
       `;
     }
@@ -66,32 +69,32 @@ export class DesktopViewElement extends HTMLElement {
       render(html`
         <div style="display: flex; flex-direction: row; height: 100vh; width: 100vw;">
           <aside>
-            <nav aria-label="Main Navigation">
+            <nav aria-label="${t('common', 'mainNavigationAriaLabel')}">
               <router-link href="/dashboard" aria-current=${currentPath === '/' ? 'page' : 'false'}>
                 <material-symbols name="dashboard"></material-symbols>
-                <span>Dash</span>
+                <span>${t('common', 'dashboardNavLabel')}</span>
               </router-link>
               <router-link href="/books" aria-current=${currentPath.startsWith('/books') ? 'page' : 'false'}>
                 <material-symbols name="menu_book"></material-symbols>
-                <span>Books</span>
+                <span>${t('common', 'booksNavLabel')}</span>
               </router-link>
               <router-link href="/stock" aria-current=${currentPath.startsWith('/stock') ? 'page' : 'false'}>
                 <material-symbols name="inventory_2"></material-symbols>
-                <span>Stock</span>
+                <span>${t('common', 'stockNavLabel')}</span>
               </router-link>
               <router-link href="/procurement" aria-current=${currentPath.startsWith('/procurement') ? 'page' : 'false'}>
                 <material-symbols name="shopping_cart"></material-symbols>
-                <span>Procure</span>
+                <span>${t('common', 'procureNavLabel')}</span>
               </router-link>
               <router-link href="/sale" aria-current=${currentPath.startsWith('/sale') ? 'page' : 'false'}>
                 <material-symbols name="receipt_long"></material-symbols>
-                <span>Sale</span>
+                <span>${t('common', 'saleNavLabel')}</span>
               </router-link>
               <div style="flex-grow: 1;"></div>
               <hr />
               <router-link href="/settings" aria-current=${currentPath === '/settings' ? 'page' : 'false'}>
                 <material-symbols name="settings"></material-symbols>
-                <span>Settings</span>
+                <span>${t('common', 'settingsNavLabel')}</span>
               </router-link>
             </nav>
           </aside>

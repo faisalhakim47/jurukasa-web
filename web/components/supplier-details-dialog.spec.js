@@ -85,7 +85,7 @@ describe('Supplier Details Dialog', function () {
 
       await expect(page.getByRole('heading', { name: 'Linked Inventories' })).toBeVisible();
 
-      await expect(page.getByRole('table', { name: 'Supplier inventories' })).toBeVisible();
+      await expect(page.getByRole('table', { name: 'Linked Inventories' })).toBeVisible();
       await expect(page.getByRole('cell', { name: 'Test Product', exact: true })).toBeVisible();
       await expect(page.getByRole('cell', { name: 'Supplier Product Name' })).toBeVisible();
       await expect(page.getByRole('cell', { name: '12x' })).toBeVisible();

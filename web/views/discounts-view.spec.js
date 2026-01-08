@@ -7,7 +7,7 @@ import { loadEmptyFixture } from '#test/tools/fixture.js';
 const { describe } = test;
 
 describe('Discounts View', function () {
-  useConsoleOutput(test);
+  // useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display discounts list', async function ({ page }) {

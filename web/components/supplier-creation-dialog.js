@@ -5,10 +5,12 @@ import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
+import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useElement } from '#web/hooks/use-element.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
@@ -26,6 +28,8 @@ export class SupplierCreationDialogElement extends HTMLElement {
 
     const host = this;
     const database = useContext(host, DatabaseContextElement);
+    const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const errorAlertDialog = useElement(host, HTMLDialogElement);
 
@@ -49,10 +53,10 @@ export class SupplierCreationDialogElement extends HTMLElement {
           const result = await database.sql`
             SELECT 1 FROM suppliers WHERE name = ${name} LIMIT 1;
           `;
-          if (result.rows.length > 0) input.setCustomValidity('Supplier name already exists.');
+          if (result.rows.length > 0) input.setCustomValidity(t('supplier', 'supplierNameExistsError'));
         }
         catch (error) {
-          input.setCustomValidity('Error validating supplier name.');
+          input.setCustomValidity(t('supplier', 'supplierNameValidationError'));
         }
       }
     }
@@ -73,7 +77,7 @@ export class SupplierCreationDialogElement extends HTMLElement {
         const phoneNumber = /** @type {string} */ (data.get('phoneNumber'))?.trim() || null;
 
         // Validate inputs
-        if (!name) throw new Error('Supplier name is required.');
+        if (!name) throw new Error(t('supplier', 'supplierNameRequiredError'));
 
         // Insert supplier
         const result = await tx.sql`
@@ -129,7 +133,7 @@ export class SupplierCreationDialogElement extends HTMLElement {
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="supplier-creation-dialog-title">Add Supplier</h2>
+              <h2 id="supplier-creation-dialog-title">${t('supplier', 'createDialogTitle')}</h2>
               <button
                 role="button"
                 type="button"
@@ -137,7 +141,7 @@ export class SupplierCreationDialogElement extends HTMLElement {
                 commandfor="supplier-creation-dialog"
                 command="close"
               ><material-symbols name="close"></material-symbols></button>
-              <button role="button" type="submit" name="action">Add Supplier</button>
+              <button role="button" type="submit" name="action">${t('supplier', 'createSupplierButtonLabel')}</button>
             </header>
 
             <div class="content">
@@ -146,7 +150,7 @@ export class SupplierCreationDialogElement extends HTMLElement {
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
                   </div>
-                  <p>Creating supplier...</p>
+                  <p>${t('supplier', 'creatingSupplierMessage')}</p>
                 </div>
               ` : nothing}
 
@@ -155,7 +159,7 @@ export class SupplierCreationDialogElement extends HTMLElement {
                 <!-- Supplier Name -->
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="supplier-name-input">Supplier Name</label>
+                    <label for="supplier-name-input">${t('supplier', 'supplierNameLabel')}</label>
                     <input
                       id="supplier-name-input"
                       name="name"
@@ -165,13 +169,13 @@ export class SupplierCreationDialogElement extends HTMLElement {
                       @blur=${validateSupplierName}
                     />
                   </div>
-                  <div class="supporting-text">Unique name for this supplier</div>
+                  <div class="supporting-text">${t('supplier', 'supplierNameSupportingText')}</div>
                 </div>
 
                 <!-- Phone Number -->
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="phone-number-input">Phone Number (Optional)</label>
+                    <label for="phone-number-input">${t('supplier', 'phoneNumberLabel')}</label>
                     <input
                       id="phone-number-input"
                       name="phoneNumber"
@@ -179,7 +183,7 @@ export class SupplierCreationDialogElement extends HTMLElement {
                       placeholder=" "
                     />
                   </div>
-                  <div class="supporting-text">Contact phone number for this supplier</div>
+                  <div class="supporting-text">${t('supplier', 'phoneNumberSupportingText')}</div>
                 </div>
 
               </div>
@@ -191,7 +195,7 @@ export class SupplierCreationDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('supplier', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${form.error?.message}</p>
@@ -203,7 +207,7 @@ export class SupplierCreationDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('supplier', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>

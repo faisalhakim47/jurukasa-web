@@ -11,6 +11,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useElement } from '#web/hooks/use-element.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -51,6 +52,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
 
     const host = this;
     const database = useContext(host, DatabaseContextElement);
+    const t = useTranslator(host);
 
     const supplierIdAttr = useAttribute(host, 'supplier-id');
     const errorAlertDialog = useDialog(host);
@@ -243,7 +245,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
         `;
 
         if (existingCheck.rows.length > 0) {
-          throw new Error('This inventory mapping with the same quantity conversion already exists for this supplier.');
+          throw new Error(t('supplier', 'inventoryMappingExistsError'));
         }
 
         await tx.sql`
@@ -472,14 +474,14 @@ export class SupplierDetailsDialogElement extends HTMLElement {
         const phoneNumber = /** @type {string} */ (data.get('phoneNumber'))?.trim() || null;
 
         // Validate inputs
-        if (!name) throw new Error('Supplier name is required.');
+        if (!name) throw new Error(t('supplier', 'supplierNameRequiredError'));
 
         // Check for duplicate name (excluding current supplier)
         const duplicateCheck = await tx.sql`
           SELECT 1 FROM suppliers WHERE name = ${name} AND id != ${state.supplier.id} LIMIT 1;
         `;
         if (duplicateCheck.rows.length > 0) {
-          throw new Error('Supplier name already exists.');
+          throw new Error(t('supplier', 'supplierNameExistsError'));
         }
 
         // Update supplier
@@ -524,7 +526,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading supplier details"
+          aria-label="${t('supplier', 'loadingSupplierDetailsAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -540,7 +542,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading supplier details...</p>
+          <p>${t('supplier', 'loadingSupplierDetailsMessage')}</p>
         </div>
       `;
     }
@@ -560,8 +562,8 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           "
         >
           <material-symbols name="local_shipping" size="48"></material-symbols>
-          <h3 class="title-large">Supplier Not Found</h3>
-          <p style="color: var(--md-sys-color-on-surface-variant);">The requested supplier could not be found.</p>
+          <h3 class="title-large">${t('supplier', 'supplierNotFoundTitle')}</h3>
+          <p style="color: var(--md-sys-color-on-surface-variant);">${t('supplier', 'supplierNotFoundMessage')}</p>
         </div>
       `;
     }
@@ -574,15 +576,15 @@ export class SupplierDetailsDialogElement extends HTMLElement {
         <div style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
           <!-- Basic Info -->
           <section>
-            <h3 class="title-medium" style="margin-bottom: 16px;">Basic Information</h3>
+            <h3 class="title-medium" style="margin-bottom: 16px;">${t('supplier', 'basicInformationSectionTitle')}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Name</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('supplier', 'nameFieldLabel')}</p>
                 <p class="body-large">${supplier.name}</p>
               </div>
               <div>
-                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">Phone Number</p>
-                <p class="body-large">${supplier.phone_number || '—'}</p>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('supplier', 'phoneNumberFieldLabel')}</p>
+                <p class="body-large">${supplier.phone_number || t('supplier', 'noSupplierNamePlaceholder')}</p>
               </div>
             </div>
           </section>
@@ -590,11 +592,11 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           <!-- Supplier Inventories -->
           <section>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <h3 class="title-medium" style="margin: 0;">Linked Inventories</h3>
+              <h3 class="title-medium" style="margin: 0;">${t('supplier', 'linkedInventoriesSectionTitle')}</h3>
               ${!state.isAddingInventory && !state.isEditingInventory ? html`
                 <button role="button" class="text" @click=${startAddingInventory}>
                   <material-symbols name="add"></material-symbols>
-                  Add Mapping
+                  ${t('supplier', 'addMappingButtonLabel')}
                 </button>
               ` : nothing}
             </div>
@@ -603,12 +605,12 @@ export class SupplierDetailsDialogElement extends HTMLElement {
             ${renderEditInventoryForm()}
 
             ${state.supplierInventories.length > 0 ? html`
-              <table aria-label="Supplier inventories" style="--md-sys-density: -3;">
+              <table aria-label="${t('supplier', 'linkedInventoriesSectionTitle')}" style="--md-sys-density: -3;">
                 <thead>
                   <tr>
-                    <th scope="col">Inventory</th>
-                    <th scope="col">Supplier Name</th>
-                    <th scope="col" class="numeric" style="width: 100px;">Conversion</th>
+                    <th scope="col">${t('supplier', 'tableHeaderInventory')}</th>
+                    <th scope="col">${t('supplier', 'tableHeaderSupplierName')}</th>
+                    <th scope="col" class="numeric" style="width: 100px;">${t('supplier', 'tableHeaderConversion')}</th>
                     <th scope="col" style="width: 80px;"></th>
                   </tr>
                 </thead>
@@ -616,8 +618,8 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                   ${state.supplierInventories.map((si) => html`
                     <tr>
                       <td>${si.inventory_name}</td>
-                      <td style="color: var(--md-sys-color-on-surface-variant);">${si.supplier_name || '—'}</td>
-                      <td class="numeric">${si.quantity_conversion}x</td>
+                      <td style="color: var(--md-sys-color-on-surface-variant);">${si.supplier_name || t('supplier', 'noSupplierNamePlaceholder')}</td>
+                      <td class="numeric">${t('supplier', 'conversionUnitLabel', si.quantity_conversion)}</td>
                       <td class="center">
                         <button
                           role="button"
@@ -625,7 +627,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                           data-inventory-id="${si.inventory_id}"
                           data-quantity-conversion="${si.quantity_conversion}"
                           @click=${handleStartEditingInventory}
-                          aria-label="Edit mapping for ${si.inventory_name}"
+                          aria-label="${t('supplier', 'editMappingAriaLabel', si.inventory_name)}"
                           ?disabled=${state.isAddingInventory || state.isEditingInventory !== null}
                         >
                           <material-symbols name="edit" size="20"></material-symbols>
@@ -636,7 +638,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                           data-inventory-id="${si.inventory_id}"
                           data-quantity-conversion="${si.quantity_conversion}"
                           @click=${handleConfirmDeleteSupplierInventory}
-                          aria-label="Remove mapping for ${si.inventory_name}"
+                          aria-label="${t('supplier', 'removeMappingAriaLabel', si.inventory_name)}"
                           ?disabled=${state.isAddingInventory || state.isEditingInventory !== null}
                         >
                           <material-symbols name="delete" size="20"></material-symbols>
@@ -648,7 +650,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
               </table>
             ` : html`
               <p style="color: var(--md-sys-color-on-surface-variant);">
-                No inventories linked to this supplier yet. Click "Add Mapping" to link an inventory or create purchase orders to auto-link.
+                ${t('supplier', 'noInventoriesLinkedMessage')}
               </p>
             `}
           </section>
@@ -662,8 +664,8 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       return html`
         <div style="background-color: var(--md-sys-color-surface-container-high); padding: 16px; border-radius: var(--md-sys-shape-corner-medium); margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h4 class="title-small" style="margin: 0;">Add Inventory Mapping</h4>
-            <button role="button" class="text" @click=${cancelAddingInventory} aria-label="Cancel">
+            <h4 class="title-small" style="margin: 0;">${t('supplier', 'addInventoryMappingTitle')}</h4>
+            <button role="button" class="text" @click=${cancelAddingInventory} aria-label="${t('supplier', 'cancelButtonAriaLabel')}">
               <material-symbols name="close"></material-symbols>
             </button>
           </div>
@@ -673,7 +675,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
             <div class="outlined-text-field" style="margin-bottom: 12px;">
               <div class="container">
                 <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-                <label for="inventory-search-input">Search Inventory</label>
+                <label for="inventory-search-input">${t('supplier', 'searchInventoryLabel')}</label>
                 <input
                   ${readValue(state, 'inventorySearchQuery')}
                   id="inventory-search-input"
@@ -689,14 +691,14 @@ export class SupplierDetailsDialogElement extends HTMLElement {
             <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--md-sys-color-outline-variant); border-radius: var(--md-sys-shape-corner-medium);">
               ${state.isLoadingInventories ? html`
                 <div style="padding: 16px; text-align: center; color: var(--md-sys-color-on-surface-variant);">
-                  Loading...
+                  ${t('supplier', 'loadingInventoriesMessage')}
                 </div>
               ` : state.availableInventories.length === 0 ? html`
                 <div style="padding: 16px; text-align: center; color: var(--md-sys-color-on-surface-variant);">
-                  No inventories found.
+                  ${t('supplier', 'noInventoriesFoundMessage')}
                 </div>
               ` : html`
-                <ul role="listbox" aria-label="Available inventories" style="list-style: none; padding: 0; margin: 0;">
+                <ul role="listbox" aria-label="${t('supplier', 'availableInventoriesAriaLabel')}" style="list-style: none; padding: 0; margin: 0;">
                   ${state.availableInventories.map((inv) => html`
                     <li
                       role="option"
@@ -714,7 +716,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                       <p style="margin: 0; font-weight: 500;">${inv.name}</p>
                       ${inv.unit_of_measurement ? html`
                         <p style="margin: 0; font-size: 0.875rem; color: var(--md-sys-color-on-surface-variant);">
-                          Unit: ${inv.unit_of_measurement}
+                          ${t('supplier', 'inventoryUnitLabel', inv.unit_of_measurement)}
                         </p>
                       ` : nothing}
                     </li>
@@ -730,11 +732,11 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                   <p class="body-medium" style="margin: 0; font-weight: 500;">${state.selectedInventory.name}</p>
                   ${state.selectedInventory.unit_of_measurement ? html`
                     <p class="body-small" style="margin: 4px 0 0 0; color: var(--md-sys-color-on-primary-container);">
-                      Unit: ${state.selectedInventory.unit_of_measurement}
+                      ${t('supplier', 'inventoryUnitLabel', state.selectedInventory.unit_of_measurement)}
                     </p>
                   ` : nothing}
                 </div>
-                <button role="button" class="text" @click=${handleClearInventorySelection} aria-label="Change inventory">
+                <button role="button" class="text" @click=${handleClearInventorySelection} aria-label="${t('supplier', 'changeInventoryAriaLabel')}">
                   <material-symbols name="edit"></material-symbols>
                 </button>
               </div>
@@ -744,7 +746,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
             <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
               <div class="outlined-text-field" style="--md-sys-density: -4;">
                 <div class="container">
-                  <label for="add-conversion-input">Conversion</label>
+                  <label for="add-conversion-input">${t('supplier', 'conversionLabel')}</label>
                   <input
                     id="add-conversion-input"
                     type="number"
@@ -755,11 +757,11 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                     @input=${handleQuantityConversionInput}
                   />
                 </div>
-                <div class="supporting-text">Internal units per supplier unit</div>
+                <div class="supporting-text">${t('supplier', 'conversionSupportingText')}</div>
               </div>
               <div class="outlined-text-field" style="--md-sys-density: -4;">
                 <div class="container">
-                  <label for="add-supplier-name-input">Supplier Name (Optional)</label>
+                  <label for="add-supplier-name-input">${t('supplier', 'supplierNameOptionalLabel')}</label>
                   <input
                     id="add-supplier-name-input"
                     type="text"
@@ -768,7 +770,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                     @input=${handleSupplierNameInput}
                   />
                 </div>
-                <div class="supporting-text">Name as shown in supplier catalog</div>
+                <div class="supporting-text">${t('supplier', 'supplierNameCatalogSupportingText')}</div>
               </div>
             </div>
 
@@ -781,7 +783,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                 ?disabled=${!state.selectedInventory || !state.newQuantityConversion || state.isSaving}
               >
                 <material-symbols name="add"></material-symbols>
-                Add Mapping
+                ${t('supplier', 'addMappingSubmitButtonLabel')}
               </button>
             </div>
           `}
@@ -795,8 +797,8 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       return html`
         <div style="background-color: var(--md-sys-color-surface-container-high); padding: 16px; border-radius: var(--md-sys-shape-corner-medium); margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h4 class="title-small" style="margin: 0;">Edit Inventory Mapping</h4>
-            <button role="button" class="text" @click=${cancelAddingInventory} aria-label="Cancel">
+            <h4 class="title-small" style="margin: 0;">${t('supplier', 'editInventoryMappingTitle')}</h4>
+            <button role="button" class="text" @click=${cancelAddingInventory} aria-label="${t('supplier', 'cancelButtonAriaLabel')}">
               <material-symbols name="close"></material-symbols>
             </button>
           </div>
@@ -810,7 +812,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
             <div class="outlined-text-field" style="--md-sys-density: -4;">
               <div class="container">
-                <label for="edit-conversion-input">Conversion</label>
+                <label for="edit-conversion-input">${t('supplier', 'conversionLabel')}</label>
                 <input
                   id="edit-conversion-input"
                   type="number"
@@ -821,11 +823,11 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                   @input=${handleQuantityConversionInput}
                 />
               </div>
-              <div class="supporting-text">Internal units per supplier unit</div>
+              <div class="supporting-text">${t('supplier', 'conversionSupportingText')}</div>
             </div>
             <div class="outlined-text-field" style="--md-sys-density: -4;">
               <div class="container">
-                <label for="edit-supplier-name-input">Supplier Name (Optional)</label>
+                <label for="edit-supplier-name-input">${t('supplier', 'supplierNameOptionalLabel')}</label>
                 <input
                   id="edit-supplier-name-input"
                   type="text"
@@ -834,12 +836,12 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                   @input=${handleSupplierNameInput}
                 />
               </div>
-              <div class="supporting-text">Name as shown in supplier catalog</div>
+              <div class="supporting-text">${t('supplier', 'supplierNameCatalogSupportingText')}</div>
             </div>
           </div>
 
           <div style="display: flex; justify-content: flex-end; margin-top: 12px; gap: 8px;">
-            <button role="button" type="button" class="text" @click=${cancelAddingInventory}>Cancel</button>
+            <button role="button" type="button" class="text" @click=${cancelAddingInventory}>${t('supplier', 'cancelButtonLabel')}</button>
             <button
               role="button"
               type="button"
@@ -848,7 +850,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
               ?disabled=${!state.newQuantityConversion || state.isSaving}
             >
               <material-symbols name="check"></material-symbols>
-              Save Changes
+              ${t('supplier', 'saveChangesInventoryButtonLabel')}
             </button>
           </div>
         </div>
@@ -866,14 +868,14 @@ export class SupplierDetailsDialogElement extends HTMLElement {
               <div role="progressbar" class="linear indeterminate">
                 <div class="track"><div class="indicator"></div></div>
               </div>
-              <p>Saving changes...</p>
+              <p>${t('supplier', 'savingChangesMessage')}</p>
             </div>
           ` : nothing}
 
           <!-- Supplier Name -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="edit-name-input">Supplier Name</label>
+              <label for="edit-name-input">${t('supplier', 'supplierNameLabel')}</label>
               <input
                 id="edit-name-input"
                 name="name"
@@ -888,7 +890,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           <!-- Phone Number -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="edit-phone-number-input">Phone Number</label>
+              <label for="edit-phone-number-input">${t('supplier', 'phoneNumberLabel')}</label>
               <input
                 id="edit-phone-number-input"
                 name="phoneNumber"
@@ -900,8 +902,8 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           </div>
 
           <div style="display: flex; gap: 12px; justify-content: flex-end;">
-            <button role="button" type="button" class="text" @click=${toggleEditMode}>Cancel</button>
-            <button role="button" type="submit" class="tonal">Save Changes</button>
+            <button role="button" type="button" class="text" @click=${toggleEditMode}>${t('supplier', 'cancelButtonLabel')}</button>
+            <button role="button" type="submit" class="tonal">${t('supplier', 'saveChangesButtonLabel')}</button>
           </div>
         </form>
       `;
@@ -918,7 +920,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           <div class="container">
             <header>
               <h2 id="supplier-details-dialog-title">
-                ${state.supplier ? state.supplier.name : 'Supplier Details'}
+                ${state.supplier ? state.supplier.name : t('supplier', 'detailsDialogTitle')}
               </h2>
               <button
                 role="button"
@@ -930,7 +932,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
               ${state.supplier && !state.isEditing ? html`
                 <button role="button" type="button" @click=${toggleEditMode}>
                   <material-symbols name="edit"></material-symbols>
-                  Edit
+                  ${t('supplier', 'editButtonLabel')}
                 </button>
               ` : nothing}
             </header>
@@ -948,7 +950,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('supplier', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${state.error?.message}</p>
@@ -960,7 +962,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('supplier', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>
@@ -970,12 +972,12 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="delete"></material-symbols>
             <header>
-              <h3 id="delete-confirm-title">Remove Inventory Mapping</h3>
+              <h3 id="delete-confirm-title">${t('supplier', 'removeInventoryMappingTitle')}</h3>
             </header>
             <div class="content">
-              <p>Are you sure you want to remove the mapping for <strong>${state.pendingDeleteInventory?.inventory_name}</strong>?</p>
+              <p>${t('supplier', 'removeInventoryMappingMessage', state.pendingDeleteInventory?.inventory_name)}</p>
               <p style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;">
-                This will not delete the inventory itself, only the link to this supplier.
+                ${t('supplier', 'removeInventoryMappingNote')}
               </p>
             </div>
             <menu>
@@ -985,7 +987,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${cancelDeleteSupplierInventory}
-                >Cancel</button>
+                >${t('supplier', 'cancelButtonLabel')}</button>
               </li>
               <li>
                 <button
@@ -995,7 +997,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                   style="color: var(--md-sys-color-error);"
                   @click=${deleteSupplierInventory}
                   ?disabled=${state.isSaving}
-                >Remove</button>
+                >${t('supplier', 'removeButtonLabel')}</button>
               </li>
             </menu>
           </div>

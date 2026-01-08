@@ -4,6 +4,7 @@ import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
+import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { readValue } from '#web/directives/read-value.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
@@ -12,6 +13,7 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 
 import '#web/components/material-symbols.js';
@@ -47,6 +49,8 @@ export class SupplierSelectorDialogElement extends HTMLElement {
 
     const host = this;
     const database = useContext(host, DatabaseContextElement);
+    const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
     const searchInputElement = useElement(host, HTMLInputElement);
 
     const dialog = useDialog(host);
@@ -130,13 +134,13 @@ export class SupplierSelectorDialogElement extends HTMLElement {
 
     function renderLoadingIndicator() {
       return html`
-        <section class="loading-state" role="status" aria-live="polite" aria-label="Loading suppliers">
+        <section class="loading-state" role="status" aria-live="polite" aria-label=${t('supplier', 'loadingSuppliersAriaLabel')}>
           <div role="progressbar" class="linear indeterminate">
             <div class="track">
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading suppliers...</p>
+          <p>${t('supplier', 'loadingSuppliersMessage')}</p>
         </section>
       `;
     }
@@ -145,7 +149,7 @@ export class SupplierSelectorDialogElement extends HTMLElement {
       return html`
         <section role="alert" aria-live="assertive">
           <material-symbols name="error" size="48"></material-symbols>
-          <h3>Unable to load suppliers</h3>
+          <h3>${t('supplier', 'unableToLoadSuppliersTitle')}</h3>
           <p>${state.error.message}</p>
         </section>
       `;
@@ -155,11 +159,11 @@ export class SupplierSelectorDialogElement extends HTMLElement {
       if (state.suppliers.length === 0) return html`
         <section aria-live="polite" style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
           <material-symbols name="local_shipping" size="48"></material-symbols>
-          <p>${state.searchQuery ? 'No suppliers match your search' : 'No suppliers available'}</p>
+          <p>${state.searchQuery ? t('supplier', 'noSuppliersMatchSearchMessage') : t('supplier', 'noSuppliersAvailableMessage')}</p>
         </section>
       `;
       else return html`
-        <menu role="list" aria-label="Available suppliers" style="max-height: 320px; overflow-y: auto;">
+        <menu role="list" aria-label=${t('supplier', 'availableSuppliersAriaLabel')} style="max-height: 320px; overflow-y: auto;">
           ${repeat(state.suppliers, supplier => supplier.id, supplier => html`
             <li
               role="menuitemradio"
@@ -193,14 +197,14 @@ export class SupplierSelectorDialogElement extends HTMLElement {
         >
           <form class="container" style="max-width: min(320px, 90vw);">
             <header>
-              <h2 id="supplier-selector-dialog-title">Select Supplier</h2>
+              <h2 id="supplier-selector-dialog-title">${t('supplier', 'selectDialogTitle')}</h2>
             </header>
 
             <div class="content">
               <div class="outlined-text-field" style="--md-sys-density: -4;">
                 <div class="container">
                   <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-                  <label for="supplier-search">Search suppliers</label>
+                  <label for="supplier-search">${t('supplier', 'searchSuppliersLabel')}</label>
                   <input
                     ${searchInputElement}
                     ${readValue(state, 'searchQuery')}
@@ -225,7 +229,7 @@ export class SupplierSelectorDialogElement extends HTMLElement {
                   commandfor="supplier-selector-dialog"
                   command="close"
                   style="--sys-md-density: -4;"
-                >Cancel</button>
+                >${t('supplier', 'cancelButtonLabel')}</button>
               </li>
             </menu>
           </form>

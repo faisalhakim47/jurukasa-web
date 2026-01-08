@@ -9,12 +9,15 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useElement } from '#web/hooks/use-element.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
 import '#web/components/account-selector-dialog.js';
+
+/** @import { EnTranslationPack as DefaultTranslationPack } from '#web/lang/en/index.js' */
 
 const accountTypes = /** @type {const} */ ([
   'Asset',
@@ -29,6 +32,29 @@ const accountTypes = /** @type {const} */ ([
   'Contra Expense',
 ]);
 
+/** @type {Record<string, keyof DefaultTranslationPack['account']>} */
+const accountTypeTranslationKeyMap = {
+  'Asset': 'accountTypeAsset',
+  'Liability': 'accountTypeLiability',
+  'Equity': 'accountTypeEquity',
+  'Revenue': 'accountTypeRevenue',
+  'Expense': 'accountTypeExpense',
+  'Contra Asset': 'accountTypeContraAsset',
+  'Contra Liability': 'accountTypeContraLiability',
+  'Contra Equity': 'accountTypeContraEquity',
+  'Contra Revenue': 'accountTypeContraRevenue',
+  'Contra Expense': 'accountTypeContraExpense',
+};
+
+/**
+ * Map account type to translation key
+ * @param {string} accountType
+ * @returns {keyof DefaultTranslationPack['account']}
+ */
+function getAccountTypeTranslationKey(accountType) {
+  return accountTypeTranslationKeyMap[accountType] || 'accountTypeAsset';
+}
+
 /**
  * Account Creation Dialog Component
  * 
@@ -41,6 +67,7 @@ export class AccountCreationDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
 
+    const t = useTranslator(host);
     const dialog = useDialog(host);
     const errorAlertDialog = useElement(host, HTMLDialogElement);
     const render = useRender(host);
@@ -66,10 +93,10 @@ export class AccountCreationDialogElement extends HTMLElement {
           const result = await database.sql`
             SELECT 1 FROM accounts WHERE account_code = ${accountCode} LIMIT 1;
           `;
-          if (result.rows.length > 0) input.setCustomValidity('Account code already exists.');
+          if (result.rows.length > 0) input.setCustomValidity(t('account', 'accountCodeExistsError'));
         }
         catch (error) {
-          input.setCustomValidity('Error validating account code.');
+          input.setCustomValidity(t('account', 'accountCodeValidationError'));
         }
       }
     }
@@ -85,10 +112,10 @@ export class AccountCreationDialogElement extends HTMLElement {
           const result = await database.sql`
             SELECT 1 FROM accounts WHERE name = ${name} LIMIT 1;
           `;
-          if (result.rows.length > 0) input.setCustomValidity('Account name already exists.');
+          if (result.rows.length > 0) input.setCustomValidity(t('account', 'accountNameExistsError'));
         }
         catch (error) {
-          input.setCustomValidity('Error validating account name.');
+          input.setCustomValidity(t('account', 'accountNameValidationError'));
         }
       }
     }
@@ -144,10 +171,10 @@ export class AccountCreationDialogElement extends HTMLElement {
         const normalBalance = /** @type {string} */ (data.get('normalBalance'));
         const accountType = /** @type {string} */ (data.get('accountType'));
 
-        if (isNaN(accountCode)) throw new Error('Invalid account code.');
-        if (!name) throw new Error('Account name is required.');
-        if (!['Debit', 'Credit'].includes(normalBalance)) throw new Error('Invalid normal balance.');
-        if (!accountType) throw new Error('Account type is required.');
+        if (isNaN(accountCode)) throw new Error(t('account', 'invalidAccountCodeError'));
+        if (!name) throw new Error(t('account', 'accountNameRequiredError'));
+        if (!['Debit', 'Credit'].includes(normalBalance)) throw new Error(t('account', 'invalidNormalBalanceError'));
+        if (!accountType) throw new Error(t('account', 'accountTypeRequiredError'));
 
         await tx.sql`
           INSERT INTO accounts (account_code, name, normal_balance, control_account_code, create_time, update_time)
@@ -206,7 +233,7 @@ export class AccountCreationDialogElement extends HTMLElement {
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="account-creation-dialog-title">Create New Account</h2>
+              <h2 id="account-creation-dialog-title">${t('account', 'createDialogTitle')}</h2>
               <button
                 role="button"
                 type="button"
@@ -214,7 +241,7 @@ export class AccountCreationDialogElement extends HTMLElement {
                 commandfor="account-creation-dialog"
                 command="close"
               ><material-symbols name="close"></material-symbols></button>
-              <button role="button" type="submit" name="action">Create Account</button>
+              <button role="button" type="submit" name="action">${t('account', 'createDialogSubmitLabel')}</button>
             </header>
 
             <div class="content">
@@ -223,7 +250,7 @@ export class AccountCreationDialogElement extends HTMLElement {
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
                   </div>
-                  <p>Creating account...</p>
+                  <p>${t('account', 'creatingAccountMessage')}</p>
                 </div>
               ` : nothing}
 
@@ -232,7 +259,7 @@ export class AccountCreationDialogElement extends HTMLElement {
                 <!-- Account Code -->
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="account-code-input">Account Code</label>
+                    <label for="account-code-input">${t('account', 'accountCodeLabel')}</label>
                     <input
                       id="account-code-input"
                       name="accountCode"
@@ -244,13 +271,13 @@ export class AccountCreationDialogElement extends HTMLElement {
                       @blur=${validateAccountCode}
                     />
                   </div>
-                  <div class="supporting-text">Unique numeric code for the account</div>
+                  <div class="supporting-text">${t('account', 'accountCodeSupportingText')}</div>
                 </div>
 
                 <!-- Account Name -->
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="account-name-input">Account Name</label>
+                    <label for="account-name-input">${t('account', 'accountNameLabel')}</label>
                     <input
                       id="account-name-input"
                       name="name"
@@ -265,14 +292,14 @@ export class AccountCreationDialogElement extends HTMLElement {
                 <!-- Normal Balance -->
                 <div class="outlined-text-field" style="anchor-name: --normal-balance-menu-anchor;">
                   <div class="container">
-                    <label for="normal-balance-input">Normal Balance</label>
+                    <label for="normal-balance-input">${t('account', 'normalBalanceLabel')}</label>
                     <input type="hidden" name="normalBalance" value="${form.normalBalance ?? ''}">
                     <input
                       type="button"
                       id="normal-balance-input"
                       popovertarget="normal-balance-menu"
                       style="text-align: start;"
-                      value="${form.normalBalance}"
+                      value="${form.normalBalance ? t('account', form.normalBalance === 'Debit' ? 'normalBalanceDebit' : 'normalBalanceCredit') : ''}"
                     />
                     <label for="normal-balance-input" class="trailing-icon">
                       <material-symbols name="arrow_drop_down"></material-symbols>
@@ -282,12 +309,12 @@ export class AccountCreationDialogElement extends HTMLElement {
                 <menu id="normal-balance-menu" role="menu" popover class="dropdown" style="position-anchor: --normal-balance-menu-anchor;">
                   <li>
                     <button type="button" role="menuitem" data-value="Debit" @click=${handleNormalBalanceSelect}>
-                      <span class="text">Debit</span>
+                      <span class="text">${t('account', 'normalBalanceDebit')}</span>
                     </button>
                   </li>
                   <li>
                     <button type="button" role="menuitem" data-value="Credit" @click=${handleNormalBalanceSelect}>
-                      <span class="text">Credit</span>
+                      <span class="text">${t('account', 'normalBalanceCredit')}</span>
                     </button>
                   </li>
                 </menu>
@@ -295,14 +322,14 @@ export class AccountCreationDialogElement extends HTMLElement {
                 <!-- Account Type -->
                 <div class="outlined-text-field" style="anchor-name: --account-type-menu-anchor;">
                   <div class="container">
-                    <label for="account-type-input">Account Type</label>
+                    <label for="account-type-input">${t('account', 'accountTypeLabel')}</label>
                     <input type="hidden" name="accountType" value="${form.accountType ?? ''}">
                     <input
                       type="button"
                       id="account-type-input"
                       popovertarget="account-type-menu"
                       style="text-align: start;"
-                      value="${form.accountType ?? ''}"
+                      value="${form.accountType ? t('account', getAccountTypeTranslationKey(form.accountType)) : ''}"
                     />
                     <label for="account-type-input" class="trailing-icon">
                       <material-symbols name="arrow_drop_down"></material-symbols>
@@ -313,7 +340,7 @@ export class AccountCreationDialogElement extends HTMLElement {
                   ${accountTypes.map((accountType) => html`
                     <li>
                       <button type="button" role="menuitem" data-account-type="${accountType}" @click=${handleAccountTypeClick}>
-                        <span class="text">${accountType}</span>
+                        <span class="text">${t('account', getAccountTypeTranslationKey(accountType))}</span>
                       </button>
                     </li>
                   `)}
@@ -322,7 +349,7 @@ export class AccountCreationDialogElement extends HTMLElement {
                 <!-- Parent Account -->
                 <div class="outlined-text-field">
                   <div class="container">
-                    <label for="parent-account-input">Parent Account (Optional)</label>
+                    <label for="parent-account-input">${t('account', 'parentAccountLabel')}</label>
                     <input
                       id="parent-account-input"
                       type="button"
@@ -337,7 +364,7 @@ export class AccountCreationDialogElement extends HTMLElement {
                         type="button"
                         class="trailing-icon"
                         @click=${clearParentAccount}
-                        aria-label="Clear parent account"
+                        aria-label="${t('account', 'clearParentAccountAriaLabel')}"
                       ><material-symbols name="close"></material-symbols></button>
                     ` : html`
                       <button
@@ -345,11 +372,11 @@ export class AccountCreationDialogElement extends HTMLElement {
                         class="trailing-icon"
                         commandfor="account-selector-dialog"
                         command="--open"
-                        aria-label="Select parent account"
+                        aria-label="${t('account', 'selectParentAccountAriaLabel')}"
                       ><material-symbols name="search"></material-symbols></button>
                     `}
                   </div>
-                  <div class="supporting-text">Select a parent account to make this a sub-account</div>
+                  <div class="supporting-text">${t('account', 'parentAccountSupportingText')}</div>
                 </div>
 
               </div>
@@ -361,7 +388,7 @@ export class AccountCreationDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>Error</h3>
+              <h3>${t('account', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${form.error?.message}</p>
@@ -373,7 +400,7 @@ export class AccountCreationDialogElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('account', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>

@@ -60,9 +60,7 @@ function parseUri(text) {
 		fragment: groups["fragment"] !== void 0 ? percentDecode(groups["fragment"]) : void 0
 	};
 }
-const URI_RE = (() => {
-	return new RegExp(`^(?<scheme>[A-Za-z][A-Za-z.+-]*):(//(?<authority>[^/?#]*))?(?<path>[^?#]*)(\\?(?<query>[^#]*))?(#(?<fragment>.*))?$`, "su");
-})();
+const URI_RE = new RegExp(`^(?<scheme>[A-Za-z][A-Za-z.+-]*):(//(?<authority>[^/?#]*))?(?<path>[^?#]*)(\\?(?<query>[^#]*))?(#(?<fragment>.*))?$`, "su");
 function parseAuthority(text) {
 	const match = AUTHORITY_RE.exec(text);
 	if (match === null) throw new LibsqlError("The authority part of the URL is not in a valid format", "URL_INVALID");
@@ -76,9 +74,7 @@ function parseAuthority(text) {
 		} : void 0
 	};
 }
-const AUTHORITY_RE = (() => {
-	return new RegExp(`^((?<username>[^:]*)(:(?<password>.*))?@)?((?<host>[^:\\[\\]]*)|(\\[(?<host_br>[^\\[\\]]*)\\]))(:(?<port>[0-9]*))?$`, "su");
-})();
+const AUTHORITY_RE = new RegExp(`^((?<username>[^:]*)(:(?<password>.*))?@)?((?<host>[^:\\[\\]]*)|(\\[(?<host_br>[^\\[\\]]*)\\]))(:(?<port>[0-9]*))?$`, "su");
 function parseQuery(text) {
 	const sequences = text.split("&");
 	const pairs = [];

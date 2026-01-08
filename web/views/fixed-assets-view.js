@@ -9,8 +9,8 @@ import { readValue } from '#web/directives/read-value.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
-import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -45,6 +45,7 @@ export class FixedAssetsViewElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
 
+    const t = useTranslator(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -172,7 +173,7 @@ export class FixedAssetsViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading fixed assets"
+          aria-label="${t('fixedAsset', 'loadingAssetsLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -188,7 +189,7 @@ export class FixedAssetsViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading fixed assets...</p>
+          <p>${t('fixedAsset', 'loadingAssetsLabel')}</p>
         </div>
       `;
     }
@@ -212,11 +213,11 @@ export class FixedAssetsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load fixed assets</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('fixedAsset', 'loadErrorTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadFixedAssets}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('fixedAsset', 'retryActionLabel')}
           </button>
         </div>
       `;
@@ -229,7 +230,7 @@ export class FixedAssetsViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 200px; min-width: 160px;">
             <div class="container">
               <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="fixed-asset-search-input">Search</label>
+              <label for="fixed-asset-search-input">${t('fixedAsset', 'searchLabel')}</label>
               <input
                 ${readValue(state, 'searchQuery')}
                 id="fixed-asset-search-input"
@@ -244,11 +245,11 @@ export class FixedAssetsViewElement extends HTMLElement {
           <!-- Depreciation Filter -->
           <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 180px; anchor-name: --depreciation-filter-menu-anchor;">
             <div class="container">
-              <label for="depreciation-filter-input">Status</label>
+              <label for="depreciation-filter-input">${t('fixedAsset', 'statusFilterLabel')}</label>
               <input
                 id="depreciation-filter-input"
                 type="button"
-                value="${state.depreciationFilter}"
+                value="${state.depreciationFilter === 'All' ? t('fixedAsset', 'filterAll') : state.depreciationFilter === 'Active' ? t('fixedAsset', 'filterActive') : t('fixedAsset', 'filterFullyDepreciated')}"
                 popovertarget="depreciation-filter-menu"
                 popovertargetaction="show"
                 placeholder=" "
@@ -260,6 +261,7 @@ export class FixedAssetsViewElement extends HTMLElement {
           </div>
           <menu role="menu" popover id="depreciation-filter-menu" class="dropdown" style="position-anchor: --depreciation-filter-menu-anchor;">
             ${depreciationFilterOptions.map(function (option) {
+              const optionLabel = option === 'All' ? t('fixedAsset', 'filterAll') : option === 'Active' ? t('fixedAsset', 'filterActive') : t('fixedAsset', 'filterFullyDepreciated');
               return html`
                 <li>
                   <button
@@ -271,7 +273,7 @@ export class FixedAssetsViewElement extends HTMLElement {
                     aria-selected=${option === state.depreciationFilter ? 'true' : 'false'}
                   >
                     ${option === state.depreciationFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
-                    ${option}
+                    ${optionLabel}
                   </button>
                 </li>
               `;
@@ -296,11 +298,11 @@ export class FixedAssetsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="real_estate_agent" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No fixed assets found</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('fixedAsset', 'emptyStateTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
             ${state.searchQuery || state.depreciationFilter !== 'All'
-              ? 'Try adjusting your search or filters.'
-              : 'Start by recording your first fixed asset to track depreciation.'}
+              ? t('fixedAsset', 'emptyStateMessageFiltered')
+              : t('fixedAsset', 'emptyStateMessage')}
           </p>
         </div>
       `;
@@ -320,7 +322,7 @@ export class FixedAssetsViewElement extends HTMLElement {
      * @param {number} isFullyDepreciated
      */
     function getDepreciationStatusText(isFullyDepreciated) {
-      return isFullyDepreciated === 1 ? 'Fully Depreciated' : 'Active';
+      return isFullyDepreciated === 1 ? t('fixedAsset', 'statusFullyDepreciated') : t('fixedAsset', 'statusActive');
     }
 
     /**
@@ -352,7 +354,7 @@ export class FixedAssetsViewElement extends HTMLElement {
             ${i18n.date.format(new Date(asset.acquisition_time))}
           </td>
           <td class="numeric">${i18n.displayCurrency(asset.acquisition_cost)}</td>
-          <td class="numeric">${asset.useful_life_years} years</td>
+          <td class="numeric">${t('fixedAsset', 'usefulLifeYearsFormat', asset.useful_life_years)}</td>
           <td class="numeric">${i18n.displayCurrency(asset.accumulated_depreciation)}</td>
           <td class="numeric">${i18n.displayCurrency(bookValue)}</td>
           <td class="center">
@@ -422,7 +424,7 @@ export class FixedAssetsViewElement extends HTMLElement {
           "
         >
           <span class="body-small" style="color: var(--md-sys-color-on-surface-variant);">
-            Showing ${startItem}–${endItem} of ${state.totalCount}
+            ${t('fixedAsset', 'paginationShowing', startItem, endItem, state.totalCount)}
           </span>
           <div style="display: flex; gap: 8px; align-items: center;">
             <button
@@ -431,7 +433,7 @@ export class FixedAssetsViewElement extends HTMLElement {
               data-page="1"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="First page"
+              aria-label="${t('fixedAsset', 'paginationFirst')}"
             >
               <material-symbols name="first_page"></material-symbols>
             </button>
@@ -441,12 +443,12 @@ export class FixedAssetsViewElement extends HTMLElement {
               data-page="${state.currentPage - 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === 1}
-              aria-label="Previous page"
+              aria-label="${t('fixedAsset', 'paginationPrevious')}"
             >
               <material-symbols name="chevron_left"></material-symbols>
             </button>
             <span class="body-medium" style="min-width: 80px; text-align: center;">
-              Page ${state.currentPage} of ${totalPages}
+              ${t('fixedAsset', 'paginationPage', state.currentPage, totalPages)}
             </span>
             <button
               role="button"
@@ -454,7 +456,7 @@ export class FixedAssetsViewElement extends HTMLElement {
               data-page="${state.currentPage + 1}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Next page"
+              aria-label="${t('fixedAsset', 'paginationNext')}"
             >
               <material-symbols name="chevron_right"></material-symbols>
             </button>
@@ -464,7 +466,7 @@ export class FixedAssetsViewElement extends HTMLElement {
               data-page="${totalPages}"
               @click=${handlePageChange}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Last page"
+              aria-label="${t('fixedAsset', 'paginationLast')}"
             >
               <material-symbols name="last_page"></material-symbols>
             </button>
@@ -478,17 +480,17 @@ export class FixedAssetsViewElement extends HTMLElement {
 
       return html`
         <div>
-          <table aria-label="Fixed assets list" style="--md-sys-density: -3;">
+          <table aria-label="${t('fixedAsset', 'nameColumnInfo')}" style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col">Name</th>
-                <th scope="col" style="width: 120px;">Acquisition Date</th>
-                <th scope="col" class="numeric" style="width: 140px;">Acquisition Cost</th>
-                <th scope="col" class="numeric" style="width: 100px;">Useful Life</th>
-                <th scope="col" class="numeric" style="width: 140px;">Accum. Depr.</th>
-                <th scope="col" class="numeric" style="width: 120px;">Book Value</th>
-                <th scope="col" class="center" style="width: 130px;">Status</th>
-                <th scope="col" class="center" style="width: 140px;">Progress</th>
+                <th scope="col">${t('fixedAsset', 'nameColumnInfo')}</th>
+                <th scope="col" style="width: 120px;">${t('fixedAsset', 'acquisitionDateColumnInfo')}</th>
+                <th scope="col" class="numeric" style="width: 140px;">${t('fixedAsset', 'acquisitionCostColumnInfo')}</th>
+                <th scope="col" class="numeric" style="width: 100px;">${t('fixedAsset', 'usefulLifeColumnInfo')}</th>
+                <th scope="col" class="numeric" style="width: 140px;">${t('fixedAsset', 'accumulatedDepreciationColumnInfo')}</th>
+                <th scope="col" class="numeric" style="width: 120px;">${t('fixedAsset', 'bookValueColumnInfo')}</th>
+                <th scope="col" class="center" style="width: 130px;">${t('fixedAsset', 'statusColumnInfo')}</th>
+                <th scope="col" class="center" style="width: 140px;">${t('fixedAsset', 'progressColumnInfo')}</th>
               </tr>
             </thead>
             <tbody>
@@ -506,13 +508,13 @@ export class FixedAssetsViewElement extends HTMLElement {
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>
-              <button role="button" class="text" @click=${loadFixedAssets} aria-label="Refresh fixed assets">
+              <button role="button" class="text" @click=${loadFixedAssets} aria-label="${t('fixedAsset', 'refreshActionLabel')}">
                 <material-symbols name="refresh"></material-symbols>
-                Refresh
+                ${t('fixedAsset', 'refreshActionLabel')}
               </button>
               <button role="button" type="button" class="tonal" commandfor="fixed-asset-creation-dialog" command="--open">
                 <material-symbols name="add"></material-symbols>
-                Add Fixed Asset
+                ${t('fixedAsset', 'addFixedAssetActionLabel')}
               </button>
             </div>
           </div>

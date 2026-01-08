@@ -11,7 +11,7 @@ The `web/schemas/*.sql` are SQLite migration files that define the database sche
   - Use plural nouns for table names (e.g., `accounts`).
   - Use `_time` suffix for timestamp columns (e.g., `create_time`).
 - Timestamp columns shall be `INTEGER` type to store Unix epoch time in milliseconds. Remember, in milliseconds, not seconds.
-- Run schema tests using command: `npm run test:db` or `node --test ./web/schemas/*.test.js`.
+- Run schema tests using command: `node --test ./web/schemas/*.test.js`.
 
 ## Schema Test Suite
 

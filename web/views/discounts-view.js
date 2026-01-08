@@ -10,6 +10,7 @@ import { useBusyStateUntil } from '#web/contexts/ready-context.js';
 import { readValue } from '#web/directives/read-value.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
@@ -41,6 +42,7 @@ export class DiscountsViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const t = useTranslator(host);
 
     const discountCreationDialog = useElement(host, DiscountCreationDialogElement);
     const discountDetailsDialog = useElement(host, DiscountDetailsDialogElement);
@@ -171,7 +173,7 @@ export class DiscountsViewElement extends HTMLElement {
       return html`
         <div
           role="status"
-          aria-label="Loading discounts"
+          aria-label="${t('discount', 'loadingDiscountsAriaLabel')}"
           style="
             display: flex;
             flex-direction: column;
@@ -187,7 +189,7 @@ export class DiscountsViewElement extends HTMLElement {
               <div class="indicator"></div>
             </div>
           </div>
-          <p>Loading discounts...</p>
+          <p>${t('discount', 'loadingDiscountsMessage')}</p>
         </div>
       `;
     }
@@ -211,11 +213,11 @@ export class DiscountsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">Unable to load discounts</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('discount', 'unableToLoadDiscountsTitle')}</h2>
           <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
           <button role="button" class="tonal" @click=${loadDiscounts}>
             <material-symbols name="refresh"></material-symbols>
-            Retry
+            ${t('discount', 'retryButtonLabel')}
           </button>
         </div>
       `;
@@ -228,7 +230,7 @@ export class DiscountsViewElement extends HTMLElement {
           <div class="outlined-text-field" style="--md-sys-density: -4; width: 250px; min-width: 160px;">
             <div class="container">
               <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="discount-search-input">Search</label>
+              <label for="discount-search-input">${t('discount', 'searchLabel')}</label>
               <input
                 ${readValue(state, 'searchQuery')}
                 id="discount-search-input"
@@ -243,7 +245,7 @@ export class DiscountsViewElement extends HTMLElement {
           <!-- Type Filter -->
           <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 180px; anchor-name: --type-filter-menu-anchor;">
             <div class="container">
-              <label for="type-filter-input">Type</label>
+              <label for="type-filter-input">${t('discount', 'typeFilterLabel')}</label>
               <input
                 id="type-filter-input"
                 type="button"
@@ -258,21 +260,25 @@ export class DiscountsViewElement extends HTMLElement {
             </div>
           </div>
           <menu role="menu" popover id="type-filter-menu" class="dropdown" style="position-anchor: --type-filter-menu-anchor;">
-            ${typeFilterOptions.map((option) => html`
-              <li>
-                <button
-                  role="menuitem"
-                  data-type-filter="${option}"
-                  @click=${handleTypeFilterChange}
-                  popovertarget="type-filter-menu"
-                  popovertargetaction="hide"
-                  aria-selected=${option === state.typeFilter ? 'true' : 'false'}
-                >
-                  ${option === state.typeFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
-                  ${option}
-                </button>
-              </li>
-            `)}
+            ${typeFilterOptions.map((option) => {
+              const translationKey = option === 'All' ? 'typeFilterAll' : (option === 'Global' ? 'typeFilterGlobal' : 'typeFilterInventorySpecific');
+              const translatedOption = t('discount', translationKey);
+              return html`
+                <li>
+                  <button
+                    role="menuitem"
+                    data-type-filter="${option}"
+                    @click=${handleTypeFilterChange}
+                    popovertarget="type-filter-menu"
+                    popovertargetaction="hide"
+                    aria-selected=${option === state.typeFilter ? 'true' : 'false'}
+                  >
+                    ${option === state.typeFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
+                    ${translatedOption}
+                  </button>
+                </li>
+              `;
+            })}
           </menu>
         </div>
       `;
@@ -293,11 +299,11 @@ export class DiscountsViewElement extends HTMLElement {
           "
         >
           <material-symbols name="percent" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">No discounts found</h2>
+          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('discount', 'noDiscountsFoundTitle')}</h2>
           <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
             ${state.searchQuery || state.typeFilter !== 'All'
-          ? 'Try adjusting your search or filters.'
-          : 'Create your first discount to offer promotions and savings to your customers.'}
+          ? t('discount', 'adjustSearchOrFiltersMessage')
+          : t('discount', 'createFirstDiscountMessage')}
           </p>
           ${!state.searchQuery && state.typeFilter === 'All' ? html`
             <button
@@ -308,7 +314,7 @@ export class DiscountsViewElement extends HTMLElement {
               command="--open"
             >
               <material-symbols name="add"></material-symbols>
-              Create Discount
+              ${t('discount', 'createDiscountButtonLabel')}
             </button>
           ` : nothing}
         </div>
@@ -318,7 +324,7 @@ export class DiscountsViewElement extends HTMLElement {
     /** @param {DiscountRow} discount */
     function renderDiscountRow(discount) {
       const isGlobal = discount.inventory_id === null;
-      const typeLabel = isGlobal ? 'Global' : 'Inventory-specific';
+      const typeLabel = isGlobal ? t('discount', 'globalTypeLabel') : t('discount', 'inventorySpecificTypeLabel');
       return html`
         <tr>
           <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -348,7 +354,7 @@ export class DiscountsViewElement extends HTMLElement {
             >${typeLabel}</span>
           </td>
           <td class="numeric">
-            ${discount.multiple_of_quantity}x
+            ${t('discount', 'everyNItemsTableValue', discount.multiple_of_quantity)}
           </td>
           <td class="numeric" style="color: var(--md-sys-color-primary); font-weight: 500;">
             ${i18n.displayCurrency(discount.amount)}
@@ -367,7 +373,7 @@ export class DiscountsViewElement extends HTMLElement {
       return html`
         <nav
           role="navigation"
-          aria-label="Pagination"
+          aria-label="${t('discount', 'paginationAriaLabel')}"
           style="
             display: flex;
             justify-content: space-between;
@@ -377,7 +383,7 @@ export class DiscountsViewElement extends HTMLElement {
           "
         >
           <span class="body-small" style="color: var(--md-sys-color-on-surface-variant);">
-            Showing ${startItem}–${endItem} of ${state.totalCount}
+            ${t('discount', 'paginationShowingInfo', startItem, endItem, state.totalCount)}
           </span>
           <div style="display: flex; gap: 8px; align-items: center;">
             <button
@@ -385,7 +391,7 @@ export class DiscountsViewElement extends HTMLElement {
               class="text"
               @click=${handleFirstPage}
               ?disabled=${state.currentPage === 1}
-              aria-label="First page"
+              aria-label="${t('discount', 'firstPageAriaLabel')}"
             >
               <material-symbols name="first_page"></material-symbols>
             </button>
@@ -394,19 +400,19 @@ export class DiscountsViewElement extends HTMLElement {
               class="text"
               @click=${handlePreviousPage}
               ?disabled=${state.currentPage === 1}
-              aria-label="Previous page"
+              aria-label="${t('discount', 'previousPageAriaLabel')}"
             >
               <material-symbols name="chevron_left"></material-symbols>
             </button>
             <span class="body-medium" style="min-width: 80px; text-align: center;">
-              Page ${state.currentPage} of ${totalPages}
+              ${t('discount', 'paginationPageInfo', state.currentPage, totalPages)}
             </span>
             <button
               role="button"
               class="text"
               @click=${handleNextPage}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Next page"
+              aria-label="${t('discount', 'nextPageAriaLabel')}"
             >
               <material-symbols name="chevron_right"></material-symbols>
             </button>
@@ -415,7 +421,7 @@ export class DiscountsViewElement extends HTMLElement {
               class="text"
               @click=${handleLastPage}
               ?disabled=${state.currentPage === totalPages}
-              aria-label="Last page"
+              aria-label="${t('discount', 'lastPageAriaLabel')}"
             >
               <material-symbols name="last_page"></material-symbols>
             </button>
@@ -428,14 +434,14 @@ export class DiscountsViewElement extends HTMLElement {
       if (state.discounts.length === 0) return renderEmptyState();
       return html`
         <div>
-          <table aria-label="Discounts list" style="--md-sys-density: -3;">
+          <table aria-label="${t('discount', 'discountsListAriaLabel')}" style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col">Name</th>
-                <th scope="col" style="width: 200px;">Inventory</th>
-                <th scope="col" class="center" style="width: 140px;">Type</th>
-                <th scope="col" class="numeric" style="width: 100px;">Every</th>
-                <th scope="col" class="numeric" style="width: 120px;">Discount</th>
+                <th scope="col">${t('discount', 'tableHeaderName')}</th>
+                <th scope="col" style="width: 200px;">${t('discount', 'tableHeaderInventory')}</th>
+                <th scope="col" class="center" style="width: 140px;">${t('discount', 'tableHeaderType')}</th>
+                <th scope="col" class="numeric" style="width: 100px;">${t('discount', 'tableHeaderEvery')}</th>
+                <th scope="col" class="numeric" style="width: 120px;">${t('discount', 'tableHeaderDiscount')}</th>
               </tr>
             </thead>
             <tbody>
@@ -453,13 +459,13 @@ export class DiscountsViewElement extends HTMLElement {
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>
-              <button role="button" class="text" @click=${loadDiscounts} aria-label="Refresh discounts">
+              <button role="button" class="text" @click=${loadDiscounts} aria-label="${t('discount', 'refreshAriaLabel')}">
                 <material-symbols name="refresh"></material-symbols>
-                Refresh
+                ${t('discount', 'refreshButtonLabel')}
               </button>
               <button role="button" type="button" class="tonal" commandfor="discount-creation-dialog" command="--open">
                 <material-symbols name="add"></material-symbols>
-                Create Discount
+                ${t('discount', 'createDiscountButtonLabel')}
               </button>
             </div>
           </div>

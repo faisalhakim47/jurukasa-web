@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit-html';
+import { unsafeHTML } from 'lit-html/directives/unsafe-html.js';
 import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
@@ -10,6 +11,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
@@ -29,6 +31,7 @@ export class BarcodesViewElement extends HTMLElement {
 
     const host = this;
     const database = useContext(host, DatabaseContextElement);
+    const t = useTranslator(host);
 
     const confirmDeleteDialog = useDialog(host);
     const errorAlertDialog = useDialog(host);
@@ -228,7 +231,7 @@ export class BarcodesViewElement extends HTMLElement {
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 48px 24px; color: var(--md-sys-color-on-surface-variant);">
           <material-symbols name="barcode" size="48"></material-symbols>
           <p style="text-align: center; margin: 0;">
-            ${state.searchQuery ? 'No barcodes match your search' : 'No barcodes assigned yet'}
+            ${state.searchQuery ? t('barcode', 'noBarcodeMatchSearchMessage') : t('barcode', 'noBarcodesAssignedMessage')}
           </p>
           ${!state.searchQuery ? html`
             <button
@@ -238,7 +241,7 @@ export class BarcodesViewElement extends HTMLElement {
               command="--open"
             >
               <material-symbols name="add"></material-symbols>
-              Assign Barcode
+              ${t('barcode', 'assignBarcodeButtonLabel')}
             </button>
           ` : nothing}
         </div>
@@ -277,7 +280,7 @@ export class BarcodesViewElement extends HTMLElement {
       return html`
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
           <span class="body-medium" style="color: var(--md-sys-color-on-surface-variant);">
-            ${state.totalCount > 0 ? `${startIndex}-${endIndex} of ${state.totalCount}` : 'No results'}
+            ${state.totalCount > 0 ? t('barcode', 'paginationInfo', startIndex, endIndex, state.totalCount) : t('barcode', 'paginationNoResults')}
           </span>
           <div style="display: flex; gap: 8px;">
             <button
@@ -285,7 +288,7 @@ export class BarcodesViewElement extends HTMLElement {
               class="text icon"
               @click=${handlePreviousPage}
               ?disabled=${state.currentPage === 1 || state.isLoading}
-              aria-label="Previous page"
+              aria-label="${t('barcode', 'previousPageAriaLabel')}"
             >
               <material-symbols name="chevron_left"></material-symbols>
             </button>
@@ -294,7 +297,7 @@ export class BarcodesViewElement extends HTMLElement {
               class="text icon"
               @click=${handleNextPage}
               ?disabled=${state.currentPage >= totalPages || state.isLoading}
-              aria-label="Next page"
+              aria-label="${t('barcode', 'nextPageAriaLabel')}"
             >
               <material-symbols name="chevron_right"></material-symbols>
             </button>
@@ -311,9 +314,9 @@ export class BarcodesViewElement extends HTMLElement {
           <table aria-label="Barcodes list" style="--md-sys-density: -3;">
             <thead>
               <tr>
-                <th scope="col">Barcode</th>
-                <th scope="col">Product Name</th>
-                <th scope="col" class="center" style="width: 100px;">Action</th>
+                <th scope="col">${t('barcode', 'tableHeaderBarcode')}</th>
+                <th scope="col">${t('barcode', 'tableHeaderProductName')}</th>
+                <th scope="col" class="center" style="width: 100px;">${t('barcode', 'tableHeaderAction')}</th>
               </tr>
             </thead>
             <tbody>
@@ -340,7 +343,7 @@ export class BarcodesViewElement extends HTMLElement {
         <form class="outlined-text-field" style="--md-sys-density: -4; min-width: 240px;" @submit=${handleSearchInteraction}>
           <div class="container">
             <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-            <label for="barcode-search-input">Search</label>
+            <label for="barcode-search-input">${t('barcode', 'searchLabel')}</label>
             <input
               id="barcode-search-input"
               type="text"
@@ -353,7 +356,7 @@ export class BarcodesViewElement extends HTMLElement {
               <button
                 type="reset"
                 class="trailing-icon"
-                aria-label="Clear search"
+                aria-label="${t('barcode', 'clearSearchAriaLabel')}"
                 @click=${handleSearchInteraction}
               ><material-symbols name="close"></material-symbols></button>
             ` : nothing}
@@ -374,7 +377,7 @@ export class BarcodesViewElement extends HTMLElement {
               command="--open"
             >
               <material-symbols name="add"></material-symbols>
-              Assign Barcode
+              ${t('barcode', 'assignBarcodeButtonLabel')}
             </button>
           </div>
 
@@ -390,10 +393,10 @@ export class BarcodesViewElement extends HTMLElement {
           <div class="container">
             <header>
               <material-symbols name="warning" size="24"></material-symbols>
-              <h2 id="confirm-delete-dialog-title">Unassign Barcode</h2>
+              <h2 id="confirm-delete-dialog-title">${t('barcode', 'confirmUnassignDialogTitle')}</h2>
             </header>
             <section class="content">
-              <p>Are you sure you want to unassign barcode <strong>${state.selectedBarcodeCode}</strong> from <strong>${state.selectedInventoryName}</strong>?</p>
+              <p>${unsafeHTML(t('barcode', 'confirmUnassignMessage', state.selectedBarcodeCode, state.selectedInventoryName))}</p>
             </section>
             <menu>
               <li>
@@ -403,7 +406,7 @@ export class BarcodesViewElement extends HTMLElement {
                   class="text"
                   @click=${handleCancelUnassign}
                   ?disabled=${state.isDeleting}
-                >Cancel</button>
+                >${t('barcode', 'cancelButtonLabel')}</button>
               </li>
               <li>
                 <button
@@ -420,7 +423,7 @@ export class BarcodesViewElement extends HTMLElement {
                   ` : html`
                     <material-symbols name="link_off"></material-symbols>
                   `}
-                  Unassign
+                  ${t('barcode', 'unassignButtonLabel')}
                 </button>
               </li>
             </menu>
@@ -431,10 +434,10 @@ export class BarcodesViewElement extends HTMLElement {
           <div class="container">
             <header>
               <material-symbols name="error" size="24"></material-symbols>
-              <h2 id="error-alert-dialog-title">Error</h2>
+              <h2 id="error-alert-dialog-title">${t('barcode', 'errorDialogTitle')}</h2>
             </header>
             <section class="content">
-              <p>${state.error instanceof Error ? state.error.message : 'An error occurred'}</p>
+              <p>${state.error instanceof Error ? state.error.message : t('barcode', 'errorOccurredMessage')}</p>
             </section>
             <menu>
               <li>
@@ -443,7 +446,7 @@ export class BarcodesViewElement extends HTMLElement {
                   type="button"
                   class="text"
                   @click=${handleDismissErrorDialog}
-                >Dismiss</button>
+                >${t('barcode', 'dismissButtonLabel')}</button>
               </li>
             </menu>
           </div>
