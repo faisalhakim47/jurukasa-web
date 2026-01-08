@@ -2,51 +2,43 @@ import { test, expect } from '@playwright/test';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { setupDatabase } from '#test/tools/database.js';
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
 const { describe } = test;
+
+/** @param {string} tursoDatabaseUrl */
+async function setupView(tursoDatabaseUrl) {
+  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
+  localStorage.setItem('tursoDatabaseKey', '');
+  document.body.innerHTML = `
+    <ready-context>
+      <router-context>
+        <database-context>
+          <device-context>
+            <i18n-context>
+              <discounts-view></discounts-view>
+            </i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </ready-context>
+  `;
+}
 
 describe('Discounts View', function () {
   // useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display discounts list', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount) VALUES (1, 'Weekend Promo', NULL, 1, 5000)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context></database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-
-      await database.sql`
-        INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount)
-        VALUES (1, 'Weekend Promo', NULL, 1, 5000)
-      `;
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <discounts-view></discounts-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'Weekend Promo' })).toBeVisible();
@@ -55,24 +47,7 @@ describe('Discounts View', function () {
   test('it shall display empty state when no discounts exist', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <discounts-view></discounts-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByText('No discounts found')).toBeVisible();
     // one that always visible, one in the empty state
@@ -82,24 +57,7 @@ describe('Discounts View', function () {
   test('it shall open discount creation dialog', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <discounts-view></discounts-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByText('No discounts found')).toBeVisible();
     await page.getByRole('button', { name: 'Create Discount' }).first().click();
@@ -113,24 +71,7 @@ describe('Discounts View', function () {
   test('it shall create global discount', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <discounts-view></discounts-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByText('No discounts found')).toBeVisible();
     await page.getByRole('button', { name: 'Create Discount' }).first().click();
@@ -149,50 +90,14 @@ describe('Discounts View', function () {
   });
 
   test('it shall create inventory-specific discount', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Test Product', 10000, 'pcs', 11310)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context></database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-
-      await database.sql`
-        INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time)
-        VALUES (11310, 'Inventory Account', 0, 0, 0)
-      `;
-      await database.sql`
-        INSERT INTO account_tags (account_code, tag)
-        VALUES (11310, 'POS - Inventory')
-      `;
-      await database.sql`
-        INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code)
-        VALUES (1, 'Test Product', 10000, 'pcs', 11310)
-      `;
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <discounts-view></discounts-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByText('No discounts found')).toBeVisible();
     await page.getByRole('button', { name: 'Create Discount' }).first().click();
@@ -217,42 +122,14 @@ describe('Discounts View', function () {
   });
 
   test('it shall open discount details dialog when clicking on a discount', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount) VALUES (1, 'My Promo', NULL, 2, 5000)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context></database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-
-      await database.sql`
-        INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount)
-        VALUES (1, 'My Promo', NULL, 2, 5000)
-      `;
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <discounts-view></discounts-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
 
@@ -265,58 +142,16 @@ describe('Discounts View', function () {
   });
 
   test('it shall filter discounts by type', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Snack', 5000, 'pcs', 11310)`;
+        await sql`INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount) VALUES (1, 'Global Discount', NULL, 1, 1000)`;
+        await sql`INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount) VALUES (2, 'Snack Promo', 1, 3, 500)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context></database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-
-      await database.sql`
-        INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time)
-        VALUES (11310, 'Inventory Account', 0, 0, 0)
-      `;
-      await database.sql`
-        INSERT INTO account_tags (account_code, tag)
-        VALUES (11310, 'POS - Inventory')
-      `;
-      await database.sql`
-        INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code)
-        VALUES (1, 'Snack', 5000, 'pcs', 11310)
-      `;
-      await database.sql`
-        INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount)
-        VALUES (1, 'Global Discount', NULL, 1, 1000)
-      `;
-      await database.sql`
-        INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount)
-        VALUES (2, 'Snack Promo', 1, 3, 500)
-      `;
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <discounts-view></discounts-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'Global Discount' })).toBeVisible();
@@ -336,45 +171,15 @@ describe('Discounts View', function () {
   });
 
   test('it shall search discounts by name', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount) VALUES (1, 'Weekend Sale', NULL, 1, 5000)`;
+        await sql`INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount) VALUES (2, 'New Year Promo', NULL, 1, 10000)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context></database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`
-        INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount)
-        VALUES (1, 'Weekend Sale', NULL, 1, 5000)
-      `;
-      await database.sql`
-        INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount)
-        VALUES (2, 'New Year Promo', NULL, 1, 10000)
-      `;
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <discounts-view></discounts-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: 'Weekend Sale' })).toBeVisible();
@@ -387,41 +192,14 @@ describe('Discounts View', function () {
   });
 
   test('it shall delete discount from details dialog', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount) VALUES (1, 'Delete Me', NULL, 1, 1000)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context></database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`
-        INSERT INTO discounts (id, name, inventory_id, multiple_of_quantity, amount)
-        VALUES (1, 'Delete Me', NULL, 1, 1000)
-      `;
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <discounts-view></discounts-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
     await page.getByRole('row').getByRole('button', { name: 'Delete Me' }).click();

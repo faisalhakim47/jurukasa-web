@@ -1,10 +1,30 @@
 import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { setupDatabase } from '#test/tools/database.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
 const { describe } = test;
+
+/** @param {string} tursoDatabaseUrl */
+async function setupView(tursoDatabaseUrl) {
+  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
+  localStorage.setItem('tursoDatabaseKey', '');
+  document.body.innerHTML = `
+    <ready-context>
+      <router-context>
+        <database-context>
+          <device-context>
+            <i18n-context>
+              <suppliers-view></suppliers-view>
+            </i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </ready-context>
+  `;
+}
 
 describe('Suppliers View', function () {
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
@@ -12,24 +32,7 @@ describe('Suppliers View', function () {
   test('it shall display empty state when no suppliers exist', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <suppliers-view></suppliers-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     // Wait for loading to complete
     await expect(page.getByRole('table', { name: 'Suppliers list' })).not.toBeVisible();
@@ -39,46 +42,16 @@ describe('Suppliers View', function () {
   });
 
   test('it shall display suppliers list when suppliers exist', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Supplier A', '081234567890')`;
+        await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (2, 'Supplier B', '082345678901')`;
+        await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (3, 'Supplier C', NULL)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context></database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      
-      // Create test suppliers
-      await database.sql`
-        INSERT INTO suppliers (id, name, phone_number)
-        VALUES
-          (1, 'Supplier A', '081234567890'),
-          (2, 'Supplier B', '082345678901'),
-          (3, 'Supplier C', NULL)
-      `;
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <suppliers-view></suppliers-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     // Wait for suppliers table to load
     await expect(page.getByRole('table', { name: 'Suppliers list' })).toBeVisible();
@@ -95,46 +68,16 @@ describe('Suppliers View', function () {
   });
 
   test('it shall filter suppliers by search query', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'ABC Supplier', '081234567890')`;
+        await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (2, 'XYZ Trading', '082345678901')`;
+        await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (3, 'ABC Corporation', '083456789012')`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context></database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      
-      // Create test suppliers
-      await database.sql`
-        INSERT INTO suppliers (id, name, phone_number)
-        VALUES
-          (1, 'ABC Supplier', '081234567890'),
-          (2, 'XYZ Trading', '082345678901'),
-          (3, 'ABC Corporation', '083456789012')
-      `;
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <suppliers-view></suppliers-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     // Wait for initial load
     await expect(page.getByRole('table', { name: 'Suppliers list' })).toBeVisible();
@@ -158,47 +101,17 @@ describe('Suppliers View', function () {
   });
 
   test('it shall display pagination controls when suppliers exceed page size', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        // Create 25 test suppliers (page size is 20)
+        for (let index = 1; index <= 25; index++) {
+          await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (${index}, ${`Supplier ${String(index).padStart(2, '0')}`}, NULL)`;
+        }
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context></database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      
-      // Create 25 test suppliers (page size is 20)
-      const values = Array.from({ length: 25 }, function (_, i) {
-        return `(${i + 1}, 'Supplier ${String(i + 1).padStart(2, '0')}', NULL)`;
-      }).join(',');
-      
-      await database.sql([`
-        INSERT INTO suppliers (id, name, phone_number)
-        VALUES ${values}
-      `]);
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <suppliers-view></suppliers-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     // Wait for table to load
     await expect(page.getByRole('table', { name: 'Suppliers list' })).toBeVisible();
@@ -229,24 +142,7 @@ describe('Suppliers View', function () {
   test('it shall open supplier creation dialog when add button is clicked', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <suppliers-view></suppliers-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     // Wait for view to load
     await expect(page.getByText('No Suppliers Found')).toBeVisible();
@@ -259,78 +155,28 @@ describe('Suppliers View', function () {
   });
 
   test('it shall display supplier inventory and purchase counts', async function ({ page }) {
-    await loadEmptyFixture(page);
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        // Create test supplier
+        await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', NULL)`;
+        
+        // Create test inventories (11310 is POS - Inventory account from migrations)
+        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
+        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
+        
+        // Link supplier to inventories
+        await sql`INSERT INTO supplier_inventories (supplier_id, inventory_id) VALUES (1, 1)`;
+        await sql`INSERT INTO supplier_inventories (supplier_id, inventory_id) VALUES (1, 2)`;
+        
+        // Create test purchases
+        await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (1, 1, 0)`;
+        await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (2, 1, 1000)`;
+        await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (3, 1, 2000)`;
+      }),
+    ]);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context></database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      
-      // Create test account
-      await database.sql`
-        INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time)
-        VALUES (11110, 'Inventory Account', 0, 0, 0)
-      `;
-      await database.sql`
-        INSERT INTO account_tags (account_code, tag)
-        VALUES (11110, 'POS - Inventory')
-      `;
-      
-      // Create test supplier
-      await database.sql`
-        INSERT INTO suppliers (id, name, phone_number)
-        VALUES (1, 'Test Supplier', NULL)
-      `;
-      
-      // Create test inventories
-      await database.sql`
-        INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code)
-        VALUES
-          (1, 'Product A', 10000, 'piece', 11110),
-          (2, 'Product B', 20000, 'piece', 11110)
-      `;
-      
-      // Link supplier to inventories
-      await database.sql`
-        INSERT INTO supplier_inventories (supplier_id, inventory_id)
-        VALUES
-          (1, 1),
-          (1, 2)
-      `;
-      
-      // Create test purchases
-      await database.sql`
-        INSERT INTO purchases (id, supplier_id, purchase_time)
-        VALUES
-          (1, 1, 0),
-          (2, 1, 1000),
-          (3, 1, 2000)
-      `;
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <suppliers-view></suppliers-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     // Wait for table to load
     await expect(page.getByRole('table', { name: 'Suppliers list' })).toBeVisible();
@@ -348,24 +194,7 @@ describe('Suppliers View', function () {
   test('it shall reload suppliers list after creating new supplier', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context>
-              <device-context>
-                <i18n-context>
-                  <suppliers-view></suppliers-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     // Wait for empty state
     await expect(page.getByText('No Suppliers Found')).toBeVisible();
