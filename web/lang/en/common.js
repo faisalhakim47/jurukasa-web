@@ -38,6 +38,11 @@ const common = {
   pageNotFoundTitle: 'Page Not Found',
   pageNotFoundMessage: 'The page you are looking for does not exist.',
   goToPurchasesButtonLabel: 'Go to Purchases',
+
+  // Language Selection
+  changeLanguageButtonLabel: 'Change Language',
+  selectLanguageTitle: 'Select Language',
+  closeButtonLabel: 'Close',
 };
 
 /** @typedef {typeof common} CommonTranslation */

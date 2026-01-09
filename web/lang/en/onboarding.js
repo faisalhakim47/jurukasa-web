@@ -9,6 +9,7 @@ const onboarding = {
   businessCurrencyCodeLabel: 'Currency Code',
   businessCurrencyDecimalsLabel: 'Currency Decimals',
   businessLocaleLabel: 'Locale',
+  businessLanguageLabel: 'Language',
   businessFiscalYearStartMonthLabel: 'Fiscal Year Start Month',
 
   chartOfAccountsSetupTitle: 'Choose Chart of Accounts Template',

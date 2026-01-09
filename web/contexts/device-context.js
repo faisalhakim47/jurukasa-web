@@ -28,6 +28,14 @@ export class DeviceContextElement extends HTMLElement {
     this.language = useExposed(host, function readLocale() { return device.language; });
     this.locale = useExposed(host, function readLocale() { return device.locale; });
 
+    /**
+     * Set the application language
+     * @param {string} languageCode - The language code to set (e.g., 'en', 'id')
+     */
+    this.setLanguage = function setLanguage(languageCode) {
+      device.language = languageCode;
+    };
+
     useWindowEventListener(host, 'resize', function syncDeviceOnResize() {
       const defaultOptions = new Intl.DateTimeFormat().resolvedOptions();
       device.isDesktop = window.innerWidth > 768;
@@ -37,11 +45,15 @@ export class DeviceContextElement extends HTMLElement {
     });
 
     useEffect(host, function loadConfig() {
-      database.sql`SELECT value FROM config WHERE key = 'Locale'`
+      database.sql`SELECT value FROM config WHERE key = 'Language'`
         .then(function resolvedConfig(result) {
-          const configLocale = String(result[0]?.value || '');
-          if (configLocale) device.language = configLocale;
-          else device.language = navigator.language || 'en-US';
+          const configLanguage = String(result.rows[0]?.value || '');
+          if (configLanguage) device.language = configLanguage;
+          else device.language = navigator.language || 'en';
+        })
+        .catch(function handleError() {
+          // If Language config doesn't exist yet, fall back to navigator language
+          device.language = navigator.language || 'en';
         });
     });
   }

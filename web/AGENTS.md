@@ -27,6 +27,7 @@ Many part of the applications uses web component incuding:
 - Event handling shall use standard DOM event handling mechanism using `addEventListener` and `dispatchEvent` methods.
 - Use `@event-name` event attachment mechanism via `lit-html` to attach event listeners in the template rendering function.
 - Use reusable named function as event listener instead of inline anonymous function to avoid unnecessary re-attachment of event listeners on each re-rendering. With this constraints, the event listener cannot receive additional parameters except the event object itself. If additional data is needed, use `data-` attributes on the target element to store the data.
+- Remember, implement predefined named functions as event listeners instead of inline functions.
 - Use `useEffect` + `useRender` hooks pattern to handle HTML rendering.
 - The `useEffect` callback on rendering phase must be synchronous, not asynchronous.
 - Custom dialog is implemented by wrapping native `<dialog>` dialog element and integrating it using `useDialog` hook.

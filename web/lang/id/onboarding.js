@@ -11,6 +11,7 @@ export default /** @type {Partial<OnboardingTranslation>} */ ({
   businessCurrencyCodeLabel: 'Kode Mata Uang',
   businessCurrencyDecimalsLabel: 'Desimal Mata Uang',
   businessLocaleLabel: 'Lokal',
+  businessLanguageLabel: 'Bahasa',
   businessFiscalYearStartMonthLabel: 'Bulan Awal Tahun Fiskal',
 
   chartOfAccountsSetupTitle: 'Pilih Template Daftar Akun',

@@ -16,13 +16,6 @@ import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
 
-/**
- * @typedef {object} ConfigItem
- * @property {string} key
- * @property {string} value
- * @property {string | null} description
- */
-
 export class AccountingConfigurationViewElement extends HTMLElement {
   constructor() {
     super();
@@ -38,7 +31,13 @@ export class AccountingConfigurationViewElement extends HTMLElement {
     const errorAlertDialog = useElement(host, HTMLDialogElement);
 
     const state = reactive({
-      config: /** @type {ConfigItem[]} */ ([]),
+      businessName: '',
+      businessType: '',
+      currencyCode: '',
+      currencyDecimals: '',
+      fiscalYearStartMonth: '',
+      language: '',
+      locale: '',
       isLoadingConfig: true,
       configError: /** @type {Error | null} */ (null),
       configFormState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
@@ -55,19 +54,23 @@ export class AccountingConfigurationViewElement extends HTMLElement {
         state.configError = null;
 
         const result = await database.sql`
-          SELECT key, value, description
+          SELECT key, value
           FROM config
-          WHERE key NOT IN ('Schema Version')
-          ORDER BY key ASC
+          WHERE key IN ('Business Name', 'Business Type', 'Currency Code', 'Currency Decimals', 'Fiscal Year Start Month', 'Language', 'Locale')
         `;
 
-        state.config = result.rows.map(function (row) {
-          return /** @type {ConfigItem} */ ({
-            key: String(row.key),
-            value: String(row.value),
-            description: row.description ? String(row.description) : null,
-          });
-        });
+        for (const row of result.rows) {
+          const key = String(row.key);
+          const value = String(row.value);
+          
+          if (key === 'Business Name') state.businessName = value;
+          else if (key === 'Business Type') state.businessType = value;
+          else if (key === 'Currency Code') state.currencyCode = value;
+          else if (key === 'Currency Decimals') state.currencyDecimals = value;
+          else if (key === 'Fiscal Year Start Month') state.fiscalYearStartMonth = value;
+          else if (key === 'Language') state.language = value;
+          else if (key === 'Locale') state.locale = value;
+        }
 
         state.isLoadingConfig = false;
       }
@@ -78,42 +81,6 @@ export class AccountingConfigurationViewElement extends HTMLElement {
     }
 
     useEffect(host, loadConfig);
-
-    /**
-     * Get the input type for a config key
-     * @param {string} key
-     * @returns {'text' | 'number' | 'select'}
-     */
-    function getConfigInputType(key) {
-      if (key === 'Currency Decimals' || key === 'Fiscal Year Start Month') return 'number';
-      if (key === 'Business Type') return 'select';
-      return 'text';
-    }
-
-    /**
-     * Get the options for select config fields
-     * @param {string} key
-     * @returns {string[]}
-     */
-    function getConfigSelectOptions(key) {
-      if (key === 'Business Type') {
-        return ['Small Business', 'Medium Enterprise', 'Corporation', 'Non-Profit'];
-      }
-      return [];
-    }
-
-    /**
-     * Get placeholder text for config fields
-     * @param {string} key
-     * @returns {string}
-     */
-    function getConfigPlaceholder(key) {
-      if (key === 'Business Name') return 'e.g., My Store';
-      if (key === 'Currency Code') return 'e.g., IDR, USD';
-      if (key === 'Locale') return 'e.g., en-ID, id-ID';
-      if (key === 'Fiscal Year Start Month') return '1-12';
-      return '';
-    }
 
     /** @param {SubmitEvent} event */
     async function handleConfigFormSubmit(event) {
@@ -154,7 +121,6 @@ export class AccountingConfigurationViewElement extends HTMLElement {
 
         state.configFormState = 'idle';
 
-        // Reload config to reflect changes
         loadConfig();
       }
       catch (error) {
@@ -179,6 +145,41 @@ export class AccountingConfigurationViewElement extends HTMLElement {
         }
       }
     });
+
+    /** @param {MouseEvent} event */
+    function handleSelectBusinessType(event) {
+      assertInstanceOf(HTMLButtonElement, event.currentTarget);
+      const selectedValue = event.currentTarget.dataset.value || '';
+      const form = event.currentTarget.closest('form');
+      if (form instanceof HTMLFormElement) {
+        const hiddenInput = form.querySelector('input[name="Business Type"]');
+        const displayInput = form.querySelector('#business-type-input');
+        if (hiddenInput instanceof HTMLInputElement) {
+          hiddenInput.value = selectedValue;
+        }
+        if (displayInput instanceof HTMLInputElement) {
+          displayInput.value = selectedValue;
+        }
+      }
+    }
+
+    /** @param {MouseEvent} event */
+    function handleSelectLanguage(event) {
+      assertInstanceOf(HTMLButtonElement, event.currentTarget);
+      const selectedValue = event.currentTarget.dataset.value || '';
+      const displayName = event.currentTarget.dataset.displayName || selectedValue;
+      const form = event.currentTarget.closest('form');
+      if (form instanceof HTMLFormElement) {
+        const hiddenInput = form.querySelector('input[name="Language"]');
+        const displayInput = form.querySelector('#language-input');
+        if (hiddenInput instanceof HTMLInputElement) {
+          hiddenInput.value = selectedValue;
+        }
+        if (displayInput instanceof HTMLInputElement) {
+          displayInput.value = displayName;
+        }
+      }
+    }
 
     function renderLoadingIndicator() {
       return html`
@@ -235,9 +236,18 @@ export class AccountingConfigurationViewElement extends HTMLElement {
       `;
     }
 
+    function getLanguageDisplayName(langCode) {
+      if (langCode === 'en') return 'English';
+      if (langCode === 'id') return 'Bahasa Indonesia';
+      return langCode;
+    }
+
     function renderAccountingConfigPanel() {
       if (state.isLoadingConfig) return renderLoadingIndicator();
       if (state.configError instanceof Error) return renderErrorNotice(state.configError, loadConfig);
+
+      const languageDisplayValue = state.language ? getLanguageDisplayName(state.language) : t('settings', 'selectPlaceholder');
+      const businessTypeDisplayValue = state.businessType || t('settings', 'selectPlaceholder');
 
       return html`
         <form @submit=${handleConfigFormSubmit} style="display: flex; flex-direction: column; gap: 24px; max-width: 600px;">
@@ -250,84 +260,200 @@ export class AccountingConfigurationViewElement extends HTMLElement {
             </div>
           ` : nothing}
 
-          ${state.config.map(function (item) {
-        const inputType = getConfigInputType(item.key);
-        const inputId = `config-${item.key.toLowerCase().replace(/\s+/g, '-')}-input`;
+          <div class="outlined-text-field">
+            <div class="container">
+              <label for="business-name-input">Business Name</label>
+              <input
+                id="business-name-input"
+                name="Business Name"
+                type="text"
+                placeholder=" "
+                value="${state.businessName}"
+              />
+            </div>
+          </div>
 
-        if (inputType === 'select') {
-          const options = getConfigSelectOptions(item.key);
-          return html`
-                <div class="outlined-text-field" style="anchor-name: --${inputId}-anchor;">
-                  <div class="container">
-                    <label for="${inputId}">${item.key}</label>
-                    <input
-                      id="${inputId}"
-                      type="button"
-                      value="${item.value || t('settings', 'selectPlaceholder')}"
-                      popovertarget="${inputId}-menu"
-                      popovertargetaction="show"
-                      placeholder=" "
-                    />
-                    <input type="hidden" name="${item.key}" value="${item.value}" />
-                    <label for="${inputId}" class="trailing-icon">
-                      <material-symbols name="arrow_drop_down"></material-symbols>
-                    </label>
-                  </div>
-                  ${item.description ? html`<div class="supporting-text">${item.description}</div>` : nothing}
-                </div>
-                <menu role="menu" popover id="${inputId}-menu" class="dropdown" style="position-anchor: --${inputId}-anchor;">
-                  ${options.map(function (option) {
-            return html`
-                      <li>
-                        <button
-                          role="menuitem"
-                          type="button"
-                          @click=${function handleSelectOption(event) {
-                assertInstanceOf(HTMLButtonElement, event.currentTarget);
-                const form = event.currentTarget.closest('form');
-                if (form instanceof HTMLFormElement) {
-                  const hiddenInput = form.querySelector(`input[name="${item.key}"]`);
-                  const displayInput = form.querySelector(`#${inputId}`);
-                  if (hiddenInput instanceof HTMLInputElement) {
-                    hiddenInput.value = option;
-                  }
-                  if (displayInput instanceof HTMLInputElement) {
-                    displayInput.value = option;
-                  }
-                }
-              }}
-                          popovertarget="${inputId}-menu"
-                          popovertargetaction="hide"
-                          aria-selected=${option === item.value ? 'true' : 'false'}
-                        >
-                          ${option === item.value ? html`<material-symbols name="check"></material-symbols>` : ''}
-                          ${option}
-                        </button>
-                      </li>
-                    `;
-          })}
-                </menu>
-              `;
-        }
+          <div class="outlined-text-field" style="anchor-name: --business-type-input-anchor;">
+            <div class="container">
+              <label for="business-type-input">Business Type</label>
+              <input
+                id="business-type-input"
+                type="button"
+                value="${businessTypeDisplayValue}"
+                popovertarget="business-type-input-menu"
+                popovertargetaction="show"
+                placeholder=" "
+              />
+              <input type="hidden" name="Business Type" value="${state.businessType}" />
+              <label for="business-type-input" class="trailing-icon">
+                <material-symbols name="arrow_drop_down"></material-symbols>
+              </label>
+            </div>
+          </div>
+          <menu role="menu" popover id="business-type-input-menu" class="dropdown" style="position-anchor: --business-type-input-anchor;">
+            <li>
+              <button
+                role="menuitem"
+                type="button"
+                data-value="Small Business"
+                @click=${handleSelectBusinessType}
+                popovertarget="business-type-input-menu"
+                popovertargetaction="hide"
+                aria-selected=${state.businessType === 'Small Business' ? 'true' : 'false'}
+              >
+                ${state.businessType === 'Small Business' ? html`<material-symbols name="check"></material-symbols>` : nothing}
+                Small Business
+              </button>
+            </li>
+            <li>
+              <button
+                role="menuitem"
+                type="button"
+                data-value="Medium Enterprise"
+                @click=${handleSelectBusinessType}
+                popovertarget="business-type-input-menu"
+                popovertargetaction="hide"
+                aria-selected=${state.businessType === 'Medium Enterprise' ? 'true' : 'false'}
+              >
+                ${state.businessType === 'Medium Enterprise' ? html`<material-symbols name="check"></material-symbols>` : nothing}
+                Medium Enterprise
+              </button>
+            </li>
+            <li>
+              <button
+                role="menuitem"
+                type="button"
+                data-value="Corporation"
+                @click=${handleSelectBusinessType}
+                popovertarget="business-type-input-menu"
+                popovertargetaction="hide"
+                aria-selected=${state.businessType === 'Corporation' ? 'true' : 'false'}
+              >
+                ${state.businessType === 'Corporation' ? html`<material-symbols name="check"></material-symbols>` : nothing}
+                Corporation
+              </button>
+            </li>
+            <li>
+              <button
+                role="menuitem"
+                type="button"
+                data-value="Non-Profit"
+                @click=${handleSelectBusinessType}
+                popovertarget="business-type-input-menu"
+                popovertargetaction="hide"
+                aria-selected=${state.businessType === 'Non-Profit' ? 'true' : 'false'}
+              >
+                ${state.businessType === 'Non-Profit' ? html`<material-symbols name="check"></material-symbols>` : nothing}
+                Non-Profit
+              </button>
+            </li>
+          </menu>
 
-        return html`
-              <div class="outlined-text-field">
-                <div class="container">
-                  <label for="${inputId}">${item.key}</label>
-                  <input
-                    id="${inputId}"
-                    name="${item.key}"
-                    type="${inputType === 'number' ? 'number' : 'text'}"
-                    placeholder=" "
-                    value="${item.value}"
-                    ${inputType === 'number' && item.key === 'Fiscal Year Start Month' ? html`min="1" max="12"` : nothing}
-                    ${inputType === 'number' && item.key === 'Currency Decimals' ? html`min="0" max="4"` : nothing}
-                  />
-                </div>
-                ${item.description ? html`<div class="supporting-text">${item.description}</div>` : nothing}
-              </div>
-            `;
-      })}
+          <div class="outlined-text-field">
+            <div class="container">
+              <label for="currency-code-input">Currency Code</label>
+              <input
+                id="currency-code-input"
+                name="Currency Code"
+                type="text"
+                placeholder=" "
+                value="${state.currencyCode}"
+              />
+            </div>
+          </div>
+
+          <div class="outlined-text-field">
+            <div class="container">
+              <label for="currency-decimals-input">Currency Decimals</label>
+              <input
+                id="currency-decimals-input"
+                name="Currency Decimals"
+                type="number"
+                placeholder=" "
+                value="${state.currencyDecimals}"
+                min="0"
+                max="4"
+              />
+            </div>
+          </div>
+
+          <div class="outlined-text-field">
+            <div class="container">
+              <label for="fiscal-year-start-month-input">Fiscal Year Start Month</label>
+              <input
+                id="fiscal-year-start-month-input"
+                name="Fiscal Year Start Month"
+                type="number"
+                placeholder=" "
+                value="${state.fiscalYearStartMonth}"
+                min="1"
+                max="12"
+              />
+            </div>
+          </div>
+
+          <div class="outlined-text-field" style="anchor-name: --language-input-anchor;">
+            <div class="container">
+              <label for="language-input">Language</label>
+              <input
+                id="language-input"
+                type="button"
+                value="${languageDisplayValue}"
+                popovertarget="language-input-menu"
+                popovertargetaction="show"
+                placeholder=" "
+              />
+              <input type="hidden" name="Language" value="${state.language}" />
+              <label for="language-input" class="trailing-icon">
+                <material-symbols name="arrow_drop_down"></material-symbols>
+              </label>
+            </div>
+          </div>
+          <menu role="menu" popover id="language-input-menu" class="dropdown" style="position-anchor: --language-input-anchor;">
+            <li>
+              <button
+                role="menuitem"
+                type="button"
+                data-value="en"
+                data-display-name="English"
+                @click=${handleSelectLanguage}
+                popovertarget="language-input-menu"
+                popovertargetaction="hide"
+                aria-selected=${state.language === 'en' ? 'true' : 'false'}
+              >
+                ${state.language === 'en' ? html`<material-symbols name="check"></material-symbols>` : nothing}
+                English
+              </button>
+            </li>
+            <li>
+              <button
+                role="menuitem"
+                type="button"
+                data-value="id"
+                data-display-name="Bahasa Indonesia"
+                @click=${handleSelectLanguage}
+                popovertarget="language-input-menu"
+                popovertargetaction="hide"
+                aria-selected=${state.language === 'id' ? 'true' : 'false'}
+              >
+                ${state.language === 'id' ? html`<material-symbols name="check"></material-symbols>` : nothing}
+                Bahasa Indonesia
+              </button>
+            </li>
+          </menu>
+
+          <div class="outlined-text-field">
+            <div class="container">
+              <label for="locale-input">Locale</label>
+              <input
+                id="locale-input"
+                name="Locale"
+                type="text"
+                placeholder=" "
+                value="${state.locale}"
+              />
+            </div>
+          </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 12px; padding-top: 16px;">
             <button

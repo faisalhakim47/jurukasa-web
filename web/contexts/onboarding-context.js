@@ -9,6 +9,9 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
+import { assertInstanceOf } from '#web/tools/assertion.js';
+
+import '#web/components/material-symbols.js';
 
 export class OnboardingContextElement extends HTMLElement {
   constructor() {
@@ -80,6 +83,7 @@ export class OnboardingContextElement extends HTMLElement {
         await tx.sql`UPDATE config SET value = ${formData.get('currency-code')} WHERE key = 'Currency Code'`;
         await tx.sql`UPDATE config SET value = ${formData.get('currency-decimals')} WHERE key = 'Currency Decimals'`;
         await tx.sql`UPDATE config SET value = ${formData.get('locale')} WHERE key = 'Locale'`;
+        await tx.sql`UPDATE config SET value = ${formData.get('language')} WHERE key = 'Language'`;
         await tx.sql`UPDATE config SET value = ${formData.get('fiscal-year-start-month')} WHERE key = 'Fiscal Year Start Month'`;
         await tx.commit();
 
@@ -94,7 +98,7 @@ export class OnboardingContextElement extends HTMLElement {
     };
 
     /** @param {SubmitEvent} event */
-    const submitChartOfAccounts = async function (event) {
+    async function submitChartOfAccounts(event) {
       event.preventDefault();
       const form = /** @type {HTMLFormElement} */ (event.target);
       const formData = new FormData(form);
@@ -109,6 +113,18 @@ export class OnboardingContextElement extends HTMLElement {
         console.error('Failed to save chart of accounts', error);
       }
     };
+
+    /** @param {Event} event */
+    function handleLanguageSelection(event) {
+      assertInstanceOf(HTMLButtonElement, event.currentTarget);
+      const selectedLanguage = event.currentTarget.dataset.language;
+      event.currentTarget.form.elements['language'].value = selectedLanguage;
+      event.currentTarget.form.elements['language-display'].value = event.currentTarget.textContent;
+      for (const li of event.currentTarget.closest('[role="menu"]').children) {
+        assertInstanceOf(HTMLButtonElement, li.firstChild);
+        li.firstChild.setAttribute('aria-checked', selectedLanguage === li.firstChild.dataset.language ? 'true' : 'false');
+      }
+    }
 
     useEffect(host, function renderOnboardingView() {
       if (onboarding.state === 'init') render(html`<p>${t('onboarding', 'loadingIndicatorLabel')}</p>`);
@@ -155,6 +171,47 @@ export class OnboardingContextElement extends HTMLElement {
                     <input id="locale" name="locale" type="text" placeholder=" " required value="en-ID" />
                   </div>
                 </div>
+
+                <div class="outlined-text-field" style="anchor-name: --language-input-anchor;">
+                  <div class="container">
+                    <label for="language-input">${t('onboarding', 'businessLanguageLabel')}</label>
+                    <input
+                      id="language-input"
+                      type="button"
+                      name="language-display"
+                      value="English"
+                      popovertarget="language-menu"
+                      popovertargetaction="show"
+                      placeholder=" "
+                    />
+                    <input type="hidden" name="language" value="en" />
+                    <label for="language-input" class="trailing-icon">
+                      <material-symbols name="arrow_drop_down"></material-symbols>
+                    </label>
+                  </div>
+                </div>
+                <menu role="menu" popover id="language-menu" class="dropdown" style="position-anchor: --language-input-anchor;">
+                  <li>
+                    <button
+                      role="menuitemradio"
+                      type="button"
+                      @click=${handleLanguageSelection}
+                      data-language="en"
+                      popovertarget="language-menu"
+                      popovertargetaction="hide"
+                    >English</button>
+                  </li>
+                  <li>
+                    <button
+                      role="menuitem"
+                      type="button"
+                      @click=${handleLanguageSelection}
+                      data-language="id"
+                      popovertarget="language-menu"
+                      popovertargetaction="hide"
+                    >Bahasa Indonesia</button>
+                  </li>
+                </menu>
 
                 <div class="outlined-text-field">
                   <div class="container">

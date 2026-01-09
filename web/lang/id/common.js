@@ -40,4 +40,9 @@ export default /** @type {Partial<CommonTranslation>} */ ({
   pageNotFoundTitle: 'Halaman Tidak Ditemukan',
   pageNotFoundMessage: 'Halaman yang Anda cari tidak ada.',
   goToPurchasesButtonLabel: 'Ke Pembelian',
+
+  // Language Selection
+  changeLanguageButtonLabel: 'Ubah Bahasa',
+  selectLanguageTitle: 'Pilih Bahasa',
+  closeButtonLabel: 'Tutup',
 });

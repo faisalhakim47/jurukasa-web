@@ -32,6 +32,7 @@ CREATE TABLE config (
     'Currency Code',
     'Currency Decimals',
     'Locale',
+    'Language',
     'Fiscal Year Start Month'
   )),
   value TEXT NOT NULL CHECK (length(value) >= 0),
@@ -49,6 +50,7 @@ INSERT INTO config (key, value, description, create_time, update_time) VALUES
   ('Currency Code', 'IDR', 'Base currency code (ISO 4217)', 0, 0),
   ('Currency Decimals', '0', 'Number of decimal places for currency (0 for IDR)', 0, 0),
   ('Locale', 'en-ID', 'ISO 639-1 and ISO 3166-1 separated by hyphen (e.g., en-US, en-ID)', 0, 0),
+  ('Language', 'en', 'Application language code (e.g., en, id)', 0, 0),
   ('Fiscal Year Start Month', '1', 'Fiscal year start month (1-12)', 0, 0); -- EOS
 
 -- =================================================================
