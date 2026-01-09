@@ -435,6 +435,7 @@ export class JournalEntriesViewElement extends HTMLElement {
                       popovertarget="source-menu"
                       popovertargetaction="show"
                       placeholder=" "
+                      aria-label="${t('journalEntry', 'sourceLabel')}"
                     />
                     <label for="source-filter-input" class="trailing-icon">
                       <material-symbols name="arrow_drop_down"></material-symbols>
@@ -469,6 +470,7 @@ export class JournalEntriesViewElement extends HTMLElement {
                       popovertarget="status-menu"
                       popovertargetaction="show"
                       placeholder=" "
+                      aria-label="${t('journalEntry', 'statusLabel')}"
                     />
                     <label for="status-filter-input" class="trailing-icon" aria-hidden="true">
                       <material-symbols name="arrow_drop_down"></material-symbols>

@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 const { describe } = test;
 
 describe('Main View', function () {
+  useStrict(test);
+
   describe('Device Detection', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
@@ -43,7 +46,6 @@ describe('Main View', function () {
       await page.getByRole('radio', { name: 'Retail Business - Indonesia' }).click();
       await page.getByRole('button', { name: 'Finish' }).click();
 
-      // Should land on dashboard after setup
       await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
     });
   });

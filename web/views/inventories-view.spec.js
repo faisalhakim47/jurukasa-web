@@ -3,6 +3,7 @@ import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -28,6 +29,8 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Inventories View - Basic Display', function () {
+  // useConsoleOutput(test);
+  useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display empty state when no inventories exist', async function ({ page }) {
@@ -81,7 +84,7 @@ describe('Inventories View - Basic Display', function () {
     await expect(page.getByRole('button', { name: 'Orange Juice', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Apple Pie', exact: true })).toBeVisible();
 
-    await page.locator('#inventory-search-input').fill('Apple');
+    await page.getByRole('textbox', { name: 'Search' }).fill('Apple');
 
     await expect(page.getByRole('button', { name: 'Apple Juice', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Apple Pie', exact: true })).toBeVisible();
@@ -105,7 +108,7 @@ describe('Inventories View - Basic Display', function () {
     await expect(page.getByRole('button', { name: 'Low Stock Item', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Out of Stock Item', exact: true })).toBeVisible();
 
-    await page.locator('#stock-filter-input').click();
+    await page.getByRole('button', { name: 'All' }).click();
     await page.getByRole('menuitem', { name: 'Out of Stock' }).click();
 
     await expect(page.getByRole('button', { name: 'Out of Stock Item', exact: true })).toBeVisible();
@@ -116,6 +119,7 @@ describe('Inventories View - Basic Display', function () {
 
 describe('Inventories View - Price Edit Button', function () {
   // useConsoleOutput(test);
+  useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display edit button beside unit price column', async function ({ page }) {
@@ -162,25 +166,19 @@ describe('Inventories View - Price Edit Button', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for inventory to load
     await expect(page.getByRole('table', { name: 'Inventories list' })).toBeVisible();
 
-    // Verify original price is displayed in table (IDR 10,000 = 10000 in lowest denomination)
     const tableRow = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Test Product' }) });
     await expect(tableRow).toContainText('IDR 10,000');
 
-    // Click edit button
     await page.getByRole('button', { name: 'Update unit price for Test Product' }).click();
 
-    // Update price in dialog
     await page.getByLabel('New Unit Price').clear();
     await page.getByLabel('New Unit Price').fill('25000');
     await page.getByRole('dialog', { name: 'Update Unit Price' }).getByRole('button', { name: 'Update Price' }).click();
 
-    // Dialog should close
     await expect(page.getByRole('dialog', { name: 'Update Unit Price' })).not.toBeVisible();
 
-    // Table should refresh and show updated price (IDR 25,000 = 25000 in lowest denomination)
     await expect(tableRow).toContainText('IDR 25,000');
   });
 
@@ -196,18 +194,14 @@ describe('Inventories View - Price Edit Button', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for inventories to load
     await expect(page.getByRole('table', { name: 'Inventories list' })).toBeVisible();
 
-    // Verify edit buttons exist for all inventories
     await expect(page.getByRole('button', { name: 'Update unit price for Product A' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Update unit price for Product B' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Update unit price for Product C' })).toBeVisible();
 
-    // Click edit button for Product B
     await page.getByRole('button', { name: 'Update unit price for Product B' }).click();
 
-    // Verify correct product is shown in dialog
     await expect(page.getByRole('dialog', { name: 'Update Unit Price' })).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Update Unit Price' }).getByText('Product B')).toBeVisible();
     await expect(page.getByLabel('New Unit Price')).toHaveValue('20000');

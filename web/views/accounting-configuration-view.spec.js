@@ -3,6 +3,7 @@ import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
 const { describe } = test;
@@ -28,6 +29,7 @@ async function setupView(tursoDatabaseUrl) {
 
 describe('Accounting Configuration View', function () {
   // useConsoleOutput(test);
+  useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display accounting configuration form', async function ({ page }) {

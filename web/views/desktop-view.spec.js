@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 const { describe } = test;
 
 describe('Desktop View', function () {
@@ -25,6 +26,7 @@ describe('Desktop View', function () {
   }
 
   describe('Navigation Rail', function () {
+    useStrict(test);
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
     test('shall display main navigation', async function ({ page }) {

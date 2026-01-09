@@ -24,7 +24,7 @@ export class ReadyContextElement extends HTMLElement {
 
     /**
      * This busy resolver can only be called after or on connectedCallback.
-     * @returns {() => void}
+     * @returns {function():void}
      */
     this.createBusyResolver = function createBusyResolver() {
       /** @type {PromiseWithResolvers<void>} */
@@ -85,7 +85,7 @@ export class ReadyContextElement extends HTMLElement {
 }
 
 export class ReadyContextRequestEvent extends CustomEvent {
-  /** @param {() => void} callback */
+  /** @param {function():void} callback */
   constructor(callback) {
     super('ready-context:request', {
       bubbles: true,
@@ -100,7 +100,7 @@ defineWebComponent('ready-context', ReadyContextElement);
 /**
  * This busy resolver can only be called on constructor (component setup lifecycle).
  * @param {HTMLElement} host
- * @returns {() => void}
+ * @returns {function():void}
  */
 export function useBusyStateResolver(host) {
   const ready = useOptionalContext(host, ReadyContextElement);
@@ -118,7 +118,7 @@ export function useBusyStateResolver(host) {
 
 /**
  * @param {HTMLElement} host
- * @param {() => boolean} isReady vue reactive computed function
+ * @param {function():boolean} isReady vue reactive computed function
  */
 export function useBusyStateUntil(host, isReady) {
   const ready = useBusyStateResolver(host);
@@ -132,7 +132,7 @@ export function useBusyStateUntil(host, isReady) {
 
 /**
  * @param {HTMLElement} host
- * @param {() => void} callback
+ * @param {function():void} callback
  */
 export function useReady(host, callback) {
   useConnectedCallback(host, function connectedBeforeReady() {

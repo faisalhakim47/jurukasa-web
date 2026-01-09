@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 const { describe } = test;
 
 describe('Settings View', function () {
   // useConsoleOutput(test);
+  useStrict(test);
 
   /**
    * @param {import('@playwright/test').Page} page
@@ -344,64 +346,6 @@ describe('Settings View', function () {
       await expect(table.getByRole('columnheader', { name: 'Fee' })).toBeVisible();
       await expect(table.getByText('Cash')).toBeVisible();
     });
-  });
-
-  describe('Payment Method Details', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
-    async function createPaymentMethod(page, name) {
-      await page.getByRole('tab', { name: 'Payment Methods' }).click();
-
-      const paymentsPanel = page.getByRole('tabpanel', { name: 'Payment Methods' });
-      await paymentsPanel.getByRole('button', { name: 'Add Payment Method' }).first().click();
-
-      const dialog = page.getByRole('dialog', { name: 'Create Payment Method' });
-      await dialog.getByLabel('Payment Method Name').fill(name);
-      await dialog.getByRole('button', { name: 'Select Account' }).click();
-      
-      const accountSelectorDialog = page.getByRole('dialog', { name: 'Select Account' });
-      await accountSelectorDialog.getByRole('menuitemradio', { name: 'Kas 11110' }).click();
-
-      await dialog.getByRole('button', { name: 'Create' }).click();
-
-      await expect(dialog).not.toBeVisible();
-    }
-
-    // TODO: Refactor the settings view before re-enabling these tests
-
-    // test('shall display payment method details', async function ({ page }) {
-    //   await setupDatabaseAndNavigateToSettings(page, tursoLibSQLiteServer().url);
-
-    //   await createPaymentMethod(page, 'Cash');
-
-    //   await page.getByRole('button', { name: 'Payment method Cash' }).click();
-
-    //   const detailsDialog = page.getByRole('dialog', { name: 'Payment Method Details' });
-    //   await expect(detailsDialog.getByText('Cash')).toBeVisible();
-    //   await expect(detailsDialog.getByText('1101 Cash')).toBeVisible();
-    // });
-
-    // test('shall display Update button in details dialog', async function ({ page }) {
-    //   await setupDatabaseAndNavigateToSettings(page, tursoLibSQLiteServer().url);
-
-    //   await createPaymentMethod(page, 'Cash');
-
-    //   await page.getByRole('button', { name: 'Payment method Cash' }).click();
-
-    //   const detailsDialog = page.getByRole('dialog', { name: 'Payment Method Details' });
-    //   await expect(detailsDialog.getByRole('button', { name: 'Update' })).toBeVisible();
-    // });
-
-    // test('shall display Delete button in details dialog', async function ({ page }) {
-    //   await setupDatabaseAndNavigateToSettings(page, tursoLibSQLiteServer().url);
-
-    //   await createPaymentMethod(page, 'Cash');
-
-    //   await page.getByRole('button', { name: 'Payment method Cash' }).click();
-
-    //   const detailsDialog = page.getByRole('dialog', { name: 'Payment Method Details' });
-    //   await expect(detailsDialog.getByRole('button', { name: 'Delete' })).toBeVisible();
-    // });
   });
 
   describe('Settings Tab Navigation', function () {

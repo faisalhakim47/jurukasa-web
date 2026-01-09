@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 /** @import { Page } from '@playwright/test'*/
 const { describe } = test;
 
@@ -29,6 +30,7 @@ async function setupDatabaseAndNavigate(page, tursoLibSQLiteServerUrl) {
 }
 
 describe('Journal Entries', function () {
+  useStrict(test);
 
   describe('Journal Entries List', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
@@ -38,8 +40,8 @@ describe('Journal Entries', function () {
 
       await expect(page.getByRole('heading', { name: 'Accounting' })).toBeVisible();
       await expect(page.getByRole('tab', { name: 'Journal Entries' })).toHaveAttribute('aria-selected', 'true');
-      await expect(page.getByRole('heading', { name: 'No journal entries yet' })).toBeVisible();
-      await expect(page.getByText('Create your first journal entry to start tracking your financial transactions.')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'No journal entries found' })).toBeVisible();
+      await expect(page.getByText('Journal entries will appear here once you create them.')).toBeVisible();
     });
 
     test('shall display New Entry button in empty state', async function ({ page }) {

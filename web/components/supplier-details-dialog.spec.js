@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -46,6 +47,7 @@ async function setupPage(page, tursoDatabaseUrl, supplierId) {
 
 describe('Supplier Details Dialog', function () {
   // useConsoleOutput(test);
+  useStrict(test);
 
   describe('Supplier Inventory Management', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
@@ -121,7 +123,7 @@ describe('Supplier Details Dialog', function () {
 
       await page.getByLabel('Search Inventory').fill('Test');
 
-      await page.getByRole('option', { name: /Test Product/ }).click();
+      await page.getByRole('option', { name: 'Test Product Unit: piece' }).click();
 
       await page.getByLabel('Conversion').clear();
       await page.getByLabel('Conversion').fill('6');
@@ -377,7 +379,7 @@ describe('Supplier Details Dialog', function () {
 
       await page.getByRole('button', { name: 'Add Mapping' }).click();
 
-      await page.getByRole('option', { name: /Test Product/ }).click();
+      await page.getByRole('option', { name: 'Test Product Unit: piece' }).click();
 
       await page.getByLabel('Conversion').clear();
       await page.getByLabel('Conversion').fill('12');

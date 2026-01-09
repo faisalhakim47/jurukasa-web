@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -27,6 +28,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Sales View', function () {
+  useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   describe('Empty State', function () {
@@ -36,8 +38,8 @@ describe('Sales View', function () {
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       // Wait for loading to complete
-      await expect(page.getByRole('table', { name: /sales/i })).not.toBeVisible();
-      await expect(page.getByText(/no sales found/i)).toBeVisible();
+      await expect(page.getByRole('table', { name: 'Sales list' })).not.toBeVisible();
+      await expect(page.getByText('No sales found')).toBeVisible();
     });
 
     test('shall display call-to-action button in empty state', async function ({ page }) {
@@ -46,7 +48,7 @@ describe('Sales View', function () {
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       // Verify call-to-action button exists (filter for visible one)
-      await expect(page.getByText(/no sales found/i)).toBeVisible();
+      await expect(page.getByText('No sales found')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Go to Point-of-Sale' })).toBeVisible();
     });
   });
@@ -69,12 +71,12 @@ describe('Sales View', function () {
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       // Wait for sales table to load
-      await expect(page.getByRole('table', { name: /sales/i })).toBeVisible();
+      await expect(page.getByRole('table', { name: 'Sales list' })).toBeVisible();
       
       // Verify sales are displayed
-      await expect(page.getByRole('button', { name: /#1/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: /#2/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: /#3/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#2' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#3' })).toBeVisible();
     });
 
     test('shall display sale customer names', async function ({ page }) {
@@ -89,9 +91,9 @@ describe('Sales View', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('table', { name: /sales/i })).toBeVisible();
+      await expect(page.getByRole('table', { name: 'Sales list' })).toBeVisible();
       // Customer name might be displayed in the items summary column or elsewhere
-      await expect(page.getByRole('button', { name: /#1/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
     });
   });
 
@@ -113,24 +115,24 @@ describe('Sales View', function () {
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       // Wait for initial load
-      await expect(page.getByRole('table', { name: /sales/i })).toBeVisible();
-      await expect(page.getByRole('button', { name: /#1/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: /#2/ })).toBeVisible();
+      await expect(page.getByRole('table', { name: 'Sales list' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#2' })).toBeVisible();
 
       // Search for "Alice"
       await page.getByLabel('Search').fill('Alice');
 
       // Verify only Alice sales are visible
-      await expect(page.getByRole('button', { name: /#1/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: /#3/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: /#2/ })).not.toBeVisible();
+      await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#3' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#2' })).not.toBeVisible();
 
       // Clear search
       await page.getByLabel('Search').clear();
 
       // Verify all sales are visible again
-      await expect(page.getByRole('button', { name: /#1/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: /#2/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#2' })).toBeVisible();
     });
   });
 
@@ -152,30 +154,29 @@ describe('Sales View', function () {
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       // Wait for initial load
-      await expect(page.getByRole('table', { name: /sales/i })).toBeVisible();
+      await expect(page.getByRole('table', { name: 'Sales list' })).toBeVisible();
 
       // Open status filter dropdown
-      const statusFilterButton = page.locator('input[popovertarget="status-filter-menu"]');
-      await statusFilterButton.click();
+      await page.getByLabel('Status', { exact: true }).click();
 
       // Select "Posted" filter
-      await page.getByRole('menuitem').filter({ hasText: /posted/i }).click();
+      await page.getByRole('menuitem').filter({ hasText: 'Posted' }).click();
 
       // Verify only posted sales are visible
-      await expect(page.getByRole('button', { name: /#1/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: /#3/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: /#2/ })).not.toBeVisible();
+      await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#3' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#2' })).not.toBeVisible();
 
       // Open status filter dropdown again
-      await statusFilterButton.click();
+      await page.getByLabel('Status', { exact: true }).click();
 
       // Select "Draft" filter
-      await page.getByRole('menuitem').filter({ hasText: /draft/i }).click();
+      await page.getByRole('menuitem').filter({ hasText: 'Draft' }).click();
 
       // Verify only draft sales are visible
-      await expect(page.getByRole('button', { name: /#2/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: /#1/ })).not.toBeVisible();
-      await expect(page.getByRole('button', { name: /#3/ })).not.toBeVisible();
+      await expect(page.getByRole('button', { name: '#2' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '#1' })).not.toBeVisible();
+      await expect(page.getByRole('button', { name: '#3' })).not.toBeVisible();
     });
   });
 
@@ -196,11 +197,11 @@ describe('Sales View', function () {
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       // Wait for table to load
-      await expect(page.getByRole('table', { name: /sales/i })).toBeVisible();
+      await expect(page.getByRole('table', { name: 'Sales list' })).toBeVisible();
 
       // Verify pagination controls are visible
-      await expect(page.getByRole('navigation', { name: /pagination/i })).toBeVisible();
-      await expect(page.getByText(/showing.*of 15/i)).toBeVisible();
+      await expect(page.getByRole('navigation', { name: 'Pagination' })).toBeVisible();
+      await expect(page.getByText('Showing 1–10 of 15')).toBeVisible();
       
       // Verify first page sales are visible (sales are ordered DESC, so 15-6)
       await expect(page.getByRole('button', { name: '#15', exact: true })).toBeVisible();
@@ -210,10 +211,10 @@ describe('Sales View', function () {
       await expect(page.getByRole('button', { name: '#1', exact: true })).not.toBeVisible();
 
       // Navigate to next page
-      await page.getByRole('button', { name: /next page/i }).click();
+      await page.getByRole('button', { name: 'Next page' }).click();
 
       // Verify second page content (sales are ordered DESC, so 5-1)
-      await expect(page.getByText(/showing.*11.*15.*of 15/i)).toBeVisible();
+      await expect(page.getByText('Showing 11–15 of 15')).toBeVisible();
       await expect(page.getByRole('button', { name: '#5', exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: '#1', exact: true })).toBeVisible();
       
@@ -236,22 +237,22 @@ describe('Sales View', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('table', { name: /sales/i })).toBeVisible();
+      await expect(page.getByRole('table', { name: 'Sales list' })).toBeVisible();
 
       // Go to next page (shows older sales)
-      await page.getByRole('button', { name: /next page/i }).click();
+      await page.getByRole('button', { name: 'Next page' }).click();
       await expect(page.getByRole('button', { name: '#5', exact: true })).toBeVisible();
 
       // Go to previous page (shows newer sales)
-      await page.getByRole('button', { name: /previous page/i }).click();
+      await page.getByRole('button', { name: 'Previous page' }).click();
       await expect(page.getByRole('button', { name: '#15', exact: true })).toBeVisible();
 
       // Go to last page (shows oldest sales)
-      await page.getByRole('button', { name: /last page/i }).click();
+      await page.getByRole('button', { name: 'Last page' }).click();
       await expect(page.getByRole('button', { name: '#1', exact: true })).toBeVisible();
 
       // Go to first page (shows newest sales)
-      await page.getByRole('button', { name: /first page/i }).click();
+      await page.getByRole('button', { name: 'First page' }).click();
       await expect(page.getByRole('button', { name: '#15', exact: true })).toBeVisible();
     });
   });
@@ -269,10 +270,10 @@ describe('Sales View', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('table', { name: /sales/i })).toBeVisible();
+      await expect(page.getByRole('table', { name: 'Sales list' })).toBeVisible();
 
       // Click sale ID
-      await page.getByRole('button', { name: /#1/ }).click();
+      await page.getByRole('button', { name: '#1' }).click();
 
       // Verify sale details dialog opened
       await expect(page.getByRole('dialog', { name: 'Sale #1' })).toBeVisible();
@@ -284,7 +285,7 @@ describe('Sales View', function () {
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       // Verify refresh button exists
-      await expect(page.getByRole('button', { name: /refresh/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
     });
 
     test('shall have button link to point of sale', async function ({ page }) {

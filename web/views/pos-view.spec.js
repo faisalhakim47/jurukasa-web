@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -11,8 +12,6 @@ const { describe } = test;
 async function setupView(tursoDatabaseUrl) {
   localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
   localStorage.setItem('tursoDatabaseKey', '');
-  await import('/web/views/pos-view.js');
-  await customElements.whenDefined('pos-view');
   document.body.innerHTML = `
     <ready-context>
       <router-context>
@@ -29,6 +28,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('POS View', function () {
+  useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   /**
@@ -36,9 +36,9 @@ describe('POS View', function () {
    */
   async function setupPOSData(sql) {
     // All accounts and most tags already exist from default chart, just add specific inventories, payment methods, and discounts
-    await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
-    await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
-    await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (3, 'Product C', 15000, 'unit', 11310)`;
+    await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock) VALUES (1, 'Product A', 10000, 'piece', 11310, 100)`;
+    await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock) VALUES (2, 'Product B', 20000, 'piece', 11310, 100)`;
+    await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock) VALUES (3, 'Product C', 15000, 'unit', 11310, 100)`;
     await sql`INSERT INTO payment_methods (id, name, min_fee, max_fee, rel_fee, account_code) VALUES (1, 'Cash', 0, 0, 0, 11110)`;
     await sql`INSERT INTO payment_methods (id, name, min_fee, max_fee, rel_fee, account_code) VALUES (2, 'Bank Transfer', 2000, 5000, 10000, 11120)`;
     await sql`INSERT INTO payment_methods (id, name, min_fee, max_fee, rel_fee, account_code) VALUES (3, 'Credit Card', 1000, 10000, 20000, 11120)`;
@@ -54,9 +54,9 @@ describe('POS View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: /point of sale/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /products/i })).toBeVisible();
-    await expect(page.getByLabel(/search/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Point of Sale' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Products' })).toBeVisible();
+    await expect(page.getByLabel('Search')).toBeVisible();
   });
 
   test('it shall display empty invoice state initially', async function ({ page }) {
@@ -67,10 +67,10 @@ describe('POS View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByText(/no items added/i)).toBeVisible();
-    await expect(page.getByText(/no discounts applied/i)).toBeVisible();
-    await expect(page.getByText(/no payments added/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /complete sale/i })).toBeDisabled();
+    await expect(page.getByText('No items added yet')).toBeVisible();
+    await expect(page.getByText('No discounts applied')).toBeVisible();
+    await expect(page.getByText('No payments added')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Complete Sale' })).toBeDisabled();
   });
 
   test('it shall display inventories in the selector', async function ({ page }) {
@@ -84,7 +84,7 @@ describe('POS View', function () {
     await expect(page.getByRole('listitem').filter({ hasText: 'Product A' })).toBeVisible();
     await expect(page.getByRole('listitem').filter({ hasText: 'Product B' })).toBeVisible();
     await expect(page.getByRole('listitem').filter({ hasText: 'Product C' })).toBeVisible();
-    await expect(page.getByText(/stock.*100/i)).toBeVisible();
+    await expect(page.getByRole('listitem').filter({ hasText: 'Product A' }).getByText('Stock: 100 piece')).toBeVisible();
   });
 
   test('it shall add inventory to sale when clicked', async function ({ page }) {
@@ -98,7 +98,7 @@ describe('POS View', function () {
     await expect(page.getByRole('listitem').filter({ hasText: 'Product A' })).toBeVisible();
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
 
-    const itemsTable = page.getByRole('table', { name: /items/i });
+    const itemsTable = page.getByRole('table', { name: 'Sale items' });
     await expect(itemsTable.getByText('Product A')).toBeVisible();
     await expect(itemsTable.getByText('1', { exact: true })).toBeVisible();
   });
@@ -115,9 +115,10 @@ describe('POS View', function () {
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
 
-    const itemsTable = page.getByRole('table', { name: /items/i });
+    const itemsTable = page.getByRole('table', { name: 'Sale items' });
     const productRow = itemsTable.getByRole('row').filter({ hasText: 'Product A' });
-    await expect(productRow.getByText('2')).toBeVisible();
+    const quantityCell = productRow.getByRole('cell').filter({ has: page.getByRole('button', { name: 'Increase quantity' }) });
+    await expect(quantityCell.getByText('2', { exact: true })).toBeVisible();
   });
 
   test('it shall allow incrementing item quantity using plus button', async function ({ page }) {
@@ -130,11 +131,12 @@ describe('POS View', function () {
 
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
     
-    const itemsTable = page.getByRole('table', { name: /items/i });
+    const itemsTable = page.getByRole('table', { name: 'Sale items' });
     const productRow = itemsTable.getByRole('row').filter({ hasText: 'Product A' });
-    await productRow.getByRole('button', { name: /increase quantity/i }).click();
+    await productRow.getByRole('button', { name: 'Increase quantity' }).click();
 
-    await expect(productRow.getByText('2')).toBeVisible();
+    const quantityCell = productRow.getByRole('cell').filter({ has: page.getByRole('button', { name: 'Increase quantity' }) });
+    await expect(quantityCell.getByText('2', { exact: true })).toBeVisible();
   });
 
   test('it shall allow decrementing item quantity using minus button', async function ({ page }) {
@@ -148,9 +150,9 @@ describe('POS View', function () {
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
     
-    const itemsTable = page.getByRole('table', { name: /items/i });
+    const itemsTable = page.getByRole('table', { name: 'Sale items' });
     const productRow = itemsTable.getByRole('row').filter({ hasText: 'Product A' });
-    await productRow.getByRole('button', { name: /decrease quantity/i }).click();
+    await productRow.getByRole('button', { name: 'Decrease quantity' }).click();
 
     await expect(productRow.getByText('1', { exact: true })).toBeVisible();
   });
@@ -165,11 +167,11 @@ describe('POS View', function () {
 
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
     
-    const itemsTable = page.getByRole('table', { name: /items/i });
+    const itemsTable = page.getByRole('table', { name: 'Sale items' });
     const productRow = itemsTable.getByRole('row').filter({ hasText: 'Product A' });
-    await productRow.getByRole('button', { name: /decrease quantity/i }).click();
+    await productRow.getByRole('button', { name: 'Decrease quantity' }).click();
 
-    await expect(page.getByText(/no items added/i)).toBeVisible();
+    await expect(page.getByText('No items added yet')).toBeVisible();
   });
 
   test('it shall allow removing item using delete button', async function ({ page }) {
@@ -184,11 +186,11 @@ describe('POS View', function () {
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
     
-    const itemsTable = page.getByRole('table', { name: /items/i });
+    const itemsTable = page.getByRole('table', { name: 'Sale items' });
     const productRow = itemsTable.getByRole('row').filter({ hasText: 'Product A' });
-    await productRow.getByRole('button', { name: /remove item/i }).click();
+    await productRow.getByRole('button', { name: 'Remove item' }).click();
 
-    await expect(page.getByText(/no items added/i)).toBeVisible();
+    await expect(page.getByText('No items added yet')).toBeVisible();
   });
 
   test('it shall filter inventories when search query is entered', async function ({ page }) {
@@ -202,7 +204,7 @@ describe('POS View', function () {
     await expect(page.getByRole('listitem').filter({ hasText: 'Product A' })).toBeVisible();
     await expect(page.getByRole('listitem').filter({ hasText: 'Product B' })).toBeVisible();
     
-    await page.getByLabel(/search/i).fill('Product A');
+    await page.getByLabel('Search').fill('Product A');
 
     await expect(page.getByRole('listitem').filter({ hasText: 'Product A' })).toBeVisible();
     await expect(page.getByRole('listitem').filter({ hasText: 'Product B' })).not.toBeVisible();
@@ -219,7 +221,7 @@ describe('POS View', function () {
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
     await page.getByRole('listitem').filter({ hasText: 'Product B' }).click();
 
-    await expect(page.getByText(/total/i).and(page.getByText(/30,000/i))).toBeVisible();
+    await expect(page.getByText('Total', { exact: true }).locator('..').getByText('30,000')).toBeVisible();
   });
 
   test('it shall clear sale when clear button is clicked', async function ({ page }) {
@@ -232,12 +234,12 @@ describe('POS View', function () {
 
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
     
-    const itemsTable = page.getByRole('table', { name: /items/i });
+    const itemsTable = page.getByRole('table', { name: 'Sale items' });
     await expect(itemsTable.getByText('Product A')).toBeVisible();
     
-    await page.getByRole('button', { name: /clear/i }).click();
+    await page.getByRole('button', { name: 'Clear' }).click();
 
-    await expect(page.getByText(/no items added/i)).toBeVisible();
+    await expect(page.getByText('No items added yet')).toBeVisible();
   });
 
   test('it shall show error when trying to complete sale without payment', async function ({ page }) {
@@ -250,6 +252,6 @@ describe('POS View', function () {
 
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
     
-    await expect(page.getByRole('button', { name: /complete sale/i })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Complete Sale' })).toBeDisabled();
   });
 });

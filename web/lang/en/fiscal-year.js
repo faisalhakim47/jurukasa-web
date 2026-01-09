@@ -5,8 +5,8 @@ const fiscalYear = {
   loadErrorTitle: 'Unable to load fiscal years',
   retryActionLabel: 'Retry',
   refreshActionLabel: 'Refresh',
-  emptyStateTitle: 'No fiscal years defined',
-  emptyStateMessage: 'Create your first fiscal year to organize your accounting periods and enable income statement reporting.',
+  emptyStateTitle: 'No fiscal years found',
+  emptyStateMessage: 'Create your first fiscal year to start managing your accounting periods.',
   createActionLabel: 'Create Fiscal Year',
   newFiscalYearActionLabel: 'New Fiscal Year',
   
@@ -24,11 +24,11 @@ const fiscalYear = {
   statusReversed: 'Reversed',
   
   // Fiscal year row display
-  fiscalYearDefaultName: 'FY %d',
+  fiscalYearDefaultName: 'Fiscal Year %d',
   reverseActionLabel: 'Reverse',
   
   // Creation Dialog
-  creationTitle: 'Create Fiscal Year',
+  creationTitle: 'Create New Fiscal Year',
   creationSubmitLabel: 'Create',
   creationLoadingLabel: 'Creating fiscal year...',
   creationSuccessLabel: 'Fiscal year created!',

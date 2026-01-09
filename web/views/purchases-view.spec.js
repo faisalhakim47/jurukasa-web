@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
 const { describe } = test;
@@ -26,6 +27,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Purchases View', function () {
+  useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display empty state when no purchases exist', async function ({ page }) {
@@ -45,10 +47,10 @@ describe('Purchases View', function () {
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Supplier A', '081234567890')`;
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (2, 'Supplier B', '082345678901')`;
-        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (11110, 'Inventory Account', 0, 0, 0)`;
-        await sql`INSERT INTO account_tags (account_code, tag) VALUES (11110, 'POS - Inventory')`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11110)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11110)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (11111, 'Inventory Account', 0, 0, 0)`;
+        await sql`INSERT INTO account_tags (account_code, tag) VALUES (11111, 'POS - Inventory')`;
+        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11111)`;
+        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11111)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (1, 1, 1000000, 1000000)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (2, 2, 2000000, NULL)`;
         await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_quantity, quantity, price) VALUES (1, 1, 1, 10, 10, 100000)`;
@@ -161,9 +163,9 @@ describe('Purchases View', function () {
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', NULL)`;
-        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (11110, 'Inventory Account', 0, 0, 0)`;
-        await sql`INSERT INTO account_tags (account_code, tag) VALUES (11110, 'POS - Inventory')`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11110)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (11112, 'Inventory Account', 0, 0, 0)`;
+        await sql`INSERT INTO account_tags (account_code, tag) VALUES (11112, 'POS - Inventory')`;
+        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11112)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (1, 1, 1000000, 1000000)`;
         await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_quantity, quantity, price) VALUES (1, 1, 1, 10, 10, 100000)`;
         await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_quantity, quantity, price) VALUES (1, 2, 1, 5, 5, 50000)`;

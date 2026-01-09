@@ -431,6 +431,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
                 id="type-filter-input"
                 type="button"
                 value="${state.typeFilter}"
+                aria-label="${t('account', 'typeFilterLabel')}"
                 popovertarget="type-filter-menu"
                 popovertargetaction="show"
                 placeholder=" "
@@ -466,6 +467,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
                 id="status-filter-input"
                 type="button"
                 value="${state.statusFilter}"
+                aria-label="${t('account', 'statusFilterLabel')}"
                 popovertarget="status-filter-menu"
                 popovertargetaction="show"
                 placeholder=" "
@@ -673,9 +675,11 @@ export class ChartOfAccountsViewElement extends HTMLElement {
             <div>
               <button role="button" class="text" @click=${expandAll} aria-label="${t('account', 'expandAllAriaLabel')}" title="${t('account', 'expandAllTitle')}">
                 <material-symbols name="unfold_more"></material-symbols>
+                ${t('account', 'expandAllButtonLabel')}
               </button>
               <button role="button" class="text" @click=${collapseAll} aria-label="${t('account', 'collapseAllAriaLabel')}" title="${t('account', 'collapseAllTitle')}">
                 <material-symbols name="unfold_less"></material-symbols>
+                ${t('account', 'collapseAllButtonLabel')}
               </button>
               <button role="button" class="text" @click=${loadAccounts} aria-label="${t('account', 'refreshAriaLabel')}">
                 <material-symbols name="refresh"></material-symbols>

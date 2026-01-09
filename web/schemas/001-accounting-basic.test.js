@@ -1,10 +1,11 @@
 import { describe, it } from 'node:test';
 import { equal, rejects } from 'node:assert/strict';
 
-import { useLibSQLiteClient } from '#web/schemas/test/hooks/use-libsqlite-client.js';
+import { useSql } from '#web/schemas/test/hooks/use-sql.js';
 
 describe('Accounting Schema Tests - Basic', function () {
-  const db = useLibSQLiteClient();
+  const sql = useSql();
+
   const testTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
 
   /**
@@ -14,11 +15,10 @@ describe('Accounting Schema Tests - Basic', function () {
    * @param {number} [controlCode]
    */
   async function createAccount(code, name, normalBalance, controlCode) {
-    await db().execute(
-      `INSERT INTO accounts (account_code, name, normal_balance, control_account_code, create_time, update_time)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [code, name, normalBalance, controlCode ?? null, testTime, testTime],
-    );
+    await sql`
+      INSERT INTO accounts (account_code, name, normal_balance, control_account_code, create_time, update_time)
+      VALUES (${code}, ${name}, ${normalBalance}, ${controlCode ?? null}, ${testTime}, ${testTime})
+    `;
   };
 
   /**
@@ -26,20 +26,16 @@ describe('Accounting Schema Tests - Basic', function () {
    * @param {string} tag
    */
   async function addTag(code, tag) {
-    await db().execute(
-      `INSERT INTO account_tags (account_code, tag) VALUES (?, ?)`,
-      [code, tag],
-    );
+    await sql`INSERT INTO account_tags (account_code, tag) VALUES (${code}, ${tag})`;
   };
 
   /**
    * @param {Date} entryDate
    */
   async function draftJournalEntry(entryDate) {
-    const result = await db().execute(
-      `INSERT INTO journal_entries (entry_time) VALUES (?) RETURNING ref`,
-      [entryDate.getTime()],
-    );
+    const result = await sql`
+      INSERT INTO journal_entries (entry_time) VALUES (${entryDate.getTime()}) RETURNING ref
+    `;
     return Number(result.rows[0].ref);
   };
 
@@ -50,11 +46,10 @@ describe('Accounting Schema Tests - Basic', function () {
    * @param {number} credit
    */
   async function addJournalLine(ref, accountCode, debit, credit) {
-    await db().execute(
-      `INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
-       VALUES (?, ?, ?, ?)`,
-      [ref, accountCode, debit, credit],
-    );
+    await sql`
+      INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
+      VALUES (${ref}, ${accountCode}, ${debit}, ${credit})
+    `;
   };
 
   /**
@@ -62,24 +57,18 @@ describe('Accounting Schema Tests - Basic', function () {
    * @param {Date} postDate
    */
   async function postJournalEntry(ref, postDate) {
-    await db().execute(
-      `UPDATE journal_entries SET post_time = ? WHERE ref = ?`,
-      [postDate.getTime(), ref],
-    );
+    await sql`UPDATE journal_entries SET post_time = ${postDate.getTime()} WHERE ref = ${ref}`;
   };
 
   describe('Configuration', function () {
     it('shall have default configuration values', async function () {
-      const result = await db().execute(`SELECT * FROM config WHERE key = 'Currency Code'`);
+      const result = await sql`SELECT * FROM config WHERE key = ${'Currency Code'}`;
       equal(result.rows[0].value, 'IDR');
     });
 
     it('shall update configuration', async function () {
-      await db().execute(
-        `UPDATE config SET value = 'USD', update_time = ? WHERE key = 'Currency Code'`,
-        [testTime]
-      );
-      const result = await db().execute(`SELECT * FROM config WHERE key = 'Currency Code'`);
+      await sql`UPDATE config SET value = 'USD', update_time = ${testTime} WHERE key = ${'Currency Code'}`;
+      const result = await sql`SELECT * FROM config WHERE key = ${'Currency Code'}`;
       equal(result.rows[0].value, 'USD');
       equal(result.rows[0].update_time, testTime);
     });
@@ -89,14 +78,14 @@ describe('Accounting Schema Tests - Basic', function () {
     it('shall create accounts and maintain is_posting_account flag', async function () {
       // Create Parent
       await createAccount(1000, 'Assets', 0);
-      let parent = (await db().execute(`SELECT * FROM accounts WHERE account_code = 1000`)).rows[0];
+      let parent = (await sql`SELECT * FROM accounts WHERE account_code = ${1000}`).rows[0];
       equal(parent.is_posting_account, 1, 'Parent should be posting initially');
 
       // Create Child
       await createAccount(1100, 'Current Assets', 0, 1000);
 
-      parent = (await db().execute(`SELECT * FROM accounts WHERE account_code = 1000`)).rows[0];
-      const child = (await db().execute(`SELECT * FROM accounts WHERE account_code = 1100`)).rows[0];
+      parent = (await sql`SELECT * FROM accounts WHERE account_code = ${1000}`).rows[0];
+      const child = (await sql`SELECT * FROM accounts WHERE account_code = ${1100}`).rows[0];
 
       equal(parent.is_posting_account, 0, 'Parent should not be posting after adding child');
       equal(child.is_posting_account, 1, 'Child should be posting');
@@ -106,9 +95,9 @@ describe('Accounting Schema Tests - Basic', function () {
       await createAccount(1000, 'Assets', 0);
       await createAccount(1100, 'Current Assets', 0, 1000);
 
-      await db().execute(`DELETE FROM accounts WHERE account_code = 1100`);
+      await sql`DELETE FROM accounts WHERE account_code = ${1100}`;
 
-      const parent = (await db().execute(`SELECT * FROM accounts WHERE account_code = 1000`)).rows[0];
+      const parent = (await sql`SELECT * FROM accounts WHERE account_code = ${1000}`).rows[0];
       equal(parent.is_posting_account, 1, 'Parent should revert to posting after child delete');
     });
 
@@ -148,7 +137,7 @@ describe('Accounting Schema Tests - Basic', function () {
       await addTag(1000, 'Asset');
 
       await rejects(
-        db().execute(`UPDATE account_tags SET tag = 'Liability' WHERE account_code = 1000`),
+        sql`UPDATE account_tags SET tag = 'Liability' WHERE account_code = ${1000}`,
         /Cannot update account_tags: tags are immutable/
       );
     });
@@ -164,14 +153,14 @@ describe('Accounting Schema Tests - Basic', function () {
       await addJournalLine(ref, 4000, 0, 500);
 
       // Verify balances before post
-      let cash = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 1000`)).rows[0];
+      let cash = (await sql`SELECT balance FROM accounts WHERE account_code = ${1000}`).rows[0];
       equal(cash.balance, 0);
 
       await postJournalEntry(ref, new Date(2025, 0, 2, 0, 0, 0, 0));
 
       // Verify balances after post
-      cash = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 1000`)).rows[0];
-      const sales = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 4000`)).rows[0];
+      cash = (await sql`SELECT balance FROM accounts WHERE account_code = ${1000}`).rows[0];
+      const sales = (await sql`SELECT balance FROM accounts WHERE account_code = ${4000}`).rows[0];
 
       equal(cash.balance, 500);
       equal(sales.balance, 500);
@@ -211,13 +200,13 @@ describe('Accounting Schema Tests - Basic', function () {
 
       // Try to delete
       await rejects(
-        db().execute(`DELETE FROM journal_entries WHERE ref = ?`, [ref]),
+        sql`DELETE FROM journal_entries WHERE ref = ${ref}`,
         /Cannot delete posted journal entry/
       );
 
       // Try to unpost
       await rejects(
-        db().execute(`UPDATE journal_entries SET post_time = NULL WHERE ref = ?`, [ref]),
+        sql`UPDATE journal_entries SET post_time = NULL WHERE ref = ${ref}`,
         /Cannot unpost or change post_time of a posted journal entry/
       );
 

@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 const { describe } = test;
 
 describe('Fixed Assets', function () {
   // useConsoleOutput(test);
+  useStrict(test);
 
   /**
    * @param {import('@playwright/test').Page} page

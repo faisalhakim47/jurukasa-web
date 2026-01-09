@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -27,6 +28,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Stock Taking Creation View', function () {
+  useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display page header and description', async function ({ page }) {
@@ -42,10 +44,8 @@ describe('Stock Taking Creation View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Verify page header is visible
     await expect(page.getByRole('heading', { name: 'New Stock Taking' })).toBeVisible();
-    
-    // Verify info message is displayed
+
     await expect(page.getByText('Select an inventory item to perform stock taking')).toBeVisible();
   });
 
@@ -54,8 +54,7 @@ describe('Stock Taking Creation View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Verify empty state is displayed
-    await expect(page.getByText(/no inventories found/i)).toBeVisible();
+    await expect(page.getByText('No inventories found')).toBeVisible();
   });
 
   test('it shall display inventories list', async function ({ page }) {
@@ -70,10 +69,8 @@ describe('Stock Taking Creation View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Verify inventories table is visible
     await expect(page.getByRole('table')).toBeVisible();
-    
-    // Verify product names are displayed
+
     await expect(page.getByText('Product A')).toBeVisible();
     await expect(page.getByText('Product B')).toBeVisible();
     await expect(page.getByText('Product C')).toBeVisible();
@@ -92,7 +89,7 @@ describe('Stock Taking Creation View', function () {
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     const inventoriesTable = page.getByRole('table');
-    
+
     await expect(inventoriesTable.getByText('100')).toBeVisible();
     await expect(inventoriesTable.getByText('50')).toBeVisible();
     await expect(inventoriesTable.getByText('75')).toBeVisible();
@@ -110,9 +107,9 @@ describe('Stock Taking Creation View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    const auditButtons = page.getByRole('button', { name: /audit/i });
+    const auditButtons = page.getByRole('button', { name: 'Audit' });
     await expect(auditButtons.first()).toBeVisible();
-    
+
     // Should have 3 audit buttons (one for each product)
     await expect(auditButtons).toHaveCount(3);
   });
@@ -130,14 +127,13 @@ describe('Stock Taking Creation View', function () {
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     // Verify "Never" audit status is displayed for items without latest_stock_taking_time
-    await expect(page.getByText(/never/i).first()).toBeVisible();
+    await expect(page.getByText('Never').first()).toBeVisible();
   });
 
   test('it shall display audit status for recently audited inventories', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Create inventory with recent audit (within 7 days)
         const recentTime = Date.now() - (3 * 24 * 60 * 60 * 1000); // 3 days ago
         await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, latest_stock_taking_time) VALUES (1, 'Product A', 10000, 'piece', 11310, ${recentTime})`;
       }),
@@ -145,15 +141,13 @@ describe('Stock Taking Creation View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Verify "Recent" audit status is displayed
-    await expect(page.getByText(/recent/i)).toBeVisible();
+    await expect(page.getByText('Recent')).toBeVisible();
   });
 
   test('it shall display audit status for overdue inventories', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Create inventory with overdue audit (over 30 days)
         const overdueTime = Date.now() - (40 * 24 * 60 * 60 * 1000); // 40 days ago
         await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, latest_stock_taking_time) VALUES (1, 'Product A', 10000, 'piece', 11310, ${overdueTime})`;
       }),
@@ -161,8 +155,7 @@ describe('Stock Taking Creation View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Verify "Overdue" audit status is displayed
-    await expect(page.getByText(/overdue/i)).toBeVisible();
+    await expect(page.getByText('Overdue')).toBeVisible();
   });
 
   test('it shall filter inventories by search query', async function ({ page }) {
@@ -177,59 +170,50 @@ describe('Stock Taking Creation View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Verify all products are initially visible
     await expect(page.getByText('Product A')).toBeVisible();
     await expect(page.getByText('Product B')).toBeVisible();
     await expect(page.getByText('Product C')).toBeVisible();
-    
-    // Enter search query
-    await page.getByLabel(/search/i).fill('Product A');
 
-    // Verify only Product A is visible
+    await page.getByLabel('Search').fill('Product A');
+
     await expect(page.getByText('Product A')).toBeVisible();
     await expect(page.getByText('Product B')).not.toBeVisible();
     await expect(page.getByText('Product C')).not.toBeVisible();
   });
 
-  test.skip('it shall display pagination controls when inventories exceed page size', async function ({ page }) {
-    // TODO: Fix pagination implementation - currently all items show on all pages
+  test('it shall display pagination controls when inventories exceed page size', async function ({ page }) {
     // This test is skipped until pagination is fixed in the application
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         // Create 25 test inventories (page size is 20)
-        for (let i = 1; i <= 25; i++) {
-          await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (${i}, ${'Product ' + i}, 10000, 'piece', 11310)`;
+        for (let index = 1; index <= 25; index++) {
+          await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (${index}, ${'Product ' + index}, 10000, 'piece', 11310)`;
         }
       }),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for table to load
     await expect(page.getByRole('table')).toBeVisible();
 
-    // Verify pagination controls are visible
     await expect(page.getByRole('navigation', { name: 'Pagination' })).toBeVisible();
     await expect(page.getByText('Showing 1–20 of 25')).toBeVisible();
-    
-    // Verify first page products are visible
+
+    // Products are sorted alphabetically, so Product 1, 10-19, 2, 20-24 appear on page 1
     await expect(page.getByText('Product 1', { exact: true })).toBeVisible();
-    await expect(page.getByText('Product 20', { exact: true })).toBeVisible();
-    
-    // TODO: Fix pagination - currently all items show on first page
-    // Product 21 should not be visible on first page but currently shows
-    // await expect(page.getByText('Product 21', { exact: true })).not.toBeVisible();
+    await expect(page.getByText('Product 2', { exact: true })).toBeVisible();
+    await expect(page.getByText('Product 4', { exact: true })).toBeVisible();
+    // Product 5 should not be visible on first page (it's on page 2 due to alphabetical order)
+    await expect(page.getByText('Product 5', { exact: true })).not.toBeVisible();
 
-    // Navigate to next page
-    await page.getByRole('button', { name: /next page/i }).click();
+    await page.getByRole('button', { name: 'Next page' }).click();
 
-    // Verify second page content
     await expect(page.getByText('Showing 21–25 of 25')).toBeVisible();
-    await expect(page.getByText('Product 21', { exact: true })).toBeVisible();
-    await expect(page.getByText('Product 25', { exact: true })).toBeVisible();
-    
-    // Product 1 should not be visible on second page
+    // Products 5-9 appear on page 2 due to alphabetical sorting (25, 3-9)
+    await expect(page.getByText('Product 5', { exact: true })).toBeVisible();
+    await expect(page.getByText('Product 9', { exact: true })).toBeVisible();
+
     await expect(page.getByText('Product 1', { exact: true })).not.toBeVisible();
   });
 
@@ -246,17 +230,13 @@ describe('Stock Taking Creation View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for table to load
     await expect(page.getByRole('table')).toBeVisible();
 
-    // Navigate to next page
-    await page.getByRole('button', { name: /next page/i }).click();
+    await page.getByRole('button', { name: 'Next page' }).click();
     await expect(page.getByText('Showing 21–25 of 25')).toBeVisible();
 
-    // Navigate back to first page
-    await page.getByRole('button', { name: /first page/i }).click();
+    await page.getByRole('button', { name: 'First page' }).click();
 
-    // Verify first page content
     await expect(page.getByText('Showing 1–20 of 25')).toBeVisible();
     await expect(page.getByText('Product 1', { exact: true })).toBeVisible();
   });
@@ -273,22 +253,18 @@ describe('Stock Taking Creation View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for initial load
     await expect(page.getByRole('table')).toBeVisible();
     await expect(page.getByText('Product A')).toBeVisible();
 
-    // Add a new inventory via database
     await page.evaluate(async function () {
       /** @type {import('#web/contexts/database-context.js').DatabaseContextElement} */
       const database = document.querySelector('database-context');
-      
+
       await database.sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (4, 'Product D', 25000, 'piece', 11310)`;
     });
 
-    // Click refresh button
-    await page.getByRole('button', { name: /refresh/i }).click();
+    await page.getByRole('button', { name: 'Refresh' }).click();
 
-    // Verify new inventory appears
     await expect(page.getByText('Product D')).toBeVisible();
   });
 
@@ -311,8 +287,7 @@ describe('Stock Taking Creation View', function () {
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     const inventoriesTable = page.getByRole('table');
-    
-    // Verify cost values are displayed (in IDR format)
+
     await expect(inventoriesTable.getByText(/5,000/)).toBeVisible();
     await expect(inventoriesTable.getByText(/10,000/)).toBeVisible();
   });
@@ -321,7 +296,6 @@ describe('Stock Taking Creation View', function () {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Create inventory with specific audit timestamp (Jan 1, 2025)
         const timestamp = new Date('2025-01-01T10:00:00Z').getTime();
         await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, latest_stock_taking_time) VALUES (1, 'Product A', 10000, 'piece', 11310, ${timestamp})`;
       }),
@@ -329,11 +303,11 @@ describe('Stock Taking Creation View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for table to load
     await expect(page.getByRole('table')).toBeVisible();
-    
-    // Verify date is formatted (the exact format depends on i18n configuration)
-    const dateCell = page.getByText(/2025|Jan|01/i);
-    await expect(dateCell).toBeVisible();
+
+    // Check for date text that includes the year 2025 or the specific date
+    // The date format could be locale-specific, so we check for a visible date element
+    const table = page.getByRole('table');
+    await expect(table.getByText('2025', { exact: false }).first()).toBeVisible();
   });
 });

@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
  * This hook will spawn clean/empty Turso LibSQLite database server before each test and destroy it after each test.
  * 
  * @param {typeof test} test
- * @returns {() => TursoLibSQLiteServerState}
+ * @returns {function(): TursoLibSQLiteServerState}
  */
 export function useTursoLibSQLiteServer(test) {
   const { beforeEach, afterEach } = test;
@@ -45,7 +45,7 @@ export function useTursoLibSQLiteServer(test) {
 }
 
 /**
- * @returns {Promise<{ url: string, teardown: () => Promise<void> }>}
+ * @returns {Promise<{ url: string, teardown: function():Promise<void> }>}
  */
 async function startTursoLibSQLiteServer() {
   return await new Promise(async function spawnTursoProcess(resolve, reject) {

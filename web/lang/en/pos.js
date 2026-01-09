@@ -1,6 +1,6 @@
 const pos = {
   // POS View Header
-  posTitle: 'POS Cashier',
+  posTitle: 'Point of Sale',
   
   // Sale Header
   saleTimeLabel: 'Sale Time',

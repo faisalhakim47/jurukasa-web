@@ -52,7 +52,7 @@ export function overrideWebComponentCallbacks(constructor) {
 
   constructor.prototype.connectedCallback = function overriddenConnectedCallback() {
     tryCall(this, connectedCallback);
-    /** @type {Set<() => void | (() => void)>} */
+    /** @type {Set<function():void | (function():void)>} */
     const connectedCallbackSet = this[connectedCallbackSetKey];
     if (connectedCallbackSet instanceof Set) for (const connectedCallback of Array.from(connectedCallbackSet)) {
       const disconnectedCallback = tryCall(this, connectedCallback);
@@ -63,7 +63,7 @@ export function overrideWebComponentCallbacks(constructor) {
   };
   constructor.prototype.disconnectedCallback = function overriddenDisconnectedCallback() {
     tryCall(this, disconnectedCallback);
-    /** @type {Set<() => void>} */
+    /** @type {Set<function():void>} */
     const disconnectedCallbackSet = this[disconnectedCallbackSetKey];
     if (disconnectedCallbackSet instanceof Set) {
       for (const disconnectedCallback of Array.from(disconnectedCallbackSet)) tryCall(this, disconnectedCallback);
@@ -90,10 +90,10 @@ export function overrideWebComponentCallbacks(constructor) {
 
 /**
  * @param {HTMLElement} host
- * @param {() => void | (() => void)} callback - The callback to execute on connect. Can optionally return a disconnected function that will be called on disconnect.
+ * @param {function():void} callback - The callback to execute on connect. Can optionally return a disconnected function that will be called on disconnect.
  */
 export function useConnectedCallback(host, callback) {
-  /** @type {Set<() => void>} */
+  /** @type {Set<function():void>} */
   const connectedCallbackSet = (host[connectedCallbackSetKey] ??= new Set());
   connectedCallbackSet.add(callback);
 }

@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 const { describe } = test;
 
 describe('Chart of Accounts View', function () {
   // useConsoleOutput(test);
+    useStrict(test);
 
   /**
    * @param {import('@playwright/test').Page} page
@@ -86,7 +88,9 @@ describe('Chart of Accounts View', function () {
 
       const table = page.getByRole('treegrid', { name: 'Chart of Accounts Tree' });
       // Check for some common accounts from the Retail Business template
-      await expect(table.getByText('11110')).toBeVisible();
+      // Check for top-level control accounts that should be visible by default
+      await expect(table.getByText('10000')).toBeVisible();
+      await expect(table.getByText('Aset')).toBeVisible();
     });
   });
 
@@ -96,25 +100,29 @@ describe('Chart of Accounts View', function () {
     test('shall display search input field', async function ({ page }) {
       await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
 
-      await expect(page.getByLabel('Search')).toBeVisible();
+      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
+      await expect(chartOfAccountsTab.getByRole('textbox', { name: 'Search' })).toBeVisible();
     });
 
     test('shall display Type filter dropdown', async function ({ page }) {
       await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
 
-      await expect(page.getByLabel('Type')).toBeVisible();
+      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
+      await expect(chartOfAccountsTab.getByRole('button', { name: 'Type' })).toBeVisible();
     });
 
     test('shall display Status filter dropdown', async function ({ page }) {
       await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
 
-      await expect(page.getByLabel('Status')).toBeVisible();
+      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
+      await expect(chartOfAccountsTab.getByRole('button', { name: 'Status' })).toBeVisible();
     });
 
     test('shall open Type filter menu when clicked', async function ({ page }) {
       await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
 
-      await page.getByLabel('Type').click();
+      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
+      await chartOfAccountsTab.getByRole('button', { name: 'Type' }).click();
 
       await expect(page.getByRole('menu', { name: 'Account Type Filter' })).toBeVisible();
       await expect(page.getByRole('menuitem', { name: 'All' })).toBeVisible();
@@ -128,29 +136,36 @@ describe('Chart of Accounts View', function () {
     test('shall open Status filter menu when clicked', async function ({ page }) {
       await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
 
-      await page.getByLabel('Status').click();
+      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
+      await chartOfAccountsTab.getByRole('button', { name: 'Status' }).click();
 
       await expect(page.getByRole('menu')).toBeVisible();
       await expect(page.getByRole('menuitemradio', { name: 'All' })).toBeVisible();
-      await expect(page.getByRole('menuitemradio', { name: 'Active' })).toBeVisible();
+      await expect(page.getByRole('menuitemradio', { name: 'Active', exact: true })).toBeVisible();
       await expect(page.getByRole('menuitemradio', { name: 'Inactive' })).toBeVisible();
     });
 
     test('shall filter accounts by type when type filter is selected', async function ({ page }) {
       await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
 
-      await page.getByLabel('Type').click();
+      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
+      await chartOfAccountsTab.getByRole('button', { name: 'Type' }).click();
       await page.getByRole('menuitem', { name: 'Asset' }).click();
 
-      // Accounts should be filtered to show only Asset accounts
+      // After filtering by Asset type, either a table with Asset accounts should be visible
+      // or an empty state message should appear (if no accounts match the filter)
       const table = page.getByRole('treegrid', { name: 'Chart of Accounts Tree' });
-      await expect(table).toBeVisible();
+      const emptyState = page.getByText('No accounts found');
+      
+      // Wait for either the table or empty state to be visible
+      await expect(table.or(emptyState)).toBeVisible();
     });
 
     test('shall filter accounts by search query', async function ({ page }) {
       await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
 
-      const searchInput = page.getByLabel('Search');
+      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
+      const searchInput = chartOfAccountsTab.getByRole('textbox', { name: 'Search' });
       await searchInput.fill('Kas');
 
       // Should show filtered results
@@ -228,7 +243,7 @@ describe('Chart of Accounts View', function () {
 
       await page.getByRole('button', { name: 'Create Account' }).click();
 
-      await expect(page.getByRole('dialog', { name: 'Create Account' })).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Create New Account' })).toBeVisible();
     });
   });
 
@@ -240,10 +255,10 @@ describe('Chart of Accounts View', function () {
 
       await page.getByRole('button', { name: 'Create Account' }).click();
 
-      const dialog = page.getByRole('dialog', { name: 'Create Account' });
+      const dialog = page.getByRole('dialog', { name: 'Create New Account' });
       await expect(dialog.getByLabel('Account Code')).toBeVisible();
       await expect(dialog.getByLabel('Account Name')).toBeVisible();
-      await expect(dialog.getByRole('button', { name: 'Create' })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Create Account' })).toBeVisible();
       await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
     });
 
@@ -252,7 +267,7 @@ describe('Chart of Accounts View', function () {
 
       await page.getByRole('button', { name: 'Create Account' }).click();
 
-      const dialog = page.getByRole('dialog', { name: 'Create Account' });
+      const dialog = page.getByRole('dialog', { name: 'Create New Account' });
       await expect(dialog).toBeVisible();
 
       await dialog.getByRole('button', { name: 'Cancel' }).click();

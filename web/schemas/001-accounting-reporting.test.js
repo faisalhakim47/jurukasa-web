@@ -1,10 +1,10 @@
-import { describe, it } from 'node:test';
 import { ok, equal, deepEqual } from 'node:assert/strict';
+import { describe, it } from 'node:test';
 
-import { useLibSQLiteClient } from '#web/schemas/test/hooks/use-libsqlite-client.js';
+import { useSql } from '#web/schemas/test/hooks/use-sql.js';
 
 describe('Accounting Schema Tests - Financial Reporting', function () {
-  const db = useLibSQLiteClient();
+  const sql = useSql();
   const testTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
 
   /**
@@ -14,11 +14,10 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
    * @param {number} [controlCode]
    */
   async function createAccount(code, name, normalBalance, controlCode) {
-    await db().execute(
-      `INSERT INTO accounts (account_code, name, normal_balance, control_account_code, create_time, update_time)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [code, name, normalBalance, controlCode ?? null, testTime, testTime],
-    );
+    await sql`
+      INSERT INTO accounts (account_code, name, normal_balance, control_account_code, create_time, update_time)
+      VALUES (${code}, ${name}, ${normalBalance}, ${controlCode ?? null}, ${testTime}, ${testTime})
+    `;
   }
 
   /**
@@ -26,20 +25,14 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
    * @param {string} tag
    */
   async function addTag(code, tag) {
-    await db().execute(
-      `INSERT INTO account_tags (account_code, tag) VALUES (?, ?)`,
-      [code, tag],
-    );
+    await sql`INSERT INTO account_tags (account_code, tag) VALUES (${code}, ${tag})`;
   }
 
   /**
    * @param {Date} entryDate
    */
   async function draftJournalEntry(entryDate) {
-    const result = await db().execute(
-      `INSERT INTO journal_entries (entry_time) VALUES (?) RETURNING ref`,
-      [entryDate.getTime()],
-    );
+    const result = await sql`INSERT INTO journal_entries (entry_time) VALUES (${entryDate.getTime()}) RETURNING ref`;
     return Number(result.rows[0].ref);
   }
 
@@ -50,11 +43,10 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
    * @param {number} credit
    */
   async function addJournalLine(ref, accountCode, debit, credit) {
-    await db().execute(
-      `INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
-       VALUES (?, ?, ?, ?)`,
-      [ref, accountCode, debit, credit],
-    );
+    await sql`
+      INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
+      VALUES (${ref}, ${accountCode}, ${debit}, ${credit})
+    `;
   }
 
   /**
@@ -62,19 +54,14 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
    * @param {Date} postDate
    */
   async function postJournalEntry(ref, postDate) {
-    await db().execute(
-      `UPDATE journal_entries SET post_time = ? WHERE ref = ?`,
-      [postDate.getTime(), ref],
-    );
+    await sql`UPDATE journal_entries SET post_time = ${postDate.getTime()} WHERE ref = ${ref}`;
   }
 
   /**
    * Setup complete chart of accounts using the Retail Business - Indonesia template
    */
   async function setupCompleteChartOfAccounts() {
-    await db().execute(
-      `INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`
-    );
+    await sql`INSERT INTO chart_of_accounts_templates (name) VALUES (${'Retail Business - Indonesia'})`;
   }
 
   describe('Trial Balance Generation', function () {
@@ -108,16 +95,13 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Generate balance report
       const reportTime = new Date(2024, 5, 30, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `INSERT INTO balance_reports (report_time, report_type, name, create_time)
-         VALUES (?, 'Ad Hoc', 'Q2 2024 Trial Balance', ?)`,
-        [reportTime, testTime]
-      );
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${reportTime}, 'Ad Hoc', 'Q2 2024 Trial Balance', ${testTime})
+      `;
 
       // Check trial balance lines
-      const trialBalance = (await db().execute(
-        `SELECT * FROM trial_balance ORDER BY account_code`
-      )).rows;
+      const trialBalance = (await sql`SELECT * FROM trial_balance ORDER BY account_code`).rows;
 
       // Verify total debits equal total credits
       const totalDebits = trialBalance.reduce((sum, row) => sum + Number(row.debit), 0);
@@ -165,16 +149,13 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Generate balance report
       const reportTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `INSERT INTO balance_reports (report_time, report_type, name, create_time)
-         VALUES (?, 'Period End', 'Year End 2024 Trial Balance', ?)`,
-        [reportTime, testTime]
-      );
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${reportTime}, 'Period End', 'Year End 2024 Trial Balance', ${testTime})
+      `;
 
       // Check trial balance
-      const trialBalance = (await db().execute(
-        `SELECT * FROM trial_balance ORDER BY account_code`
-      )).rows;
+      const trialBalance = (await sql`SELECT * FROM trial_balance ORDER BY account_code`).rows;
 
       // Verify equipment and accumulated depreciation
       const equipmentLine = trialBalance.find(r => r.account_code === 12110);
@@ -209,16 +190,13 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Generate balance report
       const reportTime = new Date(2024, 5, 30, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `INSERT INTO balance_reports (report_time, report_type, name, create_time)
-         VALUES (?, 'Ad Hoc', 'Trial Balance with Overdraft', ?)`,
-        [reportTime, testTime]
-      );
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${reportTime}, 'Ad Hoc', 'Trial Balance with Overdraft', ${testTime})
+      `;
 
       // Check trial balance
-      const trialBalance = (await db().execute(
-        `SELECT * FROM trial_balance ORDER BY account_code`
-      )).rows;
+      const trialBalance = (await sql`SELECT * FROM trial_balance ORDER BY account_code`).rows;
 
       // Cash has negative balance (shown as credit for debit-normal account)
       const cashLine = trialBalance.find(r => r.account_code === 11110);
@@ -266,16 +244,13 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Generate balance report
       const reportTime = new Date(2024, 5, 30, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `INSERT INTO balance_reports (report_time, report_type, name, create_time)
-         VALUES (?, 'Period End', 'Q2 2024 Balance Sheet', ?)`,
-        [reportTime, testTime]
-      );
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${reportTime}, 'Period End', 'Q2 2024 Balance Sheet', ${testTime})
+      `;
 
       // Check balance sheet
-      const balanceSheet = (await db().execute(
-        `SELECT * FROM balance_sheet ORDER BY classification, category, account_code`
-      )).rows;
+      const balanceSheet = (await sql`SELECT * FROM balance_sheet ORDER BY classification, category, account_code`).rows;
 
       // Verify classifications exist
       const classifications = [...new Set(balanceSheet.map(r => r.classification))];
@@ -371,14 +346,13 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Generate balance report
       const reportTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `INSERT INTO balance_reports (report_time, report_type, name, create_time)
-         VALUES (?, 'Annual', 'Year End 2024 Balance Sheet', ?)`,
-        [reportTime, testTime]
-      );
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${reportTime}, 'Annual', 'Year End 2024 Balance Sheet', ${testTime})
+      `;
 
       // Get balance sheet
-      const balanceSheet = (await db().execute(`SELECT * FROM balance_sheet`)).rows;
+      const balanceSheet = (await sql`SELECT * FROM balance_sheet`).rows;
 
       // Calculate totals by classification
       const totalAssets = balanceSheet
@@ -395,20 +369,20 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Note: Net income is not yet in retained earnings (fiscal year not closed)
       // So we need to add unrealized income/expense to equity for the equation to balance
-      
-      // Get current income statement totals
-      const accounts = (await db().execute(
-        `SELECT account_code, balance FROM accounts WHERE account_code IN (41000, 51000, 61300, 61100)`
-      )).rows;
 
-      const revenue = Number(accounts.find(a => a.account_code === 41000)?.balance || 0);
+      // Get current income statement totals
+      const accounts = (await sql`
+        SELECT account_code, balance FROM accounts WHERE account_code IN (${41000}, ${51000}, ${61300}, ${61100})
+      `).rows;
+
+      const revenue = Number(accounts.find(a => Number(a.account_code) === 41000)?.balance || 0);
       const cogs = Number(accounts.find(a => a.account_code === 51000)?.balance || 0);
       const salaries = Number(accounts.find(a => a.account_code === 61300)?.balance || 0);
       const rent = Number(accounts.find(a => a.account_code === 61100)?.balance || 0);
       const netIncome = revenue - cogs - salaries - rent;
 
       // Verify accounting equation
-      equal(totalAssets, totalLiabilities + totalEquity + netIncome, 
+      equal(totalAssets, totalLiabilities + totalEquity + netIncome,
         'Assets should equal Liabilities + Equity + Unrealized Net Income');
     });
   });
@@ -421,10 +395,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
       // Post transactions within fiscal year
       // Sales Revenue
@@ -460,9 +431,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       await postJournalEntry(ref5, new Date(2024, 8, 15, 0, 0, 0, 0));
 
       // Check fiscal year account mutation view
-      const mutations = (await db().execute(
-        `SELECT * FROM fiscal_year_account_mutation WHERE fiscal_year_id = 1 ORDER BY account_code`
-      )).rows;
+      const mutations = (await sql`SELECT * FROM fiscal_year_account_mutation WHERE fiscal_year_id = ${1} ORDER BY account_code`).rows;
 
       // Verify revenue accounts
       const salesMutation = mutations.find(m => m.account_code === 41000);
@@ -488,10 +457,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
       // Post comprehensive transactions
       // Sales Revenue
@@ -532,9 +498,9 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       await postJournalEntry(ref6, new Date(2024, 8, 15, 0, 0, 0, 0));
 
       // Check income statement view
-      const incomeStatement = (await db().execute(
-        `SELECT * FROM income_statement WHERE fiscal_year_id = 1 ORDER BY classification, category, account_code`
-      )).rows;
+      const incomeStatement = (await sql`
+        SELECT * FROM income_statement WHERE fiscal_year_id = ${1} ORDER BY classification, category, account_code
+      `).rows;
 
       // Verify classifications exist
       const classifications = [...new Set(incomeStatement.map(r => r.classification))];
@@ -565,10 +531,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
       // Revenue: 100000
       const ref1 = await draftJournalEntry(new Date(2024, 3, 15, 0, 0, 0, 0));
@@ -589,9 +552,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       await postJournalEntry(ref3, new Date(2024, 4, 10, 0, 0, 0, 0));
 
       // Get income statement
-      const incomeStatement = (await db().execute(
-        `SELECT * FROM income_statement WHERE fiscal_year_id = 1`
-      )).rows;
+      const incomeStatement = (await sql`SELECT * FROM income_statement WHERE fiscal_year_id = 1`).rows;
 
       // Calculate Net Revenue
       const grossRevenue = incomeStatement
@@ -623,10 +584,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
       // Initial investment
       const ref1 = await draftJournalEntry(new Date(2024, 0, 2, 0, 0, 0, 0));
@@ -642,16 +600,15 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Generate fiscal year report
       const reportTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `INSERT INTO balance_reports (report_time, report_type, fiscal_year_id, name, create_time)
-         VALUES (?, 'Annual', 1, 'FY2024 Year End Report', ?)`,
-        [reportTime, testTime]
-      );
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, fiscal_year_id, name, create_time)
+        VALUES (${reportTime}, 'Annual', 1, 'FY2024 Year End Report', ${testTime})
+      `;
 
       // Verify report is linked to fiscal year
-      const report = (await db().execute(
-        `SELECT * FROM balance_reports WHERE fiscal_year_id = 1`
-      )).rows[0];
+      const report = (await sql`
+        SELECT * FROM balance_reports WHERE fiscal_year_id = 1
+      `).rows[0];
 
       ok(report, 'Report should be linked to fiscal year');
       equal(report.report_type, 'Annual', 'Report type should be Annual');
@@ -665,10 +622,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
       // Initial investment
       const ref1 = await draftJournalEntry(new Date(2024, 0, 2, 0, 0, 0, 0));
@@ -677,11 +631,10 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       await postJournalEntry(ref1, new Date(2024, 0, 2, 0, 0, 0, 0));
 
       // Q1 Report
-      await db().execute(
-        `INSERT INTO balance_reports (report_time, report_type, fiscal_year_id, name, create_time)
-         VALUES (?, 'Quarterly', 1, 'FY2024 Q1 Report', ?)`,
-        [new Date(2024, 2, 31, 0, 0, 0, 0).getTime(), testTime]
-      );
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, fiscal_year_id, name, create_time)
+        VALUES (${new Date(2024, 2, 31, 0, 0, 0, 0).getTime()}, 'Quarterly', 1, 'FY2024 Q1 Report', ${testTime})
+      `;
 
       // Q2 transaction
       const ref2 = await draftJournalEntry(new Date(2024, 4, 15, 0, 0, 0, 0));
@@ -690,11 +643,10 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       await postJournalEntry(ref2, new Date(2024, 4, 15, 0, 0, 0, 0));
 
       // Q2 Report
-      await db().execute(
-        `INSERT INTO balance_reports (report_time, report_type, fiscal_year_id, name, create_time)
-         VALUES (?, 'Quarterly', 1, 'FY2024 Q2 Report', ?)`,
-        [new Date(2024, 5, 30, 0, 0, 0, 0).getTime(), testTime]
-      );
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, fiscal_year_id, name, create_time)
+        VALUES (${new Date(2024, 5, 30, 0, 0, 0, 0).getTime()}, 'Quarterly', 1, 'FY2024 Q2 Report', ${testTime})
+      `;
 
       // More transactions
       const ref3 = await draftJournalEntry(new Date(2024, 8, 10, 0, 0, 0, 0));
@@ -703,35 +655,34 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       await postJournalEntry(ref3, new Date(2024, 8, 10, 0, 0, 0, 0));
 
       // Annual Report
-      await db().execute(
-        `INSERT INTO balance_reports (report_time, report_type, fiscal_year_id, name, create_time)
-         VALUES (?, 'Annual', 1, 'FY2024 Annual Report', ?)`,
-        [new Date(2024, 11, 31, 0, 0, 0, 0).getTime(), testTime]
-      );
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, fiscal_year_id, name, create_time)
+        VALUES (${new Date(2024, 11, 31, 0, 0, 0, 0).getTime()}, 'Annual', 1, 'FY2024 Annual Report', ${testTime})
+      `;
 
       // Verify multiple reports exist for same fiscal year
-      const reports = (await db().execute(
-        `SELECT * FROM balance_reports WHERE fiscal_year_id = 1 ORDER BY report_time`
-      )).rows;
+      const reports = (await sql`
+        SELECT * FROM balance_reports WHERE fiscal_year_id = 1 ORDER BY report_time
+      `).rows;
 
       equal(reports.length, 3, 'Should have 3 reports for FY2024');
 
       // Verify Q1 cash balance (100000)
-      const q1TrialBalance = (await db().execute(
-        `SELECT debit, credit FROM trial_balance_lines WHERE balance_report_id = 1 AND account_code = 11110`
-      )).rows[0];
+      const q1TrialBalance = (await sql`
+        SELECT debit, credit FROM trial_balance_lines WHERE balance_report_id = 1 AND account_code = 11110
+      `).rows[0];
       equal(q1TrialBalance.debit, 100000, 'Q1 cash should be 100000');
 
       // Verify Q2 cash balance (125000)
-      const q2TrialBalance = (await db().execute(
-        `SELECT debit, credit FROM trial_balance_lines WHERE balance_report_id = 2 AND account_code = 11110`
-      )).rows[0];
+      const q2TrialBalance = (await sql`
+        SELECT debit, credit FROM trial_balance_lines WHERE balance_report_id = 2 AND account_code = 11110
+      `).rows[0];
       equal(q2TrialBalance.debit, 125000, 'Q2 cash should be 125000');
 
       // Verify Annual cash balance (155000)
-      const annualTrialBalance = (await db().execute(
-        `SELECT debit, credit FROM trial_balance_lines WHERE balance_report_id = 3 AND account_code = 11110`
-      )).rows[0];
+      const annualTrialBalance = (await sql`
+        SELECT debit, credit FROM trial_balance_lines WHERE balance_report_id = 3 AND account_code = 11110
+      `).rows[0];
       equal(annualTrialBalance.debit, 155000, 'Annual cash should be 155000');
     });
   });
@@ -744,10 +695,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
       // Initial investment
       const ref1 = await draftJournalEntry(new Date(2024, 0, 2, 0, 0, 0, 0));
@@ -771,23 +719,19 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Close fiscal year
       const postTime = new Date(2025, 0, 5, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [postTime, beginTime]
-      );
+      await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
 
       // Generate post-closing report
       const reportTime = new Date(2025, 0, 10, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `INSERT INTO balance_reports (report_time, report_type, fiscal_year_id, name, create_time)
-         VALUES (?, 'Period End', 1, 'Post-Closing Report FY2024', ?)`,
-        [reportTime, testTime]
-      );
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, fiscal_year_id, name, create_time)
+        VALUES (${reportTime}, 'Period End', 1, 'Post-Closing Report FY2024', ${testTime})
+      `;
 
       // Verify trial balance after closing
-      const trialBalance = (await db().execute(
-        `SELECT * FROM trial_balance WHERE balance_report_id = 1 ORDER BY account_code`
-      )).rows;
+      const trialBalance = (await sql`
+        SELECT * FROM trial_balance WHERE balance_report_id = 1 ORDER BY account_code
+      `).rows;
 
       // Revenue and Expense should be zero
       const salesLine = trialBalance.find(r => r.account_code === 41000);
@@ -801,9 +745,9 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       equal(retainedEarningsLine.credit, 30000, 'Retained Earnings should be 30000');
 
       // Verify balance sheet
-      const balanceSheet = (await db().execute(
-        `SELECT * FROM balance_sheet WHERE balance_report_id = 1 ORDER BY classification, account_code`
-      )).rows;
+      const balanceSheet = (await sql`
+        SELECT * FROM balance_sheet WHERE balance_report_id = 1 ORDER BY classification, account_code
+      `).rows;
 
       const retainedEarningsBS = balanceSheet.find(r => r.account_code === 32000);
       equal(retainedEarningsBS.amount, 30000, 'Balance Sheet Retained Earnings should be 30000');

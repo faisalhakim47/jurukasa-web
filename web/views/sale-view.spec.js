@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 
 const { describe } = test;
 
@@ -8,6 +9,9 @@ const { describe } = test;
 async function setupView(tursoDatabaseUrl) {
   localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
   localStorage.setItem('tursoDatabaseKey', '');
+
+  // Set the router to /sale path
+  window.history.replaceState({}, '', '/sale');
 
   document.body.innerHTML = `
     <ready-context>
@@ -25,6 +29,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Sale View', function () {
+  useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   describe('Sale View Navigation', function () {
@@ -33,7 +38,7 @@ describe('Sale View', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('tab', { name: /sales/i })).toBeVisible();
+      await expect(page.getByRole('tab', { name: 'Sales' })).toBeVisible();
     });
 
     test('shall display discounts tab', async function ({ page }) {
@@ -41,7 +46,7 @@ describe('Sale View', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('tab', { name: /discounts/i })).toBeVisible();
+      await expect(page.getByRole('tab', { name: 'Discounts' })).toBeVisible();
     });
 
     test('shall navigate to sales panel when sales tab is clicked', async function ({ page }) {
@@ -49,9 +54,9 @@ describe('Sale View', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await page.getByRole('tab', { name: /sales/i }).click();
+      await page.getByRole('tab', { name: 'Sales' }).click();
 
-      await expect(page.getByRole('tabpanel', { name: /sales/i })).toBeVisible();
+      await expect(page.getByRole('tabpanel', { name: 'Sales' })).toBeVisible();
     });
 
     test('shall navigate to discounts panel when discounts tab is clicked', async function ({ page }) {
@@ -59,9 +64,9 @@ describe('Sale View', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await page.getByRole('tab', { name: /discounts/i }).click();
+      await page.getByRole('tab', { name: 'Discounts' }).click();
 
-      await expect(page.getByRole('tabpanel', { name: /discounts/i })).toBeVisible();
+      await expect(page.getByRole('tabpanel', { name: 'Discounts' })).toBeVisible();
     });
   });
 
@@ -89,9 +94,9 @@ describe('Sale View', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await page.getByRole('tab', { name: /sales/i }).click();
+      await page.getByRole('tab', { name: 'Sales' }).click();
 
-      const salesPanel = page.getByRole('tabpanel', { name: /sales/i });
+      const salesPanel = page.getByRole('tabpanel', { name: 'Sales' });
       await expect(salesPanel).toBeVisible();
     });
 
@@ -100,9 +105,9 @@ describe('Sale View', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await page.getByRole('tab', { name: /discounts/i }).click();
+      await page.getByRole('tab', { name: 'Discounts' }).click();
 
-      const discountsPanel = page.getByRole('tabpanel', { name: /discounts/i });
+      const discountsPanel = page.getByRole('tabpanel', { name: 'Discounts' });
       await expect(discountsPanel).toBeVisible();
     });
   });

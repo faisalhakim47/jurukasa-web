@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
+import { useStrict } from '#test/hooks/use-strict.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -27,6 +28,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Payment Methods View', function () {
+  useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display empty state when no payment methods exist', async function ({ page }) {
@@ -53,7 +55,7 @@ describe('Payment Methods View', function () {
     await expect(page.getByRole('table', { name: 'Payment methods list' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Cash', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Bank Transfer', exact: true })).toBeVisible();
-    
+
     const tableContent = page.getByRole('table', { name: 'Payment methods list' });
     await expect(tableContent.getByText('Kas')).toBeVisible();
     await expect(tableContent.getByText('Bank BCA')).toBeVisible();
@@ -70,7 +72,7 @@ describe('Payment Methods View', function () {
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByRole('table', { name: 'Payment methods list' })).toBeVisible();
-    
+
     const cashRow = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Cash' }) });
     await expect(cashRow.getByText('No Fee')).toBeVisible();
   });
@@ -87,7 +89,7 @@ describe('Payment Methods View', function () {
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByRole('table', { name: 'Payment methods list' })).toBeVisible();
-    
+
     const creditCardRow = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Credit Card' }) });
     await expect(creditCardRow.getByText('3.00%')).toBeVisible();
   });
@@ -105,7 +107,7 @@ describe('Payment Methods View', function () {
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByRole('table', { name: 'Payment methods list' })).toBeVisible();
-    
+
     const eWalletRow = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'E-Wallet' }) });
     await expect(eWalletRow).toContainText('min IDR 2,000');
     await expect(eWalletRow).toContainText('max IDR 5,000');
@@ -123,7 +125,7 @@ describe('Payment Methods View', function () {
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await expect(page.getByRole('table', { name: 'Payment methods list' })).toBeVisible();
-    
+
     const onlinePaymentRow = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Online Payment' }) });
     await expect(onlinePaymentRow).toContainText('2.50%');
     await expect(onlinePaymentRow).toContainText('min IDR 1,000');

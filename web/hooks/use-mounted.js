@@ -3,7 +3,7 @@ import { hasRendered } from '#web/hooks/use-render.js';
 
 /**
  * @param {HTMLElement} host
- * @param {() => void} callback
+ * @param {function():void} callback
  */
 export function useMounted(host, callback) {
   useConnectedCallback(host, function connectedBeforeMounted() {

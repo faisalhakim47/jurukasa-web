@@ -238,6 +238,7 @@ export class AccountCreationDialogElement extends HTMLElement {
                 role="button"
                 type="button"
                 class="text"
+                aria-label="${t('account', 'cancelButtonLabel')}"
                 commandfor="account-creation-dialog"
                 command="close"
               ><material-symbols name="close"></material-symbols></button>

@@ -249,8 +249,8 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
      * @param {string} inputId
      * @param {number | null} accountCode
      * @param {string | null} accountName
-     * @param {() => void} onSelect
-     * @param {() => void} onClear
+     * @param {function():void} onSelect
+     * @param {function():void} onClear
      * @param {string} supportingText
      */
     function renderAccountSelector(label, inputId, accountCode, accountName, onSelect, onClear, supportingText) {

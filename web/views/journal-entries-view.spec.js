@@ -1,231 +1,500 @@
-import { expect, test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { setupDatabase } from '#test/tools/database.js';
+import { useStrict } from '#test/hooks/use-strict.js';
+
+/** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
+
 const { describe } = test;
 
-describe('Journal Entries View', function () {
+/** @param {string} tursoDatabaseUrl */
+async function setupView(tursoDatabaseUrl) {
+  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
+  localStorage.setItem('tursoDatabaseKey', '');
+  document.body.innerHTML = `
+    <ready-context>
+      <router-context>
+        <database-context>
+          <device-context>
+            <i18n-context>
+              <journal-entries-view></journal-entries-view>
+            </i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </ready-context>
+  `;
+}
+
+describe('Journal Entries View - Basic Display', function () {
   // useConsoleOutput(test);
+  useStrict(test);
+  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  /**
-   * @param {import('@playwright/test').Page} page
-   * @param {string} tursoLibSQLiteServerUrl
-   */
-  async function setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServerUrl) {
-    await page.goto('/test/fixtures/testing.html');
+  test('it shall display empty state when no journal entries exist', async function ({ page }) {
+    await loadEmptyFixture(page);
 
-    await page.getByLabel('Turso Database URL').fill(tursoLibSQLiteServerUrl);
-    await page.getByRole('button', { name: 'Configure' }).click();
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();
-    await page.getByLabel('Business Name').fill('Test Business');
-    await page.getByRole('button', { name: 'Next' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' })).toBeVisible();
-    await page.getByRole('radio', { name: 'Retail Business - Indonesia' }).click();
-    await page.getByRole('button', { name: 'Finish' }).click();
-
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-
-    await page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Books' }).first().click();
-    await page.getByRole('tab', { name: 'Journal Entries' }).click();
-  }
-
-  describe('Journal Entries Navigation', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
-    test('shall display Books link in navigation', async function ({ page }) {
-      await page.goto('/test/fixtures/testing.html');
-
-      await page.getByLabel('Turso Database URL').fill(tursoLibSQLiteServer().url);
-      await page.getByRole('button', { name: 'Configure' }).click();
-
-      await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();
-      await page.getByLabel('Business Name').fill('Test Business');
-      await page.getByRole('button', { name: 'Next' }).click();
-
-      await expect(page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' })).toBeVisible();
-      await page.getByRole('radio', { name: 'Retail Business - Indonesia' }).click();
-      await page.getByRole('button', { name: 'Finish' }).click();
-
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-
-      await expect(page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Books' }).first()).toBeVisible();
-    });
-
-    test('shall navigate to Journal Entries when clicking Books link and Journal Entries tab', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('tab', { name: 'Journal Entries', selected: true })).toBeVisible();
-    });
+    await expect(page.getByRole('table', { name: 'Journal entries list' })).not.toBeVisible();
+    await expect(page.getByText('No journal entries found')).toBeVisible();
+    await expect(page.getByText('Journal entries will appear here once you create them.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'New Entry' }).first()).toBeVisible();
   });
 
-  describe('Journal Entries Page Display', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('it shall display journal entries list when entries exist', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
 
-    test('shall display empty state when no journal entries exist', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (1, 1704067200000, 'First entry', 'Manual', 1704067200000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 10100, 100000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 40100, 0, 100000)`;
 
-      await expect(page.getByRole('heading', { name: 'No journal entries found' })).toBeVisible();
-      await expect(page.getByText('Journal entries will appear here once you create them.')).toBeVisible();
-    });
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (2, 1704153600000, 'Second entry', 'System', 1704153600000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 1, 10100, 200000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 2, 40100, 0, 200000)`;
+      }),
+    ]);
 
-    test('shall display New Entry button in empty state', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('button', { name: 'New Entry' }).first()).toBeVisible();
-    });
+    await expect(page.getByRole('table', { name: 'Journal entries list' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#1', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#2', exact: true })).toBeVisible();
+
+    const tableContent = page.getByRole('table', { name: 'Journal entries list' });
+    await expect(tableContent.getByText('First entry')).toBeVisible();
+    await expect(tableContent.getByText('Second entry')).toBeVisible();
+    await expect(tableContent.getByText('IDR 100,000')).toBeVisible();
+    await expect(tableContent.getByText('IDR 200,000')).toBeVisible();
   });
 
-  describe('Journal Entries Filter Controls', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('it shall display posted status for posted entries', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
 
-    test('shall display Source filter dropdown', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (1, 1704067200000, 'Posted entry', 'Manual', 1704067200000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 10100, 100000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 40100, 0, 100000)`;
+      }),
+    ]);
 
-      await expect(page.getByLabel('Source')).toBeVisible();
-    });
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    test('shall display Status filter dropdown', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
-
-      await expect(page.getByLabel('Status')).toBeVisible();
-    });
-
-    test('shall open Source filter menu when clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
-
-      await page.getByLabel('Source').click();
-
-      await expect(page.getByRole('menu')).toBeVisible();
-      await expect(page.getByRole('menuitem', { name: 'All' })).toBeVisible();
-      await expect(page.getByRole('menuitem', { name: 'Manual' })).toBeVisible();
-      await expect(page.getByRole('menuitem', { name: 'System' })).toBeVisible();
-    });
-
-    test('shall open Status filter menu when clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
-
-      await page.getByLabel('Status').click();
-
-      await expect(page.getByRole('menu')).toBeVisible();
-      await expect(page.getByRole('menuitemradio', { name: 'All' })).toBeVisible();
-      await expect(page.getByRole('menuitemradio', { name: 'Posted' })).toBeVisible();
-      await expect(page.getByRole('menuitemradio', { name: 'Draft' })).toBeVisible();
-    });
-
-    test('shall filter journal entries by source when source filter is selected', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
-
-      await page.getByLabel('Source').click();
-      await page.getByRole('menuitem', { name: 'Manual' }).click();
-
-      // Filter should be applied - empty state should still be visible since no entries exist
-      await expect(page.getByRole('heading', { name: 'No journal entries found' })).toBeVisible();
-    });
-
-    test('shall filter journal entries by status when status filter is selected', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
-
-      await page.getByLabel('Status').click();
-      await page.getByRole('menuitemradio', { name: 'Posted' }).click();
-
-      // Filter should be applied - empty state should still be visible since no entries exist
-      await expect(page.getByRole('heading', { name: 'No journal entries found' })).toBeVisible();
-    });
+    await expect(page.getByRole('table', { name: 'Journal entries list' })).toBeVisible();
+    const tableContent = page.getByRole('table', { name: 'Journal entries list' });
+    await expect(tableContent.getByText('Posted', { exact: true })).toBeVisible();
   });
 
-  describe('Journal Entries Actions', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('it shall display draft status for unposted entries', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
 
-    test('shall display refresh button', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type) VALUES (1, 1704067200000, 'Draft entry', 'Manual')`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 10100, 100000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 40100, 0, 100000)`;
+      }),
+    ]);
 
-      await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
-    });
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    test('shall display New Entry button in header', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('button', { name: 'New Entry' })).toBeVisible();
-    });
-
-    test('shall refresh journal entries list when refresh button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
-
-      await page.getByRole('button', { name: 'Refresh' }).click();
-
-      // Empty state should still be visible after refresh
-      await expect(page.getByRole('heading', { name: 'No journal entries found' })).toBeVisible();
-    });
-
-    test('shall open journal entry creation dialog when New Entry button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
-
-      await page.getByRole('button', { name: 'New Entry' }).first().click();
-
-      await expect(page.getByRole('dialog', { name: 'Create Journal Entry' })).toBeVisible();
-    });
+    await expect(page.getByRole('table', { name: 'Journal entries list' })).toBeVisible();
+    const tableContent = page.getByRole('table', { name: 'Journal entries list' });
+    await expect(tableContent.getByText('Draft', { exact: true })).toBeVisible();
   });
 
-  describe('Journal Entry Creation Dialog', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('it shall display source type badges', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
 
-    test('shall display journal entry creation form fields', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (1, 1704067200000, 'Manual entry', 'Manual', 1704067200000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 10100, 100000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 40100, 0, 100000)`;
 
-      await page.getByRole('button', { name: 'New Entry' }).first().click();
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (2, 1704153600000, 'System entry', 'System', 1704153600000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 1, 10100, 200000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 2, 40100, 0, 200000)`;
+      }),
+    ]);
 
-      const dialog = page.getByRole('dialog', { name: 'Create Journal Entry' });
-      await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole('button', { name: 'Create' })).toBeVisible();
-      await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
-    });
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    test('shall close dialog when Cancel button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
+    await expect(page.getByRole('table', { name: 'Journal entries list' })).toBeVisible();
 
-      await page.getByRole('button', { name: 'New Entry' }).first().click();
+    const manualRow = page.getByRole('row').filter({ hasText: 'Manual entry' });
+    await expect(manualRow.getByRole('cell', { name: 'Manual', exact: true })).toBeVisible();
 
-      const dialog = page.getByRole('dialog', { name: 'Create Journal Entry' });
-      await expect(dialog).toBeVisible();
+    const systemRow = page.getByRole('row').filter({ hasText: 'System entry' });
+    await expect(systemRow.getByRole('cell', { name: 'System', exact: true })).toBeVisible();
+  });
+});
 
-      await dialog.getByRole('button', { name: 'Cancel' }).click();
+describe('Journal Entries View - Source Filter', function () {
+  // useConsoleOutput(test);
+  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-      await expect(dialog).not.toBeVisible();
-    });
+  test('it shall filter by source type', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
+
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (1, 1704067200000, 'Manual entry', 'Manual', 1704067200000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 10100, 100000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 40100, 0, 100000)`;
+
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (2, 1704153600000, 'System entry', 'System', 1704153600000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 1, 10100, 200000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 2, 40100, 0, 200000)`;
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await expect(page.getByRole('table', { name: 'Journal entries list' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#1', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#2', exact: true })).toBeVisible();
+
+    await page.locator('#source-filter-input').click();
+    await page.getByRole('menuitem', { name: 'Manual' }).click();
+
+    await expect(page.getByRole('button', { name: '#1', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#2', exact: true })).not.toBeVisible();
+    await expect(page.getByText('Manual entry')).toBeVisible();
+    await expect(page.getByText('System entry')).not.toBeVisible();
   });
 
-  describe('Journal Entries Table Display', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('it shall filter by system source', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
 
-    test('shall display table headers in correct order', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (1, 1704067200000, 'Manual entry', 'Manual', 1704067200000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 10100, 100000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 40100, 0, 100000)`;
 
-      // Even in empty state, we check that when entries exist, proper headers are expected
-      // Since we're in empty state, we won't see the table yet
-      await expect(page.getByRole('heading', { name: 'No journal entries found' })).toBeVisible();
-    });
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (2, 1704153600000, 'System entry', 'System', 1704153600000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 1, 10100, 200000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 2, 40100, 0, 200000)`;
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await expect(page.getByRole('table', { name: 'Journal entries list' })).toBeVisible();
+
+    await page.locator('#source-filter-input').click();
+    await page.getByRole('menuitem', { name: 'System' }).click();
+
+    await expect(page.getByRole('button', { name: '#2', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#1', exact: true })).not.toBeVisible();
+    await expect(page.getByText('System entry')).toBeVisible();
+    await expect(page.getByText('Manual entry')).not.toBeVisible();
   });
 
-  describe('Journal Entries Loading State', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('it shall reset to all sources', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
 
-    test('shall eventually show empty state or entries list after loading', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (1, 1704067200000, 'Manual entry', 'Manual', 1704067200000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 10100, 100000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 40100, 0, 100000)`;
 
-      // Should show empty state since no entries exist
-      await expect(page.getByRole('heading', { name: 'No journal entries found' })).toBeVisible();
-    });
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (2, 1704153600000, 'System entry', 'System', 1704153600000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 1, 10100, 200000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 2, 40100, 0, 200000)`;
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await page.locator('#source-filter-input').click();
+    await page.getByRole('menuitem', { name: 'Manual' }).click();
+
+    await expect(page.getByRole('button', { name: '#1', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#2', exact: true })).not.toBeVisible();
+
+    await page.locator('#source-filter-input').click();
+    await page.getByRole('menuitem', { name: 'All Sources' }).click();
+
+    await expect(page.getByRole('button', { name: '#1', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#2', exact: true })).toBeVisible();
+  });
+});
+
+describe('Journal Entries View - Status Filter', function () {
+  // useConsoleOutput(test);
+  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
+  test('it shall filter by posted status', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
+
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (1, 1704067200000, 'Posted entry', 'Manual', 1704067200000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 10100, 100000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 40100, 0, 100000)`;
+
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type) VALUES (2, 1704153600000, 'Draft entry', 'Manual')`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 1, 10100, 200000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 2, 40100, 0, 200000)`;
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await expect(page.getByRole('table', { name: 'Journal entries list' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#1', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#2', exact: true })).toBeVisible();
+
+    await page.locator('#status-filter-input').click();
+    await page.getByRole('menuitemradio', { name: 'Posted' }).click();
+
+    await expect(page.getByRole('button', { name: '#1', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#2', exact: true })).not.toBeVisible();
+    await expect(page.getByText('Posted entry')).toBeVisible();
+    await expect(page.getByText('Draft entry')).not.toBeVisible();
   });
 
-  describe('Journal Entries Pagination', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('it shall filter by draft status', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
 
-    test('shall not display pagination controls when entries fit in single page', async function ({ page }) {
-      await setupDatabaseAndNavigateToJournalEntries(page, tursoLibSQLiteServer().url);
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (1, 1704067200000, 'Posted entry', 'Manual', 1704067200000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 10100, 100000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 40100, 0, 100000)`;
 
-      // No pagination in empty state
-      await expect(page.getByRole('navigation', { name: /Showing/ })).not.toBeVisible();
-    });
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type) VALUES (2, 1704153600000, 'Draft entry', 'Manual')`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 1, 10100, 200000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 2, 40100, 0, 200000)`;
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await expect(page.getByRole('table', { name: 'Journal entries list' })).toBeVisible();
+
+    await page.locator('#status-filter-input').click();
+    await page.getByRole('menuitemradio', { name: 'Draft' }).click();
+
+    await expect(page.getByRole('button', { name: '#2', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#1', exact: true })).not.toBeVisible();
+
+    const tableContent = page.getByRole('table', { name: 'Journal entries list' });
+    await expect(tableContent.getByText('Draft entry')).toBeVisible();
+    await expect(tableContent.getByText('Posted entry')).not.toBeVisible();
+  });
+
+  test('it shall reset to all statuses', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
+
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (1, 1704067200000, 'Posted entry', 'Manual', 1704067200000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 10100, 100000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 40100, 0, 100000)`;
+
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type) VALUES (2, 1704153600000, 'Draft entry', 'Manual')`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 1, 10100, 200000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 2, 40100, 0, 200000)`;
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await page.locator('#status-filter-input').click();
+    await page.getByRole('menuitemradio', { name: 'Posted' }).click();
+
+    await expect(page.getByRole('button', { name: '#1', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#2', exact: true })).not.toBeVisible();
+
+    await page.locator('#status-filter-input').click();
+    await page.getByRole('menuitemradio', { name: 'All Statuses' }).click();
+
+    await expect(page.getByRole('button', { name: '#1', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#2', exact: true })).toBeVisible();
+  });
+});
+
+describe('Journal Entries View - Pagination', function () {
+  // useConsoleOutput(test);
+  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
+  test('it shall display pagination when more than 10 entries exist', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
+
+        for (let i = 1; i <= 15; i++) {
+          await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (${i}, ${1704067200000 + i * 1000}, ${'Entry ' + i}, 'Manual', ${1704067200000 + i * 1000})`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 1, 10100, 100000, 0)`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 2, 40100, 0, 100000)`;
+        }
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await expect(page.getByRole('navigation')).toBeVisible();
+    await expect(page.getByText('Showing 1–10 of 15')).toBeVisible();
+    await expect(page.getByText('Page 1 of 2')).toBeVisible();
+  });
+
+  test('it shall navigate to next page', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
+
+        for (let i = 1; i <= 15; i++) {
+          await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (${i}, ${1704067200000 + i * 1000}, ${'Entry ' + i}, 'Manual', ${1704067200000 + i * 1000})`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 1, 10100, 100000, 0)`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 2, 40100, 0, 100000)`;
+        }
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await expect(page.getByText('Showing 1–10 of 15')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Next page' }).click();
+
+    await expect(page.getByText('Showing 11–15 of 15')).toBeVisible();
+    await expect(page.getByText('Page 2 of 2')).toBeVisible();
+  });
+
+  test('it shall navigate to previous page', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
+
+        for (let i = 1; i <= 15; i++) {
+          await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (${i}, ${1704067200000 + i * 1000}, ${'Entry ' + i}, 'Manual', ${1704067200000 + i * 1000})`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 1, 10100, 100000, 0)`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 2, 40100, 0, 100000)`;
+        }
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await page.getByRole('button', { name: 'Next page' }).click();
+    await expect(page.getByText('Showing 11–15 of 15')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Previous page' }).click();
+
+    await expect(page.getByText('Showing 1–10 of 15')).toBeVisible();
+    await expect(page.getByText('Page 1 of 2')).toBeVisible();
+  });
+
+  test('it shall navigate to first page', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
+
+        for (let i = 1; i <= 15; i++) {
+          await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (${i}, ${1704067200000 + i * 1000}, ${'Entry ' + i}, 'Manual', ${1704067200000 + i * 1000})`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 1, 10100, 100000, 0)`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 2, 40100, 0, 100000)`;
+        }
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await page.getByRole('button', { name: 'Next page' }).click();
+    await expect(page.getByText('Page 2 of 2')).toBeVisible();
+
+    await page.getByRole('button', { name: 'First page' }).click();
+
+    await expect(page.getByText('Showing 1–10 of 15')).toBeVisible();
+    await expect(page.getByText('Page 1 of 2')).toBeVisible();
+  });
+
+  test('it shall navigate to last page', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
+
+        for (let i = 1; i <= 15; i++) {
+          await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (${i}, ${1704067200000 + i * 1000}, ${'Entry ' + i}, 'Manual', ${1704067200000 + i * 1000})`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 1, 10100, 100000, 0)`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 2, 40100, 0, 100000)`;
+        }
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await expect(page.getByText('Page 1 of 2')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Last page' }).click();
+
+    await expect(page.getByText('Showing 11–15 of 15')).toBeVisible();
+    await expect(page.getByText('Page 2 of 2')).toBeVisible();
+  });
+});
+
+describe('Journal Entries View - Details Dialog', function () {
+  // useConsoleOutput(test);
+  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
+  test('it shall open details dialog when clicking journal entry ref', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
+        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
+
+        await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (1, 1704067200000, 'Test entry', 'Manual', 1704067200000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 10100, 100000, 0)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 40100, 0, 100000)`;
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await expect(page.getByRole('table', { name: 'Journal entries list' })).toBeVisible();
+
+    await page.getByRole('button', { name: '#1', exact: true }).click();
+
+    await expect(page.getByRole('dialog', { name: 'Journal Entry #1' })).toBeVisible();
   });
 });

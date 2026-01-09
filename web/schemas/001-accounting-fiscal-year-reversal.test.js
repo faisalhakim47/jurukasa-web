@@ -1,10 +1,10 @@
 import { describe, it } from 'node:test';
 import { ok, equal, rejects } from 'node:assert/strict';
 
-import { useLibSQLiteClient } from '#web/schemas/test/hooks/use-libsqlite-client.js';
+import { useSql } from '#web/schemas/test/hooks/use-sql.js';
 
 describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
-  const db = useLibSQLiteClient();
+  const sql = useSql();
   const testTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
 
   /**
@@ -14,11 +14,10 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
    * @param {number} [controlCode]
    */
   async function createAccount(code, name, normalBalance, controlCode) {
-    await db().execute(
-      `INSERT INTO accounts (account_code, name, normal_balance, control_account_code, create_time, update_time)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [code, name, normalBalance, controlCode ?? null, testTime, testTime],
-    );
+    await sql`
+      INSERT INTO accounts (account_code, name, normal_balance, control_account_code, create_time, update_time)
+      VALUES (${code}, ${name}, ${normalBalance}, ${controlCode ?? null}, ${testTime}, ${testTime})
+    `;
   }
 
   /**
@@ -26,20 +25,14 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
    * @param {string} tag
    */
   async function addTag(code, tag) {
-    await db().execute(
-      `INSERT INTO account_tags (account_code, tag) VALUES (?, ?)`,
-      [code, tag],
-    );
+    await sql`INSERT INTO account_tags (account_code, tag) VALUES (${code}, ${tag})`;
   }
 
   /**
    * @param {Date} entryDate
    */
   async function draftJournalEntry(entryDate) {
-    const result = await db().execute(
-      `INSERT INTO journal_entries (entry_time) VALUES (?) RETURNING ref`,
-      [entryDate.getTime()],
-    );
+    const result = await sql`INSERT INTO journal_entries (entry_time) VALUES (${entryDate.getTime()}) RETURNING ref`;
     return Number(result.rows[0].ref);
   }
 
@@ -50,11 +43,10 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
    * @param {number} credit
    */
   async function addJournalLine(ref, accountCode, debit, credit) {
-    await db().execute(
-      `INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
-       VALUES (?, ?, ?, ?)`,
-      [ref, accountCode, debit, credit],
-    );
+    await sql`
+      INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
+      VALUES (${ref}, ${accountCode}, ${debit}, ${credit})
+    `;
   }
 
   /**
@@ -62,10 +54,7 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
    * @param {Date} postDate
    */
   async function postJournalEntry(ref, postDate) {
-    await db().execute(
-      `UPDATE journal_entries SET post_time = ? WHERE ref = ?`,
-      [postDate.getTime(), ref],
-    );
+    await sql`UPDATE journal_entries SET post_time = ${postDate.getTime()} WHERE ref = ${ref}`;
   }
 
   /**
@@ -128,8 +117,8 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       await postJournalEntry(ref2, new Date(2024, 5, 20, 0, 0, 0, 0));
 
       // Store pre-closing balances
-      const preClosingRevenue = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 4000`)).rows[0].balance;
-      const preClosingExpense = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 5100`)).rows[0].balance;
+      const preClosingRevenue = (await sql`SELECT balance FROM accounts WHERE account_code = ${4000}`).rows[0].balance;
+      const preClosingExpense = (await sql`SELECT balance FROM accounts WHERE account_code = ${5100}`).rows[0].balance;
 
       equal(preClosingRevenue, 10000, 'Pre-closing revenue balance');
       equal(preClosingExpense, 4000, 'Pre-closing expense balance');
@@ -139,20 +128,18 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
       const postTime = new Date(2025, 0, 5, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
+      await sql`
+        INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')
+      `;
 
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [postTime, beginTime]
-      );
+      await sql`
+        UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}
+      `;
 
       // Verify closing
-      let revenue = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 4000`)).rows[0].balance;
-      let expense = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 5100`)).rows[0].balance;
-      let retainedEarnings = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 3000`)).rows[0].balance;
+      let revenue = (await sql`SELECT balance FROM accounts WHERE account_code = ${4000}`).rows[0].balance;
+      let expense = (await sql`SELECT balance FROM accounts WHERE account_code = ${5100}`).rows[0].balance;
+      let retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = ${3000}`).rows[0].balance;
 
       equal(revenue, 0, 'Post-closing revenue should be 0');
       equal(expense, 0, 'Post-closing expense should be 0');
@@ -160,15 +147,14 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
 
       // Reverse the fiscal year
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime]
-      );
+      await sql`
+        UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}
+      `;
 
       // Verify reversal restored balances
-      revenue = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 4000`)).rows[0].balance;
-      expense = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 5100`)).rows[0].balance;
-      retainedEarnings = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 3000`)).rows[0].balance;
+      revenue = (await sql`SELECT balance FROM accounts WHERE account_code = ${4000}`).rows[0].balance;
+      expense = (await sql`SELECT balance FROM accounts WHERE account_code = ${5100}`).rows[0].balance;
+      retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = ${3000}`).rows[0].balance;
 
       equal(revenue, preClosingRevenue, 'Revenue should be restored to pre-closing balance');
       equal(expense, preClosingExpense, 'Expense should be restored to pre-closing balance');
@@ -189,36 +175,24 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
       const postTime = new Date(2025, 0, 5, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [postTime, beginTime]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
 
       // Get closing entry lines
-      const fiscalYearAfterClose = (await db().execute(`SELECT * FROM fiscal_years WHERE begin_time = ?`, [beginTime])).rows[0];
-      const closingLines = (await db().execute(
-        `SELECT account_code, debit, credit FROM journal_entry_lines WHERE journal_entry_ref = ?`,
-        [fiscalYearAfterClose.closing_journal_entry_ref]
-      )).rows;
+      const fiscalYearAfterClose = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${beginTime}`).rows[0];
+      const closingLines = (await sql`
+        SELECT account_code, debit, credit FROM journal_entry_lines WHERE journal_entry_ref = ${fiscalYearAfterClose.closing_journal_entry_ref}
+      `).rows;
 
       // Reverse
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}`;
 
       // Get reversal entry lines
-      const fiscalYearAfterReversal = (await db().execute(`SELECT * FROM fiscal_years WHERE begin_time = ?`, [beginTime])).rows[0];
-      const reversalLines = (await db().execute(
-        `SELECT account_code, debit, credit FROM journal_entry_lines WHERE journal_entry_ref = ?`,
-        [fiscalYearAfterReversal.reversal_journal_entry_ref]
-      )).rows;
+      const fiscalYearAfterReversal = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${beginTime}`).rows[0];
+      const reversalLines = (await sql`
+        SELECT account_code, debit, credit FROM journal_entry_lines WHERE journal_entry_ref = ${fiscalYearAfterReversal.reversal_journal_entry_ref}
+      `).rows;
 
       // Verify each line is swapped
       for (const closingLine of closingLines) {
@@ -243,31 +217,20 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
       const postTime = new Date(2025, 0, 5, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
 
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [postTime, beginTime]
-      );
-
-      const fiscalYearAfterClose = (await db().execute(`SELECT * FROM fiscal_years WHERE begin_time = ?`, [beginTime])).rows[0];
+      const fiscalYearAfterClose = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${beginTime}`).rows[0];
 
       // Reverse
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}`;
 
       // Verify reversal entry metadata
-      const fiscalYearAfterReversal = (await db().execute(`SELECT * FROM fiscal_years WHERE begin_time = ?`, [beginTime])).rows[0];
-      const reversalEntry = (await db().execute(
-        `SELECT * FROM journal_entries WHERE ref = ?`,
-        [fiscalYearAfterReversal.reversal_journal_entry_ref]
-      )).rows[0];
+      const fiscalYearAfterReversal = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${beginTime}`).rows[0];
+      const reversalEntry = (await sql`
+        SELECT * FROM journal_entries WHERE ref = ${fiscalYearAfterReversal.reversal_journal_entry_ref}
+      `).rows[0];
 
       equal(reversalEntry.source_type, 'System', 'Reversal entry source_type should be System');
       equal(reversalEntry.created_by, 'System', 'Reversal entry created_by should be System');
@@ -317,7 +280,9 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       // Store pre-closing balances
       const preClosingBalances = {};
       for (const code of [4000, 4100, 4200, 5000, 5100, 5200]) {
-        preClosingBalances[code] = (await db().execute(`SELECT balance FROM accounts WHERE account_code = ?`, [code])).rows[0].balance;
+        preClosingBalances[code] = (await sql`
+          SELECT balance FROM accounts WHERE account_code = ${code}
+        `).rows[0].balance;
       }
 
       // Create and close fiscal year
@@ -325,32 +290,26 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
       const postTime = new Date(2025, 0, 5, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [postTime, beginTime]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
 
       // Verify all closed
       for (const code of [4000, 4100, 4200, 5000, 5100, 5200]) {
-        const balance = (await db().execute(`SELECT balance FROM accounts WHERE account_code = ?`, [code])).rows[0].balance;
+        const balance = (await sql`
+          SELECT balance FROM accounts WHERE account_code = ${code}
+        `).rows[0].balance;
         equal(balance, 0, `Account ${code} should be zeroed after closing`);
       }
 
       // Reverse
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}`;
 
       // Verify all restored
       for (const code of [4000, 4100, 4200, 5000, 5100, 5200]) {
-        const balance = (await db().execute(`SELECT balance FROM accounts WHERE account_code = ?`, [code])).rows[0].balance;
+        const balance = (await sql`
+          SELECT balance FROM accounts WHERE account_code = ${code}
+        `).rows[0].balance;
         equal(balance, preClosingBalances[code], `Account ${code} should be restored after reversal`);
       }
     });
@@ -383,33 +342,23 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
       const postTime = new Date(2025, 0, 5, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [postTime, beginTime]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
 
       // Verify after closing
-      let dividends = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 3100`)).rows[0].balance;
-      let retainedEarnings = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 3000`)).rows[0].balance;
+      let dividends = (await sql`SELECT balance FROM accounts WHERE account_code = ${3100}`).rows[0].balance;
+      let retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = ${3000}`).rows[0].balance;
 
       equal(dividends, 0, 'Dividends should be zeroed after closing');
       equal(retainedEarnings, 5000, 'Retained earnings should be 5000');
 
       // Reverse
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}`;
 
       // Verify restoration
-      dividends = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 3100`)).rows[0].balance;
-      retainedEarnings = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 3000`)).rows[0].balance;
+      dividends = (await sql`SELECT balance FROM accounts WHERE account_code = ${3100}`).rows[0].balance;
+      retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = ${3000}`).rows[0].balance;
 
       equal(dividends, 2000, 'Dividends should be restored to 2000');
       equal(retainedEarnings, 0, 'Retained earnings should be restored to 0');
@@ -437,31 +386,23 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
       const postTime = new Date(2025, 0, 5, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [postTime, beginTime]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
 
       // Verify after closing
-      let retainedEarnings = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 3000`)).rows[0].balance;
+      let retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = ${3000}`).rows[0].balance;
       equal(retainedEarnings, -5000, 'Retained earnings should reflect net loss');
 
       // Reverse
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime]
-      );
+      await sql`
+        UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}
+      `;
 
       // Verify restoration
-      const revenue = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 4000`)).rows[0].balance;
-      const expense = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 5100`)).rows[0].balance;
-      retainedEarnings = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 3000`)).rows[0].balance;
+      const revenue = (await sql`SELECT balance FROM accounts WHERE account_code = ${4000}`).rows[0].balance;
+      const expense = (await sql`SELECT balance FROM accounts WHERE account_code = ${5100}`).rows[0].balance;
+      retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = ${3000}`).rows[0].balance;
 
       equal(revenue, 3000, 'Revenue should be restored');
       equal(expense, 8000, 'Expense should be restored');
@@ -476,17 +417,11 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
       await rejects(
-        db().execute(
-          `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-          [reversalTime, beginTime]
-        ),
+        sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}`,
         /Cannot reverse fiscal year that has not been closed/
       );
     });
@@ -504,15 +439,8 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const beginTime2023 = new Date(2023, 0, 1, 0, 0, 0, 0).getTime();
       const endTime2023 = new Date(2023, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime2023, endTime2023, 'FY2023']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [new Date(2024, 0, 5, 0, 0, 0, 0).getTime(), beginTime2023]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime2023}, ${endTime2023}, 'FY2023')`;
+      await sql`UPDATE fiscal_years SET post_time = ${new Date(2024, 0, 5, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2023}`;
 
       // Post transaction for FY2024
       const ref2 = await draftJournalEntry(new Date(2024, 5, 15, 0, 0, 0, 0));
@@ -524,23 +452,13 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const beginTime2024 = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime2024 = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime2024, endTime2024, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [new Date(2025, 0, 5, 0, 0, 0, 0).getTime(), beginTime2024]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime2024}, ${endTime2024}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${new Date(2025, 0, 5, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2024}`;
 
       // Try to reverse FY2023 (should fail because FY2024 exists)
       const reversalTime = new Date(2025, 1, 15, 0, 0, 0, 0).getTime();
       await rejects(
-        db().execute(
-          `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-          [reversalTime, beginTime2023]
-        ),
+        sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime2023}`,
         /Cannot reverse fiscal year: newer fiscal years exist/
       );
     });
@@ -558,15 +476,8 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const beginTime2023 = new Date(2023, 0, 1, 0, 0, 0, 0).getTime();
       const endTime2023 = new Date(2023, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime2023, endTime2023, 'FY2023']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [new Date(2024, 0, 5, 0, 0, 0, 0).getTime(), beginTime2023]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime2023}, ${endTime2023}, 'FY2023')`;
+      await sql`UPDATE fiscal_years SET post_time = ${new Date(2024, 0, 5, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2023}`;
 
       // Post transaction for FY2024
       const ref2 = await draftJournalEntry(new Date(2024, 5, 15, 0, 0, 0, 0));
@@ -578,25 +489,15 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const beginTime2024 = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime2024 = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime2024, endTime2024, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [new Date(2025, 0, 5, 0, 0, 0, 0).getTime(), beginTime2024]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime2024}, ${endTime2024}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${new Date(2025, 0, 5, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2024}`;
 
       // Reverse FY2024 (most recent - should succeed)
       const reversalTime = new Date(2025, 1, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime2024]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime2024}`;
 
       // Verify reversal
-      const fy2024 = (await db().execute(`SELECT * FROM fiscal_years WHERE begin_time = ?`, [beginTime2024])).rows[0];
+      const fy2024 = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${beginTime2024}`).rows[0];
       ok(fy2024.reversal_journal_entry_ref, 'FY2024 should have reversal entry');
     });
 
@@ -613,23 +514,13 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
       const postTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [postTime, beginTime]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
 
       // Try reversal with time before post time
       const invalidReversalTime = new Date(2025, 0, 10, 0, 0, 0, 0).getTime();
       await rejects(
-        db().execute(
-          `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-          [invalidReversalTime, beginTime]
-        ),
+        sql`UPDATE fiscal_years SET reversal_time = ${invalidReversalTime} WHERE begin_time = ${beginTime}`,
         /Reversal time must be after post time/
       );
     });
@@ -647,39 +538,23 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
       const postTime = new Date(2025, 0, 5, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [postTime, beginTime]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
 
       // Reverse
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}`;
 
       // Try to change reversal_time
       const newReversalTime = new Date(2025, 0, 20, 0, 0, 0, 0).getTime();
       await rejects(
-        db().execute(
-          `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-          [newReversalTime, beginTime]
-        ),
+        sql`UPDATE fiscal_years SET reversal_time = ${newReversalTime} WHERE begin_time = ${beginTime}`,
         /Cannot change or remove reversal_time once set/
       );
 
       // Try to remove reversal_time
       await rejects(
-        db().execute(
-          `UPDATE fiscal_years SET reversal_time = NULL WHERE begin_time = ?`,
-          [beginTime]
-        ),
+        sql`UPDATE fiscal_years SET reversal_time = NULL WHERE begin_time = ${beginTime}`,
         /Cannot change or remove reversal_time once set/
       );
     });
@@ -697,26 +572,16 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
       const postTime = new Date(2025, 0, 5, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [postTime, beginTime]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
 
       // Reverse
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}`;
 
       // Try to delete
       await rejects(
-        db().execute(`DELETE FROM fiscal_years WHERE begin_time = ?`, [beginTime]),
+        sql`DELETE FROM fiscal_years WHERE begin_time = ${beginTime}`,
         /Cannot delete closed or reversed fiscal year/
       );
     });
@@ -736,34 +601,22 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const beginTime1 = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime1 = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime1, endTime1, 'FY2024']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime1}, ${endTime1}, 'FY2024')`;
 
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [testTime, beginTime1]
-      );
+      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime1}`;
 
       // Reverse FY2024
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime1]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime1}`;
 
       // Now create overlapping fiscal year (July-June)
       const beginTime2 = new Date(2024, 6, 1, 0, 0, 0, 0).getTime();
       const endTime2 = new Date(2025, 5, 30, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime2, endTime2, 'FY2024-2025']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime2}, ${endTime2}, 'FY2024-2025')`;
 
       // Verify creation succeeded
-      const newFiscalYear = (await db().execute(`SELECT * FROM fiscal_years WHERE begin_time = ?`, [beginTime2])).rows[0];
+      const newFiscalYear = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${beginTime2}`).rows[0];
       equal(newFiscalYear.name, 'FY2024-2025');
     });
 
@@ -780,34 +633,21 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
       // Create and close fiscal year
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [testTime, beginTime]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
 
       // Reverse
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}`;
 
       // Create same period fiscal year again with slightly different times
       const newBeginTime = new Date(2024, 0, 1, 0, 0, 0, 1).getTime();
       const newEndTime = new Date(2024, 11, 31, 23, 59, 59, 999).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [newBeginTime, newEndTime, 'FY2024 Revised']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${newBeginTime}, ${newEndTime}, 'FY2024 Revised')`;
 
       // Verify creation succeeded
-      const newFiscalYear = (await db().execute(`SELECT * FROM fiscal_years WHERE begin_time = ?`, [newBeginTime])).rows[0];
+      const newFiscalYear = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${newBeginTime}`).rows[0];
       equal(newFiscalYear.name, 'FY2024 Revised');
     });
   });
@@ -825,15 +665,9 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const beginTime2022 = new Date(2022, 0, 1, 0, 0, 0, 0).getTime();
       const endTime2022 = new Date(2022, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime2022, endTime2022, 'FY2022']
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime2022}, ${endTime2022}, 'FY2022')`;
 
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [new Date(2023, 0, 5, 0, 0, 0, 0).getTime(), beginTime2022]
-      );
+      await sql`UPDATE fiscal_years SET post_time = ${new Date(2023, 0, 5, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2022}`;
 
       // Create and close FY2023
       const ref2 = await draftJournalEntry(new Date(2023, 5, 15, 0, 0, 0, 0));
@@ -844,15 +678,8 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const beginTime2023 = new Date(2023, 0, 1, 0, 0, 0, 0).getTime();
       const endTime2023 = new Date(2023, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime2023, endTime2023, 'FY2023']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [new Date(2024, 0, 5, 0, 0, 0, 0).getTime(), beginTime2023]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime2023}, ${endTime2023}, 'FY2023')`;
+      await sql`UPDATE fiscal_years SET post_time = ${new Date(2024, 0, 5, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2023}`;
 
       // Create and close FY2024
       const ref3 = await draftJournalEntry(new Date(2024, 5, 15, 0, 0, 0, 0));
@@ -863,62 +690,40 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const beginTime2024 = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime2024 = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime2024, endTime2024, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [new Date(2025, 0, 5, 0, 0, 0, 0).getTime(), beginTime2024]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime2024}, ${endTime2024}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${new Date(2025, 0, 5, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2024}`;
 
       // Verify retained earnings after all closings
-      let retainedEarnings = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 3000`)).rows[0].balance;
+      let retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = ${3000}`).rows[0].balance;
       equal(retainedEarnings, 18000, 'Cumulative retained earnings should be 18000');
 
       // Try to reverse FY2022 (should fail - not most recent)
       await rejects(
-        db().execute(
-          `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-          [new Date(2025, 1, 15, 0, 0, 0, 0).getTime(), beginTime2022]
-        ),
+        sql`UPDATE fiscal_years SET reversal_time = ${new Date(2025, 1, 15, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2022}`,
         /Cannot reverse fiscal year: newer fiscal years exist/
       );
 
       // Try to reverse FY2023 (should fail - not most recent)
       await rejects(
-        db().execute(
-          `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-          [new Date(2025, 1, 15, 0, 0, 0, 0).getTime(), beginTime2023]
-        ),
+        sql`UPDATE fiscal_years SET reversal_time = ${new Date(2025, 1, 15, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2023}`,
         /Cannot reverse fiscal year: newer fiscal years exist/
       );
 
       // Reverse FY2024 (should succeed - most recent)
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [new Date(2025, 1, 15, 0, 0, 0, 0).getTime(), beginTime2024]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${new Date(2025, 1, 15, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2024}`;
 
       // Now FY2023 becomes most recent non-reversed, can be reversed
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [new Date(2025, 1, 20, 0, 0, 0, 0).getTime(), beginTime2023]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${new Date(2025, 1, 20, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2023}`;
 
       // Now FY2022 can be reversed
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [new Date(2025, 1, 25, 0, 0, 0, 0).getTime(), beginTime2022]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${new Date(2025, 1, 25, 0, 0, 0, 0).getTime()} WHERE begin_time = ${beginTime2022}`;
 
       // Verify all revenue restored
-      const revenue = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 4000`)).rows[0].balance;
+      const revenue = (await sql`SELECT balance FROM accounts WHERE account_code = ${4000}`).rows[0].balance;
       equal(revenue, 18000, 'All revenue should be restored after reversing all fiscal years');
 
       // Verify retained earnings restored to 0
-      retainedEarnings = (await db().execute(`SELECT balance FROM accounts WHERE account_code = 3000`)).rows[0].balance;
+      retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = ${3000}`).rows[0].balance;
       equal(retainedEarnings, 0, 'Retained earnings should be 0 after reversing all fiscal years');
     });
   });
@@ -936,29 +741,18 @@ describe('Accounting Schema Tests - Fiscal Year Reversal', function () {
       const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
       const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
 
-      await db().execute(
-        `INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (?, ?, ?)`,
-        [beginTime, endTime, 'FY2024']
-      );
-
-      await db().execute(
-        `UPDATE fiscal_years SET post_time = ? WHERE begin_time = ?`,
-        [testTime, beginTime]
-      );
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
 
       // Reverse
       const reversalTime = new Date(2025, 0, 15, 0, 0, 0, 0).getTime();
-      await db().execute(
-        `UPDATE fiscal_years SET reversal_time = ? WHERE begin_time = ?`,
-        [reversalTime, beginTime]
-      );
+      await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}`;
 
       // Check reversal entry lines have 'Reversal' prefix
-      const fiscalYear = (await db().execute(`SELECT * FROM fiscal_years WHERE begin_time = ?`, [beginTime])).rows[0];
-      const reversalLines = (await db().execute(
-        `SELECT description FROM journal_entry_lines WHERE journal_entry_ref = ?`,
-        [fiscalYear.reversal_journal_entry_ref]
-      )).rows;
+      const fiscalYear = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${beginTime}`).rows[0];
+      const reversalLines = (await sql`
+        SELECT description FROM journal_entry_lines WHERE journal_entry_ref = ${fiscalYear.reversal_journal_entry_ref}
+      `).rows;
 
       for (const line of reversalLines) {
         ok(

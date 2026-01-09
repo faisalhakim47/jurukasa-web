@@ -77,8 +77,8 @@ const journalEntry = {
   filterSourceSystem: 'System',
   filterSourceLLM: 'LLM',
 
-  emptyStateTitle: 'No journal entries yet',
-  emptyStateMessage: 'Create your first journal entry to start tracking your financial transactions.',
+  emptyStateTitle: 'No journal entries found',
+  emptyStateMessage: 'Journal entries will appear here once you create them.',
   newEntryActionLabel: 'New Entry',
 
   loadingEntriesLabel: 'Loading journal entries...',
