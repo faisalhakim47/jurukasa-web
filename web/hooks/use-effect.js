@@ -1,4 +1,4 @@
-import { effect, stop } from '@vue/reactivity';
+import { effect, ref, stop } from '@vue/reactivity';
 import { useConnectedCallback } from '#web/hooks/use-lifecycle.js';
 
 export const stopEffect = Symbol('stopEffect');
@@ -15,5 +15,20 @@ export function useEffect(host, callback) {
     });
     function cleanupRunner() { stop(runner); };
     return cleanupRunner;
+  });
+}
+
+/**
+ * @param {HTMLElement} host
+ * @param {function(HTMLElement, function():unknown):void} useHook
+ * @param {function():unknown} callback
+ */
+export function useEffectAfterHook(host, useHook, callback) {
+  let active = ref(false);
+  useHook(host, function evaluateAfter() {
+    active.value = true;
+  });
+  useEffect(host, function effectAfterHook() {
+    if (active.value === true) return callback();
   });
 }

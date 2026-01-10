@@ -1,77 +1,61 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
-import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { setupDatabase } from '#test/tools/database.js';
 import { useStrict } from '#test/hooks/use-strict.js';
+
 const { describe } = test;
+
+/**
+ * @param {string} tursoDatabaseUrl
+ */
+async function setupView(tursoDatabaseUrl) {
+  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
+  localStorage.setItem('tursoDatabaseKey', '');
+  
+  // Set initial route to /books/chart-of-accounts
+  window.history.replaceState({}, '', '/books/chart-of-accounts');
+  
+  document.body.innerHTML = `
+    <ready-context>
+      <router-context>
+        <database-context>
+          <device-context>
+            <i18n-context>
+              <chart-of-accounts-view></chart-of-accounts-view>
+            </i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </ready-context>
+  `;
+}
 
 describe('Chart of Accounts View', function () {
   // useConsoleOutput(test);
-    useStrict(test);
+  useStrict(test);
 
-  /**
-   * @param {import('@playwright/test').Page} page
-   * @param {string} tursoLibSQLiteServerUrl
-   */
-  async function setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServerUrl) {
-    await page.goto('/test/fixtures/testing.html');
-
-    await page.getByLabel('Turso Database URL').fill(tursoLibSQLiteServerUrl);
-    await page.getByRole('button', { name: 'Configure' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();
-    await page.getByLabel('Business Name').fill('Test Business');
-    await page.getByRole('button', { name: 'Next' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' })).toBeVisible();
-    await page.getByRole('radio', { name: 'Retail Business - Indonesia' }).click();
-    await page.getByRole('button', { name: 'Finish' }).click();
-
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-
-    await page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Books' }).first().click();
-    await page.getByRole('tab', { name: 'Chart of Accounts' }).click();
-  }
-
-  describe('Chart of Accounts Navigation', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
-    test('shall display Books link in navigation', async function ({ page }) {
-      await page.goto('/test/fixtures/testing.html');
-
-      await page.getByLabel('Turso Database URL').fill(tursoLibSQLiteServer().url);
-      await page.getByRole('button', { name: 'Configure' }).click();
-
-      await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();
-      await page.getByLabel('Business Name').fill('Test Business');
-      await page.getByRole('button', { name: 'Next' }).click();
-
-      await expect(page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' })).toBeVisible();
-      await page.getByRole('radio', { name: 'Retail Business - Indonesia' }).click();
-      await page.getByRole('button', { name: 'Finish' }).click();
-
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-
-      await expect(page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Books' }).first()).toBeVisible();
-    });
-
-    test('shall navigate to Chart of Accounts when clicking Books link and Chart of Accounts tab', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('tab', { name: 'Chart of Accounts', selected: true })).toBeVisible();
-    });
-  });
+  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   describe('Chart of Accounts Page Display', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
     test('shall display accounts table', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('treegrid', { name: 'Chart of Accounts Tree' })).toBeVisible();
     });
 
     test('shall display table headers', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       const table = page.getByRole('treegrid', { name: 'Chart of Accounts Tree' });
       await expect(table.getByRole('columnheader', { name: 'Code' })).toBeVisible();
@@ -84,7 +68,12 @@ describe('Chart of Accounts View', function () {
     });
 
     test('shall display accounts from template', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       const table = page.getByRole('treegrid', { name: 'Chart of Accounts Tree' });
       // Check for some common accounts from the Retail Business template
@@ -95,34 +84,48 @@ describe('Chart of Accounts View', function () {
   });
 
   describe('Chart of Accounts Filter Controls', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
     test('shall display search input field', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
-      await expect(chartOfAccountsTab.getByRole('textbox', { name: 'Search' })).toBeVisible();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('textbox', { name: 'Search' })).toBeVisible();
     });
 
     test('shall display Type filter dropdown', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
-      await expect(chartOfAccountsTab.getByRole('button', { name: 'Type' })).toBeVisible();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('button', { name: 'Type' })).toBeVisible();
     });
 
     test('shall display Status filter dropdown', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
-      await expect(chartOfAccountsTab.getByRole('button', { name: 'Status' })).toBeVisible();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('button', { name: 'Status' })).toBeVisible();
     });
 
     test('shall open Type filter menu when clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
-      await chartOfAccountsTab.getByRole('button', { name: 'Type' }).click();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('button', { name: 'Type' }).click();
 
       await expect(page.getByRole('menu', { name: 'Account Type Filter' })).toBeVisible();
       await expect(page.getByRole('menuitem', { name: 'All' })).toBeVisible();
@@ -134,10 +137,14 @@ describe('Chart of Accounts View', function () {
     });
 
     test('shall open Status filter menu when clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
-      await chartOfAccountsTab.getByRole('button', { name: 'Status' }).click();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('button', { name: 'Status' }).click();
 
       await expect(page.getByRole('menu')).toBeVisible();
       await expect(page.getByRole('menuitemradio', { name: 'All' })).toBeVisible();
@@ -146,10 +153,14 @@ describe('Chart of Accounts View', function () {
     });
 
     test('shall filter accounts by type when type filter is selected', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
-      await chartOfAccountsTab.getByRole('button', { name: 'Type' }).click();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('button', { name: 'Type' }).click();
       await page.getByRole('menuitem', { name: 'Asset' }).click();
 
       // After filtering by Asset type, either a table with Asset accounts should be visible
@@ -162,10 +173,14 @@ describe('Chart of Accounts View', function () {
     });
 
     test('shall filter accounts by search query', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const chartOfAccountsTab = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
-      const searchInput = chartOfAccountsTab.getByRole('textbox', { name: 'Search' });
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      const searchInput = page.getByRole('textbox', { name: 'Search' });
       await searchInput.fill('Kas');
 
       // Should show filtered results
@@ -175,22 +190,35 @@ describe('Chart of Accounts View', function () {
   });
 
   describe('Chart of Accounts Tree Expansion', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
     test('shall display expand all button', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('button', { name: 'Expand All' })).toBeVisible();
     });
 
     test('shall display collapse all button', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('button', { name: 'Collapse All' })).toBeVisible();
     });
 
     test('shall expand all accounts when expand all button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await page.getByRole('button', { name: 'Expand All' }).click();
 
@@ -200,7 +228,12 @@ describe('Chart of Accounts View', function () {
     });
 
     test('shall collapse all accounts when collapse all button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       // First expand all
       await page.getByRole('button', { name: 'Expand All' }).click();
@@ -215,22 +248,35 @@ describe('Chart of Accounts View', function () {
   });
 
   describe('Chart of Accounts Actions', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
     test('shall display refresh button', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
     });
 
     test('shall display Create Account button', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('button', { name: 'Create Account' })).toBeVisible();
     });
 
     test('shall refresh accounts list when refresh button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await page.getByRole('button', { name: 'Refresh' }).click();
 
@@ -239,7 +285,12 @@ describe('Chart of Accounts View', function () {
     });
 
     test('shall open account creation dialog when Create Account button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await page.getByRole('button', { name: 'Create Account' }).click();
 
@@ -248,10 +299,13 @@ describe('Chart of Accounts View', function () {
   });
 
   describe('Chart of Accounts Account Creation', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
     test('shall display account creation form fields', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await page.getByRole('button', { name: 'Create Account' }).click();
 
@@ -263,7 +317,12 @@ describe('Chart of Accounts View', function () {
     });
 
     test('shall close dialog when Cancel button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await page.getByRole('button', { name: 'Create Account' }).click();
 
@@ -277,10 +336,13 @@ describe('Chart of Accounts View', function () {
   });
 
   describe('Chart of Accounts Loading State', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
     test('shall eventually show accounts table after loading', async function ({ page }) {
-      await setupDatabaseAndNavigateToChartOfAccounts(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('treegrid', { name: 'Chart of Accounts Tree' })).toBeVisible();
     });

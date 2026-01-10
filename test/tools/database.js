@@ -1,7 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createClient } from '@libsql/client';
 import { readFile } from 'node:fs/promises';
+import { createClient } from '@libsql/client';
 
 /** @import { ResultSet } from '@libsql/client' */
 /** @import { TursoLibSQLiteServerState } from '#test/hooks/use-turso-libsqlite-server.js' */
@@ -18,7 +18,7 @@ const __dirname = dirname(__filename);
  * The test implementation expects each test to have isolated database state.
  * 
  * @param {TursoLibSQLiteServerState} tursoLibSQLiteServer
- * @param {function(SQLFunction): Promise<void>} setup
+ * @param {function(SQLFunction): Promise<void>} [setup]
  * @returns {Promise<void>}
  */
 export async function setupDatabase(tursoLibSQLiteServer, setup) {
@@ -40,8 +40,9 @@ export async function setupDatabase(tursoLibSQLiteServer, setup) {
     readFile(join(__dirname, '../../web/schemas/005-fixed-assets.sql'), { encoding: 'utf-8' }),
   ]);
   for (const migration of migrations) await client.executeMultiple(migration);
+  await client.execute(`UPDATE config SET value = 'Testing Business' WHERE key = 'Business Name';`);
   await client.execute(`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia');`);
-  await setup(async function sql(query, ...params) {
+  if (typeof setup === 'function') await setup(async function sql(query, ...params) {
     if (!Array.isArray(query)) throw new TypeError('Expected TemplateStringsArray as the first argument.');
     return client.execute({
       sql: query.join('?'),

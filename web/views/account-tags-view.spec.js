@@ -1,33 +1,30 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useStrict } from '#test/hooks/use-strict.js';
-/** @import { Page } from '@playwright/test' */
+import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { setupDatabase } from '#test/tools/database.js';
 
 const { describe } = test;
 
-/**
- * @param {Page} page
- * @param {string} tursoLibSQLiteServerUrl
- */
-async function setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServerUrl) {
-  await page.goto('/test/fixtures/testing.html');
-
-  await page.getByLabel('Turso Database URL').fill(tursoLibSQLiteServerUrl);
-  await page.getByRole('button', { name: 'Configure' }).click();
-
-  await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();
-  await page.getByLabel('Business Name').fill('Test Business');
-  await page.getByRole('button', { name: 'Next' }).click();
-
-  await expect(page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' })).toBeVisible();
-  await page.getByRole('radio', { name: 'Retail Business - Indonesia' }).click();
-  await page.getByRole('button', { name: 'Finish' }).click();
-
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-  await page.getByText('Books').click();
-
-  await page.getByRole('tab', { name: 'Account Tags' }).click();
-  await expect(page.getByRole('tab', { name: 'Account Tags' })).toHaveAttribute('aria-selected', 'true');
+/** @param {string} tursoDatabaseUrl */
+async function setupView(tursoDatabaseUrl) {
+  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
+  localStorage.setItem('tursoDatabaseKey', '');
+  document.body.innerHTML = `
+    <ready-context>
+      <router-context>
+        <database-context>
+          <device-context>
+            <i18n-context>
+              <onboarding-context>
+                <main-view></main-view>
+              </onboarding-context>
+            </i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </ready-context>
+  `;
 }
 
 describe('Account Tags', function () {
@@ -37,27 +34,26 @@ describe('Account Tags', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
     test('shall display Account Tags tab in Books view', async function ({ page }) {
-      await page.goto('/test/fixtures/testing.html');
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await page.getByLabel('Turso Database URL').fill(tursoLibSQLiteServer().url);
-      await page.getByRole('button', { name: 'Configure' }).click();
-
-      await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();
-      await page.getByLabel('Business Name').fill('Test Business');
-      await page.getByRole('button', { name: 'Next' }).click();
-
-      await expect(page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' })).toBeVisible();
-      await page.getByRole('radio', { name: 'Retail Business - Indonesia' }).click();
-      await page.getByRole('button', { name: 'Finish' }).click();
-
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-      await page.getByText('Books').click();
+      await page.getByRole('link', { name: 'Books' }).click();
 
       await expect(page.getByRole('tab', { name: 'Account Tags' })).toBeVisible();
     });
 
     test('shall switch to Account Tags tab when clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       await expect(page.getByRole('tab', { name: 'Account Tags' })).toHaveAttribute('aria-selected', 'true');
       await expect(page.getByRole('tab', { name: 'Journal Entries' })).toHaveAttribute('aria-selected', 'false');
@@ -68,13 +64,27 @@ describe('Account Tags', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
     test('shall display Account Tags treegrid', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       await expect(page.getByRole('treegrid', { name: 'Account Tags' })).toBeVisible();
     });
 
     test('shall display column headers in table', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       await expect(page.getByRole('columnheader', { name: 'Tag' })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Accounts' })).toBeVisible();
@@ -82,7 +92,14 @@ describe('Account Tags', function () {
     });
 
     test('shall display account type tags from template', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       await expect(page.getByRole('treegrid', { name: 'Account Tags' })).toBeVisible();
 
@@ -95,7 +112,14 @@ describe('Account Tags', function () {
     });
 
     test('shall display account count for each tag', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       await expect(page.getByRole('treegrid', { name: 'Account Tags' })).toBeVisible();
 
@@ -108,14 +132,28 @@ describe('Account Tags', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
     test('shall have search input for filtering tags', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       const accountTagsPanel = page.getByRole('tabpanel', { name: 'Account Tags' });
       await expect(accountTagsPanel.getByLabel('Search', { exact: true })).toBeVisible();
     });
 
     test('shall filter tags by search query', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       const accountTagsPanel = page.getByRole('tabpanel', { name: 'Account Tags' });
 
@@ -125,14 +163,28 @@ describe('Account Tags', function () {
     });
 
     test('shall have category filter dropdown', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       const accountTagsPanel = page.getByRole('tabpanel', { name: 'Account Tags' });
       await expect(accountTagsPanel.getByLabel('Category', { exact: true })).toBeVisible();
     });
 
     test('shall filter tags by category', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       const accountTagsPanel = page.getByRole('tabpanel', { name: 'Account Tags' });
 
@@ -152,14 +204,28 @@ describe('Account Tags', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
     test('shall display expand/collapse buttons', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       await expect(page.getByRole('button', { name: 'Expand all tags' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Collapse all tags' })).toBeVisible();
     });
 
     test('shall expand tag to show assigned accounts', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       await page.getByRole('button', { name: 'Expand all tags' }).click();
 
@@ -167,7 +233,14 @@ describe('Account Tags', function () {
     });
 
     test('shall collapse all tags when collapse all button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       await page.getByRole('button', { name: 'Expand all tags' }).click();
 
@@ -181,13 +254,27 @@ describe('Account Tags', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
     test('shall have refresh button', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       await expect(page.getByRole('button', { name: 'Refresh account tags' })).toBeVisible();
     });
 
     test('shall reload tags when refresh button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       await page.getByRole('button', { name: 'Refresh account tags' }).click();
 
@@ -195,7 +282,14 @@ describe('Account Tags', function () {
     });
 
     test('shall have manage button for each tag', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       const treegrid = page.getByRole('treegrid', { name: 'Account Tags' });
       const tagRow = treegrid.getByRole('row').nth(1);
@@ -208,7 +302,14 @@ describe('Account Tags', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
     test('shall open assignment dialog when manage button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       const treegrid = page.getByRole('treegrid', { name: 'Account Tags' });
       const tagRow = treegrid.getByRole('row').nth(1);
@@ -220,7 +321,14 @@ describe('Account Tags', function () {
     });
 
     test('shall display accounts list in assignment dialog', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       const treegrid = page.getByRole('treegrid', { name: 'Account Tags' });
       const tagRow = treegrid.getByRole('row').nth(1);
@@ -235,7 +343,14 @@ describe('Account Tags', function () {
     });
 
     test('shall have search input in assignment dialog', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       const treegrid = page.getByRole('treegrid', { name: 'Account Tags' });
       const tagRow = treegrid.getByRole('row').nth(1);
@@ -248,7 +363,14 @@ describe('Account Tags', function () {
     });
 
     test('shall close dialog when close button is clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToAccountTags(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('link', { name: 'Books' }).click();
+      await page.getByRole('tab', { name: 'Account Tags' }).click();
 
       const treegrid = page.getByRole('treegrid', { name: 'Account Tags' });
       const tagRow = treegrid.getByRole('row').nth(1);

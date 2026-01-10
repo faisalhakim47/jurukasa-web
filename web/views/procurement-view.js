@@ -8,7 +8,7 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useElement } from '#web/hooks/use-element.js';
-import { useEffect } from '#web/hooks/use-effect.js';
+import { useEffect, useEffectAfterHook } from '#web/hooks/use-effect.js';
 import { useMounted } from '#web/hooks/use-mounted.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
@@ -52,7 +52,7 @@ export class ProcurementViewElement extends HTMLElement {
 
     useEffect(host, syncRouteToTabpanel);
     useReady(host, syncRouteToTabpanel); // sync on ready for initial scrollIntoView to works
-    useMounted(host, function evaluateDefaultRoute() {
+    useEffectAfterHook(host, useMounted, function evaluateDefaultRoute() {
       const pathname = router.route?.pathname;
       if (pathname === '/procurement' || pathname === '/procurement/') {
         router.navigate({ pathname: '/procurement/purchases', replace: true });

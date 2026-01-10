@@ -1,18 +1,14 @@
-import { html, render } from 'lit-html';
 import { reactive } from '@vue/reactivity';
 import { defineWebComponent } from '#web/component.js';
-import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { RouterContextElement } from '#web/contexts/router-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useAttributeChangedCallback } from '#web/hooks/use-lifecycle.js';
-import { useRender } from '#web/hooks/use-render.js';
-import { webStyleSheets } from '#web/styles.js';
 import { conditionalAttr, conditionalClass } from '#web/tools/dom.js';
 
 export class RouterLinkElement extends HTMLElement {
   static get observedAttributes() {
-    return ['href', 'aria-current', 'replace'];
+    return ['href', 'replace', 'data-active-class'];
   }
 
   constructor() {
@@ -23,8 +19,6 @@ export class RouterLinkElement extends HTMLElement {
     host.role = host.role || 'link';
 
     const router = useContext(host, RouterContextElement);
-    const render = useRender(host);
-    useAdoptedStyleSheets(host, webStyleSheets);
 
     const props = reactive({
       href: host.getAttribute('href'),
@@ -63,19 +57,6 @@ export class RouterLinkElement extends HTMLElement {
           replace: props.replace,
         });
       }
-    });
-
-    useEffect(host, function renderRouterLink() {
-      render(html`
-        <a
-          href="${props.href || '#'}"
-          style="
-            display: contents;
-            color: inherit;
-            text-decoration: none;
-          "
-        ><slot></slot></a>
-      `);
     });
   }
 }

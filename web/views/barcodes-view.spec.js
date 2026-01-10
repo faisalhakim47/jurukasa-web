@@ -30,6 +30,7 @@ async function setupView(tursoDatabaseUrl) {
 describe('Barcodes View', function () {
   // useConsoleOutput(test);
   useStrict(test);
+
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display empty state when no barcodes exist', async function ({ page }) {
@@ -282,14 +283,14 @@ describe('Barcodes View', function () {
       const database = document.querySelector('database-context');
       // Simulate error by corrupting database state
       const originalTransaction = database.transaction.bind(database);
-      database.transaction = async function transaction() {
+      database.transaction = async function faultyTransaction() {
         const tx = await originalTransaction('write');
         const originalSql = tx.sql.bind(tx);
         /**
          * @param {TemplateStringsArray} strings
          * @param {...unknown} values
          */
-        tx.sql = function sql(strings, ...values) {
+        tx.sql = function faultySql(strings, ...values) {
           if (strings[0].includes('DELETE FROM inventory_barcodes')) {
             throw new Error('Simulated database error');
           }

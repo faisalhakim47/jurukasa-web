@@ -3,15 +3,12 @@ import { reactive } from '@vue/reactivity';
 import { html } from 'lit-html';
 
 import { defineWebComponent } from '#web/component.js';
-import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useBusyStateUntil } from '#web/contexts/ready-context.js';
 import { RouterContextElement } from '#web/contexts/router-context.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { provideContext, useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { webStyleSheets } from '#web/styles.js';
-import { feedbackDelay } from '#web/tools/timing.js';
 
 /** @import { Client, TransactionMode } from '@libsql/client/web' */
 /** @typedef {'init'|'unconfigured'|'connecting'|'connected'} DatabaseConnectionState */
@@ -24,8 +21,6 @@ export class DatabaseContextElement extends HTMLElement {
 
     const host = this;
     const router = useContext(host, RouterContextElement);
-    const render = useRender(host);
-    useAdoptedStyleSheets(host, webStyleSheets);
 
     const connection = reactive({
       state: /** @type {'init'|'unconfigured'|'connecting'|'connected'} */ ('init'),
@@ -41,14 +36,13 @@ export class DatabaseContextElement extends HTMLElement {
       return connection.state;
     });
 
+    this.error = useExposed(host, function readConnectionError() {
+      return connection.error;
+    });
+
     useBusyStateUntil(host, function evaluteReadiness() {
       return connection.state === 'unconfigured'
         || connection.state === 'connected';
-    });
-
-    const form = reactive({
-      state: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
-      errorMessage: /** @type {string} */ (undefined),
     });
 
     let isClientResolved = false;
@@ -59,13 +53,14 @@ export class DatabaseContextElement extends HTMLElement {
     function resolveClient(client) {
       isClientResolved = true;
       resolveClientInternal(client);
-    };
+    }
 
     /**
+     * Connect to the database
      * @param {string} url turso database url
      * @param {string} authToken turso database auth key
      */
-    const connect = async function (url, authToken) {
+    async function connect(url, authToken) {
       if (isClientResolved) throw new DatabaseError('Database is already connected.');
       try {
         connection.state = 'connecting';
@@ -87,15 +82,18 @@ export class DatabaseContextElement extends HTMLElement {
         resolveClient(client);
       }
       catch (error) {
+        connection.state = 'unconfigured';
         connection.error = new FailedToConnectDatabaseError('Failed to connect to the database', { cause: error });
         throw connection.error;
       }
     };
 
+    this.connect = connect;
+
     /**
      * @param {Client} client
      */
-    const autoMigrate = async function (client) {
+    async function autoMigrate(client) {
       const schemaVersion = await getSchemaVersion(client);
       if (schemaVersion === '005-fixed-assets') return; // Already latest schema
       else if (schemaVersion === '004-revenue-tracking') {
@@ -123,7 +121,7 @@ export class DatabaseContextElement extends HTMLElement {
         await migrate(client, '/web/schemas/004-revenue-tracking.sql');
         await migrate(client, '/web/schemas/005-fixed-assets.sql');
       }
-    };
+    }
 
     /**
      * @param {Client} client
@@ -142,7 +140,7 @@ export class DatabaseContextElement extends HTMLElement {
         await tx.rollback();
         throw error;
       }
-    };
+    }
 
     /**
      * @param {Client} client
@@ -157,46 +155,7 @@ export class DatabaseContextElement extends HTMLElement {
         if (error instanceof Error && error.message.includes('no such table: config')) return undefined;
         else throw error;
       }
-    };
-
-    /** @param {SubmitEvent} event */
-    async function submitDatabaseConfig(event) {
-      try {
-        event.preventDefault();
-        form.state = 'submitting';
-        const formEl = /** @type {HTMLFormElement} */ (event.target);
-        const tursoDatabaseUrl = formEl.elements['turso-database-url'].value;
-        const tursoDatabaseKey = formEl.elements['turso-database-key'].value;
-        await connect(tursoDatabaseUrl, tursoDatabaseKey);
-        form.state = 'success';
-        await feedbackDelay();
-        router.navigate({
-          pathname: router.route.pathname,
-          tursoDatabaseKey,
-          tursoDatabaseUrl,
-          replace: true,
-        });
-      }
-      catch (error) {
-        form.state = 'failure';
-        form.errorMessage = error.message;
-        await feedbackDelay();
-        form.state = 'ready';
-      }
-    };
-
-    /** @param {SubmitEvent} event */
-    function resetDatabaseConfig(event) {
-      event.preventDefault();
-      router.navigate({
-        pathname: router.route.pathname,
-        tursoDatabaseKey: undefined,
-        tursoDatabaseUrl: undefined,
-        replace: true,
-      });
-      connection.state = 'unconfigured';
-      connection.error = undefined;
-    };
+    }
 
     useEffect(host, function evaluateExistingState() {
       if (connection.state === 'init' && router.route) {
@@ -204,7 +163,7 @@ export class DatabaseContextElement extends HTMLElement {
         if (tursoDatabaseUrl) {
           connect(tursoDatabaseUrl, tursoDatabaseKey)
             .then(function connected() { connection.state = 'connected'; })
-            .catch(function failedToConect(error) {
+            .catch(function failedToConnect(error) {
               connection.state = 'unconfigured';
               connection.error = error;
             });
@@ -215,93 +174,10 @@ export class DatabaseContextElement extends HTMLElement {
       }
     });
 
-    useEffect(host, function renderDatabaseGuard() {
-      if (connection.state === 'init') render(html`
-        <p>Initializing database...</p>
-      `);
-      else if (connection.state === 'unconfigured' || connection.state === 'connecting') {
-        const formState = form.state;
-        const formDisabled = formState !== 'ready';
-        const submitButtonText = formState === 'ready' ? 'Configure'
-          : formState === 'submitting' ? 'Connecting...'
-            : formState === 'success' ? 'Connected'
-              : formState === 'failure' ? 'Failed'
-                : 'Configure';
-        render(html`
-          <dialog
-            class="full-screen"
-            aria-labelledby="configure-database-title"
-            aria-describedby="configure-database-description"
-            open
-          >
-            <form method="dialog" class="container" ?disabled=${formDisabled} @submit=${submitDatabaseConfig}>
-
-              <header>
-                <h3 id="configure-database-title">Configure Database</h3>
-                <button role="button" type="submit">${submitButtonText}</button>
-              </header>
-
-              <div class="content">
-                <p>Configure your Turso database connection by providing the database URL and authentication key.</p>
-
-                <div class="outlined-text-field">
-                  <div class="container">
-                    <label for="turso-database-url">Turso Database URL</label>
-                    <input
-                      id="turso-database-url"
-                      name="turso-database-url"
-                      type="text"
-                      autocomplete="off"
-                      required
-                      ?disabled=${formDisabled}
-                      placeholder="Turso Database URL"
-                      aria-describedby="turso-database-url-description"
-                    />
-                  </div>
-                  <p id="turso-database-url-description" class="supporting-text">The URL of your Turso database instance, typically starting with "https://".</p>
-                </div>
-                <div class="outlined-text-field">
-                  <div class="container">
-                    <label for="turso-database-key">Turso Database Auth Key</label>
-                    <input
-                      id="turso-database-key"
-                      name="turso-database-key"
-                      type="password"
-                      autocomplete="off"
-                      ?disabled=${formDisabled}
-                      placeholder="Turso Database Auth Key"
-                      aria-describedby="turso-database-key-description"
-                    />
-                  </div>
-                  <p class="supporting-text" id="turso-database-key-description">The authentication token required to access your Turso database.</p>
-                </div>
-              </div>
-
-            </form>
-          </dialog>
-        `);
-      }
-      else if (connection.state === 'connected') render(html`
-        <slot></slot>
-      `);
-      else if (connection.error instanceof Error) render(html`
-        <form @submit=${resetDatabaseConfig}>
-          <p class="error">Database connection error: ${connection.error.message}</p>
-          <button role="button" type="submit">Reset Database Configuration</button>
-        </form>
-      `);
-      else render(html`
-        <form @submit=${resetDatabaseConfig}>
-          <p class="error">Unknown database connection state...</p>
-          <button role="button" type="submit">Reset Database Configuration</button>
-        </form>
-      `);
-    });
-
     /**
      * @param {TransactionMode} mode
      */
-    this.transaction = async function (mode) {
+    this.transaction = async function transaction(mode) {
       const client = await clientPromise;
       const tx = await client.transaction(mode);
       return {

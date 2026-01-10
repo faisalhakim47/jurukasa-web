@@ -1,19 +1,18 @@
 import { reactive } from '@vue/reactivity';
 import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 
 import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { useContext } from '#web/hooks/use-context.js';
-import { useAttribute } from '#web/hooks/use-attribute.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
-import { sleep } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
 
@@ -155,6 +154,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
 
     async function loadAccounts() {
       const tag = dialog.context?.dataset.tag;
+
       if (!tag) {
         state.accounts = [];
         state.isLoading = false;
@@ -176,7 +176,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
           ORDER BY a.account_code ASC
         `;
 
-        state.accounts = result.rows.map(function (row) {
+        state.accounts = result.rows.map(function rowToAccount(row) {
           return /** @type {AccountOption} */ ({
             account_code: Number(row.account_code),
             name: String(row.name),
@@ -200,6 +200,14 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
       if (dialog.open) loadAccounts();
     });
 
+    useEffect(host, function watchError() {
+      if (state.error) {
+        requestAnimationFrame(function showModalAfterRender() {
+          errorAlertDialog.value.showModal();
+        });
+      }
+    });
+
     /**
      * @param {number} accountCode
      */
@@ -207,38 +215,42 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
       const tag = dialog.context?.dataset.tag;
       if (!tag) return;
 
-      const tx = await database.transaction('write');
+      state.isSaving = true;
+
+      const previousAccounts = state.accounts;
 
       try {
-        state.isSaving = true;
+        const tx = await database.transaction('write');
 
-        // For unique tags, remove from any other account first
-        if (isUniqueTag()) {
-          await tx.sql`
-            DELETE FROM account_tags WHERE tag = ${tag}
-          `;
+        try {
+          // For unique tags, remove from any other account first
+          if (isUniqueTag()) await tx.sql`DELETE FROM account_tags WHERE tag = ${tag}`
+
+          await tx.sql`INSERT INTO account_tags (account_code, tag) VALUES (${accountCode}, ${tag})`;
+
+          await tx.commit();
+
+          state.accounts = state.accounts.map(function updateAccount(account) {
+            return {
+              account_code: account.account_code,
+              name: account.name,
+              hasTag: isUniqueTag() ? account.account_code === accountCode : account.hasTag || account.account_code === accountCode,
+            };
+          });
+
+          host.dispatchEvent(new CustomEvent('tag-assignment-changed', {
+            detail: { tag, accountCode, action: 'assign' },
+            bubbles: true,
+            composed: true,
+          }));
         }
-
-        await tx.sql`
-          INSERT INTO account_tags (account_code, tag)
-          VALUES (${accountCode}, ${tag})
-        `;
-
-        await tx.commit();
-
-        for (const account of state.accounts) {
-          if (isUniqueTag()) account.hasTag = false;
-          if (account.account_code === accountCode) account.hasTag = true;
+        catch (dbError) {
+          await tx.rollback();
+          throw dbError;
         }
-
-        host.dispatchEvent(new CustomEvent('tag-assignment-changed', {
-          detail: { tag, accountCode, action: 'assign' },
-          bubbles: true,
-          composed: true,
-        }));
       }
       catch (error) {
-        await tx.rollback();
+        state.accounts = previousAccounts;
         state.error = error instanceof Error ? error : new Error(String(error));
       }
       finally {
@@ -253,20 +265,20 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
       const tag = dialog.context?.dataset.tag;
       if (!tag) return;
 
+      state.isSaving = true;
+
+      const previousAccounts = state.accounts;
+
       try {
-        state.isSaving = true;
+        await database.sql`DELETE FROM account_tags WHERE account_code = ${accountCode} AND tag = ${tag}`;
 
-        await database.sql`
-          DELETE FROM account_tags
-          WHERE account_code = ${accountCode} AND tag = ${tag}
-        `;
-
-        for (const account of state.accounts) {
-          if (account.account_code === accountCode) {
-            account.hasTag = false;
-            break;
-          }
-        }
+        state.accounts = state.accounts.map(function updateAccount(account) {
+          return {
+            account_code: account.account_code,
+            name: account.name,
+            hasTag: account.account_code === accountCode ? false : account.hasTag,
+          };
+        });
 
         host.dispatchEvent(new CustomEvent('tag-assignment-changed', {
           detail: { tag, accountCode, action: 'remove' },
@@ -275,6 +287,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
         }));
       }
       catch (error) {
+        state.accounts = previousAccounts;
         state.error = error instanceof Error ? error : new Error(String(error));
       }
       finally {
@@ -284,12 +297,10 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleToggleTagInteraction(event) {
-      if (event instanceof KeyboardEvent && !['Enter', ' '].includes(event.key)) return;
-      assertInstanceOf(HTMLTableRowElement, event.currentTarget);
-      const accountCode = parseInt(event.currentTarget.dataset.accountCode, 10);
-      const hasTag = event.currentTarget.dataset.hasTag === 'true';
-      if (hasTag) removeTag(accountCode);
-      else assignTag(accountCode);
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      const accountCode = parseInt(event.currentTarget.value, 10);
+      if (event.currentTarget.checked) assignTag(accountCode);
+      else removeTag(accountCode);
     };
 
     /** @param {Event} event */
@@ -298,16 +309,48 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
       state.searchQuery = event.target.value;
     }
 
+    /** @param {KeyboardEvent} event */
+    function handleAccountRowKeydown(event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        const row = /** @type {HTMLElement} */ (event.currentTarget);
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        if (checkbox instanceof HTMLInputElement) {
+          const accountCode = parseInt(checkbox.value, 10);
+          if (checkbox.checked) {
+            removeTag(accountCode);
+          } else {
+            assignTag(accountCode);
+          }
+        }
+      }
+    }
+
+    /** @param {Event} event */
+    function handleAccountRowClick(event) {
+      const row = /** @type {HTMLElement} */ (event.currentTarget);
+      const checkbox = row.querySelector('input[type="checkbox"]');
+      if (checkbox instanceof HTMLInputElement && event.target !== checkbox) {
+        const accountCode = parseInt(checkbox.value, 10);
+        if (checkbox.checked) {
+          removeTag(accountCode);
+        } else {
+          assignTag(accountCode);
+        }
+      }
+    }
+
     function getFilteredAccounts() {
       if (!state.searchQuery.trim()) return state.accounts;
       const query = state.searchQuery.toLowerCase();
-      return state.accounts.filter(function (account) {
+      return state.accounts.filter(function queryFilter(account) {
         return account.name.toLowerCase().includes(query)
           || String(account.account_code).includes(query);
       });
     }
 
     function handleDismissErrorDialog() {
+      errorAlertDialog.value.close();
       state.error = null;
     }
 
@@ -358,40 +401,33 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
       `;
     }
 
-    /**
-     * @param {AccountOption} account
-     */
+    /** @param {AccountOption} account */
     function renderAccountRow(account) {
+      const inputId = `account-${account.account_code}`;
       return html`
         <tr
-          tabindex="0"
-          aria-label="Account ${account.name}"
-          data-account-code=${account.account_code}
           data-has-tag=${account.hasTag ? 'true' : 'false'}
-          @click=${handleToggleTagInteraction}
-          @keydown=${handleToggleTagInteraction}
+          tabindex="0"
+          @click=${handleAccountRowClick}
+          @keydown=${handleAccountRowKeydown}
         >
-          <td style="width: 48px; text-align: center;">
-            <span
-              style="
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 24px;
-                height: 24px;
-                border-radius: var(--md-sys-shape-corner-extra-small);
-                border: 2px solid ${account.hasTag ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-outline)'};
-                background-color: ${account.hasTag ? 'var(--md-sys-color-primary)' : 'transparent'};
-                transition: all 0.2s ease;
-              "
-            >
-              ${account.hasTag ? html`
-                <material-symbols name="check" size="18" style="color: var(--md-sys-color-on-primary);"></material-symbols>
-              ` : nothing}
-            </span>
+          <td style="text-align: center;">
+            <input
+              id=${inputId}
+              type="checkbox"
+              name="account_code"
+              value=${account.account_code}
+              aria-label=${account.name}
+              ?checked=${account.hasTag}
+              @change=${handleToggleTagInteraction}
+            />
           </td>
-          <td class="label-large" style="color: var(--md-sys-color-primary); width: 100px;">${account.account_code}</td>
-          <td>${account.name}</td>
+          <td class="label-large" style="color: var(--md-sys-color-primary);">
+            <label for=${inputId} class="body-medium">${account.account_code}</label>
+          </td>
+          <td>
+            <label for=${inputId} class="body-medium">${account.name}</label>
+          </td>
         </tr>
       `;
     }
@@ -400,9 +436,9 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
       const filteredAccounts = getFilteredAccounts();
       if (filteredAccounts.length === 0) return renderEmptyState();
 
-      const assignedCount = state.accounts.filter(function (account) {
-        return account.hasTag;
-      }).length;
+      const assignedCount = state.accounts
+        .filter(function hasTag(account) { return account.hasTag; })
+        .length;
 
       return html`
         <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -422,7 +458,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
                 </tr>
               </thead>
               <tbody>
-                ${filteredAccounts.map(renderAccountRow)}
+                ${repeat(filteredAccounts, (account) => account.account_code, renderAccountRow)}
               </tbody>
             </table>
           </div>

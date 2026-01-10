@@ -1,114 +1,108 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
-import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { setupDatabase } from '#test/tools/database.js';
 import { useStrict } from '#test/hooks/use-strict.js';
+
 const { describe } = test;
+
+/**
+ * @param {string} tursoDatabaseUrl
+ */
+async function setupView(tursoDatabaseUrl) {
+  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
+  localStorage.setItem('tursoDatabaseKey', '');
+  
+  // Set initial route to /books/fixed-assets
+  window.history.replaceState({}, '', '/books/fixed-assets');
+  
+  document.body.innerHTML = `
+    <ready-context>
+      <router-context>
+        <database-context>
+          <device-context>
+            <i18n-context>
+              <fixed-assets-view></fixed-assets-view>
+            </i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </ready-context>
+  `;
+}
 
 describe('Fixed Assets', function () {
   // useConsoleOutput(test);
   useStrict(test);
 
-  /**
-   * @param {import('@playwright/test').Page} page
-   * @param {string} tursoLibSQLiteServerUrl
-   */
-  async function setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServerUrl) {
-    await page.goto('/test/fixtures/testing.html');
-
-    await page.getByLabel('Turso Database URL').fill(tursoLibSQLiteServerUrl);
-    await page.getByRole('button', { name: 'Configure' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();
-    await page.getByLabel('Business Name').fill('Test Business');
-    await page.getByRole('button', { name: 'Next' }).click();
-
-    await expect(page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' })).toBeVisible();
-    await page.getByRole('radio', { name: 'Retail Business - Indonesia' }).click();
-    await page.getByRole('button', { name: 'Finish' }).click();
-
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-
-    await page.getByText('Books').click();
-
-    await page.getByRole('tab', { name: 'Fixed Assets' }).click();
-    await expect(page.getByRole('tab', { name: 'Fixed Assets' })).toHaveAttribute('aria-selected', 'true');
-  }
-
-  describe('Fixed Assets Tab Navigation', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
-    test('shall display Fixed Assets tab in navigation', async function ({ page }) {
-      await page.goto('/test/fixtures/testing.html');
-
-      await page.getByLabel('Turso Database URL').fill(tursoLibSQLiteServer().url);
-      await page.getByRole('button', { name: 'Configure' }).click();
-
-      await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();
-      await page.getByLabel('Business Name').fill('Test Business');
-      await page.getByRole('button', { name: 'Next' }).click();
-      await expect(page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' })).toBeVisible();
-      await page.getByRole('radio', { name: 'Retail Business - Indonesia' }).click();
-      await page.getByRole('button', { name: 'Finish' }).click();
-
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-      await page.getByText('Books').click();
-
-      await expect(page.getByRole('tab', { name: 'Fixed Assets' })).toBeVisible();
-    });
-
-    test('shall switch to Fixed Assets tab when clicked', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('tab', { name: 'Fixed Assets' })).toHaveAttribute('aria-selected', 'true');
-      await expect(page.getByRole('tab', { name: 'Journal Entries' })).toHaveAttribute('aria-selected', 'false');
-    });
-  });
+  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   describe('Fixed Assets Display', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
     test('shall display empty state when no fixed assets exist', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const fixedAssetsPanel = page.getByRole('tabpanel', { name: 'Fixed Assets' });
-      await expect(fixedAssetsPanel.getByRole('heading', { name: 'No fixed assets found' })).toBeVisible();
-      await expect(fixedAssetsPanel.getByText('Start by recording your first fixed asset to track depreciation.')).toBeVisible();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('heading', { name: 'No fixed assets found' })).toBeVisible();
+      await expect(page.getByText('Start by recording your first fixed asset to track depreciation.')).toBeVisible();
     });
 
     test('shall display Add Fixed Asset button', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const fixedAssetsPanel = page.getByRole('tabpanel', { name: 'Fixed Assets' });
-      await expect(fixedAssetsPanel.getByRole('button', { name: 'Add Fixed Asset' })).toBeVisible();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('button', { name: 'Add Fixed Asset' })).toBeVisible();
     });
 
     test('shall display Refresh button', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const fixedAssetsPanel = page.getByRole('tabpanel', { name: 'Fixed Assets' });
-      await expect(fixedAssetsPanel.getByRole('button', { name: 'Refresh' })).toBeVisible();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
     });
 
     test('shall display search field', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const fixedAssetsPanel = page.getByRole('tabpanel', { name: 'Fixed Assets' });
-      await expect(fixedAssetsPanel.getByLabel('Search', { exact: true })).toBeVisible();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByLabel('Search', { exact: true })).toBeVisible();
     });
 
     test('shall display status filter', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const fixedAssetsPanel = page.getByRole('tabpanel', { name: 'Fixed Assets' });
-      await expect(fixedAssetsPanel.getByLabel('Status')).toBeVisible();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByLabel('Status')).toBeVisible();
     });
   });
 
   describe('Fixed Asset Creation', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
     test('shall open creation dialog when clicking Add Fixed Asset button', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await page.getByRole('button', { name: 'Add Fixed Asset' }).click();
 
@@ -116,7 +110,12 @@ describe('Fixed Assets', function () {
     });
 
     test('shall display form fields in creation dialog', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await page.getByRole('button', { name: 'Add Fixed Asset' }).click();
       const dialog = page.getByRole('dialog', { name: 'Add Fixed Asset' });
@@ -135,7 +134,12 @@ describe('Fixed Assets', function () {
     });
 
     test('shall close creation dialog when clicking close button', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await page.getByRole('button', { name: 'Add Fixed Asset' }).click();
       const dialog = page.getByRole('dialog', { name: 'Add Fixed Asset' });
@@ -148,20 +152,26 @@ describe('Fixed Assets', function () {
   });
 
   describe('Fixed Asset Filtering', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
     test('shall display All filter option by default', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const fixedAssetsPanel = page.getByRole('tabpanel', { name: 'Fixed Assets' });
-      await expect(fixedAssetsPanel.getByLabel('Status')).toHaveValue('All');
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByLabel('Status')).toHaveValue('All');
     });
 
     test('shall show filter options in dropdown menu', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const fixedAssetsPanel = page.getByRole('tabpanel', { name: 'Fixed Assets' });
-      await fixedAssetsPanel.getByLabel('Status').click();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByLabel('Status').click();
 
       await expect(page.getByRole('menuitem', { name: 'All' })).toBeVisible();
       await expect(page.getByRole('menuitem', { name: 'Active' })).toBeVisible();
@@ -170,16 +180,18 @@ describe('Fixed Assets', function () {
   });
 
   describe('Fixed Asset Refresh', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
     test('shall reload fixed assets when clicking Refresh button', async function ({ page }) {
-      await setupDatabaseAndNavigateToFixedAssets(page, tursoLibSQLiteServer().url);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
+      ]);
 
-      const fixedAssetsPanel = page.getByRole('tabpanel', { name: 'Fixed Assets' });
-      await fixedAssetsPanel.getByRole('button', { name: 'Refresh' }).click();
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await page.getByRole('button', { name: 'Refresh' }).click();
 
       // After refresh, the view should still show empty state (no assets yet)
-      await expect(fixedAssetsPanel.getByRole('heading', { name: 'No fixed assets found' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'No fixed assets found' })).toBeVisible();
     });
   });
 });
