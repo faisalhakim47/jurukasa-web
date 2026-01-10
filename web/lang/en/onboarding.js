@@ -11,6 +11,8 @@ const onboarding = {
   featureAccounting: 'Accounting - Follow Indonesian accounting standards',
   featureReports: 'Financial Reports - Generate comprehensive business reports',
   getStartedButton: 'Get Started',
+  selectLanguageLabel: 'Select Your Language',
+  languageLabel: 'Language',
 
   // Database setup
   databaseConfigTitle: 'Configure Database',

@@ -84,6 +84,23 @@ describe('Onboarding View', function () {
 
       await expect(page.getByRole('dialog', { name: 'Configure Database' })).toBeVisible();
     });
+
+    test('it shall allow language selection with realtime update', async function ({ page }) {
+      await loadEmptyFixture(page);
+
+      await page.evaluate(setupOnboardingViewWithoutDatabase);
+
+      await expect(page.getByRole('dialog', { name: 'Welcome to JuruKasa' })).toBeVisible();
+      await expect(page.getByText('Welcome to JuruKasa')).toBeVisible();
+
+      await page.getByRole('radio', { name: 'Bahasa Indonesia' }).check();
+
+      await expect(page.getByText('Selamat Datang di JuruKasa')).toBeVisible();
+
+      await page.getByRole('radio', { name: 'English' }).check();
+
+      await expect(page.getByText('Welcome to JuruKasa')).toBeVisible();
+    });
   });
 
   describe('Database Setup Step', function () {
@@ -175,16 +192,19 @@ describe('Onboarding View', function () {
 
       await page.evaluate(setupOnboardingView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByLabel('Language')).toHaveValue('English');
+      const dialog = page.getByRole('dialog', { name: 'Configure Business' });
+      await expect(dialog).toBeVisible();
 
-      await page.getByLabel('Language').click();
+      await expect(dialog.getByLabel('Language')).toHaveValue('English');
+
+      await dialog.getByLabel('Language').click();
 
       const languageMenu = page.getByRole('menu');
       await expect(languageMenu).toBeVisible();
 
-      await languageMenu.getByRole('menuitem', { name: 'Bahasa Indonesia' }).click();
+      await languageMenu.getByRole('menuitemradio', { name: 'Bahasa Indonesia' }).click();
 
-      await expect(page.getByLabel('Language')).toHaveValue('Bahasa Indonesia');
+      await expect(dialog.getByLabel('Language')).toHaveValue('Bahasa Indonesia');
     });
 
     test('it shall validate fiscal year start month range', async function ({ page }) {

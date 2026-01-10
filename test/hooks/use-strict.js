@@ -1,5 +1,7 @@
 /** @import { test } from '@playwright/test' */
 
+import { env } from 'node:process';
+
 /**
  * This is important hook that enforces strict test guidelines described in test/AGENTS.md file.
  * 

@@ -13,6 +13,8 @@ export default /** @type {Partial<OnboardingTranslation>} */ ({
   featureAccounting: 'Akuntansi - Mengikuti standar akuntansi Indonesia',
   featureReports: 'Laporan Keuangan - Buat laporan bisnis yang komprehensif',
   getStartedButton: 'Mulai',
+  selectLanguageLabel: 'Pilih Bahasa Anda',
+  languageLabel: 'Bahasa',
 
   // Database setup
   databaseConfigTitle: 'Konfigurasi Database',

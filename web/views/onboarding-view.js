@@ -1,8 +1,10 @@
 import { reactive } from '@vue/reactivity';
 import { html } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 
 import { defineWebComponent } from '#web/component.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
+import { DeviceContextElement } from '#web/contexts/device-context.js';
 import { OnboardingContextElement } from '#web/contexts/onboarding-context.js';
 import { RouterContextElement } from '#web/contexts/router-context.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
@@ -29,6 +31,7 @@ export class OnboardingViewElement extends HTMLElement {
 
     const host = this;
     const database = useContext(host, DatabaseContextElement);
+    const device = useContext(host, DeviceContextElement);
     const onboardingContext = useContext(host, OnboardingContextElement);
     const router = useContext(host, RouterContextElement);
     const t = useTranslator(host);
@@ -39,6 +42,8 @@ export class OnboardingViewElement extends HTMLElement {
       step: /** @type {'welcome'|'database-setup'|'business-config'|'chart-of-accounts'|'complete'} */ ('welcome'),
       templateNames: /** @type {string[]} */ ([]),
       isInitialized: false,
+      selectedLanguage: 'en',
+      selectedLanguageDisplay: 'English',
     });
 
     const databaseForm = reactive({
@@ -114,6 +119,8 @@ export class OnboardingViewElement extends HTMLElement {
     }
 
     function goToDatabaseSetup() {
+      // Apply the selected language from welcome screen
+      device.setLanguage(onboarding.selectedLanguage);
       onboarding.step = 'database-setup';
     }
 
@@ -213,15 +220,26 @@ export class OnboardingViewElement extends HTMLElement {
     }
 
     /** @param {Event} event */
-    function handleLanguageSelection(event) {
+    function handleLanguageSelectionInBusinessConfig(event) {
       assertInstanceOf(HTMLButtonElement, event.currentTarget);
       const selectedLanguage = event.currentTarget.dataset.language;
+      const displayName = event.currentTarget.dataset.displayName;
       event.currentTarget.form.elements['language'].value = selectedLanguage;
-      event.currentTarget.form.elements['language-display'].value = event.currentTarget.textContent;
+      event.currentTarget.form.elements['language-display'].value = displayName;
       for (const li of event.currentTarget.closest('[role="menu"]').children) {
         assertInstanceOf(HTMLButtonElement, li.firstChild);
         li.firstChild.setAttribute('aria-checked', selectedLanguage === li.firstChild.dataset.language ? 'true' : 'false');
       }
+    }
+
+    /** @param {Event} event */
+    function handleLanguageSelectionInWelcome(event) {
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      const selectedLanguage = event.currentTarget.value;
+      const displayName = event.currentTarget.nextElementSibling.textContent.trim();
+      onboarding.selectedLanguage = selectedLanguage;
+      onboarding.selectedLanguageDisplay = displayName;
+      device.setLanguage(selectedLanguage);
     }
 
     function renderWelcomeStep() {
@@ -256,6 +274,57 @@ export class OnboardingViewElement extends HTMLElement {
                 </ul>
               </div>
 
+              <div style="text-align: left; margin-bottom: 32px;">
+                <h3 style="margin-bottom: 16px;">${t('onboarding', 'selectLanguageLabel')}</h3>
+                <ul role="radiogroup" style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 12px;">
+                  <li role="presentation">
+                    <label
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        cursor: pointer;
+                        padding: 12px;
+                        border: 1px solid var(--md-sys-color-outline);
+                        border-radius: var(--md-sys-shape-corner-extra-small);
+                        background-color: ${onboarding.selectedLanguage === 'en' ? 'var(--md-sys-color-surface-container-high)' : 'var(--md-sys-color-surface-container-lowest)'};
+                      ">
+                      <input
+                        type="radio"
+                        name="language"
+                        value="en"
+                        @change=${handleLanguageSelectionInWelcome}
+                        ?checked=${onboarding.selectedLanguage === 'en'}
+                        style="margin: 0;"
+                      />
+                      <span>English</span>
+                    </label>
+                  </li>
+                  <li role="presentation">
+                    <label style="
+                      display: flex;
+                      align-items: center;
+                      gap: 12px;
+                      cursor: pointer;
+                      padding: 12px;
+                      border: 1px solid var(--md-sys-color-outline);
+                      border-radius: var(--md-sys-shape-corner-extra-small);
+                      background-color: ${onboarding.selectedLanguage === 'id' ? 'var(--md-sys-color-surface-container-high)' : 'var(--md-sys-color-surface-container-lowest)'};
+                    ">
+                      <input
+                        type="radio"
+                        name="language"
+                        value="id"
+                        @change=${handleLanguageSelectionInWelcome}
+                        ?checked=${onboarding.selectedLanguage === 'id'}
+                        style="margin: 0;"
+                      />
+                      <span>Bahasa Indonesia</span>
+                    </label>
+                  </li>
+                </ul>
+              </div>
+
               <button
                 role="button"
                 type="button"
@@ -281,6 +350,7 @@ export class OnboardingViewElement extends HTMLElement {
           class="full-screen"
           aria-labelledby="configure-database-title"
           aria-describedby="configure-database-description"
+          style="max-width: 600px; margin: 0 auto;"
           open
         >
           <form method="dialog" class="container" ?disabled=${formDisabled} @submit=${submitDatabaseConfig}>
@@ -333,7 +403,12 @@ export class OnboardingViewElement extends HTMLElement {
       const formState = businessForm.state;
       const formDisabled = formState !== 'ready';
       return html`
-        <dialog class="full-screen" aria-labelledby="business-config-title" open>
+        <dialog
+          class="full-screen"
+          aria-labelledby="business-config-title"
+          style="max-width: 600px; margin: 0 auto;"
+          open
+        >
           <form class="container" ?disabled=${formDisabled} @submit=${submitBusinessConfig}>
             <header>
               <h2 id="business-config-title" class="headline">${t('onboarding', 'businessConfigTitle')}</h2>
@@ -382,13 +457,13 @@ export class OnboardingViewElement extends HTMLElement {
                     id="language-input"
                     type="button"
                     name="language-display"
-                    value="English"
+                    value="${onboarding.selectedLanguageDisplay}"
                     popovertarget="language-menu"
                     popovertargetaction="show"
                     placeholder=" "
                     ?disabled=${formDisabled}
                   />
-                  <input type="hidden" name="language" value="en" />
+                  <input type="hidden" name="language" value="${onboarding.selectedLanguage}" />
                   <label for="language-input" class="trailing-icon">
                     <material-symbols name="arrow_drop_down"></material-symbols>
                   </label>
@@ -399,21 +474,31 @@ export class OnboardingViewElement extends HTMLElement {
                   <button
                     role="menuitemradio"
                     type="button"
-                    @click=${handleLanguageSelection}
+                    @click=${handleLanguageSelectionInBusinessConfig}
                     data-language="en"
+                    data-display-name="English"
                     popovertarget="language-menu"
                     popovertargetaction="hide"
-                  >English</button>
+                    aria-checked="${onboarding.selectedLanguage === 'en' ? 'true' : 'false'}"
+                  >
+                    ${onboarding.selectedLanguage === 'en' ? html`<material-symbols name="check"></material-symbols>` : ''}
+                    English
+                  </button>
                 </li>
                 <li>
                   <button
-                    role="menuitem"
+                    role="menuitemradio"
                     type="button"
-                    @click=${handleLanguageSelection}
+                    @click=${handleLanguageSelectionInBusinessConfig}
                     data-language="id"
+                    data-display-name="Bahasa Indonesia"
                     popovertarget="language-menu"
                     popovertargetaction="hide"
-                  >Bahasa Indonesia</button>
+                    aria-checked="${onboarding.selectedLanguage === 'id' ? 'true' : 'false'}"
+                  >
+                    ${onboarding.selectedLanguage === 'id' ? html`<material-symbols name="check"></material-symbols>` : ''}
+                    Bahasa Indonesia
+                  </button>
                 </li>
               </menu>
 
@@ -435,7 +520,12 @@ export class OnboardingViewElement extends HTMLElement {
 
       if (onboarding.templateNames.length === 0) {
         return html`
-          <dialog class="full-screen" aria-labelledby="coa-title" open>
+          <dialog
+            class="full-screen"
+            aria-labelledby="coa-title"
+            style="max-width: 600px; margin: 0 auto;"
+            open
+          >
             <header>
               <h2 id="coa-title" class="headline">${t('onboarding', 'loadingIndicatorLabel')}</h2>
             </header>
@@ -447,7 +537,12 @@ export class OnboardingViewElement extends HTMLElement {
       }
 
       return html`
-        <dialog class="full-screen" aria-labelledby="coa-title" open>
+        <dialog
+          class="full-screen"
+          aria-labelledby="coa-title"
+          style="max-width: 600px; margin: 0 auto;"
+          open
+        >
           <form class="container" ?disabled=${formDisabled} @submit=${submitChartOfAccounts}>
             <header>
               <h2 id="coa-title" class="headline">${t('onboarding', 'chartOfAccountsSetupTitle')}</h2>
@@ -460,7 +555,7 @@ export class OnboardingViewElement extends HTMLElement {
             </header>
             <div class="content">
               <ul role="list">
-                ${onboarding.templateNames.map((templateName, index) => html`
+                ${repeat(onboarding.templateNames, (t) => t, (templateName, index) => html`
                   <li role="listitem">
                     <span class="leading">
                       <input id=${`template-name-radio-${index}`} type="radio" name="template-name" value=${templateName} required ?disabled=${formDisabled} />
