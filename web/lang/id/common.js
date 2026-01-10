@@ -21,7 +21,7 @@ export default /** @type {Partial<CommonTranslation>} */ ({
   goToJournalEntriesButtonLabel: 'Ke Entri Jurnal',
 
   // Desktop View Navigation
-  mainNavigationAriaLabel: 'Navigasi utama',
+  mainNavigationAriaLabel: 'Main Navigation', // the current style depends on this as selector. We need to refactor styles to not depend on text content.
   dashboardNavLabel: 'Dasbor',
   booksNavLabel: 'Buku',
   stockNavLabel: 'Stok',

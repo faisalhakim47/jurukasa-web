@@ -10,16 +10,11 @@ const { describe } = test;
  * @param {string} tursoDatabaseUrl
  */
 async function setupView(tursoDatabaseUrl) {
-  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-  localStorage.setItem('tursoDatabaseKey', '');
-  
-  // Set initial route to /books/journal-entries (default tab)
   window.history.replaceState({}, '', '/books/journal-entries');
-  
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context>
+        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
               <books-view></books-view>
@@ -136,6 +131,8 @@ describe('Journal Entries', function () {
 });
 
 describe('Chart of Accounts', function () {
+  useStrict(test);
+
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   describe('Chart of Accounts Display', function () {
@@ -146,16 +143,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
-        
-        // Set initial route to /books/chart-of-accounts
         window.history.replaceState({}, '', '/books/chart-of-accounts');
-        
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -177,16 +169,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
-        
-        // Set initial route to /books/chart-of-accounts
         window.history.replaceState({}, '', '/books/chart-of-accounts');
-        
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -214,13 +201,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -244,13 +229,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -280,13 +263,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -309,13 +290,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -346,13 +325,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -375,13 +352,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -414,13 +389,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -445,13 +418,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -474,13 +445,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -494,7 +463,7 @@ describe('Chart of Accounts', function () {
 
       await page.getByRole('button', { name: 'Expand all accounts' }).click();
 
-      await expect(page.getByRole('row', { name: /Aset Lancar/ })).toBeVisible();
+      await expect(page.getByRole('row', { name: 'Aset Lancar' })).toBeVisible();
     });
 
     test('shall collapse all accounts when collapse all button is clicked', async function ({ page }) {
@@ -504,13 +473,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -524,11 +491,12 @@ describe('Chart of Accounts', function () {
 
       await page.getByRole('button', { name: 'Expand all accounts' }).click();
 
-      await expect(page.getByRole('row', { name: /Aset Lancar/ })).toBeVisible();
+      // await page.pause();
+      await expect(page.getByRole('row', { name: 'Aset Lancar' })).toBeVisible();
 
       await page.getByRole('button', { name: 'Collapse all accounts' }).click();
 
-      await expect(page.getByRole('row', { name: /Aset Lancar/ })).not.toBeVisible();
+      await expect(page.getByRole('row', { name: 'Aset Lancar' })).not.toBeVisible();
     });
 
     test('shall toggle expand/collapse when clicking on parent account row', async function ({ page }) {
@@ -538,13 +506,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -557,10 +523,10 @@ describe('Chart of Accounts', function () {
       }, tursoLibSQLiteServer().url);
 
       await page.getByRole('row', { name: 'Account Aset', exact: true }).click();
-      await expect(page.getByRole('row', { name: /Aset Lancar/ })).toBeVisible();
+      await expect(page.getByRole('row', { name: 'Aset Lancar' })).toBeVisible();
 
       await page.getByRole('row', { name: 'Account Aset', exact: true }).click();
-      await expect(page.getByRole('row', { name: /Aset Lancar/ })).not.toBeVisible();
+      await expect(page.getByRole('row', { name: 'Aset Lancar' })).not.toBeVisible();
     });
   });
 
@@ -572,13 +538,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -600,13 +564,11 @@ describe('Chart of Accounts', function () {
       ]);
 
       await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-        localStorage.setItem('tursoDatabaseKey', '');
         window.history.replaceState({}, '', '/books/chart-of-accounts');
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context>
+              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
                 <device-context>
                   <i18n-context>
                     <books-view></books-view>
@@ -621,7 +583,7 @@ describe('Chart of Accounts', function () {
       await page.getByRole('button', { name: 'Refresh accounts' }).click();
 
       await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' })).toBeVisible();
-      await expect(page.getByRole('row', { name: /Aset/ })).toBeVisible();
+      await expect(page.getByRole('row', { name: 'Aset' })).toBeVisible();
     });
   });
 });

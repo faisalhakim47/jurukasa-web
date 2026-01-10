@@ -54,3 +54,17 @@ export async function setupDatabase(tursoLibSQLiteServer, setup) {
     });
   });
 }
+
+/**
+ * Get migration SQL files content for use in browser-based tests
+ * @returns {Promise<string[]>}
+ */
+export async function getMigrationSQL() {
+  return Promise.all([
+    readFile(join(__dirname, '../../web/schemas/001-accounting.sql'), { encoding: 'utf-8' }),
+    readFile(join(__dirname, '../../web/schemas/002-pos.sql'), { encoding: 'utf-8' }),
+    readFile(join(__dirname, '../../web/schemas/003-chart-of-accounts.sql'), { encoding: 'utf-8' }),
+    readFile(join(__dirname, '../../web/schemas/004-revenue-tracking.sql'), { encoding: 'utf-8' }),
+    readFile(join(__dirname, '../../web/schemas/005-fixed-assets.sql'), { encoding: 'utf-8' }),
+  ]);
+}

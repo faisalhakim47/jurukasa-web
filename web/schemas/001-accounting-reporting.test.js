@@ -28,9 +28,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
     await sql`INSERT INTO account_tags (account_code, tag) VALUES (${code}, ${tag})`;
   }
 
-  /**
-   * @param {Date} entryDate
-   */
+  /** @param {Date} entryDate */
   async function draftJournalEntry(entryDate) {
     const result = await sql`INSERT INTO journal_entries (entry_time) VALUES (${entryDate.getTime()}) RETURNING ref`;
     return Number(result.rows[0].ref);
@@ -371,9 +369,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       // So we need to add unrealized income/expense to equity for the equation to balance
 
       // Get current income statement totals
-      const accounts = (await sql`
-        SELECT account_code, balance FROM accounts WHERE account_code IN (${41000}, ${51000}, ${61300}, ${61100})
-      `).rows;
+      const accounts = (await sql`SELECT account_code, balance FROM accounts WHERE account_code IN (${41000}, ${51000}, ${61300}, ${61100})`).rows;
 
       const revenue = Number(accounts.find(a => Number(a.account_code) === 41000)?.balance || 0);
       const cogs = Number(accounts.find(a => a.account_code === 51000)?.balance || 0);
@@ -382,8 +378,10 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       const netIncome = revenue - cogs - salaries - rent;
 
       // Verify accounting equation
-      equal(totalAssets, totalLiabilities + totalEquity + netIncome,
-        'Assets should equal Liabilities + Equity + Unrealized Net Income');
+      equal(
+        totalAssets, totalLiabilities + totalEquity + netIncome,
+        'Assets should equal Liabilities + Equity + Unrealized Net Income',
+      );
     });
   });
 
@@ -606,9 +604,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       `;
 
       // Verify report is linked to fiscal year
-      const report = (await sql`
-        SELECT * FROM balance_reports WHERE fiscal_year_id = 1
-      `).rows[0];
+      const report = (await sql`SELECT * FROM balance_reports WHERE fiscal_year_id = 1`).rows[0];
 
       ok(report, 'Report should be linked to fiscal year');
       equal(report.report_type, 'Annual', 'Report type should be Annual');
@@ -661,9 +657,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       `;
 
       // Verify multiple reports exist for same fiscal year
-      const reports = (await sql`
-        SELECT * FROM balance_reports WHERE fiscal_year_id = 1 ORDER BY report_time
-      `).rows;
+      const reports = (await sql`SELECT * FROM balance_reports WHERE fiscal_year_id = 1 ORDER BY report_time`).rows;
 
       equal(reports.length, 3, 'Should have 3 reports for FY2024');
 

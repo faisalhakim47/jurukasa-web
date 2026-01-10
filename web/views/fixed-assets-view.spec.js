@@ -10,16 +10,11 @@ const { describe } = test;
  * @param {string} tursoDatabaseUrl
  */
 async function setupView(tursoDatabaseUrl) {
-  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-  localStorage.setItem('tursoDatabaseKey', '');
-  
-  // Set initial route to /books/fixed-assets
   window.history.replaceState({}, '', '/books/fixed-assets');
-  
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context>
+        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
               <fixed-assets-view></fixed-assets-view>

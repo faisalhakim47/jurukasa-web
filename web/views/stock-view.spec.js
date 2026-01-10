@@ -9,17 +9,11 @@ const { describe } = test;
  * @param {string} tursoDatabaseUrl
  */
 async function setupStockView(tursoDatabaseUrl) {
-  await import('#web/views/stock-view.js');
-  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-  localStorage.setItem('tursoDatabaseKey', '');
-  
-  // Set initial route to /stock/inventories
   window.history.replaceState({}, '', '/stock/inventories');
-  
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context>
+        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
               <stock-view></stock-view>

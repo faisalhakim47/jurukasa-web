@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { useStrict } from '#test/hooks/use-strict.js';
+import { setupDatabase } from '#test/tools/database.js';
 
 const { describe } = test;
 
@@ -10,18 +11,11 @@ const { describe } = test;
  */
 async function setupSettingsView(tursoDatabaseUrl) {
   await import('#web/views/settings-view.js');
-  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-  localStorage.setItem('tursoDatabaseKey', '');
-  localStorage.setItem('onboardingCompleted', 'true');
-  localStorage.setItem('businessName', 'Test Business');
-  
-  // Set initial route to /settings
   window.history.replaceState({}, '', '/settings');
-  
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context>
+        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
               <settings-view></settings-view>
@@ -35,18 +29,25 @@ async function setupSettingsView(tursoDatabaseUrl) {
 
 describe('Settings View', function () {
   useStrict(test);
-  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   describe('Settings Navigation', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display Settings link in navigation', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     });
 
     test('shall navigate to Settings when clicking Settings link', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
@@ -54,8 +55,13 @@ describe('Settings View', function () {
   });
 
   describe('Settings Page Display', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display page header', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
@@ -63,21 +69,30 @@ describe('Settings View', function () {
     });
 
     test('shall display Accounting Config tab', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('tab', { name: 'Accounting Config' })).toBeVisible();
     });
 
     test('shall display Payment Methods tab', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('tab', { name: 'Payment Methods' })).toBeVisible();
     });
 
     test('shall redirect to Accounting Config by default', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       const accountingPanel = page.getByRole('tabpanel', { name: 'Accounting Config' });
@@ -86,15 +101,23 @@ describe('Settings View', function () {
   });
 
   describe('Accounting Configuration Tab', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display Accounting Configuration title', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
     });
 
     test('shall display configuration form', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       const accountingPanel = page.getByRole('tabpanel', { name: 'Accounting Config' });
@@ -106,14 +129,20 @@ describe('Settings View', function () {
     });
 
     test('shall display Save Changes button', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('button', { name: 'Save Changes' })).toBeVisible();
     });
 
     test('shall display Reset button', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       const accountingPanel = page.getByRole('tabpanel', { name: 'Accounting Config' });
@@ -121,7 +150,10 @@ describe('Settings View', function () {
     });
 
     test('shall display Refresh button', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       const accountingPanel = page.getByRole('tabpanel', { name: 'Accounting Config' });
@@ -130,8 +162,13 @@ describe('Settings View', function () {
   });
 
   describe('Accounting Configuration Form Submission', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall update Business Name successfully', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       const businessNameInput = page.getByLabel('Business Name');
@@ -144,7 +181,10 @@ describe('Settings View', function () {
     });
 
     test('shall update Locale successfully', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       const localeInput = page.getByLabel('Locale');
@@ -158,8 +198,13 @@ describe('Settings View', function () {
   });
 
   describe('Payment Methods Tab', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall switch to Payment Methods tab when clicked', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await page.getByRole('tab', { name: 'Payment Methods' }).click();
@@ -169,7 +214,10 @@ describe('Settings View', function () {
     });
 
     test('shall display Payment Methods title', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await page.getByRole('tab', { name: 'Payment Methods' }).click();
@@ -178,7 +226,10 @@ describe('Settings View', function () {
     });
 
     test('shall display empty state when no payment methods exist', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await page.getByRole('tab', { name: 'Payment Methods' }).click();
@@ -188,7 +239,10 @@ describe('Settings View', function () {
     });
 
     test('shall display Add Payment Method button in empty state', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await page.getByRole('tab', { name: 'Payment Methods' }).click();
@@ -198,7 +252,10 @@ describe('Settings View', function () {
     });
 
     test('shall display Refresh button', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await page.getByRole('tab', { name: 'Payment Methods' }).click();
@@ -209,8 +266,13 @@ describe('Settings View', function () {
   });
 
   describe('Payment Method Creation', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall open payment method creation dialog', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await page.getByRole('tab', { name: 'Payment Methods' }).click();
@@ -222,7 +284,10 @@ describe('Settings View', function () {
     });
 
     test('shall display payment method creation form fields', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await page.getByRole('tab', { name: 'Payment Methods' }).click();
@@ -238,8 +303,13 @@ describe('Settings View', function () {
   });
 
   describe('Settings Tab Navigation', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall maintain tab state when switching between tabs', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('tabpanel', { name: 'Accounting Config' })).toBeVisible();

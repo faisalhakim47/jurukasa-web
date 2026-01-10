@@ -9,21 +9,18 @@ import { useStrict } from '#test/hooks/use-strict.js';
 const { describe } = test;
 
 describe('Account Creation Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall create a new account', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
+    await page.evaluate(async function setupView(tursoDatabaseUrl) {
       document.body.innerHTML = `
         <ready-context>
           <router-context>
-            <database-context>
+            <database-context provider="turso" turso-url="${tursoDatabaseUrl}">
               <device-context>
                 <i18n-context>
                   <button
@@ -43,35 +40,30 @@ describe('Account Creation Dialog', function () {
     }, tursoLibSQLiteServer().url);
 
     await page.getByRole('button', { name: 'Create Account' }).click();
-    await expect(page.getByRole('dialog', { name: 'Create New Account' })).toBeVisible();
 
-    await page.getByLabel('Account Code').fill('12345');
-    await page.getByLabel('Account Name').fill('Test Account');
-    
-    await page.getByLabel('Normal Balance').click();
-    await page.getByRole('menuitem', { name: 'Debit' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Create New Account' });
+    await expect(dialog).toBeVisible();
 
-    await page.getByLabel('Account Type').click();
-    await page.getByRole('menuitem', { name: 'Asset', exact: true }).click();
+    await dialog.getByLabel('Account Code').fill('12345');
+    await dialog.getByLabel('Account Name').fill('Test Account');
+
+    await dialog.getByLabel('Normal Balance').click();
+    await dialog.getByRole('menuitem', { name: 'Debit' }).click();
+
+    await dialog.getByLabel('Account Type').click();
+    await dialog.getByRole('menuitem', { name: 'Asset', exact: true }).click();
+
+    await page.pause();
 
     const [accountCreatedEvent] = await Promise.all([
-      page.evaluate(async function () {
-        return new Promise(function (resolve, reject) {
-          let settled = false;
-          const dialog = document.getElementById('account-creation-dialog');
-          dialog.addEventListener('account-created', function (event) {
-            if (settled) return;
-            settled = true;
-            resolve(event.detail);
-          });
-          setTimeout(function () {
-            if (settled) return;
-            settled = true;
-            reject(new Error('Timeout waiting for account-created event'));
-          }, 5000);
-        });
+      page.evaluate(async function eventTest() {
+        const { waitForEvent } = await import('#web/tools/dom.js');
+        const accountCreationDialog = document.getElementsByTagName('account-creation-dialog').item(0);
+        const event = await waitForEvent(accountCreationDialog, 'account-created', 5000);
+        if (event instanceof CustomEvent) return event.detail;
+        else throw new Error('Unexpected event type');
       }),
-      page.getByRole('dialog', { name: 'Create New Account' }).getByRole('button', { name: 'Create Account' }).click(), // The submit button inside dialog
+      dialog.getByRole('button', { name: 'Create Account' }).click(),
     ]);
 
     expect(accountCreatedEvent.accountCode).toBe(12345);
@@ -98,13 +90,10 @@ describe('Account Creation Dialog', function () {
     await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-
       document.body.innerHTML = `
         <ready-context>
           <router-context>
-            <database-context>
+            <database-context provider="turso" turso-url="${tursoDatabaseUrl}">
               <device-context>
                 <i18n-context>
                   <button

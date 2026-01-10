@@ -18,6 +18,8 @@ import { assertInstanceOf } from '#web/tools/assertion.js';
 
 import '#web/components/material-symbols.js';
 
+/** @typedef {'local'|'turso'} DatabaseProvider */
+
 /**
  * Onboarding View handles the complete application setup flow:
  * 1. Welcome screen with feature highlights
@@ -49,6 +51,7 @@ export class OnboardingViewElement extends HTMLElement {
     const databaseForm = reactive({
       state: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
       errorMessage: /** @type {string} */ (undefined),
+      selectedProvider: /** @type {DatabaseProvider} */ ('local'),
     });
 
     const businessForm = reactive({
@@ -124,23 +127,45 @@ export class OnboardingViewElement extends HTMLElement {
       onboarding.step = 'database-setup';
     }
 
+    /** @param {Event} event */
+    function handleDatabaseProviderChange(event) {
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      databaseForm.selectedProvider = /** @type {DatabaseProvider} */ (event.currentTarget.value);
+    }
+
     /** @param {SubmitEvent} event */
     async function submitDatabaseConfig(event) {
       try {
         event.preventDefault();
         databaseForm.state = 'submitting';
         const formEl = /** @type {HTMLFormElement} */ (event.target);
-        const tursoDatabaseUrl = formEl.elements['turso-database-url'].value;
-        const tursoDatabaseKey = formEl.elements['turso-database-key'].value;
-        await database.connect(tursoDatabaseUrl, tursoDatabaseKey);
-        databaseForm.state = 'success';
-        await feedbackDelay();
-        router.navigate({
-          pathname: '/onboarding',
-          tursoDatabaseKey,
-          tursoDatabaseUrl,
-          replace: true,
-        });
+        const provider = databaseForm.selectedProvider;
+
+        if (provider === 'local') {
+          await database.connect({ provider: 'local' });
+          databaseForm.state = 'success';
+          await feedbackDelay();
+          router.navigate({
+            pathname: '/onboarding',
+            databaseProvider: 'local',
+            databaseConfig: { provider: 'local' },
+            replace: true,
+          });
+        }
+        else if (provider === 'turso') {
+          const tursoUrl = formEl.elements['turso-url'].value;
+          const tursoAuthToken = formEl.elements['turso-auth-token'].value;
+          await database.connect({ provider: 'turso', url: tursoUrl, authToken: tursoAuthToken });
+          databaseForm.state = 'success';
+          await feedbackDelay();
+          router.navigate({
+            pathname: '/onboarding',
+            databaseProvider: 'turso',
+            databaseConfig: { provider: 'turso', url: tursoUrl, authToken: tursoAuthToken },
+            replace: true,
+          });
+        }
+
         // After database connection, check business config
         onboarding.step = 'business-config';
       }
@@ -340,6 +365,7 @@ export class OnboardingViewElement extends HTMLElement {
     function renderDatabaseSetupStep() {
       const formState = databaseForm.state;
       const formDisabled = formState !== 'ready';
+      const selectedProvider = databaseForm.selectedProvider;
       const submitButtonText = formState === 'ready' ? t('onboarding', 'databaseConfigSubmitLabel')
         : formState === 'submitting' ? t('onboarding', 'databaseConnectingLabel')
           : formState === 'success' ? t('onboarding', 'databaseConnectedLabel')
@@ -360,39 +386,101 @@ export class OnboardingViewElement extends HTMLElement {
             </header>
 
             <div class="content">
-              <p>${t('onboarding', 'databaseConfigDescription')}</p>
+              <p id="configure-database-description">${t('onboarding', 'databaseConfigDescription')}</p>
 
-              <div class="outlined-text-field">
-                <div class="container">
-                  <label for="turso-database-url">${t('onboarding', 'tursoDatabaseUrlLabel')}</label>
-                  <input
-                    id="turso-database-url"
-                    name="turso-database-url"
-                    type="text"
-                    autocomplete="off"
-                    required
-                    ?disabled=${formDisabled}
-                    placeholder="${t('onboarding', 'tursoDatabaseUrlPlaceholder')}"
-                    aria-describedby="turso-database-url-description"
-                  />
-                </div>
-                <p id="turso-database-url-description" class="supporting-text">${t('onboarding', 'tursoDatabaseUrlDescription')}</p>
-              </div>
-              <div class="outlined-text-field">
-                <div class="container">
-                  <label for="turso-database-key">${t('onboarding', 'tursoDatabaseKeyLabel')}</label>
-                  <input
-                    id="turso-database-key"
-                    name="turso-database-key"
-                    type="password"
-                    autocomplete="off"
-                    ?disabled=${formDisabled}
-                    placeholder="${t('onboarding', 'tursoDatabaseKeyPlaceholder')}"
-                    aria-describedby="turso-database-key-description"
-                  />
-                </div>
-                <p class="supporting-text" id="turso-database-key-description">${t('onboarding', 'tursoDatabaseKeyDescription')}</p>
-              </div>
+              <ul role="radiogroup" aria-label="${t('onboarding', 'databaseProviderLabel')}" style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 16px; margin-top: 24px;">
+                <!-- Local SQLite Provider -->
+                <li role="presentation" style="border: 1px solid var(--md-sys-color-outline); border-radius: var(--md-sys-shape-corner-small); overflow: hidden;">
+                  <label style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    cursor: pointer;
+                    padding: 16px;
+                    background-color: ${selectedProvider === 'local' ? 'var(--md-sys-color-surface-container-high)' : 'var(--md-sys-color-surface-container-lowest)'};
+                  ">
+                    <input
+                      type="radio"
+                      name="database-provider"
+                      value="local"
+                      @change=${handleDatabaseProviderChange}
+                      ?checked=${selectedProvider === 'local'}
+                      ?disabled=${formDisabled}
+                      style="margin: 0;"
+                    />
+                    <div style="flex: 1;">
+                      <span style="font-weight: 500;">${t('onboarding', 'localDatabaseLabel')}</span>
+                      <p style="margin: 4px 0 0; font-size: 0.875rem; color: var(--md-sys-color-on-surface-variant);">
+                        ${t('onboarding', 'localDatabaseDescription')}
+                      </p>
+                    </div>
+                  </label>
+                </li>
+                <!-- Remote Turso Provider -->
+                <li role="presentation" style="border: 1px solid var(--md-sys-color-outline); border-radius: var(--md-sys-shape-corner-small); overflow: hidden;">
+                  <label style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    cursor: pointer;
+                    padding: 16px;
+                    background-color: ${selectedProvider === 'turso' ? 'var(--md-sys-color-surface-container-high)' : 'var(--md-sys-color-surface-container-lowest)'};
+                  ">
+                    <input
+                      type="radio"
+                      name="database-provider"
+                      value="turso"
+                      @change=${handleDatabaseProviderChange}
+                      ?checked=${selectedProvider === 'turso'}
+                      ?disabled=${formDisabled}
+                      style="margin: 0;"
+                    />
+                    <div style="flex: 1;">
+                      <span style="font-weight: 500;">${t('onboarding', 'tursoDatabaseLabel')}</span>
+                      <p style="margin: 4px 0 0; font-size: 0.875rem; color: var(--md-sys-color-on-surface-variant);">
+                        ${t('onboarding', 'tursoDatabaseDescription')}
+                      </p>
+                    </div>
+                  </label>
+                  ${selectedProvider === 'turso' ? html`
+                    <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+                      <div class="outlined-text-field">
+                        <div class="container">
+                          <label for="turso-url">${t('onboarding', 'tursoUrlLabel')}</label>
+                          <input
+                            id="turso-url"
+                            name="turso-url"
+                            type="text"
+                            autocomplete="off"
+                            required
+                            ?disabled=${formDisabled}
+                            placeholder="${t('onboarding', 'tursoUrlPlaceholder')}"
+                          />
+                        </div>
+                        <p class="supporting-text">${t('onboarding', 'tursoUrlDescription')}</p>
+                      </div>
+                      <div class="outlined-text-field">
+                        <div class="container">
+                          <label for="turso-auth-token">${t('onboarding', 'tursoAuthTokenLabel')}</label>
+                          <input
+                            id="turso-auth-token"
+                            name="turso-auth-token"
+                            type="password"
+                            autocomplete="off"
+                            ?disabled=${formDisabled}
+                            placeholder="${t('onboarding', 'tursoAuthTokenPlaceholder')}"
+                          />
+                        </div>
+                        <p class="supporting-text">${t('onboarding', 'tursoAuthTokenDescription')}</p>
+                      </div>
+                    </div>
+                  ` : ''}
+                </li>
+              </ul>
+
+              ${databaseForm.errorMessage ? html`
+                <p style="color: var(--md-sys-color-error); margin-top: 16px;">${databaseForm.errorMessage}</p>
+              ` : ''}
             </div>
           </form>
         </dialog>

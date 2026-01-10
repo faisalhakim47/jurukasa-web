@@ -18,13 +18,10 @@ async function setupPage(page, tursoDatabaseUrl, supplierId) {
   await loadEmptyFixture(page);
 
   await page.evaluate(async function ({ tursoDatabaseUrl, supplierId }) {
-    localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-    localStorage.setItem('tursoDatabaseKey', '');
-
     document.body.innerHTML = `
       <ready-context>
         <router-context>
-          <database-context>
+          <database-context provider="turso" turso-url="${tursoDatabaseUrl}">
             <device-context>
               <i18n-context>
                 <button

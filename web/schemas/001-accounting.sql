@@ -35,7 +35,7 @@ CREATE TABLE config (
     'Language',
     'Fiscal Year Start Month'
   )),
-  value TEXT NOT NULL CHECK (length(value) >= 0),
+  value TEXT NOT NULL CHECK (LENGTH(value) >= 0),
   description TEXT,
   create_time INTEGER NOT NULL,
   update_time INTEGER NOT NULL
@@ -118,8 +118,7 @@ END; -- EOS
 
 -- Maintain is_posting_account flag automatically:
 -- - When a child is added with a control_account_code, mark the parent as non-posting (0).
--- - When a child's parent link is removed or changed, and the old parent has no remaining children,
---   mark the old parent as posting (1).
+-- - When a child's parent link is removed or changed, and the old parent has no remaining children, mark the old parent as posting (1).
 -- - When a child is deleted, update the parent's is_posting_account accordingly.
 
 CREATE TRIGGER accounts_child_insert_trigger
@@ -201,7 +200,7 @@ CREATE TABLE account_tags (
     'Balance Sheet - Current Liability',
     'Balance Sheet - Non-Current Liability',
     'Balance Sheet - Equity',
-    
+
     -- Income Statement Classification
     'Income Statement - Revenue',
     'Income Statement - Contra Revenue',
@@ -209,7 +208,7 @@ CREATE TABLE account_tags (
     'Income Statement - COGS',
     'Income Statement - Expense',
     'Income Statement - Other Expense',
-    
+
     -- Cash Flow Statement Tags
     'Cash Flow - Cash Equivalents',
     'Cash Flow - Revenue',
@@ -354,9 +353,8 @@ BEFORE UPDATE ON journal_entry_lines FOR EACH ROW
 BEGIN
   SELECT
     CASE
-      WHEN EXISTS(
-        SELECT 1 FROM accounts a WHERE a.control_account_code = NEW.account_code LIMIT 1
-      ) THEN RAISE(ABORT, 'Cannot post journal entry line to a control account on update')
+      WHEN EXISTS(SELECT 1 FROM accounts a WHERE a.control_account_code = NEW.account_code LIMIT 1)
+      THEN RAISE(ABORT, 'Cannot post journal entry line to a control account on update')
     END;
 END; -- EOS
 
@@ -369,9 +367,9 @@ BEGIN
   SELECT
     CASE
       WHEN new.post_time <= 0 THEN RAISE(ABORT, 'Post time must be positive')
-      WHEN (SELECT SUM(debit) - SUM(credit) FROM journal_entry_lines WHERE journal_entry_ref = new.ref) != 0 
+      WHEN (SELECT SUM(debit) - SUM(credit) FROM journal_entry_lines WHERE journal_entry_ref = new.ref) != 0
       THEN RAISE(ABORT, 'Journal entry does not balance')
-      WHEN (SELECT COUNT(*) FROM journal_entry_lines WHERE journal_entry_ref = new.ref) < 2 
+      WHEN (SELECT COUNT(*) FROM journal_entry_lines WHERE journal_entry_ref = new.ref) < 2
       THEN RAISE(ABORT, 'Journal entry must have at least 2 lines')
     END;
 END; -- EOS

@@ -10,12 +10,10 @@ const { describe } = test;
 
 /** @param {string} tursoDatabaseUrl */
 async function setupContext(tursoDatabaseUrl) {
-  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-  localStorage.setItem('tursoDatabaseKey', '');
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context>
+        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
               <onboarding-context>

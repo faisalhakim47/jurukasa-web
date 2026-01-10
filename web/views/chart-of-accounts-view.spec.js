@@ -10,16 +10,11 @@ const { describe } = test;
  * @param {string} tursoDatabaseUrl
  */
 async function setupView(tursoDatabaseUrl) {
-  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-  localStorage.setItem('tursoDatabaseKey', '');
-  
-  // Set initial route to /books/chart-of-accounts
   window.history.replaceState({}, '', '/books/chart-of-accounts');
-  
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context>
+        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
               <chart-of-accounts-view></chart-of-accounts-view>
@@ -35,9 +30,9 @@ describe('Chart of Accounts View', function () {
   // useConsoleOutput(test);
   useStrict(test);
 
-  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
   describe('Chart of Accounts Page Display', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display accounts table', async function ({ page }) {
       await Promise.all([
         loadEmptyFixture(page),
@@ -84,6 +79,8 @@ describe('Chart of Accounts View', function () {
   });
 
   describe('Chart of Accounts Filter Controls', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display search input field', async function ({ page }) {
       await Promise.all([
         loadEmptyFixture(page),
@@ -190,6 +187,8 @@ describe('Chart of Accounts View', function () {
   });
 
   describe('Chart of Accounts Tree Expansion', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display expand all button', async function ({ page }) {
       await Promise.all([
         loadEmptyFixture(page),
@@ -248,6 +247,8 @@ describe('Chart of Accounts View', function () {
   });
 
   describe('Chart of Accounts Actions', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display refresh button', async function ({ page }) {
       await Promise.all([
         loadEmptyFixture(page),
@@ -299,6 +300,8 @@ describe('Chart of Accounts View', function () {
   });
 
   describe('Chart of Accounts Account Creation', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display account creation form fields', async function ({ page }) {
       await Promise.all([
         loadEmptyFixture(page),
@@ -336,6 +339,8 @@ describe('Chart of Accounts View', function () {
   });
 
   describe('Chart of Accounts Loading State', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall eventually show accounts table after loading', async function ({ page }) {
       await Promise.all([
         loadEmptyFixture(page),

@@ -10,12 +10,10 @@ const { describe } = test;
 
 /** @param {string} tursoDatabaseUrl */
 async function setupView(tursoDatabaseUrl) {
-  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-  localStorage.setItem('tursoDatabaseKey', '');
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context>
+        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
               <accounting-configuration-view></accounting-configuration-view>
@@ -235,31 +233,27 @@ describe('Accounting Configuration View', function () {
     await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
-      
       // Set up contexts first (without the view)
       document.body.innerHTML = `
         <ready-context>
           <router-context>
-            <database-context>
+            <database-context provider="turso" turso-url="${tursoDatabaseUrl}">
               <device-context>
-                <i18n-context>
-                </i18n-context>
+                <i18n-context></i18n-context>
               </device-context>
             </database-context>
           </router-context>
         </ready-context>
       `;
-      
+
       // Wait for database to be ready
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Drop the config table
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       await database.sql`DROP TABLE config`;
-      
+
       // Now add the view
       const i18nContext = document.querySelector('i18n-context');
       i18nContext.innerHTML = '<accounting-configuration-view></accounting-configuration-view>';
@@ -273,12 +267,10 @@ describe('Accounting Configuration View', function () {
     await loadEmptyFixture(page);
 
     await page.evaluate(async function (tursoDatabaseUrl) {
-      localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-      localStorage.setItem('tursoDatabaseKey', '');
       document.body.innerHTML = `
         <ready-context>
           <router-context>
-            <database-context>
+            <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
               <device-context>
                 <i18n-context>
                   <accounting-configuration-view></accounting-configuration-view>
@@ -336,17 +328,17 @@ describe('Accounting Configuration View', function () {
     await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
 
     await page.getByLabel('Business Name').fill('Complete Test Business');
-    
+
     await page.getByLabel('Business Type').click();
     await page.getByRole('menuitem', { name: 'Corporation' }).click();
-    
+
     await page.getByLabel('Currency Code').fill('GBP');
     await page.getByLabel('Currency Decimals').fill('2');
     await page.getByLabel('Fiscal Year Start Month').fill('4');
-    
+
     await page.getByLabel('Language').click();
     await page.getByRole('menuitem', { name: 'English' }).click();
-    
+
     await page.getByLabel('Locale').fill('en-GB');
 
     await page.getByRole('button', { name: 'Save Changes' }).click();

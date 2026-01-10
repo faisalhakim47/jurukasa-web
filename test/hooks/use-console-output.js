@@ -1,3 +1,4 @@
+import { EOL } from 'node:os';
 import { stdout } from 'node:process';
 /** @import { test } from '@playwright/test' */
 
@@ -12,7 +13,19 @@ export function useConsoleOutput(test) {
       const text = msg.text();
       stdout.write(`[console:${type}] `);
       stdout.write(text);
-      stdout.write('\n');
+      stdout.write(EOL);
+    });
+    context.addListener('requestfailed', function logFailedRequest(request) {
+      stdout.write(`[request:failed] `);
+      stdout.write(`${request.method()} ${request.url()}`);
+      stdout.write(EOL);
+    });
+    context.addListener('page', function handleNewPage(page) {
+      page.addListener('pageerror', function mapPageError(error) {
+        stdout.write(`[page:error] `);
+        stdout.write(error.stack);
+        stdout.write(EOL);
+      });
     });
   });
 }

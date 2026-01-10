@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 import { useStrict } from '#test/hooks/use-strict.js';
+import { setupDatabase } from '#test/tools/database.js';
 
 const { describe } = test;
 
@@ -9,19 +11,11 @@ const { describe } = test;
  * @param {string} tursoDatabaseUrl
  */
 async function setupDashboardView(tursoDatabaseUrl) {
-  await import('#web/views/dashboard-view.js');
-  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-  localStorage.setItem('tursoDatabaseKey', '');
-  localStorage.setItem('onboardingCompleted', 'true');
-  localStorage.setItem('businessName', 'Test Business');
-  
-  // Set initial route to /dashboard
   window.history.replaceState({}, '', '/dashboard');
-  
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context>
+        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
               <dashboard-view></dashboard-view>
@@ -34,19 +28,27 @@ async function setupDashboardView(tursoDatabaseUrl) {
 }
 
 describe('Dashboard View', function () {
+  // useConsoleOutput(test);
   useStrict(test);
-  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   describe('Dashboard Page Display', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display page header', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
     });
 
     test('shall display loading state initially', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       // Dashboard should eventually load successfully
@@ -55,36 +57,53 @@ describe('Dashboard View', function () {
   });
 
   describe('Dashboard Metric Cards', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display Net Revenue metric card', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Net Revenue' })).toBeVisible();
     });
 
     test('shall display Cash Balance metric card', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Cash Balance' })).toBeVisible();
     });
 
     test('shall display Bank Balance metric card', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Bank Balance' })).toBeVisible();
     });
 
     test('shall display Accounts Payable metric card', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Accounts Payable' })).toBeVisible();
     });
 
     test('shall display metric values with currency format', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       // Check that financial metrics region is present
@@ -93,15 +112,23 @@ describe('Dashboard View', function () {
   });
 
   describe('Dashboard Fiscal Year Card', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display Fiscal Year card', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Fiscal Year' })).toBeVisible();
     });
 
     test('shall display no active fiscal year message when not configured', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByText('No active fiscal year')).toBeVisible();
@@ -109,15 +136,23 @@ describe('Dashboard View', function () {
   });
 
   describe('Dashboard Stock Alerts Card', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display Stock Alerts card', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Stock Alerts' })).toBeVisible();
     });
 
     test('shall display well stocked message when no low stock items', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByText('All items are well stocked')).toBeVisible();
@@ -125,22 +160,33 @@ describe('Dashboard View', function () {
   });
 
   describe('Dashboard Recent Sales Card', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display Recent Sales card', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('heading', { name: 'Recent Sales' })).toBeVisible();
     });
 
     test('shall display no sales message when no sales recorded', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByText('No sales recorded yet')).toBeVisible();
     });
 
     test('shall display New Sale button in empty state', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('button', { name: 'New Sale' })).toBeVisible();
@@ -148,8 +194,13 @@ describe('Dashboard View', function () {
   });
 
   describe('Dashboard Error Handling', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
     test('shall display error state when retry button is available', async function ({ page }) {
-      await loadEmptyFixture(page);
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer()),
+      ]);
       await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
       // Dashboard should load without error in normal case

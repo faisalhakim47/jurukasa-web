@@ -160,7 +160,6 @@ export class AccountCreationDialogElement extends HTMLElement {
       assertInstanceOf(HTMLFormElement, event.currentTarget);
 
       const tx = await database.transaction('write');
-
       try {
         form.state = 'submitting';
         form.error = null;

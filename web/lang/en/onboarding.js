@@ -16,17 +16,26 @@ const onboarding = {
 
   // Database setup
   databaseConfigTitle: 'Configure Database',
-  databaseConfigDescription: 'Configure your Turso database connection by providing the database URL and authentication key.',
+  databaseConfigDescription: 'Choose where to store your business data. Select a database provider that best fits your needs.',
   databaseConfigSubmitLabel: 'Connect',
   databaseConnectingLabel: 'Connecting...',
   databaseConnectedLabel: 'Connected',
   databaseFailedLabel: 'Failed',
-  tursoDatabaseUrlLabel: 'Turso Database URL',
-  tursoDatabaseUrlPlaceholder: 'Turso Database URL',
-  tursoDatabaseUrlDescription: 'The URL of your Turso database instance, typically starting with "https://".',
-  tursoDatabaseKeyLabel: 'Turso Database Auth Key',
-  tursoDatabaseKeyPlaceholder: 'Turso Database Auth Key',
-  tursoDatabaseKeyDescription: 'The authentication token required to access your Turso database.',
+  databaseProviderLabel: 'Database Provider',
+
+  // Local SQLite provider
+  localDatabaseLabel: 'Local Database (Demo Mode)',
+  localDatabaseDescription: 'Store data in browser memory. Data will not persist after closing the browser. Recommended for testing only.',
+
+  // Turso provider
+  tursoDatabaseLabel: 'Turso SQLite',
+  tursoDatabaseDescription: 'Store data on Turso cloud database. Accessible from multiple devices.',
+  tursoUrlLabel: 'Database URL',
+  tursoUrlPlaceholder: 'https://your-database.turso.io',
+  tursoUrlDescription: 'The URL of your Turso database instance.',
+  tursoAuthTokenLabel: 'Auth Token',
+  tursoAuthTokenPlaceholder: 'Your Turso auth token',
+  tursoAuthTokenDescription: 'The authentication token for your Turso database.',
 
   // Business configuration
   businessConfigTitle: 'Configure Business',

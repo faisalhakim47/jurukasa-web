@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
+import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 import { useStrict } from '#test/hooks/use-strict.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
@@ -8,13 +9,11 @@ const { describe } = test;
 
 /** @param {string} tursoDatabaseUrl */
 async function setupView(tursoDatabaseUrl) {
-  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-  localStorage.setItem('tursoDatabaseKey', '');
   window.history.replaceState({}, '', '/books/reports');
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context>
+        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
               <books-view></books-view>
@@ -27,6 +26,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Financial Reports', function () {
+  // useConsoleOutput(test);
   useStrict(test);
 
   describe('Financial Reports Display', function () {

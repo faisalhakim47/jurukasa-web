@@ -44,3 +44,30 @@ export function scrollIntoView(element) {
     inline: 'start',
   });
 }
+
+/**
+ * @param {EventTarget} target
+ * @param {string} eventName
+ * @param {number} [timeout]
+ * @returns {Promise<Event>}
+ */
+export async function waitForEvent(target, eventName, timeout = 5000) {
+  return await new Promise(function listenerPromise(resolve, reject) {
+    let settled = false;
+    /** @param {Event} event */
+    function eventListener(event) {
+      if (settled) return;
+      settled = true;
+      target.removeEventListener(eventName, eventListener);
+      resolve(event);
+    };
+    target.addEventListener(eventName, eventListener);
+    setTimeout(function eventTimeout() {
+      if (settled) return;
+      settled = true;
+      target.removeEventListener(eventName, eventListener);
+      reject(new Error(`Timeout waiting for event: ${eventName}`));
+    }, timeout);
+  });
+}
+

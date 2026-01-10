@@ -11,12 +11,10 @@ const { describe } = test;
 
 /** @param {string} tursoDatabaseUrl */
 async function setupOnboardingView(tursoDatabaseUrl) {
-  localStorage.setItem('tursoDatabaseUrl', tursoDatabaseUrl);
-  localStorage.setItem('tursoDatabaseKey', '');
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context>
+        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
               <onboarding-context>
@@ -31,8 +29,6 @@ async function setupOnboardingView(tursoDatabaseUrl) {
 }
 
 async function setupOnboardingViewWithoutDatabase() {
-  localStorage.removeItem('tursoDatabaseUrl');
-  localStorage.removeItem('tursoDatabaseKey');
   document.body.innerHTML = `
     <ready-context>
       <router-context>
@@ -106,19 +102,32 @@ describe('Onboarding View', function () {
   describe('Database Setup Step', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-    test('it shall show database configuration form', async function ({ page }) {
+    test('it shall show database provider selection', async function ({ page }) {
       await loadEmptyFixture(page);
 
       await page.evaluate(setupOnboardingViewWithoutDatabase);
 
       await page.getByRole('button', { name: 'Get Started' }).click();
 
-      await expect(page.getByLabel('Turso Database URL')).toBeVisible();
-      await expect(page.getByLabel('Turso Database Auth Key')).toBeVisible();
+      // Verify provider selection radio buttons
+      await expect(page.getByRole('radio', { name: 'Local Database (Demo Mode)' })).toBeVisible();
+      await expect(page.getByRole('radio', { name: 'Turso SQLite' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Connect' })).toBeVisible();
     });
 
-    test('it shall connect to database and proceed to business config', async function ({ page }) {
+    test('it shall show Turso form when Turso provider is selected', async function ({ page }) {
+      await loadEmptyFixture(page);
+
+      await page.evaluate(setupOnboardingViewWithoutDatabase);
+
+      await page.getByRole('button', { name: 'Get Started' }).click();
+      await page.getByRole('radio', { name: 'Turso SQLite' }).check();
+
+      await expect(page.getByLabel('Database URL')).toBeVisible();
+      await expect(page.getByLabel('Auth Token')).toBeVisible();
+    });
+
+    test('it shall connect using Turso provider and proceed to business config', async function ({ page }) {
       await loadEmptyFixture(page);
 
       const dbUrl = tursoLibSQLiteServer().url;
@@ -126,7 +135,8 @@ describe('Onboarding View', function () {
       await page.evaluate(setupOnboardingViewWithoutDatabase);
 
       await page.getByRole('button', { name: 'Get Started' }).click();
-      await page.getByLabel('Turso Database URL').fill(dbUrl);
+      await page.getByRole('radio', { name: 'Turso SQLite' }).check();
+      await page.getByLabel('Database URL').fill(dbUrl);
       await page.getByRole('button', { name: 'Connect' }).click();
 
       await expect(page.getByRole('dialog', { name: 'Configure Business' })).toBeVisible();

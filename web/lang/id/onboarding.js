@@ -18,17 +18,26 @@ export default /** @type {Partial<OnboardingTranslation>} */ ({
 
   // Database setup
   databaseConfigTitle: 'Konfigurasi Database',
-  databaseConfigDescription: 'Konfigurasi koneksi database Turso Anda dengan menyediakan URL dan kunci autentikasi.',
+  databaseConfigDescription: 'Pilih tempat penyimpanan data bisnis Anda. Pilih penyedia database yang sesuai dengan kebutuhan Anda.',
   databaseConfigSubmitLabel: 'Hubungkan',
   databaseConnectingLabel: 'Menghubungkan...',
   databaseConnectedLabel: 'Terhubung',
   databaseFailedLabel: 'Gagal',
-  tursoDatabaseUrlLabel: 'URL Database Turso',
-  tursoDatabaseUrlPlaceholder: 'URL Database Turso',
-  tursoDatabaseUrlDescription: 'URL dari instance database Turso Anda, biasanya dimulai dengan "https://".',
-  tursoDatabaseKeyLabel: 'Kunci Auth Database Turso',
-  tursoDatabaseKeyPlaceholder: 'Kunci Auth Database Turso',
-  tursoDatabaseKeyDescription: 'Token autentikasi yang diperlukan untuk mengakses database Turso Anda.',
+  databaseProviderLabel: 'Penyedia Database',
+
+  // Local SQLite provider
+  localDatabaseLabel: 'Database Lokal (Mode Demo)',
+  localDatabaseDescription: 'Simpan data di memori browser. Data tidak akan tersimpan setelah browser ditutup. Hanya disarankan untuk pengujian.',
+
+  // Turso provider
+  tursoDatabaseLabel: 'Turso SQLite',
+  tursoDatabaseDescription: 'Simpan data di database cloud Turso. Dapat diakses dari beberapa perangkat.',
+  tursoUrlLabel: 'URL Database',
+  tursoUrlPlaceholder: 'https://database-anda.turso.io',
+  tursoUrlDescription: 'URL dari instance database Turso Anda.',
+  tursoAuthTokenLabel: 'Token Autentikasi',
+  tursoAuthTokenPlaceholder: 'Token autentikasi Turso Anda',
+  tursoAuthTokenDescription: 'Token autentikasi untuk database Turso Anda.',
 
   // Business configuration
   businessConfigTitle: 'Konfigurasi Usaha',
