@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
@@ -122,7 +123,7 @@ export class InventoriesViewElement extends HTMLElement {
           LIMIT ${pageSize} OFFSET ${offset}
         `;
 
-        state.inventories = result.rows.map(function (row) {
+        state.inventories = result.rows.map(function rowToInventory(row) {
           return /** @type {InventoryRow} */ ({
             id: Number(row.id),
             name: String(row.name),
@@ -268,7 +269,7 @@ export class InventoriesViewElement extends HTMLElement {
             </div>
           </div>
           <menu role="menu" popover id="stock-filter-menu" class="dropdown" style="position-anchor: --stock-filter-menu-anchor;">
-            ${stockFilterOptions.map(function (option) {
+            ${repeat(stockFilterOptions, (option) => option, (option) => {
               const filterLabelMap = {
                 'All': t('inventory', 'filterAll'),
                 'In Stock': t('inventory', 'filterInStock'),

@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
@@ -118,7 +119,7 @@ export class SalesViewElement extends HTMLElement {
           LIMIT ${pageSize} OFFSET ${offset}
         `;
 
-        state.sales = result.rows.map(function (row) {
+        state.sales = result.rows.map(function rowToSale(row) {
           return /** @type {SaleRow} */ ({
             id: Number(row.id),
             customer_name: row.customer_name ? String(row.customer_name) : null,
@@ -261,7 +262,7 @@ export class SalesViewElement extends HTMLElement {
             </div>
           </div>
           <menu role="menu" popover id="status-filter-menu" class="dropdown" style="position-anchor: --status-filter-menu-anchor;">
-            ${statusFilterOptions.map(function (option) {
+            ${repeat(statusFilterOptions, (option) => option, (option) => {
               const optionText = option === 'All' ? t('sale', 'filterAll') : option === 'Posted' ? t('sale', 'filterPosted') : t('sale', 'filterDraft');
               return html`
                 <li>

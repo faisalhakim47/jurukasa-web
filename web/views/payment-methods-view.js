@@ -69,7 +69,7 @@ export class PaymentMethodsViewElement extends HTMLElement {
           ORDER BY pm.name ASC
         `;
 
-        state.paymentMethods = result.rows.map(function (row) {
+        state.paymentMethods = result.rows.map(function rowToPaymentMethod(row) {
           return /** @type {PaymentMethodItem} */ ({
             id: Number(row.id),
             accountCode: Number(row.account_code),

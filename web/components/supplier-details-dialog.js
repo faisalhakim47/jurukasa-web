@@ -118,7 +118,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
             ORDER BY i.name ASC
           `;
 
-          state.supplierInventories = inventoriesResult.rows.map(function (row) {
+          state.supplierInventories = inventoriesResult.rows.map(function rowToSupplierInventory(row) {
             return /** @type {SupplierInventoryRow} */ ({
               inventory_id: Number(row.inventory_id),
               inventory_name: String(row.inventory_name),
@@ -150,7 +150,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           LIMIT 50
         `;
 
-        state.availableInventories = result.rows.map(function (row) {
+        state.availableInventories = result.rows.map(function rowToInventory(row) {
           return /** @type {InventoryOption} */ ({
             id: Number(row.id),
             name: String(row.name),

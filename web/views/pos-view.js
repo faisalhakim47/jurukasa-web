@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
@@ -159,7 +160,7 @@ export class POSViewElement extends HTMLElement {
           LIMIT 100
         `;
 
-        state.inventories = result.rows.map(function (row) {
+        state.inventories = result.rows.map(function rowToInventory(row) {
           return /** @type {InventoryItem} */ ({
             id: Number(row.id),
             name: String(row.name),
@@ -218,7 +219,7 @@ export class POSViewElement extends HTMLElement {
           ORDER BY name ASC
         `;
 
-        state.discounts = result.rows.map(function (row) {
+        state.discounts = result.rows.map(function rowToDiscount(row) {
           return /** @type {DiscountItem} */ ({
             id: Number(row.id),
             name: String(row.name),
@@ -246,7 +247,7 @@ export class POSViewElement extends HTMLElement {
           ORDER BY name ASC
         `;
 
-        state.paymentMethods = result.rows.map(function (row) {
+        state.paymentMethods = result.rows.map(function rowToPaymentMethod(row) {
           return /** @type {PaymentMethod} */ ({
             id: Number(row.id),
             name: String(row.name),
@@ -798,12 +799,12 @@ export class POSViewElement extends HTMLElement {
               </div>
             ` : html`
               <div role="list">
-                ${state.inventories.map(function (inventory) {
-        const isLowStock = inventory.stock > 0 && inventory.stock <= 10;
-        const isOutOfStock = inventory.stock <= 0;
-        const stockColor = isOutOfStock ? 'var(--md-sys-color-error)' : isLowStock ? '#E65100' : 'var(--md-sys-color-on-surface-variant)';
+                ${repeat(state.inventories, (inventory) => inventory.id, (inventory) => {
+                  const isLowStock = inventory.stock > 0 && inventory.stock <= 10;
+                  const isOutOfStock = inventory.stock <= 0;
+                  const stockColor = isOutOfStock ? 'var(--md-sys-color-error)' : isLowStock ? '#E65100' : 'var(--md-sys-color-on-surface-variant)';
 
-        return html`
+                  return html`
                     <div
                       role="listitem"
                       class="divider-inset"
@@ -824,7 +825,7 @@ export class POSViewElement extends HTMLElement {
                       </div>
                     </div>
                   `;
-      })}
+                })}
               </div>
             `}
           </div>
@@ -900,60 +901,58 @@ export class POSViewElement extends HTMLElement {
                 </tr>
               </thead>
               <tbody>
-                ${state.lines.map(function (line, index) {
-        return html`
-                    <tr>
-                      <td>
-                        <span style="font-weight: 500;">${line.inventoryName}</span>
-                        ${line.unitOfMeasurement ? html`
-                          <span style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;"> / ${line.unitOfMeasurement}</span>
-                        ` : nothing}
-                      </td>
-                      <td class="numeric">${i18n.displayCurrency(line.unitPrice)}</td>
-                      <td class="center">
-                        <div style="display: inline-flex; align-items: center; gap: 4px;">
-                          <button
-                            role="button"
-                            type="button"
-                            class="text extra-small"
-                            style="--md-sys-density: -4;"
-                            data-index="${index}"
-                            @click=${handleDecrementLineQuantity}
-                            aria-label="${t('pos', 'decreaseQuantityAriaLabel')}"
-                          >
-                            <material-symbols name="remove" size="20"></material-symbols>
-                          </button>
-                          <span style="min-width: 24px; text-align: center;">${line.quantity}</span>
-                          <button
-                            role="button"
-                            type="button"
-                            class="text extra-small"
-                            style="--md-sys-density: -4;"
-                            data-index="${index}"
-                            @click=${handleIncrementLineQuantity}
-                            aria-label="${t('pos', 'increaseQuantityAriaLabel')}"
-                          >
-                            <material-symbols name="add" size="20"></material-symbols>
-                          </button>
-                        </div>
-                      </td>
-                      <td class="numeric">${i18n.displayCurrency(line.price)}</td>
-                      <td class="center">
+                ${repeat(state.lines, (line) => line.inventoryId, (line, index) => html`
+                  <tr>
+                    <td>
+                      <span style="font-weight: 500;">${line.inventoryName}</span>
+                      ${line.unitOfMeasurement ? html`
+                        <span style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;"> / ${line.unitOfMeasurement}</span>
+                      ` : nothing}
+                    </td>
+                    <td class="numeric">${i18n.displayCurrency(line.unitPrice)}</td>
+                    <td class="center">
+                      <div style="display: inline-flex; align-items: center; gap: 4px;">
                         <button
                           role="button"
                           type="button"
                           class="text extra-small"
-                          style="--md-sys-density: -4; color: var(--md-sys-color-error);"
+                          style="--md-sys-density: -4;"
                           data-index="${index}"
-                          @click=${handleRemoveLine}
-                          aria-label="${t('pos', 'removeItemAriaLabel')}"
+                          @click=${handleDecrementLineQuantity}
+                          aria-label="${t('pos', 'decreaseQuantityAriaLabel')}"
                         >
-                          <material-symbols name="delete" size="20"></material-symbols>
+                          <material-symbols name="remove" size="20"></material-symbols>
                         </button>
-                      </td>
-                    </tr>
-                  `;
-      })}
+                        <span style="min-width: 24px; text-align: center;">${line.quantity}</span>
+                        <button
+                          role="button"
+                          type="button"
+                          class="text extra-small"
+                          style="--md-sys-density: -4;"
+                          data-index="${index}"
+                          @click=${handleIncrementLineQuantity}
+                          aria-label="${t('pos', 'increaseQuantityAriaLabel')}"
+                        >
+                          <material-symbols name="add" size="20"></material-symbols>
+                        </button>
+                      </div>
+                    </td>
+                    <td class="numeric">${i18n.displayCurrency(line.price)}</td>
+                    <td class="center">
+                      <button
+                        role="button"
+                        type="button"
+                        class="text extra-small"
+                        style="--md-sys-density: -4; color: var(--md-sys-color-error);"
+                        data-index="${index}"
+                        @click=${handleRemoveLine}
+                        aria-label="${t('pos', 'removeItemAriaLabel')}"
+                      >
+                        <material-symbols name="delete" size="20"></material-symbols>
+                      </button>
+                    </td>
+                  </tr>
+                `)}
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">
@@ -1008,9 +1007,9 @@ export class POSViewElement extends HTMLElement {
                 </button>
               </div>
               <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                ${generalDiscounts.map(function (discount) {
-        const isApplied = state.appliedDiscounts.some((d) => d.discountId === discount.id);
-        return html`
+                ${repeat(generalDiscounts, (discount) => discount.id, (discount) => {
+                  const isApplied = state.appliedDiscounts.some((d) => d.discountId === discount.id);
+                  return html`
                     <button
                       role="button"
                       type="button"
@@ -1022,7 +1021,7 @@ export class POSViewElement extends HTMLElement {
                       ${discount.name}
                     </button>
                   `;
-      })}
+                })}
               </div>
             </div>
           ` : nothing}
@@ -1046,29 +1045,27 @@ export class POSViewElement extends HTMLElement {
                 </tr>
               </thead>
               <tbody>
-                ${state.appliedDiscounts.map(function (discount, index) {
-        return html`
-                    <tr>
-                      <td>${discount.discountName}</td>
-                      <td class="numeric" style="color: var(--md-sys-color-tertiary);">
-                        -${i18n.displayCurrency(discount.amount)}
-                      </td>
-                      <td class="center">
-                        <button
-                          role="button"
-                          type="button"
-                          class="text"
-                          data-index="${index}"
-                          @click=${handleRemoveDiscount}
-                          aria-label="${t('pos', 'removeDiscountAriaLabel')}"
-                          style="color: var(--md-sys-color-error);"
-                        >
-                          <material-symbols name="close" size="20"></material-symbols>
-                        </button>
-                      </td>
-                    </tr>
-                  `;
-      })}
+                ${repeat(state.appliedDiscounts, (discount) => discount.discountId, (discount, index) => html`
+                  <tr>
+                    <td>${discount.discountName}</td>
+                    <td class="numeric" style="color: var(--md-sys-color-tertiary);">
+                      -${i18n.displayCurrency(discount.amount)}
+                    </td>
+                    <td class="center">
+                      <button
+                        role="button"
+                        type="button"
+                        class="text"
+                        data-index="${index}"
+                        @click=${handleRemoveDiscount}
+                        aria-label="${t('pos', 'removeDiscountAriaLabel')}"
+                        style="color: var(--md-sys-color-error);"
+                      >
+                        <material-symbols name="close" size="20"></material-symbols>
+                      </button>
+                    </td>
+                  </tr>
+                `)}
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">
@@ -1127,9 +1124,9 @@ export class POSViewElement extends HTMLElement {
                   ${t('pos', 'paymentMethodLabel')}
                 </span>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                  ${state.paymentMethods.map(function (method) {
-        const isSelected = state.selectedPaymentMethodId === method.id;
-        return html`
+                  ${repeat(state.paymentMethods, (method) => method.id, (method) => {
+                    const isSelected = state.selectedPaymentMethodId === method.id;
+                    return html`
                       <button
                         role="button"
                         type="button"
@@ -1140,7 +1137,7 @@ export class POSViewElement extends HTMLElement {
                         ${method.name}
                       </button>
                     `;
-      })}
+                  })}
                 </div>
               </div>
               ${state.selectedPaymentMethodId !== null ? html`
@@ -1194,9 +1191,9 @@ export class POSViewElement extends HTMLElement {
                 </tr>
               </thead>
               <tbody>
-                ${state.payments.map(function (payment, index) {
-        const isAutoCash = payment.paymentMethodId === AUTO_CASH_PAYMENT_ID;
-        return html`
+                ${repeat(state.payments, (payment) => payment.paymentMethodId, (payment, index) => {
+                  const isAutoCash = payment.paymentMethodId === AUTO_CASH_PAYMENT_ID;
+                  return html`
                     <tr>
                       <td>
                         ${payment.paymentMethodName}
@@ -1223,7 +1220,7 @@ export class POSViewElement extends HTMLElement {
                       </td>
                     </tr>
                   `;
-      })}
+                })}
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">

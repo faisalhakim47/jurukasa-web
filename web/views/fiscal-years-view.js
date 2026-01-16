@@ -75,7 +75,7 @@ export class FiscalYearsViewElement extends HTMLElement {
           ORDER BY begin_time DESC
         `;
 
-        state.fiscalYears = result.rows.map(function (row) {
+        state.fiscalYears = result.rows.map(function rowToFiscalYear(row) {
           return /** @type {FiscalYearRow} */ ({
             begin_time: Number(row.begin_time),
             end_time: Number(row.end_time),

@@ -91,7 +91,7 @@ export class SuppliersViewElement extends HTMLElement {
           LIMIT ${pageSize} OFFSET ${offset}
         `;
 
-        state.suppliers = result.rows.map(function (row) {
+        state.suppliers = result.rows.map(function rowToSupplier(row) {
           return /** @type {SupplierRow} */ ({
             id: Number(row.id),
             name: String(row.name),

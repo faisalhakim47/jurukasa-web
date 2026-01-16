@@ -144,7 +144,7 @@ export class FinancialReportsViewElement extends HTMLElement {
           ORDER BY report_time DESC, id DESC
           LIMIT 50
         `;
-        state.balanceReports = result.rows.map(function (row) {
+        state.balanceReports = result.rows.map(function rowToBalanceReport(row) {
           return /** @type {BalanceReportRow} */ ({
             id: Number(row.id),
             report_time: Number(row.report_time),
@@ -169,7 +169,7 @@ export class FinancialReportsViewElement extends HTMLElement {
           FROM fiscal_years
           ORDER BY begin_time DESC
         `;
-        state.fiscalYears = result.rows.map(function (row) {
+        state.fiscalYears = result.rows.map(function rowToFiscalYear(row) {
           return /** @type {FiscalYearRow} */ ({
             begin_time: Number(row.begin_time),
             end_time: Number(row.end_time),
@@ -201,7 +201,7 @@ export class FinancialReportsViewElement extends HTMLElement {
           WHERE balance_report_id = ${reportId}
           ORDER BY account_code ASC
         `;
-        state.trialBalanceLines = result.rows.map(function (row) {
+        state.trialBalanceLines = result.rows.map(function rowToTrialBalanceLine(row) {
           return /** @type {TrialBalanceRow} */ ({
             balance_report_id: Number(row.balance_report_id),
             account_code: Number(row.account_code),
@@ -248,7 +248,7 @@ export class FinancialReportsViewElement extends HTMLElement {
             END,
             account_code ASC
         `;
-        state.balanceSheetLines = result.rows.map(function (row) {
+        state.balanceSheetLines = result.rows.map(function rowToBalanceSheetLine(row) {
           return /** @type {BalanceSheetRow} */ ({
             balance_report_id: Number(row.balance_report_id),
             classification: String(row.classification),
@@ -292,7 +292,7 @@ export class FinancialReportsViewElement extends HTMLElement {
             category,
             account_code ASC
         `;
-        state.incomeStatementLines = result.rows.map(function (row) {
+        state.incomeStatementLines = result.rows.map(function rowToIncomeStatementLine(row) {
           return /** @type {IncomeStatementRow} */ ({
             classification: String(row.classification),
             category: String(row.category),

@@ -75,7 +75,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
         state.isLoading = true;
         state.error = null;
 
-        const result = await database.sql`
+        const inventoryResult = await database.sql`
           SELECT
             i.id,
             i.name,
@@ -91,12 +91,12 @@ export class InventoryDetailsDialogElement extends HTMLElement {
           WHERE i.id = ${inventoryId}
         `;
 
-        if (result.rows.length === 0) {
+        if (inventoryResult.rows.length === 0) {
           state.inventory = null;
           state.barcodes = [];
         }
         else {
-          const row = result.rows[0];
+          const row = inventoryResult.rows[0];
           state.inventory = {
             id: Number(row.id),
             name: String(row.name),
@@ -109,7 +109,6 @@ export class InventoryDetailsDialogElement extends HTMLElement {
             num_of_sales: Number(row.num_of_sales),
           };
 
-          // Load barcodes
           const barcodesResult = await database.sql`
             SELECT code, inventory_id
             FROM inventory_barcodes
@@ -117,7 +116,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
             ORDER BY code ASC
           `;
 
-          state.barcodes = barcodesResult.rows.map(function (row) {
+          state.barcodes = barcodesResult.rows.map(function rowToBarcode(row) {
             return /** @type {BarcodeRow} */ ({
               code: String(row.code),
               inventory_id: Number(row.inventory_id),

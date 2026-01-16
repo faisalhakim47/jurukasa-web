@@ -96,7 +96,7 @@ export class BarcodesViewElement extends HTMLElement {
           LIMIT ${pageSize} OFFSET ${offset}
         `;
 
-        state.barcodes = result.rows.map(function (row) {
+        state.barcodes = result.rows.map(function rowToBarcode(row) {
           return /** @type {BarcodeRow} */ ({
             code: String(row.code),
             inventory_id: Number(row.inventory_id),

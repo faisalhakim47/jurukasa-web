@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
@@ -206,7 +207,7 @@ export class AccountTagsViewElement extends HTMLElement {
           ORDER BY at.tag, a.account_code
         `;
 
-        state.accountTags = result.rows.map(function (row) {
+        state.accountTags = result.rows.map(function rowToAccountTag(row) {
           return /** @type {AccountTagRow} */ ({
             account_code: Number(row.account_code),
             account_name: String(row.account_name),
@@ -416,23 +417,21 @@ export class AccountTagsViewElement extends HTMLElement {
             </div>
           </div>
           <menu role="menu" popover id="category-filter-menu" aria-label="${t('account', 'categoryFilterAriaLabel')}" class="dropdown" style="position-anchor: --category-menu-anchor;">
-            ${categoryOptions.map(function (category) {
-        return html`
-                <li>
-                  <button
-                    role="menuitem"
-                    data-category="${category}"
-                    @click=${handleCategoryFilterChange}
-                    popovertarget="category-filter-menu"
-                    popovertargetaction="hide"
-                    aria-selected=${category === state.categoryFilter ? 'true' : 'false'}
-                  >
-                    ${category === state.categoryFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
-                    ${category}
-                  </button>
-                </li>
-              `;
-      })}
+            ${repeat(categoryOptions, (category) => category, (category) => html`
+              <li>
+                <button
+                  role="menuitem"
+                  data-category="${category}"
+                  @click=${handleCategoryFilterChange}
+                  popovertarget="category-filter-menu"
+                  popovertargetaction="hide"
+                  aria-selected=${category === state.categoryFilter ? 'true' : 'false'}
+                >
+                  ${category === state.categoryFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
+                  ${category}
+                </button>
+              </li>
+            `)}
           </menu>
         </div>
       `;

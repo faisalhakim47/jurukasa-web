@@ -16,6 +16,7 @@ import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
+import { repeat } from 'lit-html/directives/repeat.js';
 
 /**
  * @typedef {object} InventoryOption
@@ -72,7 +73,7 @@ export class DiscountCreationDialogElement extends HTMLElement {
           LIMIT 50
         `;
 
-        state.availableInventories = result.rows.map(function (row) {
+        state.availableInventories = result.rows.map(function rowToInventory(row) {
           return /** @type {InventoryOption} */ ({
             id: Number(row.id),
             name: String(row.name),
@@ -256,30 +257,28 @@ export class DiscountCreationDialogElement extends HTMLElement {
                 </div>
               ` : html`
                 <ul role="listbox" aria-label="Available inventories" style="list-style: none; padding: 0; margin: 0;">
-                  ${state.availableInventories.map(function (inv) {
-                    return html`
-                      <li
-                        role="option"
-                        tabindex="0"
-                        aria-selected="false"
-                        data-inventory-id="${inv.id}"
-                        @click=${handleInventorySelect}
-                        @keydown=${handleInventoryKeydown}
-                        style="
-                          padding: 12px 16px;
-                          cursor: pointer;
-                          border-bottom: 1px solid var(--md-sys-color-outline-variant);
-                        "
-                      >
-                        <p style="margin: 0; font-weight: 500;">${inv.name}</p>
-                        ${inv.unit_of_measurement ? html`
-                          <p style="margin: 0; font-size: 0.875rem; color: var(--md-sys-color-on-surface-variant);">
-                            ${t('discount', 'unitLabel')}: ${inv.unit_of_measurement}
-                          </p>
-                        ` : nothing}
-                      </li>
-                    `;
-                  })}
+                  ${repeat(state.availableInventories, (inventory) => inventory.id, (inventory) => html`
+                    <li
+                      role="option"
+                      tabindex="0"
+                      aria-selected="false"
+                      data-inventory-id="${inventory.id}"
+                      @click=${handleInventorySelect}
+                      @keydown=${handleInventoryKeydown}
+                      style="
+                        padding: 12px 16px;
+                        cursor: pointer;
+                        border-bottom: 1px solid var(--md-sys-color-outline-variant);
+                      "
+                    >
+                      <p style="margin: 0; font-weight: 500;">${inventory.name}</p>
+                      ${inventory.unit_of_measurement ? html`
+                        <p style="margin: 0; font-size: 0.875rem; color: var(--md-sys-color-on-surface-variant);">
+                          ${t('discount', 'unitLabel')}: ${inventory.unit_of_measurement}
+                        </p>
+                      ` : nothing}
+                    </li>
+                  `)}
                 </ul>
               `}
             </div>

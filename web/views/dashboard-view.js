@@ -120,7 +120,7 @@ export class DashboardViewElement extends HTMLElement {
         const sparklineResult = await database.sql`
           SELECT net_revenue FROM revenue_sparkline ORDER BY date_key ASC
         `;
-        state.revenueSparkline = sparklineResult.rows.map(function (row) {
+        state.revenueSparkline = sparklineResult.rows.map(function rowTORevenueSparkline(row) {
           return /** @type {number} */ (row.net_revenue);
         });
 

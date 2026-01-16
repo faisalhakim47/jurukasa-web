@@ -104,7 +104,7 @@ export class JournalEntriesViewElement extends HTMLElement {
           LIMIT ${pageSize} OFFSET ${offset}
         `;
 
-        state.journalEntries = result.rows.map(function (row) {
+        state.journalEntries = result.rows.map(function rowToJournalEntry(row) {
           return /** @type {JournalEntryRow} */ ({
             ref: Number(row.ref),
             entry_time: Number(row.entry_time),

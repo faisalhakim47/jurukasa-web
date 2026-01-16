@@ -93,7 +93,7 @@ export class SupplierSelectorDialogElement extends HTMLElement {
           LIMIT 50
         `;
 
-        state.suppliers = result.rows.map(function (row) {
+        state.suppliers = result.rows.map(function rowToSupplier(row) {
           return /** @type {SupplierRow} */ ({
             id: Number(row.id),
             name: String(row.name),

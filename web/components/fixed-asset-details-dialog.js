@@ -1,5 +1,6 @@
 import { reactive } from '@vue/reactivity';
 import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 
 import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
@@ -161,7 +162,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
             ORDER BY je.entry_time DESC
           `;
 
-          state.depreciationHistory = historyResult.rows.map(function (row) {
+          state.depreciationHistory = historyResult.rows.map(function rowToDepreciation(row) {
             return /** @type {DepreciationHistoryRow} */ ({
               ref: Number(row.ref),
               entry_time: Number(row.entry_time),
@@ -510,15 +511,13 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
                   </tr>
                 </thead>
                 <tbody>
-                  ${state.depreciationHistory.map(function (entry) {
-                    return html`
-                      <tr>
-                        <td>${i18n.date.format(new Date(entry.entry_time))}</td>
-                        <td>${entry.note || t('fixedAsset', 'noNoteLabel')}</td>
-                        <td class="numeric">${i18n.displayCurrency(entry.amount)}</td>
-                      </tr>
-                    `;
-                  })}
+                  ${repeat(state.depreciationHistory, (entry) => entry.ref, (entry) => html`
+                    <tr>
+                      <td>${i18n.date.format(new Date(entry.entry_time))}</td>
+                      <td>${entry.note || t('fixedAsset', 'noNoteLabel')}</td>
+                      <td class="numeric">${i18n.displayCurrency(entry.amount)}</td>
+                    </tr>
+                  `)}
                 </tbody>
               </table>
             </section>

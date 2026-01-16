@@ -64,7 +64,7 @@ export class DesktopViewElement extends HTMLElement {
       `;
     }
 
-    useEffect(host, function renderDesktopLayout() {
+    useEffect(host, function renderDesktopView() {
       const currentPath = router.route?.pathname || '/';
       render(html`
         <div style="display: flex; flex-direction: row; height: 100vh; width: 100vw;">

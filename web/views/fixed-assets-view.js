@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
@@ -113,7 +114,7 @@ export class FixedAssetsViewElement extends HTMLElement {
           LIMIT ${pageSize} OFFSET ${offset}
         `;
 
-        state.fixedAssets = result.rows.map(function (row) {
+        state.fixedAssets = result.rows.map(function rowToFixedAsset(row) {
           return /** @type {FixedAssetRow} */ ({
             id: Number(row.id),
             name: String(row.name),
@@ -260,7 +261,7 @@ export class FixedAssetsViewElement extends HTMLElement {
             </div>
           </div>
           <menu role="menu" popover id="depreciation-filter-menu" class="dropdown" style="position-anchor: --depreciation-filter-menu-anchor;">
-            ${depreciationFilterOptions.map(function (option) {
+            ${repeat(depreciationFilterOptions, (option) => option, (option) => {
               const optionLabel = option === 'All' ? t('fixedAsset', 'filterAll') : option === 'Active' ? t('fixedAsset', 'filterActive') : t('fixedAsset', 'filterFullyDepreciated');
               return html`
                 <li>

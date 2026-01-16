@@ -139,7 +139,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
             ORDER BY sl.line_number ASC
           `;
 
-          state.saleLines = saleLinesResult.rows.map(function (row) {
+          state.saleLines = saleLinesResult.rows.map(function rowToSaleLine(row) {
             return /** @type {SaleLine} */ ({
               line_number: Number(row.line_number),
               inventory_id: Number(row.inventory_id),
@@ -163,7 +163,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
             ORDER BY sd.line_number ASC
           `;
 
-          state.saleDiscounts = saleDiscountsResult.rows.map(function (row) {
+          state.saleDiscounts = saleDiscountsResult.rows.map(function rowToSaleDiscount(row) {
             return /** @type {SaleDiscount} */ ({
               line_number: Number(row.line_number),
               discount_id: Number(row.discount_id),
@@ -185,7 +185,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
             ORDER BY sp.line_number ASC
           `;
 
-          state.salePayments = salePaymentsResult.rows.map(function (row) {
+          state.salePayments = salePaymentsResult.rows.map(function rowToSalePayment(row) {
             return /** @type {SalePayment} */ ({
               line_number: Number(row.line_number),
               payment_method_id: Number(row.payment_method_id),

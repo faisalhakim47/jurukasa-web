@@ -115,7 +115,7 @@ export class OnboardingViewElement extends HTMLElement {
     function loadChartOfAccountsTemplates() {
       database.sql`SELECT name FROM chart_of_accounts_templates`
         .then(function (result) {
-          onboarding.templateNames = result.rows.map(function (row) { return String(row.name); });
+          onboarding.templateNames = result.rows.map(function rowToTemplateName(row) { return String(row.name); });
         });
     }
 

@@ -46,7 +46,7 @@ export async function setupDatabase(tursoLibSQLiteServer, setup) {
     if (!Array.isArray(query)) throw new TypeError('Expected TemplateStringsArray as the first argument.');
     return client.execute({
       sql: query.join('?'),
-      args: params.map(function (param) {
+      args: params.map(function unknownToArg(param) {
         if (param === null || param === undefined) return null;
         else if (typeof param === 'number' || typeof param === 'string' || typeof param === 'boolean') return param;
         else return JSON.stringify(param);

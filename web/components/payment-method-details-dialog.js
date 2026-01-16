@@ -1,5 +1,6 @@
 import { reactive } from '@vue/reactivity';
 import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 
 import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
@@ -136,7 +137,7 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
           ORDER BY a.account_code ASC
         `;
 
-        state.accounts = result.rows.map(function (row) {
+        state.accounts = result.rows.map(function rowToAccount(row) {
           return /** @type {AccountOption} */ ({
             accountCode: Number(row.account_code),
             name: String(row.name),
@@ -497,21 +498,19 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
                 </div>
               ` : html`
                 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                  ${state.accounts.map(function (account) {
-                    return html`
-                      <button
-                        role="button"
-                        type="button"
-                        class="outlined"
-                        data-account-code="${account.accountCode}"
-                        data-account-name="${account.name}"
-                        @click=${handleAccountSelect}
-                      >
-                        <span class="label-medium">${account.accountCode}</span>
-                        ${account.name}
-                      </button>
-                    `;
-                  })}
+                  ${repeat(state.accounts, (account) => account.accountCode, (account) => html`
+                    <button
+                      role="button"
+                      type="button"
+                      class="outlined"
+                      data-account-code="${account.accountCode}"
+                      data-account-name="${account.name}"
+                      @click=${handleAccountSelect}
+                    >
+                      <span class="label-medium">${account.accountCode}</span>
+                      ${account.name}
+                    </button>
+                  `)}
                 </div>
               `}
             `}

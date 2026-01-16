@@ -131,7 +131,7 @@ export class AccountSelectorDialogElement extends HTMLElement {
           ORDER BY a.account_code ASC
         `;
 
-        state.accounts = result.rows.map(function (row) {
+        state.accounts = result.rows.map(function rowToAccount(row) {
           return /** @type {AccountRow} */ ({
             account_code: Number(row.account_code),
             name: String(row.name),

@@ -122,7 +122,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
             ORDER BY pl.line_number ASC
           `;
 
-          state.purchaseLines = purchaseLinesResult.rows.map(function (row) {
+          state.purchaseLines = purchaseLinesResult.rows.map(function rowToPurchaseLine(row) {
             return /** @type {PurchaseLine} */ ({
               line_number: Number(row.line_number),
               inventory_id: Number(row.inventory_id),

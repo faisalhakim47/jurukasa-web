@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
@@ -107,7 +108,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
           LIMIT 100
         `;
 
-        state.inventories = result.rows.map(function (row) {
+        state.inventories = result.rows.map(function rowToInventory(row) {
           return /** @type {InventoryOption} */ ({
             id: Number(row.id),
             name: String(row.name),
@@ -469,24 +470,22 @@ export class PurchaseCreationViewElement extends HTMLElement {
               </div>
             ` : html`
               <div role="list">
-                ${state.inventories.map(function (inventory) {
-        return html`
-                    <div
-                      role="listitem"
-                      class="divider-inset"
-                      tabindex="0"
-                      data-inventory-id="${inventory.id}"
-                      @click=${handleAddInventoryToPurchase}
-                    >
-                      <div class="content">
-                        <span class="headline">${inventory.name}</span>
-                        <span class="supporting-text">
-                          ${t('purchase', 'stockLabel')}: ${inventory.stock}${inventory.unit_of_measurement ? ` ${inventory.unit_of_measurement}` : ''} | ${i18n.displayCurrency(inventory.unit_price)}
-                        </span>
-                      </div>
+                ${repeat(state.inventories, (inventory) => inventory.id, (inventory) => html`
+                  <div
+                    role="listitem"
+                    class="divider-inset"
+                    tabindex="0"
+                    data-inventory-id="${inventory.id}"
+                    @click=${handleAddInventoryToPurchase}
+                  >
+                    <div class="content">
+                      <span class="headline">${inventory.name}</span>
+                      <span class="supporting-text">
+                        ${t('purchase', 'stockLabel')}: ${inventory.stock}${inventory.unit_of_measurement ? ` ${inventory.unit_of_measurement}` : ''} | ${i18n.displayCurrency(inventory.unit_price)}
+                      </span>
                     </div>
-                  `;
-      })}
+                  </div>
+                `)}
               </div>
             `}
           </div>
@@ -606,58 +605,56 @@ export class PurchaseCreationViewElement extends HTMLElement {
                 </tr>
               </thead>
               <tbody>
-                ${state.lines.map(function (line, index) {
-        return html`
-                    <tr>
-                      <td>
-                        <span style="font-weight: 500;">${line.inventoryName}</span>
-                        ${line.unitOfMeasurement ? html`
-                          <span style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;"> / ${line.unitOfMeasurement}</span>
-                        ` : nothing}
-                      </td>
-                      <td class="numeric">${line.supplierQuantity}</td>
-                      <td class="numeric">${line.quantity}</td>
-                      <td class="numeric">${i18n.displayCurrency(line.price)}</td>
-                      <td class="center">
-                        <div style="display: inline-flex; align-items: center; gap: 4px;">
-                          <button
-                            role="button"
-                            type="button"
-                            class="text"
-                            data-index="${index}"
-                            @click=${handleDecrementLineQuantity}
-                            aria-label=${t('purchase', 'decreaseQuantityAriaLabel')}
-                            style="min-width: 32px; min-height: 32px; padding: 0;"
-                          >
-                            <material-symbols name="remove" size="20"></material-symbols>
-                          </button>
-                          <button
-                            role="button"
-                            type="button"
-                            class="text"
-                            data-index="${index}"
-                            @click=${handleIncrementLineQuantity}
-                            aria-label=${t('purchase', 'increaseQuantityAriaLabel')}
-                            style="min-width: 32px; min-height: 32px; padding: 0;"
-                          >
-                            <material-symbols name="add" size="20"></material-symbols>
-                          </button>
-                          <button
-                            role="button"
-                            type="button"
-                            class="text"
-                            data-index="${index}"
-                            @click=${handleRemoveLine}
-                            aria-label=${t('purchase', 'removeItemAriaLabel')}
-                            style="color: var(--md-sys-color-error); min-width: 32px; min-height: 32px; padding: 0;"
-                          >
-                            <material-symbols name="delete" size="20"></material-symbols>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  `;
-      })}
+                ${repeat(state.lines, (line) => line.inventoryId, (line, index) => html`
+                  <tr>
+                    <td>
+                      <span style="font-weight: 500;">${line.inventoryName}</span>
+                      ${line.unitOfMeasurement ? html`
+                        <span style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;"> / ${line.unitOfMeasurement}</span>
+                      ` : nothing}
+                    </td>
+                    <td class="numeric">${line.supplierQuantity}</td>
+                    <td class="numeric">${line.quantity}</td>
+                    <td class="numeric">${i18n.displayCurrency(line.price)}</td>
+                    <td class="center">
+                      <div style="display: inline-flex; align-items: center; gap: 4px;">
+                        <button
+                          role="button"
+                          type="button"
+                          class="text"
+                          data-index="${index}"
+                          @click=${handleDecrementLineQuantity}
+                          aria-label=${t('purchase', 'decreaseQuantityAriaLabel')}
+                          style="min-width: 32px; min-height: 32px; padding: 0;"
+                        >
+                          <material-symbols name="remove" size="20"></material-symbols>
+                        </button>
+                        <button
+                          role="button"
+                          type="button"
+                          class="text"
+                          data-index="${index}"
+                          @click=${handleIncrementLineQuantity}
+                          aria-label=${t('purchase', 'increaseQuantityAriaLabel')}
+                          style="min-width: 32px; min-height: 32px; padding: 0;"
+                        >
+                          <material-symbols name="add" size="20"></material-symbols>
+                        </button>
+                        <button
+                          role="button"
+                          type="button"
+                          class="text"
+                          data-index="${index}"
+                          @click=${handleRemoveLine}
+                          aria-label=${t('purchase', 'removeItemAriaLabel')}
+                          style="color: var(--md-sys-color-error); min-width: 32px; min-height: 32px; padding: 0;"
+                        >
+                          <material-symbols name="delete" size="20"></material-symbols>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                `)}
               </tbody>
               <tfoot>
                 <tr style="font-weight: 500;">

@@ -94,7 +94,6 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
           unit_price: Number(invRow.unit_price),
         };
 
-        // Load existing discounts for this inventory
         const discountsResult = await database.sql`
           SELECT id, multiple_of_quantity, amount
           FROM discounts
@@ -102,7 +101,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
           ORDER BY multiple_of_quantity ASC
         `;
 
-        state.discounts = discountsResult.rows.map(function (row) {
+        state.discounts = discountsResult.rows.map(function rowToDiscount(row) {
           return /** @type {DiscountRow} */ ({
             id: Number(row.id),
             multiple_of_quantity: Number(row.multiple_of_quantity),

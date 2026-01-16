@@ -107,7 +107,7 @@ export class InventorySelectorDialogElement extends HTMLElement {
           ORDER BY name ASC
         `;
 
-        state.inventories = result.rows.map(function (row) {
+        state.inventories = result.rows.map(function rowToInventory(row) {
           return /** @type {InventoryRow} */ ({
             id: Number(row.id),
             name: String(row.name),

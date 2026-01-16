@@ -109,7 +109,7 @@ export class DiscountsViewElement extends HTMLElement {
           LIMIT ${pageSize} OFFSET ${offset}
         `;
 
-        state.discounts = result.rows.map(function (row) {
+        state.discounts = result.rows.map(function rowToDiscount(row) {
           return /** @type {DiscountRow} */ ({
             id: Number(row.id),
             name: String(row.name),

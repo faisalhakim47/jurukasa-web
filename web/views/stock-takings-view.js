@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
@@ -117,7 +118,7 @@ export class StockTakingsViewElement extends HTMLElement {
           LIMIT ${pageSize} OFFSET ${offset}
         `;
 
-        state.stockTakings = result.rows.map(function (row) {
+        state.stockTakings = result.rows.map(function rowToStockTaking(row) {
           return /** @type {StockTakingRow} */ ({
             id: Number(row.id),
             inventory_id: Number(row.inventory_id),
@@ -239,23 +240,21 @@ export class StockTakingsViewElement extends HTMLElement {
             </div>
           </div>
           <menu role="menu" popover id="variance-filter-menu" class="dropdown" style="position-anchor: --variance-filter-menu-anchor;">
-            ${varianceFilterOptions.map(function (option) {
-              return html`
-                <li>
-                  <button
-                    role="menuitem"
-                    data-variance-filter="${option}"
-                    @click=${handleVarianceFilterChange}
-                    popovertarget="variance-filter-menu"
-                    popovertargetaction="hide"
-                    aria-selected=${option === state.varianceFilter ? 'true' : 'false'}
-                  >
-                    ${option === state.varianceFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
-                    ${translateVarianceFilter(option)}
-                  </button>
-                </li>
-              `;
-            })}
+            ${repeat(varianceFilterOptions, (option) => option, (option) => html`
+              <li>
+                <button
+                  role="menuitem"
+                  data-variance-filter="${option}"
+                  @click=${handleVarianceFilterChange}
+                  popovertarget="variance-filter-menu"
+                  popovertargetaction="hide"
+                  aria-selected=${option === state.varianceFilter ? 'true' : 'false'}
+                >
+                  ${option === state.varianceFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
+                  ${translateVarianceFilter(option)}
+                </button>
+              </li>
+            `)}
           </menu>
         </div>
       `;
