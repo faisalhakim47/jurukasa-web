@@ -21,7 +21,6 @@
   },
   "devDependencies": {
     "@libsql/client": "^0.15.15",
-    "@libsql/client-wasm": "^0.15.15",
     "@playwright/test": "^1.57.0",
     "@testing-library/dom": "^10.4.1",
     "@types/node": "24",

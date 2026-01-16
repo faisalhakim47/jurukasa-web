@@ -62,10 +62,12 @@ async function startTursoLibSQLiteServer() {
       };
     };
 
+    // @ts-ignore
     tursoProcess.on('error', function handleProcessError(error) {
       rejectWithMessage(error?.message);
     });
 
+    // @ts-ignore
     tursoProcess.on('exit', function handleProcessExit(code, signal) {
       rejectWithMessage(`code ${code} and signal ${signal}`);
     });
@@ -82,6 +84,7 @@ async function startTursoLibSQLiteServer() {
         url: `http://localhost:${tursoDevPort}`,
         async teardown() {
           await new Promise(function stopTursoProcess(resolve) {
+            // @ts-ignore
             tursoProcess.on('exit', resolve);
             tursoProcess.kill();
           });
@@ -121,14 +124,18 @@ async function findAvailablePort() {
 async function checkPortAvailability(port) {
   return new Promise(function checkByServer(resolve) {
     const server = createServer();
+    // @ts-ignore
     server.once('listening', function handleListening() {
+      // @ts-ignore
       server.removeAllListeners();
       server.close(function handleClose(error) {
         if (error) resolve(false);
         else resolve(true);
       });
     });
+    // @ts-ignore
     server.once('error', function handleError() {
+      // @ts-ignore
       server.removeAllListeners();
       server.close(function handleClose() {
         resolve(false);

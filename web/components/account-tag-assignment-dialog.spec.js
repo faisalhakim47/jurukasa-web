@@ -16,9 +16,7 @@ async function setupView(tursoDatabaseUrl) {
           <database-context provider="turso" turso-url="${tursoDatabaseUrl}">
             <device-context>
               <i18n-context>
-                <onboarding-context>
-                  <main-view></main-view>
-                </onboarding-context>
+                <main-view></main-view>
               </i18n-context>
             </device-context>
           </database-context>

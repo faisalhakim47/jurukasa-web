@@ -24,8 +24,8 @@ const onboarding = {
   databaseProviderLabel: 'Database Provider',
 
   // Local SQLite provider
-  localDatabaseLabel: 'Local Database (Demo Mode)',
-  localDatabaseDescription: 'Store data in browser memory. Data will not persist after closing the browser. Recommended for testing only.',
+  localDatabaseLabel: 'Local Database',
+  localDatabaseDescription: 'Store data in browser storage. Recommended for single-device use.',
 
   // Turso provider
   tursoDatabaseLabel: 'Turso SQLite',

@@ -1,6 +1,7 @@
 /** @import { test } from '@playwright/test' */
 
-import { env } from 'node:process';
+/** IMPORTANT: Use this key symbol for debugging purpose only. */
+export const bypassForbiddenLocator = /** @type {'locator'} */ (/** @type {any} */ (Symbol('BypassForbiddenLocator')));
 
 /**
  * This is important hook that enforces strict test guidelines described in test/AGENTS.md file.
@@ -11,6 +12,7 @@ export function useStrict(test) {
   const { beforeEach } = test;
   beforeEach(async function setupLogMapping({ context }) {
     context.addListener('page', async function onPage(page) {
+      page[bypassForbiddenLocator] = page.locator;
       page.locator = function forbiddenLocator() {
         throw new Error('page.locator() is forbidden. Use accessibility selectors instead.');
       };

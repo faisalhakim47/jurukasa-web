@@ -2,7 +2,6 @@
 
 import { expect, test } from '@playwright/test';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
-import { setupDatabase } from '#test/tools/database.js';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 import { useStrict } from '#test/hooks/use-strict.js';
@@ -17,9 +16,7 @@ async function setupOnboardingView(tursoDatabaseUrl) {
         <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
-              <onboarding-context>
-                <onboarding-view></onboarding-view>
-              </onboarding-context>
+              <onboarding-view></onboarding-view>
             </i18n-context>
           </device-context>
         </database-context>
@@ -35,9 +32,7 @@ async function setupOnboardingViewWithoutDatabase() {
         <database-context>
           <device-context>
             <i18n-context>
-              <onboarding-context>
-                <onboarding-view></onboarding-view>
-              </onboarding-context>
+              <onboarding-view></onboarding-view>
             </i18n-context>
           </device-context>
         </database-context>
@@ -110,7 +105,7 @@ describe('Onboarding View', function () {
       await page.getByRole('button', { name: 'Get Started' }).click();
 
       // Verify provider selection radio buttons
-      await expect(page.getByRole('radio', { name: 'Local Database (Demo Mode)' })).toBeVisible();
+      await expect(page.getByRole('radio', { name: 'Local Database' })).toBeVisible();
       await expect(page.getByRole('radio', { name: 'Turso SQLite' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Connect' })).toBeVisible();
     });
@@ -281,6 +276,30 @@ describe('Onboarding View', function () {
       await page.getByRole('button', { name: 'Finish' }).click();
 
       await expect(page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' })).toBeVisible();
+    });
+  });
+
+  describe('Local Database Test', function () {
+    test('it shall connect using Local Database provider and proceed to business config', async function ({ page }) {
+      await loadEmptyFixture(page);
+
+      await page.evaluate(setupOnboardingViewWithoutDatabase);
+
+      await page.getByRole('button', { name: 'Get Started' }).click();
+      await page.getByRole('radio', { name: 'Local Database' }).check();
+      await page.getByRole('button', { name: 'Connect' }).click();
+
+      const businessConfigDialog = page.getByRole('dialog', { name: 'Configure Business' });
+      await expect(businessConfigDialog).toBeVisible();
+      await businessConfigDialog.getByLabel('Business Name').fill('Local DB Store');
+      await businessConfigDialog.getByRole('button', { name: 'Next' }).click();
+
+      const chartOfAccountsDialog = page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' });
+      await expect(chartOfAccountsDialog).toBeVisible();
+      await chartOfAccountsDialog.getByRole('radio', { name: 'Retail Business - Indonesia' }).check();
+      await chartOfAccountsDialog.getByRole('button', { name: 'Finish' }).click();
+
+      await page.pause();
     });
   });
 });

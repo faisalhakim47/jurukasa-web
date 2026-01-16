@@ -11,8 +11,8 @@
     }
   },
   "include": [
+    "test/**/*.js",
     "web/**/*.js",
-    "web/global.d.ts",
-    "test/**/*.js"
+    "web/global.d.ts"
   ]
 }

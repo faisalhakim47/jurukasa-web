@@ -17,7 +17,7 @@ import { feedbackDelay } from '#web/tools/timing.js';
 import '#web/components/material-symbols.js';
 import '#web/components/account-selector-dialog.js';
 
-/** @import { EnTranslationPack as DefaultTranslationPack } from '#web/lang/en/index.js' */
+/** @import { EnTranslationPack as DefaultTranslationPack } from '#web/lang/en.js' */
 
 const accountTypes = /** @type {const} */ ([
   'Asset',

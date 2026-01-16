@@ -72,11 +72,12 @@ describe('Barcodes View', function () {
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
 
     await page.getByLabel('Search', { exact: true }).fill('1234');
 
     await expect(page.getByRole('row').filter({ hasText: '1234567890' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: '9876543210' })).not.toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: '9876543210' })).toBeHidden();
   });
 
   test('it shall search barcodes by product name', async function ({ page }) {
@@ -91,11 +92,12 @@ describe('Barcodes View', function () {
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
 
     await page.getByLabel('Search', { exact: true }).fill('laptop');
 
     await expect(page.getByRole('row').filter({ hasText: 'Laptop Dell' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Mouse Wireless' })).not.toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Mouse Wireless' })).toBeHidden();
   });
 
   test('it shall clear search', async function ({ page }) {
@@ -110,9 +112,10 @@ describe('Barcodes View', function () {
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
 
     await page.getByLabel('Search', { exact: true }).fill('9875');
-    await expect(page.getByRole('row').filter({ hasText: '9876543210' })).not.toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: '9876543210' })).toBeHidden();
 
     await page.getByLabel('Clear search').click();
     await expect(page.getByLabel('Search', { exact: true })).toHaveValue('');
@@ -130,6 +133,7 @@ describe('Barcodes View', function () {
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
 
     await page.getByLabel('Search', { exact: true }).fill('Nonexistent Product');
 
@@ -322,6 +326,7 @@ describe('Barcodes View', function () {
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Next page' }).click();
     await expect(page.getByText('21-25 of 25')).toBeVisible();

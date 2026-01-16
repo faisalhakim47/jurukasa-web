@@ -55,7 +55,13 @@ export class RouterContextElement extends HTMLElement {
      * @param {Partial<Route & { replace?: boolean }>} target
      */
     this.navigate = function navigate(target) {
-      const state = /** @type {Route} */ ({ ...route, ...target });
+      const state = /** @type {Route} */ ({
+        databaseProvider: target.databaseProvider ?? route.databaseProvider,
+        databaseConfig: {
+          ...route.databaseConfig,
+        },
+        pathname: target.pathname ?? route.pathname,
+      });
 
       // Persist database configuration
       if (state.databaseProvider && state.databaseConfig) {
@@ -78,8 +84,6 @@ export class RouterContextElement extends HTMLElement {
  * @returns {DatabaseConfig|undefined}
  */
 function loadPersistedDatabaseConfig(provider) {
-  if (!provider) return undefined;
-
   if (provider === 'local') {
     return { provider: 'local' };
   }
@@ -89,7 +93,7 @@ function loadPersistedDatabaseConfig(provider) {
     if (!url) return undefined;
     return { provider: 'turso', url, authToken };
   }
-  return undefined;
+  else return undefined;
 }
 
 /**

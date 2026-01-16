@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
-import { useStrict } from '#test/hooks/use-strict.js';
+import { bypassForbiddenLocator, useStrict } from '#test/hooks/use-strict.js';
 
 const { describe } = test;
 
@@ -312,7 +312,7 @@ describe('Chart of Accounts', function () {
       // 1 Header + 7 root parent accounts
       await expect(chartOfAccountsPanel.getByRole('row')).toHaveCount(8);
 
-      await page.getByRole('textbox', { name: 'Search', exact: true }).fill('Kas');
+      await page.getByRole('textbox', { name: 'Search', exact: true }).fill('Kas & Bank');
 
       // 1 Header + 1 filtered account
       await expect(chartOfAccountsPanel.getByRole('row')).toHaveCount(2);
@@ -461,6 +461,7 @@ describe('Chart of Accounts', function () {
         `;
       }, tursoLibSQLiteServer().url);
 
+      await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' })).toBeVisible();
       await page.getByRole('button', { name: 'Expand all accounts' }).click();
 
       await expect(page.getByRole('row', { name: 'Aset Lancar' })).toBeVisible();
@@ -489,9 +490,9 @@ describe('Chart of Accounts', function () {
         `;
       }, tursoLibSQLiteServer().url);
 
+      await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' })).toBeVisible();
       await page.getByRole('button', { name: 'Expand all accounts' }).click();
 
-      // await page.pause();
       await expect(page.getByRole('row', { name: 'Aset Lancar' })).toBeVisible();
 
       await page.getByRole('button', { name: 'Collapse all accounts' }).click();
@@ -522,6 +523,7 @@ describe('Chart of Accounts', function () {
         `;
       }, tursoLibSQLiteServer().url);
 
+      await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' })).toBeVisible();
       await page.getByRole('row', { name: 'Account Aset', exact: true }).click();
       await expect(page.getByRole('row', { name: 'Aset Lancar' })).toBeVisible();
 

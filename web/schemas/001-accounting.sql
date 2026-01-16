@@ -233,7 +233,11 @@ CREATE TABLE account_tags (
     'POS - Inventory',
     'POS - Inventory Gain',
     'POS - Inventory Shrinkage',
-    'POS - Payment Method'
+    'POS - Payment Method',
+
+    -- Reconciliation Tags
+    'Reconciliation - Adjustment',
+    'Reconciliation - Cash Over/Short'
   )),
   PRIMARY KEY (account_code, tag)
 ) STRICT, WITHOUT ROWID; -- EOS
@@ -251,6 +255,7 @@ CREATE UNIQUE INDEX account_tags_unique_pos_salesdiscount_index ON account_tags 
 CREATE UNIQUE INDEX account_tags_unique_pos_costofgoodssold_index ON account_tags (tag) WHERE tag = 'POS - Cost of Goods Sold'; -- EOS
 CREATE UNIQUE INDEX account_tags_unique_pos_inventorygain_index ON account_tags (tag) WHERE tag = 'POS - Inventory Gain'; -- EOS
 CREATE UNIQUE INDEX account_tags_unique_pos_inventoryshrinkage_index ON account_tags (tag) WHERE tag = 'POS - Inventory Shrinkage'; -- EOS
+CREATE UNIQUE INDEX account_tags_unique_reconciliation_cashovershort_index ON account_tags (tag) WHERE tag = 'Reconciliation - Cash Over/Short'; -- EOS
 
 -- Prevent updates to account_tags: tags are immutable (delete + insert to change)
 CREATE TRIGGER account_tags_update_prevention_trigger

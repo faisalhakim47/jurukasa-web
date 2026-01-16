@@ -25,6 +25,9 @@ import { useAttribute } from '#web/hooks/use-attribute.js';
  * @typedef {LocalDatabaseConfig|TursoDatabaseConfig} DatabaseConfig
  */
 
+export class DatabaseError extends Error { }
+export class FailedToConnectDatabaseError extends DatabaseError { }
+
 /**
  * Database context preload config with following priorities:
  * 1. Element attributes
@@ -77,7 +80,9 @@ export class DatabaseContextElement extends HTMLElement {
     let { promise: promisedClient, resolve: resolveClient } = Promise.withResolvers();
     let isPromisedClientResolved = false;
     useEffect(host, function monitorClientAvailability() {
+      console.info('Monitoring database client availability', connection.client);
       if (connection.client) {
+        console.info('Database client is now available', isPromisedClientResolved);
         if (isPromisedClientResolved) promisedClient = Promise.resolve(connection.client);
         else {
           isPromisedClientResolved = true;
@@ -107,8 +112,10 @@ export class DatabaseContextElement extends HTMLElement {
           connection.state = 'connected';
           connection.provider = config.provider;
           connection.client = client;
+          console.info('Database connected successfully using provider:', config.provider);
         })
         .catch(function failedToConnect(error) {
+          console.info('Database connection failed:', error);
           connection.state = 'unconfigured';
           connection.error = error;
         });
@@ -133,7 +140,15 @@ export class DatabaseContextElement extends HTMLElement {
           url: tursoURLAttr.value || '',
           authToken: tursoAuthTokenAttr.value || undefined,
         });
-        else if (router.route.databaseConfig) connect(router.route.databaseConfig);
+        else if (typeof router.route.databaseConfig?.provider === 'string') {
+          if (router.route.databaseConfig.provider === 'local') connect({ provider: 'local' });
+          else if (router.route.databaseConfig.provider === 'turso') connect({
+            provider: 'turso',
+            url: router.route.databaseConfig.url,
+            authToken: router.route.databaseConfig.authToken,
+          });
+          else connection.state = 'unconfigured';
+        }
         else connection.state = 'unconfigured';
       }
     });
@@ -142,13 +157,11 @@ export class DatabaseContextElement extends HTMLElement {
 
 defineWebComponent('database-context', DatabaseContextElement);
 
-export class DatabaseError extends Error { }
-export class FailedToConnectDatabaseError extends DatabaseError { }
-
 /** @param {DatabaseConfig} config */
 async function initiateDatabase(config) {
   try {
     const client = await createDatabaseClient(config);
+    await client.connect();
     if (typeof client.executeMultiple === 'function') await client.executeMultiple(`
       -- Commented out pragmas are not supported in Turso
       -- PRAGMA journal_mode = WAL;
@@ -166,12 +179,12 @@ async function initiateDatabase(config) {
       // await client.sql`PRAGMA temp_store = MEMORY;`;
       // await client.sql`PRAGMA cache_size = -32000;`;
       // await client.sql`PRAGMA mmap_size = 67108864;`;
-    } 
+    }
     await autoMigrate(client);
     return client;
   }
   catch (error) {
-    console.warn('Database connection failed', error);
+    console.info('Error during database initiation', error);
     throw new FailedToConnectDatabaseError('Failed to connect to the database', { cause: error });
   }
 }
@@ -280,6 +293,7 @@ async function getSchemaVersion(client) {
     return /** @type {string} */ (result.rows[0].value);
   }
   catch (error) {
+    console.log('Schema version check failed', error);
     if (error instanceof Error && error.message.includes('no such table: config')) return undefined;
     else throw error;
   }
@@ -323,9 +337,66 @@ async function getSchemaVersion(client) {
 
 /** @returns {Promise<DatabaseClient>} */
 export async function createLocalClient() {
-  const { createClient } = await import('@libsql/client-wasm');
-  const client = createClient({ url: 'file:jurukasa.db' });
-  return createTursoBasedClient(client);
+  // @ts-ignore the code structure of sqlite wasm client is very convoluted, hard to structure and type properly, so screw it
+  const { default: sqlite3Worker1PromiserV2 } = await import('@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm/sqlite3-worker1-promiser-bundler-friendly.mjs');
+  const promiser = await sqlite3Worker1PromiserV2();
+  /** @type {PromiseWithResolvers<string>} */
+  const { promise: promisedDbId, resolve: resolveDbId } = Promise.withResolvers();
+  async function connect() {
+    const response = await promiser('open', { filename: 'file:jurukasa.sqlite?vfs=opfs' });
+    resolveDbId(response.dbId);
+  }
+  /** @type {SQLFunction} */
+  async function sql(query, ...params) {
+    console.info('sql', query.join('?'), params);
+    assertTemplateStringsArray(query);
+    try {
+      const dbId = await promisedDbId;
+      const response = await promiser('exec', {
+        dbId,
+        sql: query.join('?'),
+        bind: paramsCorrection(params),
+        rowMode: 'object',
+        returnValue: 'resultRows',
+        countChanges: true,
+      });
+      if (response?.type === 'error') throw new Error(response?.result?.message ?? `Unknown database error occurred: ${JSON.stringify(response)}`);
+      else return {
+        rows: response?.result?.resultRows ?? [],
+        rowsAffected: response?.result?.changeCount ?? 0,
+        lastInsertRowid: response?.result?.lastInsertRowid ?? 0,
+      };
+    }
+    catch (error) {
+      if (error instanceof Error) throw error;
+      else if ('type' in error) throw new Error(error?.result?.message ?? `Unknown database error occurred: ${JSON.stringify(error)}`);
+      else throw new Error(`Unknown database error occurred: ${JSON.stringify(error)}`);
+    }
+  }
+  return {
+    connect,
+    sql,
+    async executeMultiple(queries) {
+      await sql(
+        /**
+         * @type {any} I don't like it, but a bit of "any" work-around is fine in this case.
+         *  We can't expose `execute` interface for risk to be used outside database internal.
+         *  I consider this database context as internal implementation detail, so the reason why the "any" cast necessary is very clear.
+         */
+        ([queries]),
+      );
+    },
+    async transaction(mode) {
+      console.info('transaction', mode);
+      if (mode === 'write') await sql`BEGIN EXCLUSIVE TRANSACTION;`;
+      else await sql`BEGIN DEFERRED TRANSACTION;`;
+      return {
+        sql,
+        async commit() { await sql`COMMIT TRANSACTION;`; },
+        async rollback() { await sql`ROLLBACK TRANSACTION;`; },
+      };
+    },
+  };
 }
 
 /**

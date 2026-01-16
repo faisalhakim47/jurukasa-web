@@ -1,8 +1,9 @@
+import { reactive } from '@vue/reactivity';
 import { html } from 'lit-html';
 
 import { defineWebComponent } from '#web/component.js';
+import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { DeviceContextElement } from '#web/contexts/device-context.js';
-import { OnboardingContextElement } from '#web/contexts/onboarding-context.js';
 import { RouterContextElement } from '#web/contexts/router-context.js';
 import { useBusyStateUntil } from '#web/contexts/ready-context.js';
 import { useContext } from '#web/hooks/use-context.js';
@@ -20,25 +21,59 @@ export class MainViewElement extends HTMLElement {
   constructor() {
     super();
     const host = this;
+    const database = useContext(host, DatabaseContextElement);
     const device = useContext(host, DeviceContextElement);
-    const onboarding = useContext(host, OnboardingContextElement);
     const router = useContext(host, RouterContextElement);
     const t = useTranslator(host);
     const render = useRender(host);
 
+    const onboarding = reactive({
+      state: /** @type {'init'|'needs-database'|'needs-business-config'|'needs-chart-of-accounts'|'complete'} */ ('init'),
+    });
+
     useBusyStateUntil(host, function evaluateReady() {
-      return true;
+      return onboarding.state !== 'init';
+    });
+
+    useEffect(host, function evaluateOnboardingState() {
+      if (onboarding.state === 'complete') { /* nothing to do */ }
+      else if (database.isReady && database.state === 'unconfigured') {
+        onboarding.state = 'needs-database';
+      }
+      else if (database.isReady && database.state === 'connected') {
+        database.sql`SELECT value FROM config WHERE key = 'Business Name' LIMIT 1;`
+          .then(function (result) {
+            const row = result.rows[0];
+            const isBusinessConfigured = String(row?.value || '').trim().length > 0;
+
+            if (isBusinessConfigured) {
+              database.sql`SELECT count(*) as count FROM accounts`
+                .then(function (result) {
+                  const count = Number(result.rows[0]?.count || 0);
+                  if (count > 0) onboarding.state = 'complete';
+                  else onboarding.state = 'needs-chart-of-accounts';
+                });
+            }
+            else onboarding.state = 'needs-business-config';
+          })
+          .catch(function (error) {
+            console.error('Failed to check configuration', error);
+            onboarding.state = 'needs-business-config';
+          });
+      }
     });
 
     useEffect(host, function handleOnboardingRedirect() {
       const pathname = router.route?.pathname || '/';
-      
-      // Redirect to onboarding if not complete and not already on onboarding route
-      if (onboarding.needsOnboarding && !pathname.startsWith('/onboarding')) {
+      const needsOnboarding = onboarding.state === 'needs-database'
+        || onboarding.state === 'needs-business-config'
+        || onboarding.state === 'needs-chart-of-accounts';
+      const isComplete = onboarding.state === 'complete';
+
+      if (needsOnboarding && !pathname.startsWith('/onboarding')) {
         router.navigate({ pathname: '/onboarding', replace: true });
       }
-      // Redirect away from onboarding if already complete
-      else if (onboarding.isComplete && pathname.startsWith('/onboarding')) {
+      else if (isComplete && pathname.startsWith('/onboarding')) {
         router.navigate({ pathname: '/dashboard', replace: true });
       }
     });

@@ -26,8 +26,8 @@ export default /** @type {Partial<OnboardingTranslation>} */ ({
   databaseProviderLabel: 'Penyedia Database',
 
   // Local SQLite provider
-  localDatabaseLabel: 'Database Lokal (Mode Demo)',
-  localDatabaseDescription: 'Simpan data di memori browser. Data tidak akan tersimpan setelah browser ditutup. Hanya disarankan untuk pengujian.',
+  localDatabaseLabel: 'Database Lokal',
+  localDatabaseDescription: 'Simpan data di penyimpanan browser. Direkomendasikan untuk penggunaan perangkat tunggal.',
 
   // Turso provider
   tursoDatabaseLabel: 'Turso SQLite',

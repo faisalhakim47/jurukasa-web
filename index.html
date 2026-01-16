@@ -7,8 +7,8 @@
 <script type="importmap">
 {
   "imports": {
-    "@libsql/client-wasm": "/web/vendor/libsql-client-wasm.js",
     "@libsql/client/web": "/web/vendor/libsql-client-web.js",
+    "@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm/": "/web/vendor/sqlite/",
     "@vue/reactivity": "/web/vendor/bundle01.js",
     "#web/": "/web/",
     "lit-html": "/web/vendor/bundle02.js",
@@ -55,9 +55,7 @@
         <database-context>
           <device-context>
             <i18n-context>
-              <onboarding-context>
-                <main-view></main-view>
-              </onboarding-context>
+              <main-view></main-view>
             </i18n-context>
           </device-context>
         </database-context>

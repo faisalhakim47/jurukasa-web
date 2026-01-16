@@ -65,9 +65,6 @@ export class BarcodesViewElement extends HTMLElement {
       // Access reloadTrigger to make this effect dependent on it
       void state.reloadTrigger;
       
-      // Wait for all pending state updates to complete
-      await new Promise(function (resolve) { queueMicrotask(function () { resolve(undefined); }); });
-      
       // Capture values immediately to avoid mid-execution changes
       const searchQueryValue = state.searchQuery.trim() || null;
       const currentPage = state.currentPage;
@@ -118,14 +115,8 @@ export class BarcodesViewElement extends HTMLElement {
 
     useEffect(host, loadBarcodes);
 
-    let reloadDebounce = null;
-
     function triggerReload() {
-      if (reloadDebounce) return;
-      reloadDebounce = setTimeout(function () {
-        reloadDebounce = null;
-        state.reloadTrigger++;
-      }, 0);
+      state.reloadTrigger++;
     }
 
     /** @param {Event} event */

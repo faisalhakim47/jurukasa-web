@@ -83,7 +83,9 @@ BEGIN
     (81100, 'Keuntungan Selisih Persediaan', 1, 1, 81000),
     (81200, 'Pendapatan Bunga', 1, 1, 81000),
     (82000, 'Beban Lainnya', 0, 0, 80000),
-    (82100, 'Beban Bunga', 0, 1, 82000)
+    (82100, 'Beban Bunga', 0, 1, 82000),
+    (82200, 'Penyesuaian Rekonsiliasi', 0, 1, 82000),
+    (82300, 'Selisih Kas', 0, 1, 82000)
   ) WHERE NEW.name = 'Retail Business - Indonesia';
 
   INSERT INTO account_tags (account_code, tag)
@@ -138,6 +140,8 @@ BEGIN
     (81100, 'Income Statement - Other Revenue'),
     (81200, 'Income Statement - Other Revenue'),
     (82100, 'Income Statement - Other Expense'),
+    (82200, 'Income Statement - Other Expense'),
+    (82300, 'Income Statement - Other Expense'),
     (41000, 'Fiscal Year Closing - Revenue'),
     (42000, 'Fiscal Year Closing - Revenue'),
     (51000, 'Fiscal Year Closing - Expense'),
@@ -154,11 +158,16 @@ BEGIN
     (81100, 'Fiscal Year Closing - Revenue'),
     (81200, 'Fiscal Year Closing - Revenue'),
     (82100, 'Fiscal Year Closing - Expense'),
+    (82200, 'Fiscal Year Closing - Expense'),
+    (82300, 'Fiscal Year Closing - Expense'),
     (33000, 'Fiscal Year Closing - Dividend'),
     (11110, 'Cash Flow - Cash Equivalents'),
     (11120, 'Cash Flow - Cash Equivalents'),
     (11130, 'Cash Flow - Cash Equivalents'),
-    (11140, 'Cash Flow - Cash Equivalents')
+    (11140, 'Cash Flow - Cash Equivalents'),
+    -- Reconciliation Tags
+    (82200, 'Reconciliation - Adjustment'),
+    (82300, 'Reconciliation - Cash Over/Short')
   ) WHERE NEW.name = 'Retail Business - Indonesia';
 
 END; -- EOS

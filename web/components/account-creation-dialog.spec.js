@@ -9,7 +9,7 @@ import { useStrict } from '#test/hooks/use-strict.js';
 const { describe } = test;
 
 describe('Account Creation Dialog', function () {
-  useConsoleOutput(test);
+  // useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

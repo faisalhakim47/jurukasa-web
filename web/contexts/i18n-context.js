@@ -5,7 +5,7 @@ import { DeviceContextElement } from '#web/contexts/device-context.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { provideContext, useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
-/** @import { EnTranslationPack } from '#web/lang/en/index.js' */
+/** @import { EnTranslationPack } from '#web/lang/en.js' */
 
 export class I18nContextElement extends HTMLElement {
   constructor() {

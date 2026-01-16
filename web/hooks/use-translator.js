@@ -3,7 +3,7 @@ import { DeviceContextElement } from '#web/contexts/device-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
-/** @import { EnTranslationPack as DefaultTranslationPack } from '#web/lang/en/index.js' */
+/** @import { EnTranslationPack as DefaultTranslationPack } from '#web/lang/en.js' */
 
 /**
  * @template {keyof DefaultTranslationPack} BaseKey
@@ -130,6 +130,10 @@ export function useLiteral(host) {
 /** @type {Map<string, DefaultTranslationPack | Promise<DefaultTranslationPack>>} */
 const translationPackCache = new Map();
 const defaultLang = 'en';
+const langImportMap = {
+  async en() { return import('#web/lang/en.js'); },
+  async id() { return import('#web/lang/id.js'); }
+};
 
 /**
  * @param {string} language
@@ -147,7 +151,7 @@ async function getTranslationPack(language) {
 
   const translationPackPromise = (async function loadTranslationPack() {
     try {
-      const { default: translationpack } = await import(`#web/lang/${langCode}/index.js`);
+      const { default: translationpack } = await langImportMap[langCode]?.() ?? langImportMap[defaultLang]();
       translationPackCache.set(langCode, translationpack);
       return translationpack;
     }

@@ -18,6 +18,8 @@ export function provideContext(host) {
   return host;
 }
 
+const contextValue = Symbol('ContextValue');
+
 /**
  * @template {HTMLElement} ValueType
  * @param {HTMLElement} host
@@ -27,22 +29,10 @@ export function provideContext(host) {
 export function useContext(host, contextKey) {
   let isConnected = false;
   let context = /** @type {ValueType} */ (undefined);
-  useConnectedCallback(host, function usingContext() {
-    isConnected = true;
-    context = getContextValue(host, contextKey);
-    return function removeContext() {
-      isConnected = false;
-      context = undefined;
-    };
-  });
-  return new Proxy(/** @type {object} as placeholder */ ({}), {
-    /**
-     * Note: context value in this app is always an instance of HTMLElement subclass. Each context class is responsible to provide portable/standalone method functions. This proxy is not responsible to bind "this" context.
-     */
+  const contextProxy = new Proxy(/** @type {object} as placeholder */ ({}), {
+    // Note: context value in this app is always an instance of HTMLElement subclass. Each context class is responsible to provide portable/standalone method functions. This proxy is not responsible to bind "this" context.
     get(_, prop) {
-      if (isConnected && context instanceof contextKey) {
-        return context[prop];
-      }
+      if (isConnected && context instanceof contextKey) return context[prop];
       else if (isConnected) throw new Error(`
         Context Provider for type ${contextKey.name} is not available. There are two posible issues:
           1. The provider is not in the DOM ancestor tree of the requestor element.
@@ -58,6 +48,24 @@ export function useContext(host, contextKey) {
       else throw new Error('Cannot check context state on disconnected element.');
     },
   });
+  useConnectedCallback(host, function usingContext() {
+    isConnected = true;
+    context = getContextValue(host, contextKey);
+    // For debugging purposes. To expose exact context instance to be inspected in devtools.
+    if (context instanceof contextKey) {
+      Object.defineProperty(contextProxy, contextValue, {
+        value: context,
+        writable: false,
+        enumerable: false,
+        configurable: false,
+      });
+    }
+    return function removeContext() {
+      isConnected = false;
+      context = undefined;
+    };
+  });
+  return contextProxy;
 }
 
 /**

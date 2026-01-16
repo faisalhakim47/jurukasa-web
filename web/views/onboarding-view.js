@@ -5,7 +5,6 @@ import { repeat } from 'lit-html/directives/repeat.js';
 import { defineWebComponent } from '#web/component.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { DeviceContextElement } from '#web/contexts/device-context.js';
-import { OnboardingContextElement } from '#web/contexts/onboarding-context.js';
 import { RouterContextElement } from '#web/contexts/router-context.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
@@ -34,7 +33,6 @@ export class OnboardingViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const device = useContext(host, DeviceContextElement);
-    const onboardingContext = useContext(host, OnboardingContextElement);
     const router = useContext(host, RouterContextElement);
     const t = useTranslator(host);
     const render = useRender(host);
@@ -182,11 +180,20 @@ export class OnboardingViewElement extends HTMLElement {
       event.preventDefault();
       const form = /** @type {HTMLFormElement} */ (event.target);
       const formData = new FormData(form);
-      
+
       // Capture form data before changing state (which triggers re-render and disables fields)
       businessForm.state = 'submitting';
-      
+
+      console.info('Saving business configuration:', {
+        businessName: formData.get('business-name'),
+        businessType: formData.get('business-type'),
+        currencyCode: formData.get('currency-code'),
+        currencyDecimals: formData.get('currency-decimals'),
+        locale: formData.get('locale'),
+      });
+      console.info(database.transaction);
       const tx = await database.transaction('write');
+      console.info('Started transaction for saving business configuration');
       try {
         await tx.sql`UPDATE config SET value = ${formData.get('business-name') || ''} WHERE key = 'Business Name'`;
         await tx.sql`UPDATE config SET value = ${formData.get('business-type') || ''} WHERE key = 'Business Type'`;
@@ -204,8 +211,8 @@ export class OnboardingViewElement extends HTMLElement {
         loadChartOfAccountsTemplates();
       }
       catch (error) {
-        await tx.rollback();
         console.error('Failed to save configuration', error);
+        await tx.rollback();
         businessForm.state = 'failure';
         businessForm.errorMessage = error.message;
         await feedbackDelay();
@@ -218,10 +225,10 @@ export class OnboardingViewElement extends HTMLElement {
       event.preventDefault();
       const form = /** @type {HTMLFormElement} */ (event.target);
       const formData = new FormData(form);
-      
+
       // Capture form data before changing state (which triggers re-render and disables fields)
       chartForm.state = 'submitting';
-      
+
       const tx = await database.transaction('write');
       try {
         await tx.sql`INSERT INTO chart_of_accounts_templates (name) VALUES (${formData.get('template-name')})`;
@@ -229,14 +236,12 @@ export class OnboardingViewElement extends HTMLElement {
         chartForm.state = 'success';
         await feedbackDelay();
         onboarding.step = 'complete';
-        // Refresh onboarding context to reflect completion
-        await onboardingContext.refresh();
-        // Navigate to main application
+        // Navigate to dashboard - main-view will detect completion and redirect if needed
         router.navigate({ pathname: '/dashboard', replace: true });
       }
       catch (error) {
-        await tx.rollback();
-        console.error('Failed to save chart of accounts', error);
+        console.error('Failed to submit chart of accounts', error);
+        try { await tx.rollback(); } catch (error) { console.error('Failed to rollback transaction', error); }
         chartForm.state = 'failure';
         chartForm.errorMessage = error.message;
         await feedbackDelay();
