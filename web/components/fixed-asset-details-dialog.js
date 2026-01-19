@@ -17,6 +17,7 @@ import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
+import { useElement } from '#web/hooks/use-element.js';
 
 /**
  * @typedef {object} FixedAssetDetail
@@ -65,8 +66,8 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
     const time = useContext(host, TimeContextElement);
 
     const t = useTranslator(host);
-    const errorAlertDialog = useDialog(host);
-    const confirmDeleteDialog = useDialog(host);
+    const errorAlertDialog = useElement(host, HTMLDialogElement);
+    const confirmDeleteDialog = useElement(host, HTMLDialogElement);
     const dialog = useDialog(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -236,11 +237,11 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
     }
 
     function handleDeleteClick() {
-      confirmDeleteDialog.open = true;
+      confirmDeleteDialog.value?.showModal();
     }
 
     function handleCancelDelete() {
-      confirmDeleteDialog.open = false;
+      confirmDeleteDialog.value?.close();
     }
 
     async function handleConfirmDelete() {
@@ -276,7 +277,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        confirmDeleteDialog.open = false;
+        confirmDeleteDialog.value?.close();
 
         host.dispatchEvent(new CustomEvent('fixed-asset-deleted', {
           detail: { assetId: state.asset.id },
@@ -289,7 +290,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.error = error instanceof Error ? error : new Error(String(error));
-        confirmDeleteDialog.open = false;
+        confirmDeleteDialog.value?.close();
       }
       finally {
         state.isDeleting = false;
@@ -303,8 +304,8 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (state.error instanceof Error) errorAlertDialog.open = true;
-      else errorAlertDialog.open = false;
+      if (state.error instanceof Error) errorAlertDialog.value?.showModal();
+      else errorAlertDialog.value?.close();
     });
 
     function renderLoadingState() {
@@ -579,12 +580,12 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           <div class="outlined-text-field">
             <div class="container">
               <label for="edit-description-input">${t('fixedAsset', 'descriptionLabel')}</label>
-              <textarea
+              <input
                 id="edit-description-input"
                 name="description"
                 placeholder=" "
-                rows="2"
-              >${asset.description || ''}</textarea>
+                value="${asset.description || ''}"
+              >
             </div>
           </div>
 
@@ -642,7 +643,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} role="alertdialog">
+        <dialog ${errorAlertDialog} role="alertdialog">
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
@@ -664,7 +665,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${confirmDeleteDialog.element} role="alertdialog">
+        <dialog ${confirmDeleteDialog} role="alertdialog">
           <div class="container">
             <material-symbols name="warning"></material-symbols>
             <header>

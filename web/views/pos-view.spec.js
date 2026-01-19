@@ -3,6 +3,7 @@ import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
 import { useStrict } from '#test/hooks/use-strict.js';
+import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -26,7 +27,9 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('POS View', function () {
+  // useConsoleOutput(test);
   useStrict(test);
+
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   /**
@@ -219,7 +222,7 @@ describe('POS View', function () {
     await page.getByRole('listitem').filter({ hasText: 'Product A' }).click();
     await page.getByRole('listitem').filter({ hasText: 'Product B' }).click();
 
-    await expect(page.getByText('Total', { exact: true }).locator('..').getByText('30,000')).toBeVisible();
+    await expect(page.getByRole('cell', { name: '30,000' })).toBeVisible();
   });
 
   test('it shall clear sale when clear button is clicked', async function ({ page }) {

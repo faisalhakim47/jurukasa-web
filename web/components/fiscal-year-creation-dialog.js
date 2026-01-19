@@ -8,6 +8,7 @@ import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { TimeContextElement } from '#web/contexts/time-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { useMounted } from '#web/hooks/use-mounted.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
@@ -32,7 +33,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
     const t = useTranslator(host);
 
     const dialog = useDialog(host);
-    const errorAlertDialog = useDialog(host);
+    const errorAlertDialog = useElement(host, HTMLDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -227,7 +228,8 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
     function handleDismissErrorDialog() { form.error = null; }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      errorAlertDialog.open = form.error instanceof Error;
+      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      else errorAlertDialog.value?.close();
     });
 
     useEffect(host, function renderDialog() {
@@ -236,6 +238,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
           ${dialog.element}
           id="fiscal-year-creation-dialog"
           class="full-screen"
+          name="Create New Fiscal Year"
           aria-labelledby="fiscal-year-creation-dialog-title"
         >
           <form class="container" @submit=${handleSubmit}>
@@ -329,7 +332,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
           </form>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} role="alertdialog">
+        <dialog ${errorAlertDialog} role="alertdialog">
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>

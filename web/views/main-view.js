@@ -42,13 +42,12 @@ export class MainViewElement extends HTMLElement {
       }
       else if (database.isReady && database.state === 'connected') {
         database.sql`SELECT value FROM config WHERE key = 'Business Name' LIMIT 1;`
-          .then(function (result) {
+          .then(function handleBusinessName(result) {
             const row = result.rows[0];
             const isBusinessConfigured = String(row?.value || '').trim().length > 0;
-
             if (isBusinessConfigured) {
-              database.sql`SELECT count(*) as count FROM accounts`
-                .then(function (result) {
+              database.sql`SELECT COUNT(*) AS count FROM accounts`
+                .then(function handleAccountsCount(result) {
                   const count = Number(result.rows[0]?.count || 0);
                   if (count > 0) onboarding.state = 'complete';
                   else onboarding.state = 'needs-chart-of-accounts';

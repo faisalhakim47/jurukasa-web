@@ -9,6 +9,7 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
@@ -68,7 +69,8 @@ export class SaleDetailsDialogElement extends HTMLElement {
     const t = useTranslator(host);
 
     const dialog = useDialog(host);
-    const confirmationDialog = useDialog(host);
+    const confirmationDialogElement = useElement(host, HTMLDialogElement);
+    const confirmationDialogOpen = reactive({ value: false });
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -314,7 +316,15 @@ export class SaleDetailsDialogElement extends HTMLElement {
 
     useEffect(host, function syncConfirmationDialogState() {
       const shouldBeOpen = ['confirming-post', 'confirming-discard', 'processing', 'error'].includes(state.actionState);
-      confirmationDialog.open = shouldBeOpen;
+      confirmationDialogOpen.value = shouldBeOpen;
+    });
+
+    useEffect(host, function syncConfirmationDialogElement() {
+      const dialogElement = confirmationDialogElement.value;
+      if (dialogElement instanceof HTMLDialogElement) {
+        if (confirmationDialogOpen.value) dialogElement.showModal();
+        else dialogElement.close();
+      }
     });
 
     function renderErrorNotice() {
@@ -649,7 +659,7 @@ export class SaleDetailsDialogElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${confirmationDialog.element} role="alertdialog" aria-labelledby="confirmation-dialog-title">
+        <dialog ${confirmationDialogElement} role="alertdialog" aria-labelledby="confirmation-dialog-title">
           <div class="container">
             ${renderConfirmationDialogContent()}
           </div>

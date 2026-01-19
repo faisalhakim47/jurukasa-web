@@ -12,6 +12,7 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
@@ -62,7 +63,8 @@ export class PurchaseCreationViewElement extends HTMLElement {
     useAdoptedStyleSheets(host, webStyleSheets);
 
     const errorAlertDialog = useDialog(host);
-    const successDialog = useDialog(host);
+    const successDialogElement = useElement(host, HTMLDialogElement);
+    const successDialogOpen = reactive({ value: false });
 
     const state = reactive({
       // Inventory selector
@@ -308,13 +310,13 @@ export class PurchaseCreationViewElement extends HTMLElement {
         form.state = 'success';
         form.lastPurchaseId = purchaseId;
 
-        successDialog.open = true;
+        successDialogOpen.value = true;
 
         await feedbackDelay();
         clearPurchase();
 
         await feedbackDelay();
-        successDialog.open = false;
+        successDialogOpen.value = false;
 
         router.navigate({ pathname: '/procurement/purchases', replace: false });
         form.state = 'idle';
@@ -335,9 +337,36 @@ export class PurchaseCreationViewElement extends HTMLElement {
       }
     });
 
+    useEffect(host, function syncSuccessDialogState() {
+      if (form.state === 'success') {
+        successDialogOpen.value = true;
+      }
+      else {
+        successDialogOpen.value = false;
+      }
+    });
+
+    useEffect(host, function syncSuccessDialogElement() {
+      const dialogElement = successDialogElement.value;
+      if (dialogElement instanceof HTMLDialogElement) {
+        if (successDialogOpen.value) dialogElement.showModal();
+        else dialogElement.close();
+      }
+    });
+
     function handleDismissErrorDialog() {
       form.error = null;
       form.state = 'idle';
+    }
+
+    function handleCancel() {
+      router.navigate({ pathname: '/procurement/purchases', replace: false });
+    }
+
+    /** @param {Event} event */
+    function handlePurchaseDateInput(event) {
+      assertInstanceOf(HTMLInputElement, event.target);
+      state.purchaseDate = event.target.value;
     }
 
     /** @param {Event} event */
@@ -504,8 +533,8 @@ export class PurchaseCreationViewElement extends HTMLElement {
                 id="purchase-date-input"
                 type="date"
                 placeholder=" "
-                .value=${state.purchaseDate}
-                @input=${(e) => { state.purchaseDate = e.target.value; }}
+                ${readValue(state, 'purchaseDate')}
+                @input=${handlePurchaseDateInput}
               />
             </div>
           </div>
@@ -701,7 +730,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
             role="button"
             type="button"
             class="text"
-            @click=${() => router.navigate({ pathname: '/procurement/purchases', replace: false })}
+            @click=${handleCancel}
           >
             <material-symbols name="cancel"></material-symbols>
             ${t('purchase', 'cancelButtonLabel')}
@@ -801,7 +830,7 @@ export class PurchaseCreationViewElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${successDialog.element} role="alertdialog">
+        <dialog ${successDialogElement} role="alertdialog">
           <div class="container">
             <material-symbols name="check_circle" style="color: var(--md-sys-color-primary);"></material-symbols>
             <header>

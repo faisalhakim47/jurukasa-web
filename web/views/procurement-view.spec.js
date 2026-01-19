@@ -11,17 +11,19 @@ const { describe } = test;
 async function setupView(tursoDatabaseUrl) {
   document.body.innerHTML = `
     <ready-context>
-      <time-context>
-        <router-context>
-          <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-            <device-context>
-              <i18n-context>
-                <main-view></main-view>
-              </i18n-context>
-            </device-context>
-          </database-context>
-        </router-context>
-      </time-context>
+      <font-context>
+        <time-context>
+          <router-context>
+            <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+              <device-context>
+                <i18n-context>
+                  <main-view></main-view>
+                </i18n-context>
+              </device-context>
+            </database-context>
+          </router-context>
+        </time-context>
+      </font-context>
     </ready-context>
   `;
 }

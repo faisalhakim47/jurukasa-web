@@ -64,7 +64,7 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
     const t = useTranslator(host);
 
     const dialog = useDialog(host);
-    const errorAlertDialog = useDialog(host);
+    const errorAlertDialogElement = useElement(host, HTMLDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -162,8 +162,8 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.open = true;
-      else errorAlertDialog.open = false;
+      if (form.error instanceof Error) errorAlertDialogElement.value?.showModal();
+      else errorAlertDialogElement.value?.close();
     });
 
     useEffect(host, function renderDialog() {
@@ -175,7 +175,9 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="barcode-assignment-dialog-title">${t('barcode', 'assignDialogTitle')}</h2>
+              <hgroup>
+                <h2 id="barcode-assignment-dialog-title">${t('barcode', 'assignDialogTitle')}</h2>
+              </hgroup>
             </header>
 
             <div class="content">
@@ -262,14 +264,16 @@ export class BarcodeAssignmentDialogElement extends HTMLElement {
           </form>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} id="error-alert-dialog" aria-labelledby="error-alert-dialog-title">
+        <dialog ${errorAlertDialogElement} id="error-alert-dialog" aria-labelledby="error-alert-dialog-title">
           <div class="container">
             <header>
               <material-symbols name="error" size="24"></material-symbols>
-              <h2 id="error-alert-dialog-title">${t('barcode', 'errorDialogTitle')}</h2>
+              <hgroup>
+                <h2 id="error-alert-dialog-title">${t('barcode', 'errorDialogTitle')}</h2>
+              </hgroup>
             </header>
             <section class="content">
-              <p>${form.error instanceof Error ? form.error.message : t('barcode', 'errorOccurredMessage')}</p>
+              <p>${form.error instanceof Error ? form.error.message : t('barcode', 'errorOccurredMessage', form.error)}</p>
             </section>
             <menu>
               <li>

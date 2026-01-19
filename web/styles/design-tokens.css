@@ -284,7 +284,7 @@
   --md-sys-color-custom-on-active-container: #1B5E20;
 
   /* ==================== DENSITY ==================== */
-  --md-sys-density: 0; /* for now, we target specific density setting: 0 and -2 */
+  --md-sys-density: 0;
 }
 
 /* ==================== DARK THEME ==================== */

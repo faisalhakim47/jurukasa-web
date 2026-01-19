@@ -24,7 +24,7 @@ export class I18nContextElement extends HTMLElement {
 
     useEffect(host, function loadConfig() {
       database.sql`SELECT value FROM config WHERE key in ('Currency Code', 'Currency Decimals');`
-        .then(function (result) {
+        .then(function setCurrencyConfig(result) {
           for (const row of result.rows) {
             const key = String(row.key);
             const value = String(row.value);

@@ -52,7 +52,8 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
     const t = useTranslator(host);
 
     const dialog = useDialog(host);
-    const confirmationDialog = useDialog(host);
+    const confirmationDialogElement = useElement(host, HTMLDialogElement);
+    const confirmationDialogOpen = reactive({ value: false });
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -241,7 +242,15 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
 
     useEffect(host, function syncConfirmationDialogState() {
       const shouldBeOpen = ['confirming-post', 'confirming-discard', 'processing', 'error'].includes(state.actionState);
-      confirmationDialog.open = shouldBeOpen;
+      confirmationDialogOpen.value = shouldBeOpen;
+    });
+
+    useEffect(host, function syncConfirmationDialogElement() {
+      const dialogElement = confirmationDialogElement.value;
+      if (dialogElement instanceof HTMLDialogElement) {
+        if (confirmationDialogOpen.value) dialogElement.showModal();
+        else dialogElement.close();
+      }
     });
 
     function renderErrorNotice() {
@@ -502,7 +511,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${confirmationDialog.element} role="alertdialog" aria-labelledby="confirmation-dialog-title">
+        <dialog ${confirmationDialogElement} role="alertdialog" aria-labelledby="confirmation-dialog-title">
           <div class="container">
             ${renderConfirmationDialogContent()}
           </div>

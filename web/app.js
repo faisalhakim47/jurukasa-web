@@ -1,3 +1,4 @@
+import '#web/strict-rules.js';
 import '#web/contexts/database-context.js';
 import '#web/contexts/device-context.js';
 import '#web/contexts/font-context.js';

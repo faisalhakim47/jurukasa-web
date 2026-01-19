@@ -190,9 +190,11 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
         >
           <div class="container">
             <header>
-              <h2 id="fiscal-year-reversal-dialog-title">
-                ${fy?.name || t('fiscalYear', 'reversalTitle')}
-              </h2>
+              <hgroup>
+                <h2 id="fiscal-year-reversal-dialog-title">
+                  ${fy?.name || t('fiscalYear', 'reversalTitle')}
+                </h2>
+              </hgroup>
               <button
                 role="button"
                 type="button"

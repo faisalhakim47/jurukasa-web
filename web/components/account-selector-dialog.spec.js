@@ -16,7 +16,7 @@ describe('Account Selector Dialog', function () {
   test('it shall make a choise', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
+    await page.evaluate(async function setupComponentHtml(tursoDatabaseUrl) {
       document.body.innerHTML = `
         <ready-context>
           <router-context>
@@ -43,7 +43,7 @@ describe('Account Selector Dialog', function () {
 
     await expect(page.getByRole('dialog', { name: 'Select Account' }).getByText('No accounts available')).toBeVisible();
 
-    await page.evaluate(async function () {
+    await page.evaluate(async function insertChartOfAccountTemplate() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
@@ -52,7 +52,7 @@ describe('Account Selector Dialog', function () {
     await page.getByRole('dialog', { name: 'Select Account' }).getByLabel('Search accounts').fill('Modal Pemilik');
 
     const [selectedAccount] = await Promise.all([
-      page.evaluate(async function () {
+      page.evaluate(async function waitForAccountSelectEvent() {
         return new Promise(function (resolve, reject) {
           let settled = false;
           const accountSelectorDialog = /** @type {AccountSelectorDialogElement} */ (document.getElementById('account-selector-dialog'));

@@ -16,6 +16,7 @@ import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
+import { useElement } from '#web/hooks/use-element.js';
 
 /**
  * @typedef {object} PaymentMethodDetails
@@ -49,10 +50,9 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
 
-    const errorAlertDialog = useDialog(host);
-    const deleteConfirmDialog = useDialog(host);
-
     const dialog = useDialog(host);
+    const errorAlertDialog = useElement(host, HTMLDialogElement);
+    const deleteConfirmDialog = useElement(host, HTMLDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -266,7 +266,7 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
     }
 
     function showDeleteConfirmation() {
-      deleteConfirmDialog.open = true;
+      deleteConfirmDialog.value?.showModal();
     }
 
     async function handleDelete() {
@@ -305,14 +305,14 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
           composed: true,
         }));
 
-        deleteConfirmDialog.open = false;
+        deleteConfirmDialog.value?.close();
         dialog.open = false;
       }
       catch (error) {
         await tx.rollback();
         form.state = 'error';
         form.error = error instanceof Error ? error : new Error(String(error));
-        deleteConfirmDialog.open = false;
+        deleteConfirmDialog.value?.close();
         await feedbackDelay();
       }
       finally {
@@ -321,8 +321,8 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.open = true;
-      else errorAlertDialog.open = false;
+      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      else errorAlertDialog.value?.close();
     });
 
     function handleDismissErrorDialog() { form.error = null; }
@@ -619,7 +619,7 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${deleteConfirmDialog.element} id="delete-confirm-dialog" role="alertdialog">
+        <dialog ${deleteConfirmDialog} id="delete-confirm-dialog" role="alertdialog">
           <div class="container">
             <material-symbols name="warning" style="color: var(--md-sys-color-error);"></material-symbols>
             <header>
@@ -643,7 +643,7 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} role="alertdialog">
+        <dialog ${errorAlertDialog} role="alertdialog">
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>

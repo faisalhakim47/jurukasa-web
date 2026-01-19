@@ -11,7 +11,7 @@ const barcode = {
   barcodeAlreadyAssignedToAnotherError: 'This barcode is already assigned to another inventory.',
   assigningBarcodeMessage: 'Assigning barcode...',
   errorDialogTitle: 'Error',
-  errorOccurredMessage: 'An error occurred',
+  errorOccurredMessage: 'An error occurred: %s',
   dismissButtonLabel: 'Dismiss',
 
   // Barcodes View

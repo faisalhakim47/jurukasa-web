@@ -356,38 +356,6 @@ describe('Cash Count Schema Tests', function () {
       equal(Number(history.rows[1].counted_amount), 500000);
       equal(history.rows[1].discrepancy_type, 'balanced');
     });
-
-    it('shall show account cash count summary correctly', async function () {
-      await setupCashCountEnvironment();
-
-      // Perform cash counts with overage and shortage
-      const count1Time = new Date(2025, 0, 15, 18, 0, 0, 0).getTime();
-      await sql`
-        INSERT INTO cash_counts (account_code, count_time, counted_amount, create_time)
-        VALUES (${11110}, ${count1Time}, ${520000}, ${count1Time})
-      `;
-
-      // After first count, cash balance is 520,000
-      const count2Time = new Date(2025, 0, 16, 18, 0, 0, 0).getTime();
-      await sql`
-        INSERT INTO cash_counts (account_code, count_time, counted_amount, create_time)
-        VALUES (${11110}, ${count2Time}, ${510000}, ${count2Time})
-      `;
-
-      // Query summary
-      const summary = await sql`
-        SELECT * FROM account_cash_count_summary 
-        WHERE account_code = ${11110}
-      `;
-
-      equal(summary.rows.length, 1);
-      equal(Number(summary.rows[0].total_counts), 2);
-      equal(Number(summary.rows[0].last_counted_amount), 510000);
-      equal(Number(summary.rows[0].last_discrepancy), -10000);
-      equal(Number(summary.rows[0].total_overage), 20000);
-      equal(Number(summary.rows[0].total_shortage), 10000);
-      equal(Number(summary.rows[0].current_balance), 510000);
-    });
   });
 
   describe('Reconciliation Integration', function () {

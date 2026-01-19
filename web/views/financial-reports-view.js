@@ -1,5 +1,6 @@
-import { html, nothing } from 'lit-html';
 import { reactive } from '@vue/reactivity';
+import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 
 import { defineWebComponent } from '#web/component.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
@@ -443,8 +444,7 @@ export class FinancialReportsViewElement extends HTMLElement {
             <input
               id="report-type-input"
               type="button"
-              value=""
-              .value="${t('financialReport', state.selectedReportType === 'trialBalance' ? 'reportTypeTrialBalance' : state.selectedReportType === 'balanceSheet' ? 'reportTypeBalanceSheet' : 'reportTypeIncomeStatement')}"
+              value="${t('financialReport', state.selectedReportType === 'trialBalance' ? 'reportTypeTrialBalance' : state.selectedReportType === 'balanceSheet' ? 'reportTypeBalanceSheet' : 'reportTypeIncomeStatement')}"
               popovertarget="report-type-menu"
               popovertargetaction="show"
               placeholder=" "
@@ -455,7 +455,7 @@ export class FinancialReportsViewElement extends HTMLElement {
           </div>
         </div>
         <menu role="menu" popover id="report-type-menu" aria-label="${t('financialReport', 'reportTypeMenuLabel')}" class="dropdown" style="position-anchor: --report-type-menu-anchor;">
-          ${reportTypes.map((reportType) => html`
+          ${repeat(reportTypes, (reportType) => reportType, (reportType) => html`
             <li>
               <button
                 role="menuitemradio"
@@ -508,7 +508,7 @@ export class FinancialReportsViewElement extends HTMLElement {
               ${t('financialReport', 'noReportsAvailable')}
             </li>
           ` : nothing}
-          ${state.balanceReports.map((report) => html`
+          ${repeat(state.balanceReports, (report) => report.id, (report) => html`
             <li>
               <button
                 role="menuitem"
@@ -565,7 +565,7 @@ export class FinancialReportsViewElement extends HTMLElement {
               ${t('financialReport', 'noFiscalYearsDefined')}
             </li>
           ` : nothing}
-          ${state.fiscalYears.map((fy) => html`
+          ${repeat(state.fiscalYears, (fy) => fy.begin_time, (fy) => html`
             <li>
               <button
                 role="menuitem"
@@ -608,9 +608,7 @@ export class FinancialReportsViewElement extends HTMLElement {
             <material-symbols name="assignment" size="64"></material-symbols>
             <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('financialReport', 'noIncomeStatementDataTitle')}</h2>
             <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
-              ${state.fiscalYears.length === 0
-                ? t('financialReport', 'noIncomeStatementFiscalYearMessage')
-                : t('financialReport', 'noIncomeStatementTransactionsMessage')}
+              ${t('financialReport', state.fiscalYears.length === 0 ? 'noIncomeStatementFiscalYearMessage' : 'noIncomeStatementTransactionsMessage')}
             </p>
           </div>
         `;
@@ -679,7 +677,7 @@ export class FinancialReportsViewElement extends HTMLElement {
               </tr>
             </thead>
             <tbody>
-              ${state.trialBalanceLines.map((line) => html`
+              ${repeat(state.trialBalanceLines, (line) => line.account_code, (line) => html`
                 <tr>
                   <td class="label-large" style="color: var(--md-sys-color-primary);">${line.account_code}</td>
                   <td>${line.account_name}</td>
@@ -690,8 +688,8 @@ export class FinancialReportsViewElement extends HTMLElement {
                         display: inline-flex;
                         padding: 2px 6px;
                         border-radius: var(--md-sys-shape-corner-extra-small);
-                        background-color: ${line.normal_balance === 0 ? 'var(--md-sys-color-custom-asset-container, #E3F2FD)' : 'var(--md-sys-color-custom-liability-container, #FCE4EC)'};
-                        color: ${line.normal_balance === 0 ? 'var(--md-sys-color-custom-on-asset-container, #1565C0)' : 'var(--md-sys-color-custom-on-liability-container, #C2185B)'};
+                        background-color: ${line.normal_balance === 0 ? 'var(--md-sys-color-custom-asset-container)' : 'var(--md-sys-color-custom-liability-container)'};
+                        color: ${line.normal_balance === 0 ? 'var(--md-sys-color-custom-on-asset-container)' : 'var(--md-sys-color-custom-on-liability-container)'};
                       "
                     >${line.normal_balance === 0 ? t('financialReport', 'normalBalanceDebit') : t('financialReport', 'normalBalanceCredit')}</span>
                   </td>
@@ -746,14 +744,26 @@ export class FinancialReportsViewElement extends HTMLElement {
        */
       function renderClassificationSection(classification, colorToken) {
         const categories = groupedLines.get(classification);
-        if (!categories) return nothing;
 
-        let classificationTotal = 0;
-        for (const [, lines] of categories) {
-          for (const line of lines) {
-            classificationTotal += line.amount;
-          }
-        }
+        if (!(categories instanceof Map)) return nothing;
+
+        const classificationTotal = Array.from(categories.values())
+          .reduce(function classificationSum(total, lines) {
+            return total + lines.reduce(function linesSum(lineTotal, line) {
+              return lineTotal + line.amount;
+            }, 0);
+          }, 0);
+
+        const calculatedCategories = Array.from(categories.entries())
+          .map(function evaluteCategory([categoryName, lines]) {
+            return {
+              name: categoryName,
+              lines,
+              total: lines.reduce(function scopeSum(total, line) {
+                return total + line.amount;
+              }, 0),
+            };
+          });
 
         return html`
           <tr style="background-color: var(--md-sys-color-surface-container);">
@@ -761,34 +771,28 @@ export class FinancialReportsViewElement extends HTMLElement {
               ${translateClassification(classification)}
             </th>
           </tr>
-          ${Array.from(categories.entries()).map(([category, lines]) => {
-            let categoryTotal = 0;
-            for (const line of lines) {
-              categoryTotal += line.amount;
-            }
-            return html`
-              <tr style="background-color: var(--md-sys-color-surface-container-low);">
-                <th colspan="3" scope="colgroup" class="label-large" style="text-align: left; padding: 8px 16px 8px 32px; color: var(--md-sys-color-on-surface-variant);">
-                  ${translateCategory(category)}
-                </th>
-              </tr>
-              ${lines.map((line) => html`
-                <tr>
-                  <td style="padding-left: 48px;">
-                    <span class="label-medium" style="color: var(--md-sys-color-primary);">${line.account_code}</span>
-                  </td>
-                  <td>${line.account_name}</td>
-                  <td class="numeric">${i18n.displayCurrency(line.amount)}</td>
-                </tr>
-              `)}
-              <tr style="border-top: 1px solid var(--md-sys-color-outline-variant);">
-                <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 500;">
-                  ${t('financialReport', 'totalCategoryFormat', translateCategory(category))}
+          ${repeat(calculatedCategories, (category) => category.name, (category) => html`
+            <tr style="background-color: var(--md-sys-color-surface-container-low);">
+              <th colspan="3" scope="colgroup" class="label-large" style="text-align: left; padding: 8px 16px 8px 32px; color: var(--md-sys-color-on-surface-variant);">
+                ${translateCategory(category.name)}
+              </th>
+            </tr>
+            ${repeat(category.lines, (line) => line.account_code, (line) => html`
+              <tr>
+                <td style="padding-left: 48px;">
+                  <span class="label-medium" style="color: var(--md-sys-color-primary);">${line.account_code}</span>
                 </td>
-                <td class="numeric" style="font-weight: 500;">${i18n.displayCurrency(categoryTotal)}</td>
+                <td>${line.account_name}</td>
+                <td class="numeric">${i18n.displayCurrency(line.amount)}</td>
               </tr>
-            `;
-          })}
+            `)}
+            <tr style="border-top: 1px solid var(--md-sys-color-outline-variant);">
+              <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 500;">
+                ${t('financialReport', 'totalCategoryFormat', translateCategory(category.name))}
+              </td>
+              <td class="numeric" style="font-weight: 500;">${i18n.displayCurrency(category.total)}</td>
+            </tr>
+          `)}
           <tr style="border-top: 2px solid var(--md-sys-color-outline); background-color: var(--md-sys-color-surface-container-high);">
             <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 600;">
               ${t('financialReport', 'totalClassificationFormat', translateClassification(classification))}
@@ -889,44 +893,49 @@ export class FinancialReportsViewElement extends HTMLElement {
           }
         }
 
+        const calculatedCategories = Array.from(categories.entries())
+          .map(function evaluteCategory([categoryName, lines]) {
+            return {
+              name: categoryName,
+              lines,
+              total: lines.reduce(function sumCategoryTotal(accumulator, line) {
+                return accumulator + Math.abs(line.amount);
+              }, 0),
+            };
+          });
+
         return html`
           <tr style="background-color: var(--md-sys-color-surface-container);">
             <th colspan="3" scope="colgroup" class="title-medium" style="text-align: left; padding: 12px 16px; color: ${colorToken};">
               ${translateClassification(classification)}
             </th>
           </tr>
-          ${Array.from(categories.entries()).map(([category, lines]) => {
-            let categoryTotal = 0;
-            for (const line of lines) {
-              categoryTotal += Math.abs(line.amount);
-            }
-            return html`
-              ${category !== classification ? html`
-                <tr style="background-color: var(--md-sys-color-surface-container-low);">
-                  <th colspan="3" scope="colgroup" class="label-large" style="text-align: left; padding: 8px 16px 8px 32px; color: var(--md-sys-color-on-surface-variant);">
-                    ${category}
-                  </th>
-                </tr>
-              ` : nothing}
-              ${lines.map((line) => html`
-                <tr>
-                  <td style="padding-left: ${category !== classification ? '48px' : '32px'};">
-                    <span class="label-medium" style="color: var(--md-sys-color-primary);">${line.account_code}</span>
-                  </td>
-                  <td>${line.account_name}</td>
-                  <td class="numeric">${i18n.displayCurrency(Math.abs(line.amount))}</td>
-                </tr>
-              `)}
-              ${category !== classification ? html`
-                <tr style="border-top: 1px solid var(--md-sys-color-outline-variant);">
-                  <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 500;">
-                    ${t('financialReport', 'totalCategoryFormat', category)}
-                  </td>
-                  <td class="numeric" style="font-weight: 500;">${i18n.displayCurrency(categoryTotal)}</td>
-                </tr>
-              ` : nothing}
-            `;
-          })}
+          ${repeat(calculatedCategories, (category) => category.name, (category) => html`
+            ${category.name !== classification ? html`
+              <tr style="background-color: var(--md-sys-color-surface-container-low);">
+                <th colspan="3" scope="colgroup" class="label-large" style="text-align: left; padding: 8px 16px 8px 32px; color: var(--md-sys-color-on-surface-variant);">
+                  ${category}
+                </th>
+              </tr>
+            ` : nothing}
+            ${repeat(category.lines, (line) => line.account_code, (line) => html`
+              <tr>
+                <td style="padding-left: ${category.name !== classification ? '48px' : '32px'};">
+                  <span class="label-medium" style="color: var(--md-sys-color-primary);">${line.account_code}</span>
+                </td>
+                <td>${line.account_name}</td>
+                <td class="numeric">${i18n.displayCurrency(Math.abs(line.amount))}</td>
+              </tr>
+            `)}
+            ${category.name !== classification ? html`
+              <tr style="border-top: 1px solid var(--md-sys-color-outline-variant);">
+                <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 500;">
+                  ${t('financialReport', 'totalCategoryFormat', category)}
+                </td>
+                <td class="numeric" style="font-weight: 500;">${i18n.displayCurrency(category.total)}</td>
+              </tr>
+            ` : nothing}
+          `)}
           <tr style="border-top: 2px solid var(--md-sys-color-outline); background-color: var(--md-sys-color-surface-container-high);">
             <td colspan="2" style="text-align: right; padding-right: 16px; font-weight: 600;">
               ${t('financialReport', 'totalClassificationFormat', translateClassification(classification))}
@@ -975,14 +984,10 @@ export class FinancialReportsViewElement extends HTMLElement {
     }
 
     function renderReportContent() {
-      if (state.selectedReportType === 'trialBalance') {
-        return renderTrialBalance();
-      } else if (state.selectedReportType === 'balanceSheet') {
-        return renderBalanceSheet();
-      } else if (state.selectedReportType === 'incomeStatement') {
-        return renderIncomeStatement();
-      }
-      return nothing;
+      if (state.selectedReportType === 'trialBalance') return renderTrialBalance();
+      else if (state.selectedReportType === 'balanceSheet') return renderBalanceSheet();
+      else if (state.selectedReportType === 'incomeStatement') return renderIncomeStatement();
+      else return nothing;
     }
 
     useEffect(host, function renderFinancialReportsView() {
@@ -1023,7 +1028,7 @@ export class FinancialReportsViewElement extends HTMLElement {
             </div>
           </header>
 
-          <div style="flex: 1; overflow-y: auto;">
+          <div class="scrollable" style="flex: 1; overflow-y: auto;">
             ${state.isLoading ? renderLoadingIndicator() : nothing}
             ${state.error instanceof Error ? renderErrorNotice(state.error) : nothing}
             ${state.isLoading === false && state.error === null ? renderReportContent() : nothing}

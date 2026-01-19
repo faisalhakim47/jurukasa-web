@@ -28,6 +28,10 @@
  *
  * Customization:
  * - Override `--md-comp-outlined-text-field-label-surface` to change the label background on colored surfaces.
+ *
+ * Notes:
+ * - Current text field implementation only support <input> elements. No multi-line <textarea> support.
+ * - Use combination of text field and menu styles for <select> like dropdowns.
  */
 
 /* =================================================================
@@ -318,8 +322,7 @@
    ================================================================= */
 
 dialog>.container>.content>.outlined-text-field {
-  margin-top: 16px;
-  margin-bottom: 16px;
+  margin-block: 24px;
 }
 dialog:not(.full-screen)>.container>.content>.outlined-text-field>.container:has(input:focus)>label:first-of-type,
 dialog:not(.full-screen)>.container>.content>.outlined-text-field>.container:has(input:not(:placeholder-shown))>label:first-of-type {

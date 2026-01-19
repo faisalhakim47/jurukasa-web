@@ -3,6 +3,7 @@ import { html, nothing } from 'lit-html';
 
 import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
@@ -39,7 +40,7 @@ export class DiscountCreationDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
 
-    const errorAlertDialog = useDialog(host);
+    const errorAlertDialog = useElement(host, HTMLDialogElement);
 
     const dialog = useDialog(host);
     const render = useRender(host);
@@ -215,8 +216,11 @@ export class DiscountCreationDialogElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.open = true;
-      else errorAlertDialog.open = false;
+      const errorDialogElement = errorAlertDialog.value;
+      if (errorDialogElement instanceof HTMLDialogElement) {
+        if (form.error instanceof Error) errorDialogElement.showModal();
+        else errorDialogElement.close();
+      }
     });
 
     function handleDismissErrorDialog() { form.error = null; }
@@ -314,12 +318,15 @@ export class DiscountCreationDialogElement extends HTMLElement {
         <dialog
           ${dialog.element}
           id="discount-creation-dialog"
+          name="Create Discount"
           class="full-screen"
           aria-labelledby="discount-creation-dialog-title"
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="discount-creation-dialog-title">${t('discount', 'createDialogTitle')}</h2>
+              <hgroup>
+                <h2 id="discount-creation-dialog-title">${t('discount', 'createDialogTitle')}</h2>
+              </hgroup>
               <button
                 role="button"
                 type="button"
@@ -441,11 +448,13 @@ export class DiscountCreationDialogElement extends HTMLElement {
           </form>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} role="alertdialog">
+        <dialog ${errorAlertDialog} role="alertdialog">
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>${t('discount', 'errorDialogTitle')}</h3>
+              <hgroup>
+                <h3>${t('discount', 'errorDialogTitle')}</h3>
+              </hgroup>
             </header>
             <div class="content">
               <p>${form.error?.message}</p>

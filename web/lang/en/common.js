@@ -25,6 +25,7 @@ const common = {
   stockNavLabel: 'Stock',
   procureNavLabel: 'Procure',
   saleNavLabel: 'Sale',
+  reconciliationNavLabel: 'Reconcile',
   settingsNavLabel: 'Settings',
   pageNotFound404Title: '404 - Page Not Found',
 

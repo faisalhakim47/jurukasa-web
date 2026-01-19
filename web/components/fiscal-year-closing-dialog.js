@@ -245,9 +245,11 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
         >
           <div class="container">
             <header>
-              <h2 id="fiscal-year-closing-dialog-title">
-                ${fy?.name || t('fiscalYear', 'closingDefaultTitle')} ${t('fiscalYear', 'closingDetailsTitle')}
-              </h2>
+              <hgroup>
+                <h2 id="fiscal-year-closing-dialog-title">
+                  ${fy?.name || t('fiscalYear', 'closingDefaultTitle')} ${t('fiscalYear', 'closingDetailsTitle')}
+                </h2>
+              </hgroup>
               <button
                 role="button"
                 type="button"
@@ -479,7 +481,9 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="warning" style="color: var(--md-sys-color-error);"></material-symbols>
             <header>
-              <h3 id="confirm-close-title">${t('fiscalYear', 'confirmClosingTitle')}</h3>
+              <hgroup>
+                <h3 id="confirm-close-title">${t('fiscalYear', 'confirmClosingTitle')}</h3>
+              </hgroup>
             </header>
             <div class="content">
               <p>
@@ -520,7 +524,9 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>${t('fiscalYear', 'errorTitle')}</h3>
+              <hgroup>
+                <h3>${t('fiscalYear', 'errorTitle')}</h3>
+              </hgroup>
             </header>
             <div class="content">
               <p>${state.closingError?.message}</p>

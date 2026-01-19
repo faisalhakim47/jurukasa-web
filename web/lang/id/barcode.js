@@ -13,7 +13,7 @@ export default /** @type {Partial<BarcodeTranslation>} */ ({
   barcodeAlreadyAssignedToAnotherError: 'Barcode ini sudah ditetapkan untuk inventaris lain.',
   assigningBarcodeMessage: 'Menetapkan barcode...',
   errorDialogTitle: 'Kesalahan',
-  errorOccurredMessage: 'Terjadi kesalahan',
+  errorOccurredMessage: 'Terjadi kesalahan: %s',
   dismissButtonLabel: 'Tutup',
 
   // Barcodes View

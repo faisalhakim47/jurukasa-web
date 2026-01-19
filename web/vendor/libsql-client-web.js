@@ -35,14 +35,27 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var LibsqlError = class extends Error {
 	/** Machine-readable error code. */
 	code;
+	/** Extended error code with more specific information (e.g., SQLITE_CONSTRAINT_PRIMARYKEY). */
+	extendedCode;
 	/** Raw numeric error code */
 	rawCode;
-	constructor(message, code, rawCode, cause) {
+	constructor(message, code, extendedCode, rawCode, cause) {
 		if (code !== void 0) message = `${code}: ${message}`;
 		super(message, { cause });
 		this.code = code;
+		this.extendedCode = extendedCode;
 		this.rawCode = rawCode;
 		this.name = "LibsqlError";
+	}
+};
+/** Error thrown by the client during batch operations. */
+var LibsqlBatchError = class extends LibsqlError {
+	/** The zero-based index of the statement that failed in the batch. */
+	statementIndex;
+	constructor(message, statementIndex, code, extendedCode, rawCode, cause) {
+		super(message, code, extendedCode, rawCode, cause);
+		this.statementIndex = statementIndex;
+		this.name = "LibsqlBatchError";
 	}
 };
 
@@ -101,7 +114,7 @@ function percentDecode(text) {
 	try {
 		return decodeURIComponent(text);
 	} catch (e) {
-		if (e instanceof URIError) throw new LibsqlError(`URL component has invalid percent encoding: ${e}`, "URL_INVALID", void 0, e);
+		if (e instanceof URIError) throw new LibsqlError(`URL component has invalid percent encoding: ${e}`, "URL_INVALID", void 0, void 0, e);
 		throw e;
 	}
 }
@@ -456,6 +469,7 @@ function expandConfig(config, preferHttp) {
 		fetch: config.fetch,
 		authToken: void 0,
 		encryptionKey: void 0,
+		remoteEncryptionKey: void 0,
 		authority: void 0
 	};
 	return {
@@ -467,6 +481,7 @@ function expandConfig(config, preferHttp) {
 		intMode,
 		concurrency,
 		encryptionKey: config.encryptionKey,
+		remoteEncryptionKey: config.remoteEncryptionKey,
 		syncUrl: config.syncUrl,
 		syncInterval: config.syncInterval,
 		readYourWrites: config.readYourWrites,
@@ -1844,11 +1859,11 @@ function ClientMsg$1(w, msg) {
 		if (msg.jwt !== void 0) w.string("jwt", msg.jwt);
 	} else if (msg.type === "request") {
 		w.number("request_id", msg.requestId);
-		w.object("request", msg.request, Request$1);
+		w.object("request", msg.request, Request$3);
 	} else throw impossible(msg, "Impossible type of ClientMsg");
 }
 __name(ClientMsg$1, "ClientMsg");
-function Request$1(w, msg) {
+function Request$3(w, msg) {
 	w.stringRaw("type", msg.type);
 	if (msg.type === "open_stream") w.number("stream_id", msg.streamId);
 	else if (msg.type === "close_stream") w.number("stream_id", msg.streamId);
@@ -1881,7 +1896,7 @@ function Request$1(w, msg) {
 	else if (msg.type === "get_autocommit") w.number("stream_id", msg.streamId);
 	else throw impossible(msg, "Impossible type of Request");
 }
-__name(Request$1, "Request");
+__name(Request$3, "Request");
 
 //#endregion
 //#region node_modules/@libsql/hrana-client/lib-esm/shared/protobuf_encode.js
@@ -2828,13 +2843,477 @@ var WsClient$1 = class extends Client {
 };
 
 //#endregion
-//#region node_modules/@libsql/isomorphic-fetch/web.js
-const _fetch = fetch;
-const _Request = Request;
-const _Headers = Headers;
+//#region node_modules/cross-fetch/dist/browser-ponyfill.js
+var require_browser_ponyfill = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	var __global__ = typeof globalThis !== "undefined" && globalThis || typeof self !== "undefined" && self || typeof global !== "undefined" && global;
+	var __globalThis__ = (function() {
+		function F() {
+			this.fetch = false;
+			this.DOMException = __global__.DOMException;
+		}
+		F.prototype = __global__;
+		return new F();
+	})();
+	(function(globalThis) {
+		(function(exports$1) {
+			var g = typeof globalThis !== "undefined" && globalThis || typeof self !== "undefined" && self || typeof global !== "undefined" && global || {};
+			var support = {
+				searchParams: "URLSearchParams" in g,
+				iterable: "Symbol" in g && "iterator" in Symbol,
+				blob: "FileReader" in g && "Blob" in g && (function() {
+					try {
+						new Blob();
+						return true;
+					} catch (e) {
+						return false;
+					}
+				})(),
+				formData: "FormData" in g,
+				arrayBuffer: "ArrayBuffer" in g
+			};
+			function isDataView(obj) {
+				return obj && DataView.prototype.isPrototypeOf(obj);
+			}
+			if (support.arrayBuffer) {
+				var viewClasses = [
+					"[object Int8Array]",
+					"[object Uint8Array]",
+					"[object Uint8ClampedArray]",
+					"[object Int16Array]",
+					"[object Uint16Array]",
+					"[object Int32Array]",
+					"[object Uint32Array]",
+					"[object Float32Array]",
+					"[object Float64Array]"
+				];
+				var isArrayBufferView = ArrayBuffer.isView || function(obj) {
+					return obj && viewClasses.indexOf(Object.prototype.toString.call(obj)) > -1;
+				};
+			}
+			function normalizeName(name) {
+				if (typeof name !== "string") name = String(name);
+				if (/[^a-z0-9\-#$%&'*+.^_`|~!]/i.test(name) || name === "") throw new TypeError("Invalid character in header field name: \"" + name + "\"");
+				return name.toLowerCase();
+			}
+			function normalizeValue(value) {
+				if (typeof value !== "string") value = String(value);
+				return value;
+			}
+			function iteratorFor(items) {
+				var iterator = { next: function() {
+					var value = items.shift();
+					return {
+						done: value === void 0,
+						value
+					};
+				} };
+				if (support.iterable) iterator[Symbol.iterator] = function() {
+					return iterator;
+				};
+				return iterator;
+			}
+			function Headers$2(headers) {
+				this.map = {};
+				if (headers instanceof Headers$2) headers.forEach(function(value, name) {
+					this.append(name, value);
+				}, this);
+				else if (Array.isArray(headers)) headers.forEach(function(header) {
+					if (header.length != 2) throw new TypeError("Headers constructor: expected name/value pair to be length 2, found" + header.length);
+					this.append(header[0], header[1]);
+				}, this);
+				else if (headers) Object.getOwnPropertyNames(headers).forEach(function(name) {
+					this.append(name, headers[name]);
+				}, this);
+			}
+			__name(Headers$2, "Headers");
+			Headers$2.prototype.append = function(name, value) {
+				name = normalizeName(name);
+				value = normalizeValue(value);
+				var oldValue = this.map[name];
+				this.map[name] = oldValue ? oldValue + ", " + value : value;
+			};
+			Headers$2.prototype["delete"] = function(name) {
+				delete this.map[normalizeName(name)];
+			};
+			Headers$2.prototype.get = function(name) {
+				name = normalizeName(name);
+				return this.has(name) ? this.map[name] : null;
+			};
+			Headers$2.prototype.has = function(name) {
+				return this.map.hasOwnProperty(normalizeName(name));
+			};
+			Headers$2.prototype.set = function(name, value) {
+				this.map[normalizeName(name)] = normalizeValue(value);
+			};
+			Headers$2.prototype.forEach = function(callback, thisArg) {
+				for (var name in this.map) if (this.map.hasOwnProperty(name)) callback.call(thisArg, this.map[name], name, this);
+			};
+			Headers$2.prototype.keys = function() {
+				var items = [];
+				this.forEach(function(value, name) {
+					items.push(name);
+				});
+				return iteratorFor(items);
+			};
+			Headers$2.prototype.values = function() {
+				var items = [];
+				this.forEach(function(value) {
+					items.push(value);
+				});
+				return iteratorFor(items);
+			};
+			Headers$2.prototype.entries = function() {
+				var items = [];
+				this.forEach(function(value, name) {
+					items.push([name, value]);
+				});
+				return iteratorFor(items);
+			};
+			if (support.iterable) Headers$2.prototype[Symbol.iterator] = Headers$2.prototype.entries;
+			function consumed(body) {
+				if (body._noBody) return;
+				if (body.bodyUsed) return Promise.reject(/* @__PURE__ */ new TypeError("Already read"));
+				body.bodyUsed = true;
+			}
+			function fileReaderReady(reader) {
+				return new Promise(function(resolve, reject) {
+					reader.onload = function() {
+						resolve(reader.result);
+					};
+					reader.onerror = function() {
+						reject(reader.error);
+					};
+				});
+			}
+			function readBlobAsArrayBuffer(blob) {
+				var reader = new FileReader();
+				var promise = fileReaderReady(reader);
+				reader.readAsArrayBuffer(blob);
+				return promise;
+			}
+			function readBlobAsText(blob) {
+				var reader = new FileReader();
+				var promise = fileReaderReady(reader);
+				var match = /charset=([A-Za-z0-9_-]+)/.exec(blob.type);
+				var encoding = match ? match[1] : "utf-8";
+				reader.readAsText(blob, encoding);
+				return promise;
+			}
+			function readArrayBufferAsText(buf) {
+				var view = new Uint8Array(buf);
+				var chars = new Array(view.length);
+				for (var i = 0; i < view.length; i++) chars[i] = String.fromCharCode(view[i]);
+				return chars.join("");
+			}
+			function bufferClone(buf) {
+				if (buf.slice) return buf.slice(0);
+				else {
+					var view = new Uint8Array(buf.byteLength);
+					view.set(new Uint8Array(buf));
+					return view.buffer;
+				}
+			}
+			function Body() {
+				this.bodyUsed = false;
+				this._initBody = function(body) {
+					this.bodyUsed = this.bodyUsed;
+					this._bodyInit = body;
+					if (!body) {
+						this._noBody = true;
+						this._bodyText = "";
+					} else if (typeof body === "string") this._bodyText = body;
+					else if (support.blob && Blob.prototype.isPrototypeOf(body)) this._bodyBlob = body;
+					else if (support.formData && FormData.prototype.isPrototypeOf(body)) this._bodyFormData = body;
+					else if (support.searchParams && URLSearchParams.prototype.isPrototypeOf(body)) this._bodyText = body.toString();
+					else if (support.arrayBuffer && support.blob && isDataView(body)) {
+						this._bodyArrayBuffer = bufferClone(body.buffer);
+						this._bodyInit = new Blob([this._bodyArrayBuffer]);
+					} else if (support.arrayBuffer && (ArrayBuffer.prototype.isPrototypeOf(body) || isArrayBufferView(body))) this._bodyArrayBuffer = bufferClone(body);
+					else this._bodyText = body = Object.prototype.toString.call(body);
+					if (!this.headers.get("content-type")) {
+						if (typeof body === "string") this.headers.set("content-type", "text/plain;charset=UTF-8");
+						else if (this._bodyBlob && this._bodyBlob.type) this.headers.set("content-type", this._bodyBlob.type);
+						else if (support.searchParams && URLSearchParams.prototype.isPrototypeOf(body)) this.headers.set("content-type", "application/x-www-form-urlencoded;charset=UTF-8");
+					}
+				};
+				if (support.blob) this.blob = function() {
+					var rejected = consumed(this);
+					if (rejected) return rejected;
+					if (this._bodyBlob) return Promise.resolve(this._bodyBlob);
+					else if (this._bodyArrayBuffer) return Promise.resolve(new Blob([this._bodyArrayBuffer]));
+					else if (this._bodyFormData) throw new Error("could not read FormData body as blob");
+					else return Promise.resolve(new Blob([this._bodyText]));
+				};
+				this.arrayBuffer = function() {
+					if (this._bodyArrayBuffer) {
+						var isConsumed = consumed(this);
+						if (isConsumed) return isConsumed;
+						else if (ArrayBuffer.isView(this._bodyArrayBuffer)) return Promise.resolve(this._bodyArrayBuffer.buffer.slice(this._bodyArrayBuffer.byteOffset, this._bodyArrayBuffer.byteOffset + this._bodyArrayBuffer.byteLength));
+						else return Promise.resolve(this._bodyArrayBuffer);
+					} else if (support.blob) return this.blob().then(readBlobAsArrayBuffer);
+					else throw new Error("could not read as ArrayBuffer");
+				};
+				this.text = function() {
+					var rejected = consumed(this);
+					if (rejected) return rejected;
+					if (this._bodyBlob) return readBlobAsText(this._bodyBlob);
+					else if (this._bodyArrayBuffer) return Promise.resolve(readArrayBufferAsText(this._bodyArrayBuffer));
+					else if (this._bodyFormData) throw new Error("could not read FormData body as text");
+					else return Promise.resolve(this._bodyText);
+				};
+				if (support.formData) this.formData = function() {
+					return this.text().then(decode$1);
+				};
+				this.json = function() {
+					return this.text().then(JSON.parse);
+				};
+				return this;
+			}
+			var methods = [
+				"CONNECT",
+				"DELETE",
+				"GET",
+				"HEAD",
+				"OPTIONS",
+				"PATCH",
+				"POST",
+				"PUT",
+				"TRACE"
+			];
+			function normalizeMethod(method) {
+				var upcased = method.toUpperCase();
+				return methods.indexOf(upcased) > -1 ? upcased : method;
+			}
+			function Request$4(input, options) {
+				if (!(this instanceof Request$4)) throw new TypeError("Please use the \"new\" operator, this DOM object constructor cannot be called as a function.");
+				options = options || {};
+				var body = options.body;
+				if (input instanceof Request$4) {
+					if (input.bodyUsed) throw new TypeError("Already read");
+					this.url = input.url;
+					this.credentials = input.credentials;
+					if (!options.headers) this.headers = new Headers$2(input.headers);
+					this.method = input.method;
+					this.mode = input.mode;
+					this.signal = input.signal;
+					if (!body && input._bodyInit != null) {
+						body = input._bodyInit;
+						input.bodyUsed = true;
+					}
+				} else this.url = String(input);
+				this.credentials = options.credentials || this.credentials || "same-origin";
+				if (options.headers || !this.headers) this.headers = new Headers$2(options.headers);
+				this.method = normalizeMethod(options.method || this.method || "GET");
+				this.mode = options.mode || this.mode || null;
+				this.signal = options.signal || this.signal || function() {
+					if ("AbortController" in g) return new AbortController().signal;
+				}();
+				this.referrer = null;
+				if ((this.method === "GET" || this.method === "HEAD") && body) throw new TypeError("Body not allowed for GET or HEAD requests");
+				this._initBody(body);
+				if (this.method === "GET" || this.method === "HEAD") {
+					if (options.cache === "no-store" || options.cache === "no-cache") {
+						var reParamSearch = /([?&])_=[^&]*/;
+						if (reParamSearch.test(this.url)) this.url = this.url.replace(reParamSearch, "$1_=" + (/* @__PURE__ */ new Date()).getTime());
+						else this.url += (/\?/.test(this.url) ? "&" : "?") + "_=" + (/* @__PURE__ */ new Date()).getTime();
+					}
+				}
+			}
+			__name(Request$4, "Request");
+			Request$4.prototype.clone = function() {
+				return new Request$4(this, { body: this._bodyInit });
+			};
+			function decode$1(body) {
+				var form = new FormData();
+				body.trim().split("&").forEach(function(bytes) {
+					if (bytes) {
+						var split = bytes.split("=");
+						var name = split.shift().replace(/\+/g, " ");
+						var value = split.join("=").replace(/\+/g, " ");
+						form.append(decodeURIComponent(name), decodeURIComponent(value));
+					}
+				});
+				return form;
+			}
+			__name(decode$1, "decode");
+			function parseHeaders(rawHeaders) {
+				var headers = new Headers$2();
+				rawHeaders.replace(/\r?\n[\t ]+/g, " ").split("\r").map(function(header) {
+					return header.indexOf("\n") === 0 ? header.substr(1, header.length) : header;
+				}).forEach(function(line) {
+					var parts = line.split(":");
+					var key = parts.shift().trim();
+					if (key) {
+						var value = parts.join(":").trim();
+						try {
+							headers.append(key, value);
+						} catch (error) {
+							console.warn("Response " + error.message);
+						}
+					}
+				});
+				return headers;
+			}
+			Body.call(Request$4.prototype);
+			function Response$1(bodyInit, options) {
+				if (!(this instanceof Response$1)) throw new TypeError("Please use the \"new\" operator, this DOM object constructor cannot be called as a function.");
+				if (!options) options = {};
+				this.type = "default";
+				this.status = options.status === void 0 ? 200 : options.status;
+				if (this.status < 200 || this.status > 599) throw new RangeError("Failed to construct 'Response': The status provided (0) is outside the range [200, 599].");
+				this.ok = this.status >= 200 && this.status < 300;
+				this.statusText = options.statusText === void 0 ? "" : "" + options.statusText;
+				this.headers = new Headers$2(options.headers);
+				this.url = options.url || "";
+				this._initBody(bodyInit);
+			}
+			__name(Response$1, "Response");
+			Body.call(Response$1.prototype);
+			Response$1.prototype.clone = function() {
+				return new Response$1(this._bodyInit, {
+					status: this.status,
+					statusText: this.statusText,
+					headers: new Headers$2(this.headers),
+					url: this.url
+				});
+			};
+			Response$1.error = function() {
+				var response = new Response$1(null, {
+					status: 200,
+					statusText: ""
+				});
+				response.ok = false;
+				response.status = 0;
+				response.type = "error";
+				return response;
+			};
+			var redirectStatuses = [
+				301,
+				302,
+				303,
+				307,
+				308
+			];
+			Response$1.redirect = function(url, status) {
+				if (redirectStatuses.indexOf(status) === -1) throw new RangeError("Invalid status code");
+				return new Response$1(null, {
+					status,
+					headers: { location: url }
+				});
+			};
+			exports$1.DOMException = g.DOMException;
+			try {
+				new exports$1.DOMException();
+			} catch (err) {
+				exports$1.DOMException = function(message, name) {
+					this.message = message;
+					this.name = name;
+					this.stack = Error(message).stack;
+				};
+				exports$1.DOMException.prototype = Object.create(Error.prototype);
+				exports$1.DOMException.prototype.constructor = exports$1.DOMException;
+			}
+			function fetch$2(input, init) {
+				return new Promise(function(resolve, reject) {
+					var request = new Request$4(input, init);
+					if (request.signal && request.signal.aborted) return reject(new exports$1.DOMException("Aborted", "AbortError"));
+					var xhr = new XMLHttpRequest();
+					function abortXhr() {
+						xhr.abort();
+					}
+					xhr.onload = function() {
+						var options = {
+							statusText: xhr.statusText,
+							headers: parseHeaders(xhr.getAllResponseHeaders() || "")
+						};
+						if (request.url.indexOf("file://") === 0 && (xhr.status < 200 || xhr.status > 599)) options.status = 200;
+						else options.status = xhr.status;
+						options.url = "responseURL" in xhr ? xhr.responseURL : options.headers.get("X-Request-URL");
+						var body = "response" in xhr ? xhr.response : xhr.responseText;
+						setTimeout(function() {
+							resolve(new Response$1(body, options));
+						}, 0);
+					};
+					xhr.onerror = function() {
+						setTimeout(function() {
+							reject(/* @__PURE__ */ new TypeError("Network request failed"));
+						}, 0);
+					};
+					xhr.ontimeout = function() {
+						setTimeout(function() {
+							reject(/* @__PURE__ */ new TypeError("Network request timed out"));
+						}, 0);
+					};
+					xhr.onabort = function() {
+						setTimeout(function() {
+							reject(new exports$1.DOMException("Aborted", "AbortError"));
+						}, 0);
+					};
+					function fixUrl(url) {
+						try {
+							return url === "" && g.location.href ? g.location.href : url;
+						} catch (e) {
+							return url;
+						}
+					}
+					xhr.open(request.method, fixUrl(request.url), true);
+					if (request.credentials === "include") xhr.withCredentials = true;
+					else if (request.credentials === "omit") xhr.withCredentials = false;
+					if ("responseType" in xhr) {
+						if (support.blob) xhr.responseType = "blob";
+						else if (support.arrayBuffer) xhr.responseType = "arraybuffer";
+					}
+					if (init && typeof init.headers === "object" && !(init.headers instanceof Headers$2 || g.Headers && init.headers instanceof g.Headers)) {
+						var names = [];
+						Object.getOwnPropertyNames(init.headers).forEach(function(name) {
+							names.push(normalizeName(name));
+							xhr.setRequestHeader(name, normalizeValue(init.headers[name]));
+						});
+						request.headers.forEach(function(value, name) {
+							if (names.indexOf(name) === -1) xhr.setRequestHeader(name, value);
+						});
+					} else request.headers.forEach(function(value, name) {
+						xhr.setRequestHeader(name, value);
+					});
+					if (request.signal) {
+						request.signal.addEventListener("abort", abortXhr);
+						xhr.onreadystatechange = function() {
+							if (xhr.readyState === 4) request.signal.removeEventListener("abort", abortXhr);
+						};
+					}
+					xhr.send(typeof request._bodyInit === "undefined" ? null : request._bodyInit);
+				});
+			}
+			__name(fetch$2, "fetch");
+			fetch$2.polyfill = true;
+			if (!g.fetch) {
+				g.fetch = fetch$2;
+				g.Headers = Headers$2;
+				g.Request = Request$4;
+				g.Response = Response$1;
+			}
+			exports$1.Headers = Headers$2;
+			exports$1.Request = Request$4;
+			exports$1.Response = Response$1;
+			exports$1.fetch = fetch$2;
+			return exports$1;
+		})({});
+	})(__globalThis__);
+	__globalThis__.fetch.ponyfill = true;
+	delete __globalThis__.fetch.polyfill;
+	var ctx = __global__.fetch ? __global__ : __globalThis__;
+	exports = ctx.fetch;
+	exports.default = ctx.fetch;
+	exports.fetch = ctx.fetch;
+	exports.Headers = ctx.Headers;
+	exports.Request = ctx.Request;
+	exports.Response = ctx.Response;
+	module.exports = exports;
+}));
 
 //#endregion
 //#region node_modules/@libsql/hrana-client/lib-esm/queue_microtask.js
+var import_browser_ponyfill = require_browser_ponyfill();
 let _queueMicrotask;
 if (typeof queueMicrotask !== "undefined") _queueMicrotask = queueMicrotask;
 else {
@@ -3089,7 +3568,7 @@ var HttpCursor = class extends Cursor {
 	}
 	async open(response) {
 		if (response.body === null) throw new ProtoError("No response body for cursor request");
-		this.#reader = response.body.getReader();
+		this.#reader = response.body[Symbol.asyncIterator]();
 		const respBody = await this.#nextItem(CursorRespBody$1, CursorRespBody);
 		if (respBody === void 0) throw new ProtoError("Empty response to cursor request");
 		return respBody;
@@ -3107,7 +3586,7 @@ var HttpCursor = class extends Cursor {
 		if (this.#closed !== void 0) return;
 		this.#closed = error;
 		this.#stream._cursorClosed(this);
-		if (this.#reader !== void 0) this.#reader.cancel();
+		if (this.#reader !== void 0) this.#reader.return();
 	}
 	/** True if the cursor is closed. */
 	get closed() {
@@ -3129,7 +3608,7 @@ var HttpCursor = class extends Cursor {
 				if (protobufData !== void 0) return readProtobufMessage(protobufData, protobufDef);
 			} else throw impossible(this.#encoding, "Impossible encoding");
 			if (this.#reader === void 0) throw new InternalError("Attempted to read from HTTP cursor before it was opened");
-			const { value, done } = await this.#reader.read();
+			const { value, done } = await this.#reader.next();
 			if (done && this.#queue.length === 0) this.#done = true;
 			else if (done) throw new ProtoError("Unexpected end of cursor stream");
 			else this.#queue.push(value);
@@ -3243,6 +3722,7 @@ var HttpStream = class extends Stream {
 	#baseUrl;
 	#jwt;
 	#fetch;
+	#remoteEncryptionKey;
 	#baton;
 	#queue;
 	#flushing;
@@ -3252,12 +3732,13 @@ var HttpStream = class extends Stream {
 	#closed;
 	#sqlIdAlloc;
 	/** @private */
-	constructor(client, baseUrl, jwt, customFetch) {
+	constructor(client, baseUrl, jwt, customFetch, remoteEncryptionKey) {
 		super(client.intMode);
 		this.#client = client;
 		this.#baseUrl = baseUrl.toString();
 		this.#jwt = jwt;
 		this.#fetch = customFetch;
+		this.#remoteEncryptionKey = remoteEncryptionKey;
 		this.#baton = void 0;
 		this.#queue = new Queue();
 		this.#flushing = false;
@@ -3454,8 +3935,9 @@ var HttpStream = class extends Stream {
 		let promise;
 		try {
 			const request = createRequest();
-			const fetch$1 = this.#fetch;
-			promise = fetch$1(request);
+			// console.debug("HTTP Request:", request);
+			const fetch$2 = this.#fetch;
+			promise = fetch$2(request);
 		} catch (error) {
 			promise = Promise.reject(error);
 		}
@@ -3500,10 +3982,11 @@ var HttpStream = class extends Stream {
 			bodyData = writeProtobufMessage(reqBody, protobufFun);
 			contentType = "application/x-protobuf";
 		} else throw impossible(encoding, "Impossible encoding");
-		const headers = new _Headers();
+		const headers = new import_browser_ponyfill.Headers();
 		headers.set("content-type", contentType);
 		if (this.#jwt !== void 0) headers.set("authorization", `Bearer ${this.#jwt}`);
-		return new _Request(url.toString(), {
+		if (this.#remoteEncryptionKey !== void 0) headers.set("x-turso-encryption-key", this.#remoteEncryptionKey);
+		return new import_browser_ponyfill.Request(url.toString(), {
 			method: "POST",
 			headers,
 			body: bodyData
@@ -3573,6 +4056,7 @@ var HttpClient$1 = class extends Client {
 	#url;
 	#jwt;
 	#fetch;
+	#remoteEncryptionKey;
 	#closed;
 	#streams;
 	/** @private */
@@ -3580,11 +4064,12 @@ var HttpClient$1 = class extends Client {
 	/** @private */
 	_endpoint;
 	/** @private */
-	constructor(url, jwt, customFetch, protocolVersion = 2) {
+	constructor(url, jwt, customFetch, remoteEncryptionKey, protocolVersion = 2) {
 		super();
 		this.#url = url;
 		this.#jwt = jwt;
-		this.#fetch = customFetch ?? _fetch;
+		this.#fetch = customFetch ?? import_browser_ponyfill.fetch;
+		this.#remoteEncryptionKey = remoteEncryptionKey;
 		this.#closed = void 0;
 		this.#streams = /* @__PURE__ */ new Set();
 		if (protocolVersion == 3) {
@@ -3609,7 +4094,7 @@ var HttpClient$1 = class extends Client {
 	/** Open a {@link HttpStream}, a stream for executing SQL statements. */
 	openStream() {
 		if (this.#closed !== void 0) throw new ClosedError("Client is closed", this.#closed);
-		const stream = new HttpStream(this, this.#url, this.#jwt, this.#fetch);
+		const stream = new HttpStream(this, this.#url, this.#jwt, this.#fetch, this.#remoteEncryptionKey);
 		this.#streams.add(stream);
 		return stream;
 	}
@@ -3632,9 +4117,9 @@ var HttpClient$1 = class extends Client {
 	}
 };
 async function findEndpoint(customFetch, clientUrl) {
-	const fetch$1 = customFetch;
+	const fetch$2 = customFetch;
 	for (const endpoint of checkEndpoints) {
-		const response = await fetch$1(new _Request(new URL(endpoint.versionPath, clientUrl).toString(), { method: "GET" }));
+		const response = await fetch$2(new import_browser_ponyfill.Request(new URL(endpoint.versionPath, clientUrl).toString(), { method: "GET" }));
 		await response.arrayBuffer();
 		if (response.ok) return endpoint;
 	}
@@ -3654,11 +4139,11 @@ function openWs(url, jwt, protocolVersion = 2) {
 /** Open a Hrana client over HTTP connected to the given `url`.
 *
 * If the `customFetch` argument is passed and not `undefined`, it is used in place of the `fetch` function
-* from `@libsql/isomorphic-fetch`. This function is always called with a `Request` object from
-* `@libsql/isomorphic-fetch`.
+* from `cross-fetch`. This function is always called with a `Request` object from
+* `cross-fetch`.
 */
-function openHttp(url, jwt, customFetch, protocolVersion = 2) {
-	return new HttpClient$1(url instanceof URL ? url : new URL(url), jwt, customFetch, protocolVersion);
+function openHttp(url, jwt, customFetch, remoteEncryptionKey, protocolVersion = 2) {
+	return new HttpClient$1(url instanceof URL ? url : new URL(url), jwt, customFetch, remoteEncryptionKey, protocolVersion);
 }
 
 //#endregion
@@ -3720,10 +4205,15 @@ var HranaTransaction = class {
 				await batch.execute();
 			}
 			const resultSets = [];
-			for (const rowsPromise of rowsPromises) {
-				const rows = await rowsPromise;
-				if (rows === void 0) throw new LibsqlError("Statement in a transaction was not executed, probably because the transaction has been rolled back", "TRANSACTION_CLOSED");
+			for (let i = 0; i < rowsPromises.length; i++) try {
+				const rows = await rowsPromises[i];
+				if (rows === void 0) throw new LibsqlBatchError("Statement in a transaction was not executed, probably because the transaction has been rolled back", i, "TRANSACTION_CLOSED");
 				resultSets.push(resultSetFromHrana(rows));
+			} catch (e) {
+				if (e instanceof LibsqlBatchError) throw e;
+				const mappedError = mapHranaError(e);
+				if (mappedError instanceof LibsqlError) throw new LibsqlBatchError(mappedError.message, i, mappedError.code, mappedError.extendedCode, mappedError.rawCode, mappedError.cause instanceof Error ? mappedError.cause : void 0);
+				throw mappedError;
 			}
 			return resultSets;
 		} catch (e) {
@@ -3802,10 +4292,15 @@ async function executeHranaBatch(mode, version$1, batch, hranaStmts, disableFore
 	await batch.execute();
 	const resultSets = [];
 	await beginPromise;
-	for (const stmtPromise of stmtPromises) {
-		const hranaRows = await stmtPromise;
-		if (hranaRows === void 0) throw new LibsqlError("Statement in a batch was not executed, probably because the transaction has been rolled back", "TRANSACTION_CLOSED");
+	for (let i = 0; i < stmtPromises.length; i++) try {
+		const hranaRows = await stmtPromises[i];
+		if (hranaRows === void 0) throw new LibsqlBatchError("Statement in a batch was not executed, probably because the transaction has been rolled back", i, "TRANSACTION_CLOSED");
 		resultSets.push(resultSetFromHrana(hranaRows));
+	} catch (e) {
+		if (e instanceof LibsqlBatchError) throw e;
+		const mappedError = mapHranaError(e);
+		if (mappedError instanceof LibsqlError) throw new LibsqlBatchError(mappedError.message, i, mappedError.code, mappedError.extendedCode, mappedError.rawCode, mappedError.cause instanceof Error ? mappedError.cause : void 0);
+		throw mappedError;
 	}
 	await commitPromise;
 	return resultSets;
@@ -3834,7 +4329,7 @@ function resultSetFromHrana(hranaRows) {
 function mapHranaError(e) {
 	if (e instanceof ClientError) {
 		const code = mapHranaErrorCode(e);
-		return new LibsqlError(e.message, code, void 0, e);
+		return new LibsqlError(e.message, code, void 0, void 0, e);
 	}
 	return e;
 }
@@ -4245,7 +4740,7 @@ function _createClient$1(config) {
 	if (config.encryptionKey !== void 0) throw new LibsqlError("Encryption key is not supported by the remote client.", "ENCRYPTION_KEY_NOT_SUPPORTED");
 	if (config.scheme === "http" && config.tls) throw new LibsqlError(`A "http:" URL cannot opt into TLS by using ?tls=1`, "URL_INVALID");
 	else if (config.scheme === "https" && !config.tls) throw new LibsqlError(`A "https:" URL cannot opt out of TLS by using ?tls=0`, "URL_INVALID");
-	return new HttpClient(encodeBaseUrl(config.scheme, config.authority, config.path), config.authToken, config.intMode, config.fetch, config.concurrency);
+	return new HttpClient(encodeBaseUrl(config.scheme, config.authority, config.path), config.authToken, config.intMode, config.fetch, config.concurrency, config.remoteEncryptionKey);
 }
 __name(_createClient$1, "_createClient");
 const sqlCacheCapacity = 30;
@@ -4257,15 +4752,17 @@ var HttpClient = class {
 	#customFetch;
 	#concurrency;
 	#authToken;
+	#remoteEncryptionKey;
 	#promiseLimitFunction;
 	/** @private */
-	constructor(url, authToken, intMode, customFetch, concurrency) {
+	constructor(url, authToken, intMode, customFetch, concurrency, remoteEncryptionKey) {
 		this.#url = url;
 		this.#authToken = authToken;
 		this.#intMode = intMode;
 		this.#customFetch = customFetch;
 		this.#concurrency = concurrency;
-		this.#client = openHttp(this.#url, this.#authToken, this.#customFetch);
+		this.#remoteEncryptionKey = remoteEncryptionKey;
+		this.#client = openHttp(this.#url, this.#authToken, this.#customFetch, remoteEncryptionKey);
 		this.#client.intMode = this.#intMode;
 		this.protocol = "http";
 		this.#promiseLimitFunction = (0, import_promise_limit.default)(this.#concurrency);
@@ -4375,7 +4872,7 @@ var HttpClient = class {
 		try {
 			if (!this.closed) this.#client.close();
 		} finally {
-			this.#client = openHttp(this.#url, this.#authToken, this.#customFetch);
+			this.#client = openHttp(this.#url, this.#authToken, this.#customFetch, this.#remoteEncryptionKey);
 			this.#client.intMode = this.#intMode;
 		}
 	}

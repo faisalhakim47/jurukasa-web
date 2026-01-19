@@ -12,6 +12,7 @@ import onboarding from '#web/lang/id/onboarding.js';
 import paymentMethod from '#web/lang/id/payment-method.js';
 import pos from '#web/lang/id/pos.js';
 import purchase from '#web/lang/id/purchase.js';
+import reconciliation from '#web/lang/id/reconciliation.js';
 import sale from '#web/lang/id/sale.js';
 import settings from '#web/lang/id/settings.js';
 import stock from '#web/lang/id/stock.js';
@@ -32,6 +33,7 @@ export default {
   paymentMethod,
   pos,
   purchase,
+  reconciliation,
   sale,
   settings,
   stock,

@@ -244,24 +244,24 @@ function isDirty(sub) {
 	if (sub._dirty) return true;
 	return false;
 }
-function refreshComputed(computed$1) {
-	if (computed$1.flags & 4 && !(computed$1.flags & 16)) return;
-	computed$1.flags &= -17;
-	if (computed$1.globalVersion === globalVersion) return;
-	computed$1.globalVersion = globalVersion;
-	if (!computed$1.isSSR && computed$1.flags & 128 && (!computed$1.deps && !computed$1._dirty || !isDirty(computed$1))) return;
-	computed$1.flags |= 2;
-	const dep = computed$1.dep;
+function refreshComputed(computed) {
+	if (computed.flags & 4 && !(computed.flags & 16)) return;
+	computed.flags &= -17;
+	if (computed.globalVersion === globalVersion) return;
+	computed.globalVersion = globalVersion;
+	if (!computed.isSSR && computed.flags & 128 && (!computed.deps && !computed._dirty || !isDirty(computed))) return;
+	computed.flags |= 2;
+	const dep = computed.dep;
 	const prevSub = activeSub;
 	const prevShouldTrack = shouldTrack;
-	activeSub = computed$1;
+	activeSub = computed;
 	shouldTrack = true;
 	try {
-		prepareDeps(computed$1);
-		const value = computed$1.fn(computed$1._value);
-		if (dep.version === 0 || hasChanged(value, computed$1._value)) {
-			computed$1.flags |= 128;
-			computed$1._value = value;
+		prepareDeps(computed);
+		const value = computed.fn(computed._value);
+		if (dep.version === 0 || hasChanged(value, computed._value)) {
+			computed.flags |= 128;
+			computed._value = value;
 			dep.version++;
 		}
 	} catch (err) {
@@ -270,8 +270,8 @@ function refreshComputed(computed$1) {
 	} finally {
 		activeSub = prevSub;
 		shouldTrack = prevShouldTrack;
-		cleanupDeps(computed$1);
-		computed$1.flags &= -3;
+		cleanupDeps(computed);
+		computed.flags &= -3;
 	}
 }
 function removeSub(link, soft = false) {
@@ -355,8 +355,8 @@ var Link = class {
 	}
 };
 var Dep = class {
-	constructor(computed$1) {
-		this.computed = computed$1;
+	constructor(computed) {
+		this.computed = computed;
 		this.version = 0;
 		/**
 		* Link between this dep and the current active effect
@@ -427,10 +427,10 @@ var Dep = class {
 function addSub(link) {
 	link.dep.sc++;
 	if (link.sub.flags & 4) {
-		const computed$1 = link.dep.computed;
-		if (computed$1 && !link.dep.subs) {
-			computed$1.flags |= 20;
-			for (let l = computed$1.deps; l; l = l.nextDep) addSub(l);
+		const computed = link.dep.computed;
+		if (computed && !link.dep.subs) {
+			computed.flags |= 20;
+			for (let l = computed.deps; l; l = l.nextDep) addSub(l);
 		}
 		const currentTail = link.dep.subs;
 		if (currentTail !== link) {
@@ -613,10 +613,10 @@ const arrayInstrumentations = {
 		return iterator(this, "values", (item) => toWrapped(this, item));
 	}
 };
-function iterator(self$1, method, wrapValue) {
-	const arr = shallowReadArray(self$1);
+function iterator(self, method, wrapValue) {
+	const arr = shallowReadArray(self);
 	const iter = arr[method]();
-	if (arr !== self$1 && !isShallow(self$1)) {
+	if (arr !== self && !isShallow(self)) {
 		iter._next = iter.next;
 		iter.next = () => {
 			const result = iter._next();
@@ -627,41 +627,41 @@ function iterator(self$1, method, wrapValue) {
 	return iter;
 }
 const arrayProto = Array.prototype;
-function apply(self$1, method, fn, thisArg, wrappedRetFn, args) {
-	const arr = shallowReadArray(self$1);
-	const needsWrap = arr !== self$1 && !isShallow(self$1);
+function apply(self, method, fn, thisArg, wrappedRetFn, args) {
+	const arr = shallowReadArray(self);
+	const needsWrap = arr !== self && !isShallow(self);
 	const methodFn = arr[method];
 	if (methodFn !== arrayProto[method]) {
-		const result2 = methodFn.apply(self$1, args);
+		const result2 = methodFn.apply(self, args);
 		return needsWrap ? toReactive(result2) : result2;
 	}
 	let wrappedFn = fn;
-	if (arr !== self$1) {
+	if (arr !== self) {
 		if (needsWrap) wrappedFn = function(item, index) {
-			return fn.call(this, toWrapped(self$1, item), index, self$1);
+			return fn.call(this, toWrapped(self, item), index, self);
 		};
 		else if (fn.length > 2) wrappedFn = function(item, index) {
-			return fn.call(this, item, index, self$1);
+			return fn.call(this, item, index, self);
 		};
 	}
 	const result = methodFn.call(arr, wrappedFn, thisArg);
 	return needsWrap && wrappedRetFn ? wrappedRetFn(result) : result;
 }
-function reduce(self$1, method, fn, args) {
-	const arr = shallowReadArray(self$1);
+function reduce(self, method, fn, args) {
+	const arr = shallowReadArray(self);
 	let wrappedFn = fn;
-	if (arr !== self$1) {
-		if (!isShallow(self$1)) wrappedFn = function(acc, item, index) {
-			return fn.call(this, acc, toWrapped(self$1, item), index, self$1);
+	if (arr !== self) {
+		if (!isShallow(self)) wrappedFn = function(acc, item, index) {
+			return fn.call(this, acc, toWrapped(self, item), index, self);
 		};
 		else if (fn.length > 3) wrappedFn = function(acc, item, index) {
-			return fn.call(this, acc, item, index, self$1);
+			return fn.call(this, acc, item, index, self);
 		};
 	}
 	return arr[method](wrappedFn, ...args);
 }
-function searchProxy(self$1, method, args) {
-	const arr = toRaw(self$1);
+function searchProxy(self, method, args) {
+	const arr = toRaw(self);
 	track(arr, "iterate", ARRAY_ITERATE_KEY);
 	const res = arr[method](...args);
 	if ((res === -1 || res === false) && isProxy(args[0])) {
@@ -670,10 +670,10 @@ function searchProxy(self$1, method, args) {
 	}
 	return res;
 }
-function noTracking(self$1, method, args = []) {
+function noTracking(self, method, args = []) {
 	pauseTracking();
 	startBatch();
-	const res = toRaw(self$1)[method].apply(self$1, args);
+	const res = toRaw(self)[method].apply(self, args);
 	endBatch();
 	resetTracking();
 	return res;
@@ -820,32 +820,32 @@ function createReadonlyMethod(type) {
 		return type === "delete" ? false : type === "clear" ? void 0 : this;
 	};
 }
-function createInstrumentations(readonly$1, shallow) {
+function createInstrumentations(readonly, shallow) {
 	const instrumentations = {
 		get(key) {
 			const target = this["__v_raw"];
 			const rawTarget = toRaw(target);
 			const rawKey = toRaw(key);
-			if (!readonly$1) {
+			if (!readonly) {
 				if (hasChanged(key, rawKey)) track(rawTarget, "get", key);
 				track(rawTarget, "get", rawKey);
 			}
 			const { has } = getProto(rawTarget);
-			const wrap = shallow ? toShallow : readonly$1 ? toReadonly : toReactive;
+			const wrap = shallow ? toShallow : readonly ? toReadonly : toReactive;
 			if (has.call(rawTarget, key)) return wrap(target.get(key));
 			else if (has.call(rawTarget, rawKey)) return wrap(target.get(rawKey));
 			else if (target !== rawTarget) target.get(key);
 		},
 		get size() {
 			const target = this["__v_raw"];
-			!readonly$1 && track(toRaw(target), "iterate", ITERATE_KEY);
+			!readonly && track(toRaw(target), "iterate", ITERATE_KEY);
 			return target.size;
 		},
 		has(key) {
 			const target = this["__v_raw"];
 			const rawTarget = toRaw(target);
 			const rawKey = toRaw(key);
-			if (!readonly$1) {
+			if (!readonly) {
 				if (hasChanged(key, rawKey)) track(rawTarget, "has", key);
 				track(rawTarget, "has", rawKey);
 			}
@@ -855,14 +855,14 @@ function createInstrumentations(readonly$1, shallow) {
 			const observed = this;
 			const target = observed["__v_raw"];
 			const rawTarget = toRaw(target);
-			const wrap = shallow ? toShallow : readonly$1 ? toReadonly : toReactive;
-			!readonly$1 && track(rawTarget, "iterate", ITERATE_KEY);
+			const wrap = shallow ? toShallow : readonly ? toReadonly : toReactive;
+			!readonly && track(rawTarget, "iterate", ITERATE_KEY);
 			return target.forEach((value, key) => {
 				return callback.call(thisArg, wrap(value), wrap(key), observed);
 			});
 		}
 	};
-	extend(instrumentations, readonly$1 ? {
+	extend(instrumentations, readonly ? {
 		add: createReadonlyMethod("add"),
 		set: createReadonlyMethod("set"),
 		delete: createReadonlyMethod("delete"),
@@ -920,7 +920,7 @@ function createInstrumentations(readonly$1, shallow) {
 		"entries",
 		Symbol.iterator
 	].forEach((method) => {
-		instrumentations[method] = createIterableMethod(method, readonly$1, shallow);
+		instrumentations[method] = createIterableMethod(method, readonly, shallow);
 	});
 	return instrumentations;
 }
@@ -1151,7 +1151,7 @@ function watch(source, cb, options = EMPTY_OBJ) {
 		if (isShallow(source2) || deep === false || deep === 0) return traverse(source2, 1);
 		return traverse(source2);
 	};
-	let effect$1;
+	let effect;
 	let getter;
 	let cleanup;
 	let boundCleanup;
@@ -1183,7 +1183,7 @@ function watch(source, cb, options = EMPTY_OBJ) {
 			}
 		}
 		const currentEffect = activeWatcher;
-		activeWatcher = effect$1;
+		activeWatcher = effect;
 		try {
 			return call ? call(source, 3, [boundCleanup]) : source(boundCleanup);
 		} finally {
@@ -1201,8 +1201,8 @@ function watch(source, cb, options = EMPTY_OBJ) {
 	}
 	const scope = getCurrentScope();
 	const watchHandle = () => {
-		effect$1.stop();
-		if (scope && scope.active) remove(scope.effects, effect$1);
+		effect.stop();
+		if (scope && scope.active) remove(scope.effects, effect);
 	};
 	if (once && cb) {
 		const _cb = cb;
@@ -1213,13 +1213,13 @@ function watch(source, cb, options = EMPTY_OBJ) {
 	}
 	let oldValue = isMultiSource ? new Array(source.length).fill(INITIAL_WATCHER_VALUE) : INITIAL_WATCHER_VALUE;
 	const job = (immediateFirstRun) => {
-		if (!(effect$1.flags & 1) || !effect$1.dirty && !immediateFirstRun) return;
+		if (!(effect.flags & 1) || !effect.dirty && !immediateFirstRun) return;
 		if (cb) {
-			const newValue = effect$1.run();
+			const newValue = effect.run();
 			if (deep || forceTrigger || (isMultiSource ? newValue.some((v, i) => hasChanged(v, oldValue[i])) : hasChanged(newValue, oldValue))) {
 				if (cleanup) cleanup();
 				const currentWatcher = activeWatcher;
-				activeWatcher = effect$1;
+				activeWatcher = effect;
 				try {
 					const args = [
 						newValue,
@@ -1232,28 +1232,28 @@ function watch(source, cb, options = EMPTY_OBJ) {
 					activeWatcher = currentWatcher;
 				}
 			}
-		} else effect$1.run();
+		} else effect.run();
 	};
 	if (augmentJob) augmentJob(job);
-	effect$1 = new ReactiveEffect(getter);
-	effect$1.scheduler = scheduler ? () => scheduler(job, false) : job;
-	boundCleanup = (fn) => onWatcherCleanup(fn, false, effect$1);
-	cleanup = effect$1.onStop = () => {
-		const cleanups = cleanupMap.get(effect$1);
+	effect = new ReactiveEffect(getter);
+	effect.scheduler = scheduler ? () => scheduler(job, false) : job;
+	boundCleanup = (fn) => onWatcherCleanup(fn, false, effect);
+	cleanup = effect.onStop = () => {
+		const cleanups = cleanupMap.get(effect);
 		if (cleanups) {
 			if (call) call(cleanups, 4);
 			else for (const cleanup2 of cleanups) cleanup2();
-			cleanupMap.delete(effect$1);
+			cleanupMap.delete(effect);
 		}
 	};
-	effect$1.onTrack = options.onTrack;
-	effect$1.onTrigger = options.onTrigger;
+	effect.onTrack = options.onTrack;
+	effect.onTrigger = options.onTrigger;
 	if (cb) if (immediate) job(true);
-	else oldValue = effect$1.run();
+	else oldValue = effect.run();
 	else if (scheduler) scheduler(job.bind(null, true), true);
-	else effect$1.run();
-	watchHandle.pause = effect$1.pause.bind(effect$1);
-	watchHandle.resume = effect$1.resume.bind(effect$1);
+	else effect.run();
+	watchHandle.pause = effect.pause.bind(effect);
+	watchHandle.resume = effect.resume.bind(effect);
 	watchHandle.stop = watchHandle;
 	return watchHandle;
 }
@@ -1276,5 +1276,5 @@ function traverse(value, depth = Infinity, seen) {
 }
 
 //#endregion
-export { computed, effect, isShallow, reactive, readonly, ref, shallowReactive, shallowRef, stop, watch };
+export { computed, effect, isReactive, isRef, isShallow, reactive, readonly, ref, shallowReactive, shallowRef, stop, watch };
 //# sourceMappingURL=bundle01.js.map

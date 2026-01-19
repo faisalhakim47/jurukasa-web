@@ -23,6 +23,12 @@ async function setupView(tursoDatabaseUrl) {
   `;
 }
 
+function navigateToInvalidRoute() {
+  /** @type {import('#web/contexts/router-context.js').RouterContextElement} */
+  const router = document.querySelector('router-context');
+  router.navigate({ pathname: '/sale/invalid-route' });
+}
+
 describe('Sale View', function () {
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
@@ -113,11 +119,7 @@ describe('Sale View', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await page.evaluate(async function () {
-        /** @type {import('#web/contexts/router-context.js').RouterContextElement} */
-        const router = document.querySelector('router-context');
-        router.navigate({ pathname: '/sale/invalid-route' });
-      });
+      await page.evaluate(navigateToInvalidRoute);
 
       await expect(page.getByRole('dialog')).toBeVisible();
     });

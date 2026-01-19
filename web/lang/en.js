@@ -13,6 +13,7 @@ import onboarding from '#web/lang/en/onboarding.js';
 import paymentMethod from '#web/lang/en/payment-method.js';
 import pos from '#web/lang/en/pos.js';
 import purchase from '#web/lang/en/purchase.js';
+import reconciliation from '#web/lang/en/reconciliation.js';
 import sale from '#web/lang/en/sale.js';
 import settings from '#web/lang/en/settings.js';
 import stock from '#web/lang/en/stock.js';
@@ -34,6 +35,7 @@ const en = {
   paymentMethod,
   pos,
   purchase,
+  reconciliation,
   sale,
   settings,
   stock,

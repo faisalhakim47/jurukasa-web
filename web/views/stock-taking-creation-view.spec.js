@@ -254,17 +254,19 @@ describe('Stock Taking Creation View', function () {
     await expect(page.getByRole('table')).toBeVisible();
     await expect(page.getByText('Product A')).toBeVisible();
 
-    await page.evaluate(async function () {
-      /** @type {import('#web/contexts/database-context.js').DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-
-      await database.sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (4, 'Product D', 25000, 'piece', 11310)`;
-    });
+    await page.evaluate(insertNewInventory);
 
     await page.getByRole('button', { name: 'Refresh' }).click();
 
     await expect(page.getByText('Product D')).toBeVisible();
   });
+
+  function insertNewInventory() {
+    /** @type {import('#web/contexts/database-context.js').DatabaseContextElement} */
+    const database = document.querySelector('database-context');
+
+    return database.sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (4, 'Product D', 25000, 'piece', 11310)`;
+  }
 
   test('it shall display cost information for each inventory', async function ({ page }) {
     await Promise.all([
@@ -286,8 +288,8 @@ describe('Stock Taking Creation View', function () {
 
     const inventoriesTable = page.getByRole('table');
 
-    await expect(inventoriesTable.getByText(/5,000/)).toBeVisible();
-    await expect(inventoriesTable.getByText(/10,000/)).toBeVisible();
+    await expect(inventoriesTable.getByText('IDR 5,000', { exact: true })).toBeVisible();
+    await expect(inventoriesTable.getByText('IDR 10,000', { exact: true })).toBeVisible();
   });
 
   test('it shall display last audit date when available', async function ({ page }) {

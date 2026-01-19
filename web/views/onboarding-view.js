@@ -74,19 +74,17 @@ export class OnboardingViewElement extends HTMLElement {
       else if (database.state === 'connected') {
         // Check if business is configured
         database.sql`SELECT value FROM config WHERE key = 'Business Name' LIMIT 1;`
-          .then(function (result) {
+          .then(function handleBusinessName(result) {
             if (onboarding.isInitialized) return; // Already initialized by user action
             const row = result.rows[0];
             const isBusinessConfigured = String(row?.value || '').trim().length > 0;
-
             if (!isBusinessConfigured) {
               onboarding.step = 'business-config';
               onboarding.isInitialized = true;
             }
             else {
-              // Check if chart of accounts is set up
               database.sql`SELECT count(*) as count FROM accounts`
-                .then(function (result) {
+                .then(function handleAccountsCount(result) {
                   if (onboarding.isInitialized) return; // Already initialized by user action
                   const count = Number(result.rows[0]?.count || 0);
                   if (count > 0) {

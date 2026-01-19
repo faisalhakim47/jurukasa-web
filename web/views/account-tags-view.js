@@ -5,7 +5,6 @@ import { reactive } from '@vue/reactivity';
 import { defineWebComponent } from '#web/component.js';
 import { AccountTagAssignmentDialogElement } from '#web/components/account-tag-assignment-dialog.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
-import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useBusyStateUntil } from '#web/contexts/ready-context.js';
 import { readValue } from '#web/directives/read-value.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
@@ -15,6 +14,7 @@ import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
+import { includes } from '#web/tools/array.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
 import '#web/components/material-symbols.js';
@@ -116,7 +116,6 @@ export class AccountTagsViewElement extends HTMLElement {
 
     const host = this;
     const database = useContext(host, DatabaseContextElement);
-    const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
 
     const accountTagAssignmentDialog = useElement(host, AccountTagAssignmentDialogElement);
@@ -154,13 +153,11 @@ export class AccountTagsViewElement extends HTMLElement {
     function buildTagSummaries(accountTags) {
       const tagMap = new Map();
 
-      // Initialize all tags with empty arrays
       const filteredTags = getFilteredTags();
       for (const tag of filteredTags) {
         tagMap.set(tag, { tag, count: 0, accounts: [] });
       }
 
-      // Populate with actual data
       for (const row of accountTags) {
         if (!filteredTags.includes(row.tag)) continue;
         const summary = tagMap.get(row.tag);
@@ -170,7 +167,6 @@ export class AccountTagsViewElement extends HTMLElement {
         }
       }
 
-      // Filter by search query
       let summaries = Array.from(tagMap.values());
       if (state.searchQuery.trim()) {
         const query = state.searchQuery.toLowerCase();
@@ -184,9 +180,8 @@ export class AccountTagsViewElement extends HTMLElement {
         });
       }
 
-      // Sort by tag name
-      summaries.sort(function (a, b) {
-        return a.tag.localeCompare(b.tag);
+      summaries.sort(function tagAsc(a, z) {
+        return a.tag.localeCompare(z.tag);
       });
 
       return summaries;
@@ -241,23 +236,14 @@ export class AccountTagsViewElement extends HTMLElement {
     }
 
     /** @param {Event} event */
-    function toggleTagExpanded(event) {
-      assertInstanceOf(HTMLTableRowElement, event.currentTarget);
+    function handleTagRowClick(event) {
+      assertInstanceOf(HTMLButtonElement, event.currentTarget);
       const tag = event.currentTarget.dataset.tag;
-      if (!tag) return;
+      console.info('Tag row clicked:', tag);
       if (state.expandedTags.has(tag)) state.expandedTags.delete(tag);
-      else state.expandedTags.add(tag);
-      // Rebuild summaries to update expanded state
+      else if (tag) state.expandedTags.add(tag);
+      else return;
       state.tagSummaries = buildTagSummaries(state.accountTags);
-    }
-
-    /** @param {Event} event */
-    function handleRowKeydown(event) {
-      assertInstanceOf(KeyboardEvent, event);
-      if (['Enter', ' '].includes(event.key)) {
-        toggleTagExpanded(event);
-        event.preventDefault();
-      }
     }
 
     function expandAll() {
@@ -291,14 +277,13 @@ export class AccountTagsViewElement extends HTMLElement {
     }
 
     /**
-     * @param {number} accountCode
-     * @param {string} tag
+     * @param {Event} event
      */
-    function handleRemoveTagClick(accountCode, tag) {
-      return function (event) {
-        event.stopPropagation();
-        removeTagFromAccount(accountCode, tag);
-      };
+    function handleRemoveTagClick(event) {
+      assertInstanceOf(HTMLButtonElement, event.currentTarget);
+      const accountCode = Number(event.currentTarget.dataset.accountCode);
+      const tag = String(event.currentTarget.dataset.tag);
+      removeTagFromAccount(accountCode, tag);
     }
 
     function renderLoadingIndicator() {
@@ -437,32 +422,16 @@ export class AccountTagsViewElement extends HTMLElement {
       `;
     }
 
-    /**
-     * @param {string} tag
-     */
+    /** @param {unknown} tag */
     function getTagCategoryStyle(tag) {
-      if (/** @type {readonly string[]} */ (tagCategories['Account Types']).includes(tag)) {
-        return 'background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container);';
-      }
-      if (/** @type {readonly string[]} */ (tagCategories['Account Classifications']).includes(tag)) {
-        return 'background-color: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container);';
-      }
-      if (/** @type {readonly string[]} */ (tagCategories['Fiscal Year Closing']).includes(tag)) {
-        return 'background-color: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container);';
-      }
-      if (/** @type {readonly string[]} */ (tagCategories['Balance Sheet']).includes(tag)) {
-        return 'background-color: #E3F2FD; color: #1565C0;';
-      }
-      if (/** @type {readonly string[]} */ (tagCategories['Income Statement']).includes(tag)) {
-        return 'background-color: #E8F5E9; color: #2E7D32;';
-      }
-      if (/** @type {readonly string[]} */ (tagCategories['Cash Flow Statement']).includes(tag)) {
-        return 'background-color: #FFF3E0; color: #E65100;';
-      }
-      if (/** @type {readonly string[]} */ (tagCategories['POS System']).includes(tag)) {
-        return 'background-color: #F3E5F5; color: #7B1FA2;';
-      }
-      return 'background-color: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface-variant);';
+      if (includes(tagCategories['Account Types'], tag)) return 'background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container);';
+      else if (includes(tagCategories['Account Classifications'], tag)) return 'background-color: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container);';
+      else if (includes(tagCategories['Fiscal Year Closing'], tag)) return 'background-color: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container);';
+      else if (includes(tagCategories['Balance Sheet'], tag)) return 'background-color: #E3F2FD; color: #1565C0;';
+      else if (includes(tagCategories['Income Statement'], tag)) return 'background-color: #E8F5E9; color: #2E7D32;';
+      else if (includes(tagCategories['Cash Flow Statement'], tag)) return 'background-color: #FFF3E0; color: #E65100;';
+      else if (includes(tagCategories['POS System'], tag)) return 'background-color: #F3E5F5; color: #7B1FA2;';
+      else return 'background-color: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface-variant);';
     }
 
     /**
@@ -474,35 +443,37 @@ export class AccountTagsViewElement extends HTMLElement {
       const hasAccounts = summary.accounts.length > 0;
       const rows = /** @type {TemplateResult[]} */ ([]);
 
-      // Main tag row
       rows.push(html`
-        <tr
-          tabindex="0"
-          aria-label="${t('account', 'tagAriaLabel', summary.tag)}"
-          style="cursor: ${hasAccounts ? 'pointer' : 'default'};"
-          data-tag="${summary.tag}"
-          @click=${hasAccounts ? toggleTagExpanded : nothing}
-          @keydown=${hasAccounts ? handleRowKeydown : nothing}
-        >
+        <tr aria-label="Tag ${summary.tag}">
           <td style="white-space: nowrap;">
-            <span style="display: flex; align-items: center; gap: 8px;">
-              ${hasAccounts ? html`
-                <material-symbols
-                  name="${isExpanded ? 'keyboard_arrow_down' : 'chevron_right'}"
-                  size="20"
-                  aria-hidden="true"
-                ></material-symbols>
-              ` : html`<span style="width: 20px;"></span>`}
-              <span
-                class="label-medium"
-                style="
-                  display: inline-flex;
-                  padding: 4px 8px;
-                  border-radius: var(--md-sys-shape-corner-small);
-                  ${getTagCategoryStyle(summary.tag)}
-                "
-              >${summary.tag}</span>
-            </span>
+            <button
+              role="button"
+              type="button"
+              class="text"
+              aria-label="${hasAccounts ? (isExpanded ? t('account', 'collapseTagAriaLabel', summary.tag) : t('account', 'expandTagAriaLabel', summary.tag)) : ''}"
+              @click=${hasAccounts ? handleTagRowClick : nothing}
+              data-tag="${summary.tag}"
+              ?disabled=${hasAccounts ? false : true}
+            >
+              <span style="display: flex; align-items: center; gap: 8px;">
+                ${hasAccounts ? html`
+                  <material-symbols
+                    name="${isExpanded ? 'keyboard_arrow_down' : 'chevron_right'}"
+                    size="20"
+                    aria-hidden="true"
+                  ></material-symbols>
+                ` : html`<span style="width: 20px;"></span>`}
+                <span
+                  class="label-medium"
+                  style="
+                    display: inline-flex;
+                    padding: 4px 8px;
+                    border-radius: var(--md-sys-shape-corner-small);
+                    ${getTagCategoryStyle(summary.tag)}
+                  "
+                >${summary.tag}</span>
+              </span>
+            </button>
           </td>
           <td class="center">
             <span
@@ -536,7 +507,6 @@ export class AccountTagsViewElement extends HTMLElement {
         </tr>
       `);
 
-      // Account sub-rows (when expanded)
       if (isExpanded && hasAccounts) {
         for (const account of summary.accounts) {
           rows.push(html`
@@ -551,10 +521,13 @@ export class AccountTagsViewElement extends HTMLElement {
               <td class="center">
                 <button
                   role="button"
+                  type="button"
                   class="text extra-small"
                   title="${t('account', 'removeTagFromAccountTitle')}"
                   aria-label="${t('account', 'removeTagFromAccountAriaLabel', summary.tag, account.account_name)}"
-                  @click=${handleRemoveTagClick(account.account_code, summary.tag)}
+                  @click=${handleRemoveTagClick}
+                  data-account-code="${account.account_code}"
+                  data-tag="${summary.tag}"
                 >
                   <material-symbols name="close" size="18"></material-symbols>
                 </button>
@@ -590,7 +563,7 @@ export class AccountTagsViewElement extends HTMLElement {
 
     useEffect(host, function renderAccountTagsView() {
       render(html`
-        <div style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%; overflow-y: scroll;">
+        <div class="scrollable" style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%; overflow-y: scroll;">
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>

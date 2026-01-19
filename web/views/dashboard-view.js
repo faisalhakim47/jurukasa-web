@@ -244,20 +244,7 @@ export class DashboardViewElement extends HTMLElement {
               </hgroup>
             </header>
             <section style="flex: 1;">
-              <div
-                style="
-                  display: flex;
-                  flex-direction:
-                  column; align-items: center;
-                  justify-content: center;
-                  gap: 8px;
-                  padding: 24px;
-                  box-sizing: border-box;
-                  height: 100%;
-                  text-align: center;
-                  color: var(--md-sys-color-on-surface-variant);
-                "
-              >
+              <div style="text-align: center; padding-block: 24px;">
                 <material-symbols name="calendar_month" size="32"></material-symbols>
                 <p>${t('dashboard', 'setupFiscalYearMessage')}</p>
               </div>
@@ -360,18 +347,7 @@ export class DashboardViewElement extends HTMLElement {
               </hgroup>
             </header>
             <section style="flex: 1;">
-              <div style="
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 8px;
-                height: 100%;
-                padding: 24px;
-                box-sizing: border-box;
-                text-align: center;
-                color: var(--md-sys-color-on-surface-variant);"
-              >
+              <div style="text-align: center; padding-block: 24px;">
                 <material-symbols name="check_circle" size="32"></material-symbols>
                 <p>${t('dashboard', 'allItemsWellStockedMessage')}</p>
               </div>
@@ -428,14 +404,14 @@ export class DashboardViewElement extends HTMLElement {
                 <p>${t('dashboard', 'latestTransactionsSubtitle')}</p>
               </hgroup>
             </header>
-            <section>
-              <div class="empty-state">
+            <section style="text-align: center; padding-block: 24px;">
+              <div>
                 <material-symbols name="storefront" size="32"></material-symbols>
                 <p>${t('dashboard', 'noSalesRecordedMessage')}</p>
               </div>
             </section>
             <footer>
-              <router-link role="button" href="/pos" class="button tonal">
+              <router-link role="button" href="/sale/point-of-sales" class="button tonal">
                 <material-symbols name="add"></material-symbols>
                 ${t('dashboard', 'newSaleButtonLabel')}
               </router-link>
@@ -503,11 +479,13 @@ export class DashboardViewElement extends HTMLElement {
                 <p>${t('dashboard', 'dashboardDescription')}</p>
               </hgroup>
             </header>
-            ${renderMetricCards()}
-            <div style="display: flex; gap: 24px;">
-              ${renderFiscalYearCard()}
-              ${renderStockAlerts()}
-              ${renderRecentSales()}
+            <div style="display: flex; flex-direction: column; gap: 24px; padding: 24px;">
+              ${renderMetricCards()}
+              <div style="display: flex; gap: 24px;">
+                ${renderFiscalYearCard()}
+                ${renderStockAlerts()}
+                ${renderRecentSales()}
+              </div>
             </div>
           ` : nothing}
         </main>

@@ -52,7 +52,7 @@ const onboarding = {
   chartOfAccountsSetupTitle: 'Choose Chart of Accounts Template',
   chartOfAccountsSetupSubmitLabel: 'Finish',
 
-  unknownState: 'Unknown state: {0}',
+  unknownState: 'Unknown state: %d',
 };
 
 /** @typedef {typeof onboarding} OnboardingTranslation */

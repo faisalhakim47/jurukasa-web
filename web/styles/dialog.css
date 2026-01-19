@@ -47,6 +47,8 @@ dialog {
     display var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized) allow-discrete;
 
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-sys-color-outline-variant) transparent;
 }
 
 dialog[open] {
@@ -98,9 +100,11 @@ dialog>.container>header {
   display: flex;
   flex-direction: column;
   align-items: center; /* Center align by default */
+  justify-content: space-between;
 }
 
-dialog>.container>header>:is(h1, h2, h3, h4, h5, h6) {
+dialog>.container>header>:is(h1, h2, h3, h4, h5, h6),
+dialog>.container>header>hgroup>:is(h1, h2, h3, h4, h5, h6) {
   margin: 0;
   font-family: var(--md-sys-typescale-font);
   font-weight: var(--md-sys-typescale-headline-small-weight);
@@ -201,7 +205,8 @@ dialog.full-screen>.container>header {
 }
 
 /* Headline in Full Screen: Start-aligned */
-dialog.full-screen>.container>header>:is(h1, h2, h3, h4, h5, h6) {
+dialog.full-screen>.container>header>:is(h1, h2, h3, h4, h5, h6),
+dialog.full-screen>.container>header>hgroup>:is(h1, h2, h3, h4, h5, h6) {
   flex: 1; /* Take up remaining space */
   text-align: left; /* */
   font-size: var(--md-sys-typescale-title-large-size);

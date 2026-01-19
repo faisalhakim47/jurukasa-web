@@ -3,10 +3,22 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
+const CustomDialogFlag = Symbol('CustomDialogFlag');
+
 /**
+ * This hook provide mechanism to create a custom dialog web component.
+ * The strategy to implement custom dialog is by wrapping native <dialog> element in a web component.
+ * In a component there can only be one useDialog instance to control single wrapped <dialog> element.
+ * If you need multiple dialog elements in a component, use `useElement` to control them manually.
+ * The primary dialog will be controlled by this hook and will be open by invoked command --open.
+ * The secondary dialogs can be controlled manually by getting the element reference using `useElement`.
+ * 
  * @param {HTMLElement} host
  */
 export function useDialog(host) {
+  if (CustomDialogFlag in host) throw new Error('useDialog: only one useDialog instance is allowed per host element. Read web/hooks/use-dialog.js for more information.');
+  else host[CustomDialogFlag] = true;
+
   const dialog = reactive({
     element: useElement(host, HTMLDialogElement),
     context: /** @type {HTMLElement} */ (null),
@@ -15,20 +27,21 @@ export function useDialog(host) {
 
   host.addEventListener('command', function handleCustomDialogCommands(event) {
     assertInstanceOf(CommandEvent, event);
+    // console.debug('useDialog: command event received by', host.constructor.name, event.command);
     if (dialog.element.value instanceof HTMLDialogElement) {
       if (event.source instanceof HTMLElement) {
-        if (event.source.getAttribute('commandfor') !== dialog.element.value.id) return; // Not for us
+        // console.debug('useDialog: commandfor', event.source.getAttribute('commandfor'), host.id);
+        if (event.source.getAttribute('commandfor') !== host.id) return; // Not for us
         // Use custom commands because the 'show-modal' and 'close' commands support targeting the native dialog element only
-        // The native commands won't works targeting custom web components
+        // The native commands won't works targeting custom web components. The solution is to use custom commands that is prefixed with '--'.
         dialog.context = event.source;
         if (event.command === '--open') dialog.open = true;
         else if (event.command === '--close') dialog.open = false;
         else throw new Error(`useDialog: unsupported command "${event.command}". Supported commands are "--open" and "--close".`);
+        event.stopImmediatePropagation();
       }
       else if (event.source === undefined || event.source === null) throw new Error('useDialog: command source is required. Pass the button or input element that triggers the command as the event source.');
-      else console.warn('useDialog: command source is not an HTMLElement instance. Ignoring the command source.');
-      // We ignore this rule for now. We have use case to trigger the dialog from <tr>.
-      // else { throw new Error('useDialog: command source must be an HTMLButtonElement or HTMLInputElement instance to align with web api specification.'); }
+      else { throw new Error('useDialog: command source must be an HTMLButtonElement or HTMLInputElement instance to align with web api specification.'); }
     }
     else throw new Error('useDialog: dialog element is not an HTMLDialogElement instance. Attach the element directive to a <dialog> element.');
   });

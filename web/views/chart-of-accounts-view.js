@@ -244,9 +244,10 @@ export class ChartOfAccountsViewElement extends HTMLElement {
 
     /** @param {Event} event */
     function toggleExpanded(event) {
-      assertInstanceOf(HTMLTableRowElement, event.currentTarget);
+      assertInstanceOf(HTMLButtonElement, event.currentTarget);
       const button = event.currentTarget;
       const hasChildren = button.dataset.hasChildren === 'true';
+      console.info('Toggling expanded for account code:', button.dataset.accountCode, 'Has children:', hasChildren);
       if (!hasChildren) return; // No children to expand/collapse
       const accountCode = Number(button.dataset.accountCode);
       if (state.expandedCodes.has(accountCode)) state.expandedCodes.delete(accountCode);
@@ -269,6 +270,8 @@ export class ChartOfAccountsViewElement extends HTMLElement {
         return accountsToInclude.has(account.account_code);
       });
       state.accountTree = buildAccountTree(accountsForTree);
+
+      console.info(state.accountTree);
     }
 
     function expandAll() {
@@ -334,18 +337,6 @@ export class ChartOfAccountsViewElement extends HTMLElement {
       if (!(event.target instanceof HTMLInputElement)) return;
       state.searchQuery = event.target.value;
       loadAccounts();
-    }
-
-    /** @param {Event} event */
-    function handleRowKeydown(event) {
-      assertInstanceOf(KeyboardEvent, event);
-      if (['Enter', ' '].includes(event.key)) {
-        assertInstanceOf(HTMLTableRowElement, event.currentTarget);
-        const accountCode = Number(event.currentTarget.dataset.accountCode);
-        if (isNaN(accountCode)) return;
-        toggleExpanded(event);
-        event.preventDefault();
-      }
     }
 
     useEffect(host, loadAccounts);
@@ -566,26 +557,30 @@ export class ChartOfAccountsViewElement extends HTMLElement {
       const indentPadding = node.level * 24;
       const normalBalanceText = account.normal_balance === 0 ? t('account', 'normalBalanceShortDebit') : t('account', 'normalBalanceShortCredit');
       return html`
-        <tr
-          tabindex="0"
-          aria-label="${t('account', 'accountAriaLabel', account.name)}"
-          style="cursor: ${hasChildren ? 'pointer' : 'default'};"
-          data-account-code="${account.account_code}"
-          data-has-children="${hasChildren ? 'true' : 'false'}"
-          @click=${toggleExpanded}
-          @keydown=${handleRowKeydown}
-        >
+        <tr>
           <td style="padding-left: ${16 + indentPadding}px; white-space: nowrap;">
-            <span style="display: flex; align-items: center; gap: 8px; height: 100%;">
-              ${hasChildren ? html`
-                <material-symbols
-                  name="${isExpanded ? 'keyboard_arrow_down' : 'chevron_right'}"
-                  size="20"
-                  aria-hidden="true"
-                ></material-symbols>
-              ` : html`<span style="width: 20px;"></span>`}
-              <span class="label-large" style="color: var(--md-sys-color-primary);">${account.account_code}</span>
-            </span>
+            <button
+              role="button"
+              type="button"
+              class="text"
+              aria-label="${hasChildren ? (isExpanded ? t('account', 'collapseAccountAriaLabel', account.name) : t('account', 'expandAccountAriaLabel', account.name)) : t('account', 'accountAriaLabel', account.name)}"
+              @click=${hasChildren ? toggleExpanded : nothing}
+              data-account-code="${account.account_code}"
+              data-has-children="${hasChildren ? 'true' : 'false'}"
+              ${hasChildren ? '' : 'disabled'}
+              style="padding: 0; min-width: unset; height: unset;"
+            >
+              <span style="display: flex; align-items: center; gap: 8px; height: 100%;">
+                ${hasChildren ? html`
+                  <material-symbols
+                    name="${isExpanded ? 'keyboard_arrow_down' : 'chevron_right'}"
+                    size="20"
+                    aria-hidden="true"
+                  ></material-symbols>
+                ` : html`<span style="width: 20px;"></span>`}
+                <span class="label-large" style="color: var(--md-sys-color-primary);">${account.account_code}</span>
+              </span>
+            </button>
           </td>
           <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${account.name}</td>
           <td class="center">
@@ -651,7 +646,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
         <table role="treegrid" aria-label="${t('account', 'chartOfAccountsTreeAriaLabel')}" style="--md-sys-density: -3;">
           <thead>
             <tr>
-              <th scope="col" style="width: 150px;">${t('account', 'tableHeaderCode')}</th>
+              <th scope="col" style="width: 200px;">${t('account', 'tableHeaderCode')}</th>
               <th scope="col">${t('account', 'tableHeaderName')}</th>
               <th scope="col" class="center" style="width: 100px;">${t('account', 'tableHeaderType')}</th>
               <th scope="col" class="center" style="width: 80px;">${t('account', 'tableHeaderNormal')}</th>
@@ -669,7 +664,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
 
     useEffect(host, function renderChartOfAccountsView() {
       render(html`
-        <div style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%; overflow-y: scroll;">
+        <div class="scrollable" style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%; overflow-y: scroll;">
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderFilterControls()}
             <div>

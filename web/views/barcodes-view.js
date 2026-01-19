@@ -10,6 +10,7 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
@@ -33,8 +34,8 @@ export class BarcodesViewElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const t = useTranslator(host);
 
-    const confirmDeleteDialog = useDialog(host);
-    const errorAlertDialog = useDialog(host);
+    const confirmDeleteDialog = useElement(host, HTMLDialogElement);
+    const errorAlertDialogElement = useElement(host, HTMLDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -164,7 +165,7 @@ export class BarcodesViewElement extends HTMLElement {
 
       state.selectedBarcodeCode = barcodeCode;
       state.selectedInventoryName = inventoryName;
-      confirmDeleteDialog.open = true;
+      confirmDeleteDialog.value?.showModal();
     }
 
     async function confirmUnassignBarcode() {
@@ -183,7 +184,7 @@ export class BarcodesViewElement extends HTMLElement {
 
         await tx.commit();
 
-        confirmDeleteDialog.open = false;
+        confirmDeleteDialog.value?.close();
         state.selectedBarcodeCode = null;
         state.selectedInventoryName = null;
         triggerReload();
@@ -191,7 +192,7 @@ export class BarcodesViewElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.error = error instanceof Error ? error : new Error(String(error));
-        confirmDeleteDialog.open = false;
+        confirmDeleteDialog.value?.close();
       }
       finally {
         state.isDeleting = false;
@@ -201,7 +202,7 @@ export class BarcodesViewElement extends HTMLElement {
     function handleCancelUnassign() {
       state.selectedBarcodeCode = null;
       state.selectedInventoryName = null;
-      confirmDeleteDialog.open = false;
+      confirmDeleteDialog.value?.close();
     }
 
     function handleDismissErrorDialog() {
@@ -213,8 +214,8 @@ export class BarcodesViewElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (state.error instanceof Error) errorAlertDialog.open = true;
-      else errorAlertDialog.open = false;
+      if (state.error instanceof Error) errorAlertDialogElement.value?.showModal();
+      else errorAlertDialogElement.value?.close();
     });
 
     function renderEmptyState() {
@@ -358,7 +359,7 @@ export class BarcodesViewElement extends HTMLElement {
 
     useEffect(host, function renderBarcodesView() {
       render(html`
-        <div style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%; overflow-y: scroll;">
+        <div class="scrollable" style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%; overflow-y: scroll;">
           <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
             ${renderSearchBar()}
             <button
@@ -380,7 +381,7 @@ export class BarcodesViewElement extends HTMLElement {
           @barcode-assigned=${handleBarcodeAssigned}
         ></barcode-assignment-dialog>
 
-        <dialog ${confirmDeleteDialog.element} id="confirm-delete-dialog" aria-labelledby="confirm-delete-dialog-title">
+        <dialog ${confirmDeleteDialog} id="confirm-delete-dialog" aria-labelledby="confirm-delete-dialog-title">
           <div class="container">
             <header>
               <material-symbols name="warning" size="24"></material-symbols>
@@ -421,14 +422,14 @@ export class BarcodesViewElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} id="error-alert-dialog" aria-labelledby="error-alert-dialog-title">
+        <dialog ${errorAlertDialogElement} id="error-alert-dialog" aria-labelledby="error-alert-dialog-title">
           <div class="container">
             <header>
               <material-symbols name="error" size="24"></material-symbols>
               <h2 id="error-alert-dialog-title">${t('barcode', 'errorDialogTitle')}</h2>
             </header>
             <section class="content">
-              <p>${state.error instanceof Error ? state.error.message : t('barcode', 'errorOccurredMessage')}</p>
+              <p>${state.error instanceof Error ? state.error.message : t('barcode', 'errorOccurredMessage', state.error)}</p>
             </section>
             <menu>
               <li>

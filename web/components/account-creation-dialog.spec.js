@@ -11,6 +11,7 @@ const { describe } = test;
 describe('Account Creation Dialog', function () {
   // useConsoleOutput(test);
   useStrict(test);
+
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall create a new account', async function ({ page }) {
@@ -68,7 +69,7 @@ describe('Account Creation Dialog', function () {
 
     expect(accountCreatedEvent.accountCode).toBe(12345);
 
-    const account = await page.evaluate(async function () {
+    const account = await page.evaluate(async function getAccountFromDatabase() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       const result = await database.sql`
@@ -89,7 +90,7 @@ describe('Account Creation Dialog', function () {
   test('it shall validate duplicate account code', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
+    await page.evaluate(async function setupDuplicateAccountTest(tursoDatabaseUrl) {
       document.body.innerHTML = `
         <ready-context>
           <router-context>

@@ -51,9 +51,8 @@ export class InventoryDetailsDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
 
-    const errorAlertDialog = useDialog(host);
-
     const dialog = useDialog(host);
+    const errorAlertDialog = useElement(host, HTMLDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -274,8 +273,8 @@ export class InventoryDetailsDialogElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (state.error instanceof Error) errorAlertDialog.open = true;
-      else errorAlertDialog.open = false;
+      if (state.error instanceof Error) errorAlertDialog.value?.showModal();
+      else errorAlertDialog.value?.close();
     });
 
     function renderLoadingState() {
@@ -544,7 +543,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} role="alertdialog">
+        <dialog ${errorAlertDialog} role="alertdialog">
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>

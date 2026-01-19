@@ -91,7 +91,7 @@ describe('Accounting Configuration View', function () {
     await expect(page.getByRole('dialog', { name: 'Settings Saved' })).toBeVisible();
     await expect(page.getByText('Configuration has been updated successfully.')).toBeVisible();
 
-    const configs = await page.evaluate(async function () {
+    const configs = await page.evaluate(async function fetchConfigs() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       const result = await database.sql`
@@ -126,7 +126,7 @@ describe('Accounting Configuration View', function () {
 
     await expect(page.getByRole('dialog', { name: 'Settings Saved' })).toBeVisible();
 
-    const businessType = await page.evaluate(async function () {
+    const businessType = await page.evaluate(async function fetchBusinessType() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       const result = await database.sql`SELECT value FROM config WHERE key = 'Business Type'`;
@@ -169,7 +169,7 @@ describe('Accounting Configuration View', function () {
 
     await expect(page.getByRole('dialog', { name: 'Settings Saved' })).toBeVisible();
 
-    const language = await page.evaluate(async function () {
+    const language = await page.evaluate(async function fetchLanguage() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       const result = await database.sql`SELECT value FROM config WHERE key = 'Language'`;
@@ -218,7 +218,7 @@ describe('Accounting Configuration View', function () {
     await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
     await expect(page.getByLabel('Business Name')).toHaveValue('Initial Business');
 
-    await page.evaluate(async function () {
+    await page.evaluate(async function updateBusinessName() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       await database.sql`UPDATE config SET value = 'Updated Business' WHERE key = 'Business Name'`;
@@ -232,7 +232,7 @@ describe('Accounting Configuration View', function () {
   test('it shall display error when configuration fails to load', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
+    await page.evaluate(async function setupErrorScenario(tursoDatabaseUrl) {
       // Set up contexts first (without the view)
       document.body.innerHTML = `
         <ready-context>
@@ -266,7 +266,7 @@ describe('Accounting Configuration View', function () {
   test('it shall display error dialog when save fails', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
+    await page.evaluate(async function setupSaveErrorScenario(tursoDatabaseUrl) {
       document.body.innerHTML = `
         <ready-context>
           <router-context>
@@ -284,7 +284,7 @@ describe('Accounting Configuration View', function () {
 
     await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
 
-    await page.evaluate(async function () {
+    await page.evaluate(async function dropConfigTable() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       await database.sql`DROP TABLE config`;
@@ -345,7 +345,7 @@ describe('Accounting Configuration View', function () {
 
     await expect(page.getByRole('dialog', { name: 'Settings Saved' })).toBeVisible();
 
-    const configs = await page.evaluate(async function () {
+    const configs = await page.evaluate(async function fetchAllConfigs() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       const result = await database.sql`

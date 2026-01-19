@@ -3,6 +3,7 @@ import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.
 import { useStrict } from '#test/hooks/use-strict.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
+import { useConsoleOutput } from '#test/hooks/use-console-output.js';
 
 const { describe } = test;
 
@@ -10,20 +11,25 @@ const { describe } = test;
 async function setupView(tursoDatabaseUrl) {
   document.body.innerHTML = `
     <ready-context>
-      <router-context>
-        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-          <device-context>
-            <i18n-context>
-              <main-view></main-view>
-            </i18n-context>
-          </device-context>
-        </database-context>
-      </router-context>
+      <font-context>
+        <time-context>
+          <router-context>
+            <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+              <device-context>
+                <i18n-context>
+                  <main-view></main-view>
+                </i18n-context>
+              </device-context>
+            </database-context>
+          </router-context>
+        </time-context>
+      </font-context>
     </ready-context>
   `;
 }
 
 describe('Account Tags', function () {
+  // useConsoleOutput(test);
   useStrict(test);
 
   describe('Account Tags Tab Navigation', function () {
@@ -307,9 +313,8 @@ describe('Account Tags', function () {
       await page.getByRole('link', { name: 'Books' }).click();
       await page.getByRole('tab', { name: 'Account Tags' }).click();
 
-      const treegrid = page.getByRole('treegrid', { name: 'Account Tags' });
-      const tagRow = treegrid.getByRole('row').nth(1);
-      const manageButton = tagRow.getByRole('button').first();
+      const accountTagsTreegrid = page.getByRole('treegrid', { name: 'Account Tags' });
+      const manageButton = accountTagsTreegrid.getByRole('button', { name: 'Manage Balance Sheet - Current Asset tag assignments' });
       await manageButton.click();
 
       const dialog = page.getByRole('dialog');
@@ -326,9 +331,8 @@ describe('Account Tags', function () {
       await page.getByRole('link', { name: 'Books' }).click();
       await page.getByRole('tab', { name: 'Account Tags' }).click();
 
-      const treegrid = page.getByRole('treegrid', { name: 'Account Tags' });
-      const tagRow = treegrid.getByRole('row').nth(1);
-      const editButton = tagRow.getByRole('button').first();
+      const accountTagsTreegrid = page.getByRole('treegrid', { name: 'Account Tags' });
+      const editButton = accountTagsTreegrid.getByRole('button', { name: 'Manage Balance Sheet - Current Asset tag assignments' });
       await editButton.click();
 
       const dialog = page.getByRole('dialog');
@@ -348,9 +352,8 @@ describe('Account Tags', function () {
       await page.getByRole('link', { name: 'Books' }).click();
       await page.getByRole('tab', { name: 'Account Tags' }).click();
 
-      const treegrid = page.getByRole('treegrid', { name: 'Account Tags' });
-      const tagRow = treegrid.getByRole('row').nth(1);
-      const manageButton = tagRow.getByRole('button').first();
+      const accountTagsTreegrid = page.getByRole('treegrid', { name: 'Account Tags' });
+      const manageButton = accountTagsTreegrid.getByRole('button', { name: 'Manage Balance Sheet - Current Asset tag assignments' });
       await manageButton.click();
 
       const dialog = page.getByRole('dialog');
@@ -368,9 +371,8 @@ describe('Account Tags', function () {
       await page.getByRole('link', { name: 'Books' }).click();
       await page.getByRole('tab', { name: 'Account Tags' }).click();
 
-      const treegrid = page.getByRole('treegrid', { name: 'Account Tags' });
-      const tagRow = treegrid.getByRole('row').nth(1);
-      const manageButton = tagRow.getByRole('button').first();
+      const accountTagsTreegrid = page.getByRole('treegrid', { name: 'Account Tags' });
+      const manageButton = accountTagsTreegrid.getByRole('button', { name: 'Manage Balance Sheet - Current Asset tag assignments' });
       await manageButton.click();
 
       const dialog = page.getByRole('dialog');

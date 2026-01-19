@@ -280,13 +280,10 @@ BEGIN
     (SELECT ref FROM journal_entries WHERE source_reference = 'Reconciliation #' || NEW.id ORDER BY ref DESC LIMIT 1),
     NEW.account_code,
     0,
-    SUM(rsi.debit),
+    (SELECT SUM(rsi.debit) FROM reconciliation_statement_items rsi WHERE rsi.reconciliation_session_id = NEW.id AND rsi.is_matched = 0 AND rsi.debit > 0),
     'Reconciliation - Statement debits adjustment'
-  FROM reconciliation_statement_items rsi
-  WHERE rsi.reconciliation_session_id = NEW.id
-    AND rsi.is_matched = 0
-    AND rsi.debit > 0
-  HAVING SUM(rsi.debit) > 0;
+  FROM (SELECT 1) AS dummy
+  WHERE (SELECT SUM(rsi.debit) FROM reconciliation_statement_items rsi WHERE rsi.reconciliation_session_id = NEW.id AND rsi.is_matched = 0 AND rsi.debit > 0) > 0;
 
   -- Credit entries for unmatched statement credits (increases our asset/revenue)
   -- Use Cash Over/Short account for cash counts, Reconciliation Adjustment for others
@@ -322,14 +319,11 @@ BEGIN
   SELECT
     (SELECT ref FROM journal_entries WHERE source_reference = 'Reconciliation #' || NEW.id ORDER BY ref DESC LIMIT 1),
     NEW.account_code,
-    SUM(rsi.credit),
+    (SELECT SUM(rsi.credit) FROM reconciliation_statement_items rsi WHERE rsi.reconciliation_session_id = NEW.id AND rsi.is_matched = 0 AND rsi.credit > 0),
     0,
     'Reconciliation - Statement credits adjustment'
-  FROM reconciliation_statement_items rsi
-  WHERE rsi.reconciliation_session_id = NEW.id
-    AND rsi.is_matched = 0
-    AND rsi.credit > 0
-  HAVING SUM(rsi.credit) > 0;
+  FROM (SELECT 1) AS dummy
+  WHERE (SELECT SUM(rsi.credit) FROM reconciliation_statement_items rsi WHERE rsi.reconciliation_session_id = NEW.id AND rsi.is_matched = 0 AND rsi.credit > 0) > 0;
 
   -- Post the adjustment journal entry if it has lines
   UPDATE journal_entries
@@ -465,8 +459,7 @@ SELECT
   rs.complete_time,
   rs.adjustment_journal_entry_ref,
   (rs.statement_closing_balance - rs.internal_closing_balance) AS balance_difference,
-  (SELECT COUNT(*) FROM reconciliation_discrepancies WHERE reconciliation_session_id = rs.id) AS discrepancy_count,
-  LAG(rs.reconciliation_time) OVER (PARTITION BY a.account_code ORDER BY rs.reconciliation_time) AS previous_reconciliation_time
+  (SELECT COUNT(*) FROM reconciliation_discrepancies WHERE reconciliation_session_id = rs.id) AS discrepancy_count
 FROM accounts a
 LEFT JOIN reconciliation_sessions rs ON rs.account_code = a.account_code
 WHERE rs.complete_time IS NOT NULL

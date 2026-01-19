@@ -90,6 +90,10 @@ const tagCategories = /** @type {const} */ ({
     'POS - Inventory Shrinkage',
     'POS - Payment Method',
   ],
+  'Reconciliation': [
+    'Reconciliation - Adjustment',
+    'Reconciliation - Cash Over/Short',
+  ],
 });
 
 // Tags that can only be assigned to one account
@@ -102,6 +106,7 @@ const uniqueTags = [
   'POS - Cost of Goods Sold',
   'POS - Inventory Gain',
   'POS - Inventory Shrinkage',
+  'Reconciliation - Cash Over/Short',
 ];
 
 /**
@@ -210,8 +215,9 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
 
     /**
      * @param {number} accountCode
+     * @param {HTMLInputElement} checkbox
      */
-    async function assignTag(accountCode) {
+    async function assignTag(accountCode, checkbox) {
       const tag = dialog.context?.dataset.tag;
       if (!tag) return;
 
@@ -251,6 +257,8 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
       }
       catch (error) {
         state.accounts = previousAccounts;
+        const account = state.accounts.find(function findAccount(a) { return a.account_code === accountCode; });
+        if (account) checkbox.checked = account.hasTag;
         state.error = error instanceof Error ? error : new Error(String(error));
       }
       finally {
@@ -260,8 +268,9 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
 
     /**
      * @param {number} accountCode
+     * @param {HTMLInputElement} checkbox
      */
-    async function removeTag(accountCode) {
+    async function removeTag(accountCode, checkbox) {
       const tag = dialog.context?.dataset.tag;
       if (!tag) return;
 
@@ -288,6 +297,8 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
       }
       catch (error) {
         state.accounts = previousAccounts;
+        const account = state.accounts.find(function findAccount(a) { return a.account_code === accountCode; });
+        if (account) checkbox.checked = account.hasTag;
         state.error = error instanceof Error ? error : new Error(String(error));
       }
       finally {
@@ -299,45 +310,14 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
     function handleToggleTagInteraction(event) {
       assertInstanceOf(HTMLInputElement, event.currentTarget);
       const accountCode = parseInt(event.currentTarget.value, 10);
-      if (event.currentTarget.checked) assignTag(accountCode);
-      else removeTag(accountCode);
+      if (event.currentTarget.checked) assignTag(accountCode, event.currentTarget);
+      else removeTag(accountCode, event.currentTarget);
     };
 
     /** @param {Event} event */
     function handleSearchInput(event) {
       assertInstanceOf(HTMLInputElement, event.target);
       state.searchQuery = event.target.value;
-    }
-
-    /** @param {KeyboardEvent} event */
-    function handleAccountRowKeydown(event) {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        const row = /** @type {HTMLElement} */ (event.currentTarget);
-        const checkbox = row.querySelector('input[type="checkbox"]');
-        if (checkbox instanceof HTMLInputElement) {
-          const accountCode = parseInt(checkbox.value, 10);
-          if (checkbox.checked) {
-            removeTag(accountCode);
-          } else {
-            assignTag(accountCode);
-          }
-        }
-      }
-    }
-
-    /** @param {Event} event */
-    function handleAccountRowClick(event) {
-      const row = /** @type {HTMLElement} */ (event.currentTarget);
-      const checkbox = row.querySelector('input[type="checkbox"]');
-      if (checkbox instanceof HTMLInputElement && event.target !== checkbox) {
-        const accountCode = parseInt(checkbox.value, 10);
-        if (checkbox.checked) {
-          removeTag(accountCode);
-        } else {
-          assignTag(accountCode);
-        }
-      }
     }
 
     function getFilteredAccounts() {
@@ -405,12 +385,7 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
     function renderAccountRow(account) {
       const inputId = `account-${account.account_code}`;
       return html`
-        <tr
-          data-has-tag=${account.hasTag ? 'true' : 'false'}
-          tabindex="0"
-          @click=${handleAccountRowClick}
-          @keydown=${handleAccountRowKeydown}
-        >
+        <tr data-has-tag=${account.hasTag ? 'true' : 'false'}>
           <td style="text-align: center;">
             <input
               id=${inputId}
@@ -478,7 +453,9 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
         >
           <div class="container">
             <header>
-              <h2 id="account-tag-assignment-dialog-title">${t('account', 'manageTagDialogTitle', dialog.context?.dataset.tag || 'Unknown')}</h2>
+              <hgroup>
+                <h2 id="account-tag-assignment-dialog-title">${t('account', 'manageTagDialogTitle', dialog.context?.dataset.tag || 'Unknown')}</h2>
+              </hgroup>
               <button
                 role="button"
                 type="button"
@@ -537,7 +514,9 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>${t('account', 'errorDialogTitle')}</h3>
+              <hgroup>
+                <h3>${t('account', 'errorDialogTitle')}</h3>
+              </hgroup>
             </header>
             <div class="content">
               <p>${state.error?.message}</p>

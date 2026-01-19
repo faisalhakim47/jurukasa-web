@@ -6,22 +6,42 @@ import { bypassForbiddenLocator, useStrict } from '#test/hooks/use-strict.js';
 
 const { describe } = test;
 
-/**
- * @param {string} tursoDatabaseUrl
- */
+/** @param {string} tursoDatabaseUrl */
 async function setupView(tursoDatabaseUrl) {
   window.history.replaceState({}, '', '/books/journal-entries');
   document.body.innerHTML = `
     <ready-context>
-      <router-context>
-        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-          <device-context>
-            <i18n-context>
-              <books-view></books-view>
-            </i18n-context>
-          </device-context>
-        </database-context>
-      </router-context>
+      <time-context>
+        <router-context>
+          <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+            <device-context>
+              <i18n-context>
+                <books-view></books-view>
+              </i18n-context>
+            </device-context>
+          </database-context>
+        </router-context>
+      </time-context>
+    </ready-context>
+  `;
+}
+
+/** @param {string} tursoDatabaseUrl */
+async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
+  window.history.replaceState({}, '', '/books/chart-of-accounts');
+  document.body.innerHTML = `
+    <ready-context>
+      <time-context>
+        <router-context>
+          <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+            <device-context>
+              <i18n-context>
+                <books-view></books-view>
+              </i18n-context>
+            </device-context>
+          </database-context>
+        </router-context>
+      </time-context>
     </ready-context>
   `;
 }
@@ -142,22 +162,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' })).toBeVisible();
     });
@@ -168,30 +173,15 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' })).toBeVisible();
 
       // Verify some top-level accounts from the template are displayed
-      await expect(page.getByRole('row', { name: 'Account Aset' })).toBeVisible();
-      await expect(page.getByRole('row', { name: 'Account Liabilitas' })).toBeVisible();
-      await expect(page.getByRole('row', { name: 'Account Ekuitas' })).toBeVisible();
-      await expect(page.getByRole('row', { name: 'Account Pendapatan', exact: true })).toBeVisible();
+      await expect(page.getByRole('row', { name: 'Aset' })).toBeVisible();
+      await expect(page.getByRole('row', { name: 'Liabilitas' })).toBeVisible();
+      await expect(page.getByRole('row', { name: 'Ekuitas' })).toBeVisible();
+      await expect(page.getByRole('row', { name: 'Expand Pendapatan Pendapatan — Cr IDR 0 Active Control' })).toBeVisible();
     });
 
     test('shall display account type tags', async function ({ page }) {
@@ -200,22 +190,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       await page.getByRole('button', { name: 'Expand all accounts' }).click();
 
@@ -228,22 +203,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('columnheader', { name: 'Code' })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Name' })).toBeVisible();
@@ -262,22 +222,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       const chartOfAccountsPanel = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
       await expect(chartOfAccountsPanel.getByLabel('Search', { exact: true })).toBeVisible();
@@ -289,22 +234,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       const chartOfAccountsPanel = page.getByRole('treegrid', { name: 'Chart of Accounts' });
       await expect(chartOfAccountsPanel).toBeVisible();
@@ -324,22 +254,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       const chartOfAccountsPanel = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
       await expect(chartOfAccountsPanel.getByLabel('Type', { exact: true })).toBeVisible();
@@ -351,22 +266,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       const chartOfAccountsPanel = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
 
@@ -388,22 +288,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       const chartOfAccountsPanel = page.getByRole('tabpanel', { name: 'Chart of Accounts' });
       await expect(chartOfAccountsPanel.getByLabel('Status')).toBeVisible();
@@ -417,22 +302,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('button', { name: 'Expand all accounts' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Collapse all accounts' })).toBeVisible();
@@ -444,22 +314,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' })).toBeVisible();
       await page.getByRole('button', { name: 'Expand all accounts' }).click();
@@ -473,22 +328,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' })).toBeVisible();
       await page.getByRole('button', { name: 'Expand all accounts' }).click();
@@ -506,29 +346,16 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' })).toBeVisible();
-      await page.getByRole('row', { name: 'Account Aset', exact: true }).click();
-      await expect(page.getByRole('row', { name: 'Aset Lancar' })).toBeVisible();
+      const coaTree = page.getByRole('treegrid', { name: 'Chart of Accounts' });
+      await expect(coaTree).toBeVisible();
 
-      await page.getByRole('row', { name: 'Account Aset', exact: true }).click();
-      await expect(page.getByRole('row', { name: 'Aset Lancar' })).not.toBeVisible();
+      await coaTree.getByRole('button', { name: 'Expand Aset', exact: true }).click();
+      await expect(coaTree.getByRole('button', { name: 'Expand Aset Lancar' })).toBeVisible();
+
+      await coaTree.getByRole('button', { name: 'Collapse Aset', exact: true }).click();
+      await expect(coaTree.getByRole('button', { name: 'Expand Aset Lancar' })).not.toBeVisible();
     });
   });
 
@@ -539,22 +366,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       await expect(page.getByRole('button', { name: 'Refresh accounts' })).toBeVisible();
     });
@@ -565,22 +377,7 @@ describe('Chart of Accounts', function () {
         setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
       ]);
 
-      await page.evaluate(async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
-        window.history.replaceState({}, '', '/books/chart-of-accounts');
-        document.body.innerHTML = `
-          <ready-context>
-            <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <books-view></books-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </ready-context>
-        `;
-      }, tursoLibSQLiteServer().url);
+      await page.evaluate(setupViewWithChartOfAccounts, tursoLibSQLiteServer().url);
 
       await page.getByRole('button', { name: 'Refresh accounts' }).click();
 

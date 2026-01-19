@@ -15,7 +15,7 @@ describe('Supplier Selector Dialog', function () {
   test('it shall make a choice', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function (tursoDatabaseUrl) {
+    await page.evaluate(async function setupComponentHtml(tursoDatabaseUrl) {
       document.body.innerHTML = `
         <ready-context>
           <router-context>
@@ -42,7 +42,7 @@ describe('Supplier Selector Dialog', function () {
 
     await expect(page.getByRole('dialog', { name: 'Select Supplier' }).getByText('No suppliers available')).toBeVisible();
 
-    await page.evaluate(async function () {
+    await page.evaluate(async function insertTestSuppliers() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       await database.sql`INSERT INTO suppliers (name, phone_number) VALUES ('ABC Suppliers', '+62812345678')`;
@@ -52,7 +52,7 @@ describe('Supplier Selector Dialog', function () {
     await page.getByRole('dialog', { name: 'Select Supplier' }).getByLabel('Search suppliers').fill('ABC');
 
     const [selectedSupplier] = await Promise.all([
-      page.evaluate(async function () {
+      page.evaluate(async function waitForSupplierSelectEvent() {
         return new Promise(function (resolve, reject) {
           let settled = false;
           const supplierSelectorDialog = document.getElementById('supplier-selector-dialog');

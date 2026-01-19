@@ -1,1 +1,1 @@
-export { reactive, shallowReactive, ref, shallowRef, watch, effect, computed, readonly, isShallow, stop } from '@vue/reactivity';
+export { reactive, shallowReactive, ref, shallowRef, watch, effect, computed, readonly, isShallow, isRef, isReactive, stop } from '@vue/reactivity';

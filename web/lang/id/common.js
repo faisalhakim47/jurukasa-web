@@ -27,6 +27,7 @@ export default /** @type {Partial<CommonTranslation>} */ ({
   stockNavLabel: 'Stok',
   procureNavLabel: 'Pengadaan',
   saleNavLabel: 'Penjualan',
+  reconciliationNavLabel: 'Rekonsiliasi',
   settingsNavLabel: 'Pengaturan',
   pageNotFound404Title: '404 - Halaman Tidak Ditemukan',
 

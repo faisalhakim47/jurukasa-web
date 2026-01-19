@@ -15,6 +15,7 @@ import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
 import '#web/components/account-selector-dialog.js';
+import { useElement } from '#web/hooks/use-element.js';
 
 /**
  * Inventory Creation Dialog Component
@@ -29,9 +30,8 @@ export class InventoryCreationDialogElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const t = useTranslator(host);
 
-    const errorAlertDialog = useDialog(host);
-
     const dialog = useDialog(host);
+    const errorAlertDialog = useElement(host, HTMLDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -142,8 +142,8 @@ export class InventoryCreationDialogElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.open = true;
-      else errorAlertDialog.open = false;
+      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      else errorAlertDialog.value?.close();
     });
 
     function handleDismissErrorDialog() { form.error = null; }
@@ -267,7 +267,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
           </form>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} role="alertdialog">
+        <dialog ${errorAlertDialog} role="alertdialog">
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>

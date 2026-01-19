@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/hooks/use-console-output.js';
-import { useStrict } from '#test/hooks/use-strict.js';
+import { useStrict, bypassForbiddenLocator } from '#test/hooks/use-strict.js';
 import { loadEmptyFixture } from '#test/tools/fixture.js';
 import { setupDatabase } from '#test/tools/database.js';
 
@@ -12,15 +12,17 @@ async function setupView(tursoDatabaseUrl) {
   window.history.replaceState({}, '', '/books/reports');
   document.body.innerHTML = `
     <ready-context>
-      <router-context>
-        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-          <device-context>
-            <i18n-context>
-              <books-view></books-view>
-            </i18n-context>
-          </device-context>
-        </database-context>
-      </router-context>
+      <time-context>
+        <router-context>
+          <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+            <device-context>
+              <i18n-context>
+                <books-view></books-view>
+              </i18n-context>
+            </device-context>
+          </database-context>
+        </router-context>
+      </time-context>
     </ready-context>
   `;
 }
@@ -347,7 +349,7 @@ describe('Financial Reports', function () {
       await reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' }).click();
 
       const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
-      const headerGenerateButton = reportsPanel.locator('header').getByRole('button', { name: 'Generate Report' });
+      const headerGenerateButton = reportsPanel.getByRole('button', { name: 'Generate Report' });
       await expect(headerGenerateButton).not.toBeVisible();
     });
   });
@@ -383,7 +385,7 @@ describe('Financial Reports', function () {
       await expect(page.getByRole('table', { name: 'Trial Balance' })).toBeVisible();
 
       const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
-      await reportsPanel.locator('header').getByRole('button', { name: 'Generate Report' }).click();
+      await reportsPanel.getByRole('button', { name: 'Generate Report' }).first().click();
 
       await page.getByLabel('Report Date', { exact: true }).click();
       const reportMenu = page.getByRole('menu', { name: 'Report date menu' });

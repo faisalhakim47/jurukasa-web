@@ -134,7 +134,7 @@ describe('Payment Methods View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByText('No Payment Methods')).toBeVisible();
+    await expect(page.getByText('No payment methods configured')).toBeVisible();
 
     await page.getByRole('button', { name: 'Add Payment Method' }).first().click();
 

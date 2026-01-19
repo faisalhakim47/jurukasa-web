@@ -278,6 +278,7 @@ describe('Settings View', function () {
       await page.getByRole('tab', { name: 'Payment Methods' }).click();
 
       const paymentsPanel = page.getByRole('tabpanel', { name: 'Payment Methods' });
+      await expect(paymentsPanel.getByRole('heading', { name: 'No payment methods configured' })).toBeVisible();
       await paymentsPanel.getByRole('button', { name: 'Add Payment Method' }).first().click();
 
       await expect(page.getByRole('dialog', { name: 'Create Payment Method' })).toBeVisible();
@@ -293,6 +294,7 @@ describe('Settings View', function () {
       await page.getByRole('tab', { name: 'Payment Methods' }).click();
 
       const paymentsPanel = page.getByRole('tabpanel', { name: 'Payment Methods' });
+      await expect(paymentsPanel.getByRole('heading', { name: 'No payment methods configured' })).toBeVisible();
       await paymentsPanel.getByRole('button', { name: 'Add Payment Method' }).first().click();
 
       const dialog = page.getByRole('dialog', { name: 'Create Payment Method' });

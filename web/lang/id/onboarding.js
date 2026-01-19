@@ -54,5 +54,5 @@ export default /** @type {Partial<OnboardingTranslation>} */ ({
   chartOfAccountsSetupTitle: 'Pilih Template Daftar Akun',
   chartOfAccountsSetupSubmitLabel: 'Selesai',
 
-  unknownState: 'Status tidak dikenal: {0}',
+  unknownState: 'Status tidak dikenal: %d',
 });

@@ -9,3 +9,12 @@ export function assertInstanceOf(constructor, value) {
     throw new TypeError(`Expected value to be an instance of ${constructor.name}. Got: ${value}`);
   }
 }
+
+
+/**
+ * @param {unknown} query
+ * @returns {asserts query is TemplateStringsArray}
+ */
+export function assertTemplateStringsArray(query) {
+  if (!Array.isArray(query)) throw new TypeError('Expected TemplateStringsArray as the first argument.');
+}

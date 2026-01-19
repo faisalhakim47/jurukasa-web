@@ -232,7 +232,9 @@ export class AccountCreationDialogElement extends HTMLElement {
         >
           <form class="container" @submit=${handleSubmit}>
             <header>
-              <h2 id="account-creation-dialog-title">${t('account', 'createDialogTitle')}</h2>
+              <hgroup>
+                <h2 id="account-creation-dialog-title">${t('account', 'createDialogTitle')}</h2>
+              </hgroup>
               <button
                 role="button"
                 type="button"

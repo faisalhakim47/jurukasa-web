@@ -195,15 +195,7 @@ describe('Stock Takings View', function () {
     await expect(tableContent.getByText('#1')).toBeVisible();
 
     // Add a new stock taking via database
-    await page.evaluate(async function () {
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      
-      await database.sql`
-        INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost)
-        VALUES (2, 1, 2000000, 50, 50, 500000, 500000)
-      `;
-    });
+    await page.evaluate(insertNewStockTaking);
 
     // Click refresh button
     await page.getByRole('button', { name: 'Refresh' }).click();
@@ -211,6 +203,16 @@ describe('Stock Takings View', function () {
     // Verify new stock taking appears
     await expect(tableContent.getByText('#2')).toBeVisible();
   });
+
+  function insertNewStockTaking() {
+    /** @type {DatabaseContextElement} */
+    const database = document.querySelector('database-context');
+    
+    return database.sql`
+      INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost)
+      VALUES (2, 1, 2000000, 50, 50, 500000, 500000)
+    `;
+  }
 
   test('it shall display correct date format for audit time', async function ({ page }) {
     const timestamp = new Date('2025-01-01T10:00:00Z').getTime();
@@ -230,7 +232,7 @@ describe('Stock Takings View', function () {
     // Verify date is formatted (the exact format depends on i18n configuration)
     // We just check that some date-like text appears
     const tableContent = page.getByRole('table', { name: 'Stock takings list' });
-    const dateCell = tableContent.getByText(/2025|Jan|01/i);
+    const dateCell = tableContent.getByText('Jan 1, 2025', { exact: true });
     await expect(dateCell).toBeVisible();
   });
 });

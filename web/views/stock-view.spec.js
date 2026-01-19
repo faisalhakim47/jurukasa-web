@@ -25,6 +25,12 @@ async function setupStockView(tursoDatabaseUrl) {
   `;
 };
 
+function navigateToInvalidStockRoute() {
+  /** @type {import('#web/contexts/router-context.js').RouterContextElement} */
+  const router = document.querySelector('router-context');
+  router.navigate({ pathname: '/stock/invalid-route' });
+}
+
 describe('Stock View', function () {
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
@@ -132,11 +138,7 @@ describe('Stock View', function () {
       await loadEmptyFixture(page);
       await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
 
-      await page.evaluate(async function () {
-        /** @type {import('#web/contexts/router-context.js').RouterContextElement} */
-        const router = document.querySelector('router-context');
-        router.navigate({ pathname: '/stock/invalid-route' });
-      });
+      await page.evaluate(navigateToInvalidStockRoute);
 
       await expect(page.getByRole('dialog')).toBeVisible();
     });

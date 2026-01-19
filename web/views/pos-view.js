@@ -9,7 +9,7 @@ import { useBusyStateUntil } from '#web/contexts/ready-context.js';
 import { readValue } from '#web/directives/read-value.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
-import { useDialog } from '#web/hooks/use-dialog.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
@@ -90,8 +90,8 @@ export class POSViewElement extends HTMLElement {
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
-    const errorAlertDialog = useDialog(host);
-    const successDialog = useDialog(host);
+    const errorAlertDialogElement = useElement(host, HTMLDialogElement);
+    const successDialogElement = useElement(host, HTMLDialogElement);
 
     const state = reactive({
       // Inventory selector
@@ -583,13 +583,13 @@ export class POSViewElement extends HTMLElement {
         form.state = 'success';
         form.lastSaleId = saleId;
 
-        successDialog.open = true;
+        successDialogElement.value?.showModal();
         await feedbackDelay();
         clearSale();
         loadInventories();
 
         await feedbackDelay();
-        successDialog.open = false;
+        successDialogElement.value?.close();
         form.state = 'idle';
       }
       catch (error) {
@@ -600,7 +600,8 @@ export class POSViewElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      errorAlertDialog.open = form.error instanceof Error && form.state !== 'submitting';
+      if (form.error instanceof Error && form.state !== 'submitting') errorAlertDialogElement.value?.showModal();
+      else errorAlertDialogElement.value?.close();
     });
 
     function handleDismissErrorDialog() {
@@ -667,6 +668,12 @@ export class POSViewElement extends HTMLElement {
     function handlePaymentAmountInput(event) {
       assertInstanceOf(HTMLInputElement, event.target);
       state.paymentAmount = parseInt(event.target.value, 10) || null;
+    }
+
+    /** @param {Event} event */
+    function handleSaleTimeInput(event) {
+      assertInstanceOf(HTMLInputElement, event.target);
+      state.saleTime = event.target.value;
     }
 
     /** @param {Event} event */
@@ -841,11 +848,11 @@ export class POSViewElement extends HTMLElement {
               <material-symbols name="schedule" class="leading-icon" aria-hidden="true"></material-symbols>
               <label for="sale-time-input">${t('pos', 'saleTimeLabel')}</label>
               <input
+                ${readValue(state, 'saleTime')}
                 id="sale-time-input"
                 type="datetime-local"
                 placeholder=" "
-                .value=${state.saleTime}
-                @input=${(e) => { state.saleTime = e.target.value; }}
+                @input=${handleSaleTimeInput}
               />
             </div>
           </div>
@@ -1151,7 +1158,7 @@ export class POSViewElement extends HTMLElement {
                         inputmode="numeric"
                         min="1"
                         placeholder=" "
-                        .value=${String(state.paymentAmount ?? '')}
+                        ${readValue(state, 'paymentAmount')}
                         @input=${handlePaymentAmountInput}
                       />
                     </div>
@@ -1359,7 +1366,7 @@ export class POSViewElement extends HTMLElement {
           ${renderInventorySelector()}
         </div>
 
-        <dialog ${errorAlertDialog.element} role="alertdialog">
+        <dialog ${errorAlertDialogElement} role="alertdialog">
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
@@ -1381,7 +1388,7 @@ export class POSViewElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${successDialog.element} role="alertdialog">
+        <dialog ${successDialogElement} role="alertdialog">
           <div class="container">
             <material-symbols name="check_circle" style="color: var(--md-sys-color-primary);"></material-symbols>
             <header>

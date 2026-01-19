@@ -23,6 +23,7 @@ Many part of the applications uses web component incuding:
   - Prevent default form submission behavior using `event.preventDefault()` in the form submission event handler
   - Process the form data in the form submission event handler
   - On update, prefill the form fields using the `value` attribute as initial value, no data binding
+  - Use one-way data flow: a component supply initial value by value attribute (not value property), then the input element will manage the actual value state itself. When component need to read the current value, use readValue directive.
   - All form state shall be managed by the DOM elements itself instead of using component state
 - Event handling shall use standard DOM event handling mechanism using `addEventListener` and `dispatchEvent` methods.
 - Use `@event-name` event attachment mechanism via `lit-html` to attach event listeners in the template rendering function.

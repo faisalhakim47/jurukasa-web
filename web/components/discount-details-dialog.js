@@ -4,6 +4,7 @@ import { repeat } from 'lit-html/directives/repeat.js';
 
 import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
@@ -51,8 +52,8 @@ export class DiscountDetailsDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
 
-    const errorAlertDialog = useDialog(host);
-    const deleteConfirmDialog = useDialog(host);
+    const errorAlertDialog = useElement(host, HTMLDialogElement);
+    const deleteConfirmDialog = useElement(host, HTMLDialogElement);
 
     const dialog = useDialog(host);
     const render = useRender(host);
@@ -284,11 +285,13 @@ export class DiscountDetailsDialogElement extends HTMLElement {
     }
 
     function handleDeleteConfirm() {
-      deleteConfirmDialog.open = true;
+      const dialogElement = deleteConfirmDialog.value;
+      if (dialogElement instanceof HTMLDialogElement) dialogElement.showModal();
     }
 
     function handleDeleteCancel() {
-      deleteConfirmDialog.open = false;
+      const dialogElement = deleteConfirmDialog.value;
+      if (dialogElement instanceof HTMLDialogElement) dialogElement.close();
     }
 
     async function handleDelete() {
@@ -323,13 +326,14 @@ export class DiscountDetailsDialogElement extends HTMLElement {
           composed: true,
         }));
 
-        deleteConfirmDialog.open = false;
+        deleteConfirmDialog.value?.close();
         dialog.open = false;
       }
       catch (error) {
         await tx.rollback();
         state.error = error instanceof Error ? error : new Error(String(error));
-        deleteConfirmDialog.open = false;
+        const deleteDialogElement = deleteConfirmDialog.value;
+        if (deleteDialogElement instanceof HTMLDialogElement) deleteDialogElement.close();
       }
       finally {
         state.isDeleting = false;
@@ -339,8 +343,11 @@ export class DiscountDetailsDialogElement extends HTMLElement {
     function handleDismissErrorDialog() { state.error = null; }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (state.error instanceof Error) errorAlertDialog.open = true;
-      else errorAlertDialog.open = false;
+      const errorDialogElement = errorAlertDialog.value;
+      if (errorDialogElement instanceof HTMLDialogElement) {
+        if (state.error instanceof Error) errorDialogElement.showModal();
+        else errorDialogElement.close();
+      }
     });
 
     function renderLoadingState() {
@@ -694,9 +701,11 @@ export class DiscountDetailsDialogElement extends HTMLElement {
         >
           <div class="container">
             <header>
-              <h2 id="discount-details-dialog-title">
-                ${state.discount ? state.discount.name : t('discount', 'detailsDialogTitle')}
-              </h2>
+              <hgroup>
+                <h2 id="discount-details-dialog-title">
+                  ${state.discount ? state.discount.name : t('discount', 'detailsDialogTitle')}
+                </h2>
+              </hgroup>
               <button
                 role="button"
                 type="button"
@@ -721,11 +730,13 @@ export class DiscountDetailsDialogElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} role="alertdialog">
+        <dialog ${errorAlertDialog} role="alertdialog">
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>${t('discount', 'errorDialogTitle')}</h3>
+              <hgroup>
+                <h3>${t('discount', 'errorDialogTitle')}</h3>
+              </hgroup>
             </header>
             <div class="content">
               <p>${state.error?.message}</p>
@@ -743,11 +754,13 @@ export class DiscountDetailsDialogElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${deleteConfirmDialog.element} role="alertdialog" aria-labelledby="delete-confirm-title">
+        <dialog ${deleteConfirmDialog} role="alertdialog" aria-labelledby="delete-confirm-title">
           <div class="container">
             <material-symbols name="delete"></material-symbols>
             <header>
-              <h3 id="delete-confirm-title">${t('discount', 'deleteConfirmDialogTitle')}</h3>
+              <hgroup>
+                <h3 id="delete-confirm-title">${t('discount', 'deleteConfirmDialogTitle')}</h3>
+              </hgroup>
             </header>
             <div class="content">
               <p>${t('discount', 'deleteConfirmMessage', state.discount?.name || '')}</p>

@@ -4,6 +4,7 @@ import { html, nothing } from 'lit-html';
 import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { TimeContextElement } from '#web/contexts/time-context.js';
@@ -33,8 +34,8 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
     const time = useContext(host, TimeContextElement);
 
     const t = useTranslator(host);
-    const errorAlertDialog = useDialog(host);
     const dialog = useDialog(host);
+    const errorAlertDialog = useElement(host, HTMLDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -238,8 +239,8 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.open = true;
-      else errorAlertDialog.open = false;
+      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      else errorAlertDialog.value?.close();
     });
 
     function handleDismissErrorDialog() { form.error = null; }
@@ -351,12 +352,11 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                   <div class="outlined-text-field" style="margin-bottom: 16px;">
                     <div class="container">
                       <label for="fixed-asset-description-input">${t('fixedAsset', 'descriptionLabel')}</label>
-                      <textarea
+                      <input
                         id="fixed-asset-description-input"
                         name="description"
                         placeholder=" "
-                        rows="2"
-                      ></textarea>
+                      />
                     </div>
                     <div class="supporting-text">${t('fixedAsset', 'descriptionSupportingText')}</div>
                   </div>
@@ -484,7 +484,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
           </form>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} role="alertdialog">
+        <dialog ${errorAlertDialog} role="alertdialog">
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>

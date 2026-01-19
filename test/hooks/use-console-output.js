@@ -8,20 +8,20 @@ import { stdout } from 'node:process';
 export function useConsoleOutput(test) {
   const { beforeEach } = test;
   beforeEach(async function setupLogMapping({ context }) {
-    context.addListener('console', function mapLog(msg) {
+    context.addListener('console', function eachLog(msg) {
       const type = msg.type();
       const text = msg.text();
       stdout.write(`[console:${type}] `);
       stdout.write(text);
       stdout.write(EOL);
     });
-    context.addListener('requestfailed', function logFailedRequest(request) {
+    context.addListener('requestfailed', function eachFailedRequest(request) {
       stdout.write(`[request:failed] `);
       stdout.write(`${request.method()} ${request.url()}`);
       stdout.write(EOL);
     });
-    context.addListener('page', function handleNewPage(page) {
-      page.addListener('pageerror', function mapPageError(error) {
+    context.addListener('page', function eachNewPage(page) {
+      page.addListener('pageerror', function eachPageError(error) {
         stdout.write(`[page:error] `);
         stdout.write(error.stack);
         stdout.write(EOL);

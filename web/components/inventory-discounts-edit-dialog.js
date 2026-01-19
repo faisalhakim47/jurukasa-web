@@ -15,6 +15,8 @@ import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
+import { readValue } from '#web/directives/read-value.js';
+import { useElement } from '#web/hooks/use-element.js';
 
 /**
  * @typedef {object} InventoryInfo
@@ -47,9 +49,8 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
 
-    const errorAlertDialog = useDialog(host);
-
     const dialog = useDialog(host);
+    const errorAlertDialog = useElement(host, HTMLDialogElement);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -162,8 +163,8 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
       if (isNaN(index)) return;
       const value = parseInt(event.target.value, 10);
       if (isNaN(value)) return;
-      state.discounts = state.discounts.map(function (discount, i) {
-        if (i !== index) return discount;
+      state.discounts = state.discounts.map(function calculateDiscountAmount(discount, index) {
+        if (index !== index) return discount;
         return { ...discount, amount: value };
       });
     }
@@ -254,8 +255,8 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.open = true;
-      else errorAlertDialog.open = false;
+      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      else errorAlertDialog.value?.close();
     });
 
     function handleDismissErrorDialog() { form.error = null; }
@@ -321,7 +322,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
               min="1"
               required
               data-index="${index}"
-              .value="${String(discount.multiple_of_quantity)}"
+              ${readValue(discount, 'multiple_of_quantity')}
               @input=${handleQuantityChange}
               style="
                 width: 100%;
@@ -343,7 +344,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
               min="1"
               required
               data-index="${index}"
-              .value="${String(discount.amount)}"
+              ${readValue(discount, 'amount')}
               @input=${handleAmountChange}
               style="
                 width: 100%;
@@ -480,7 +481,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
           </form>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} role="alertdialog">
+        <dialog ${errorAlertDialog} role="alertdialog">
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>

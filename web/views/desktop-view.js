@@ -16,6 +16,7 @@ import '#web/views/dashboard-view.js';
 import '#web/views/pos-view.js';
 import '#web/views/procurement-view.js';
 import '#web/views/purchase-creation-view.js';
+import '#web/views/reconciliation-view.js';
 import '#web/views/sale-view.js';
 import '#web/views/settings-view.js';
 import '#web/views/stock-taking-creation-view.js';
@@ -55,6 +56,7 @@ export class DesktopViewElement extends HTMLElement {
       else if (pathname.startsWith('/procurement')) return html`<procurement-view></procurement-view>`;
       else if (pathname.startsWith('/sale/point-of-sales')) return html`<pos-view></pos-view>`;
       else if (pathname.startsWith('/sale')) return html`<sale-view></sale-view>`;
+      else if (pathname.startsWith('/reconciliation')) return html`<reconciliation-view></reconciliation-view>`;
       else if (pathname.startsWith('/settings')) return html`<settings-view></settings-view>`;
       else return html`
         <div style="padding: 32px;">
@@ -89,6 +91,10 @@ export class DesktopViewElement extends HTMLElement {
               <router-link href="/sale" aria-current=${currentPath.startsWith('/sale') ? 'page' : 'false'}>
                 <material-symbols name="receipt_long"></material-symbols>
                 <span>${t('common', 'saleNavLabel')}</span>
+              </router-link>
+              <router-link href="/reconciliation" aria-current=${currentPath.startsWith('/reconciliation') ? 'page' : 'false'}>
+                <material-symbols name="rule"></material-symbols>
+                <span>${t('common', 'reconciliationNavLabel')}</span>
               </router-link>
               <div style="flex-grow: 1;"></div>
               <hr />

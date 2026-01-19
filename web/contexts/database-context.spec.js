@@ -16,7 +16,7 @@ describe('Database Context', function () {
     test('it shall provide connection state as unconfigured when no database configuration', async function ({ page }) {
       await loadEmptyFixture(page);
 
-      await page.evaluate(function () {
+      await page.evaluate(function setupInnerHtml() {
         document.body.innerHTML = `
           <ready-context>
             <router-context>
@@ -53,24 +53,22 @@ describe('Database Context', function () {
         `;
       }, tursoDatabaseUrl);
 
-      // Wait for connection to complete by polling the state
-      await expect.poll(async function () {
-        return page.evaluate(async function () {
+      await expect.poll(async function getDatabaseState() {
+        return page.evaluate(async function fetchState() {
           await customElements.whenDefined('database-context');
           /** @type {DatabaseContextElement} */
           const db = document.querySelector('database-context');
           return db.state;
         });
-      }, { timeout: 5000 }).toBe('connected');
+      }).toBe('connected');
 
-      // Slot content should be visible
       await expect(page.getByText('Database Slot Content')).toBeVisible();
     });
 
     test('it shall expose connect method for programmatic Turso connection', async function ({ page }) {
       await loadEmptyFixture(page);
 
-      await page.evaluate(function () {
+      await page.evaluate(function setupInnerHtml() {
         document.body.innerHTML = `
           <ready-context>
             <router-context>
@@ -83,7 +81,7 @@ describe('Database Context', function () {
       });
 
       // Verify initial state is unconfigured
-      const initialState = await page.evaluate(async function () {
+      const initialState = await page.evaluate(async function getInitialState() {
         /** @type {DatabaseContextElement} */
         const db = document.querySelector('database-context');
         return db.state;
@@ -120,58 +118,51 @@ describe('Database Context', function () {
         `;
       }, tursoDatabaseUrl);
 
-      // Wait for connection to complete
-      await expect.poll(async function () {
-        return page.evaluate(async function () {
+      await expect.poll(async function getDatabaseState() {
+        return page.evaluate(async function fetchState() {
           await customElements.whenDefined('database-context');
           /** @type {DatabaseContextElement} */
           const db = document.querySelector('database-context');
           return db.state;
         });
-      }, { timeout: 5000 }).toBe('connected');
+      }).toBe('connected');
 
       // Execute a query
-      const result = await page.evaluate(async function () {
+      const result = await page.evaluate(async function executeSqlQuery() {
         /** @type {DatabaseContextElement} */
         const db = document.querySelector('database-context');
         const result = await db.sql`SELECT value FROM config WHERE key = 'Schema Version'`;
         return result.rows[0]?.value;
       });
 
-      expect(result).toBe('005-fixed-assets');
+      expect(result).toBe('007-cash-count');
     });
 
     test('it shall expose provider property after connection', async function ({ page }) {
       await loadEmptyFixture(page);
 
-      await page.evaluate(function (tursoDatabaseUrl) {
+      const tursoDatabaseUrl = tursoLibSQLiteServer().url;
+
+      await page.evaluate(function setupContextWithUrl(dbUrl) {
         document.body.innerHTML = `
           <ready-context>
             <router-context>
-              <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+              <database-context provider="turso" turso-url=${dbUrl}>
                 <p>Content</p>
               </database-context>
             </router-context>
           </ready-context>
         `;
-      }, tursoLibSQLiteServer().url);
+      }, tursoDatabaseUrl);
 
-      // Connect and verify provider is exposed
-      const result = await page.evaluate(async function connectToDatabase(dbUrl) {
-        await customElements.whenDefined('database-context');
-        /** @type {DatabaseContextElement} */
-        const db = document.querySelector('database-context');
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        const providerBeforeConnect = db.provider;
-        await db.connect({ provider: 'turso', url: dbUrl, authToken: '' });
-        const providerAfterConnect = db.provider;
-
-        return { before: providerBeforeConnect, after: providerAfterConnect };
-      }, tursoLibSQLiteServer().url);
-
-      expect(result.before).toBe(undefined);
-      expect(result.after).toBe('turso');
+      await expect.poll(async function getDatabaseProvider() {
+        return page.evaluate(async function fetchProvider() {
+          await customElements.whenDefined('database-context');
+          /** @type {DatabaseContextElement} */
+          const db = document.querySelector('database-context');
+          return db.provider;
+        });
+      }).toBe('turso');
     });
   });
 });

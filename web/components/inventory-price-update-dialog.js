@@ -4,6 +4,7 @@ import { html, nothing } from 'lit-html';
 import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useContext } from '#web/hooks/use-context.js';
@@ -38,7 +39,10 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
 
-    const errorAlertDialog = useDialog(host);
+    const errorAlertDialog = reactive({
+      element: useElement(host, HTMLDialogElement),
+      open: false,
+    });
 
     const dialog = useDialog(host);
     const render = useRender(host);
@@ -146,8 +150,11 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.open = true;
-      else errorAlertDialog.open = false;
+      const errorDialogElement = errorAlertDialog.element.value;
+      if (errorDialogElement instanceof HTMLDialogElement) {
+        if (form.error instanceof Error) errorDialogElement.showModal();
+        else errorDialogElement.close();
+      }
     });
 
     function handleDismissErrorDialog() { form.error = null; }

@@ -3,6 +3,7 @@ import { html, nothing } from 'lit-html';
 
 import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { readValue } from '#web/directives/read-value.js';
@@ -51,8 +52,14 @@ export class SupplierDetailsDialogElement extends HTMLElement {
     const database = useContext(host, DatabaseContextElement);
     const t = useTranslator(host);
 
-    const errorAlertDialog = useDialog(host);
-    const deleteConfirmDialog = useDialog(host);
+    const errorAlertDialog = reactive({
+      element: useElement(host, HTMLDialogElement),
+      open: false,
+    });
+    const deleteConfirmDialog = reactive({
+      element: useElement(host, HTMLDialogElement),
+      open: false,
+    });
 
     const dialog = useDialog(host);
     const render = useRender(host);
@@ -432,8 +439,20 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       }
     }
 
+    function handleInventorySelectClick(event) {
+      handleInventorySelect(event);
+    }
+
+    function handleInventorySelectKeydown(event) {
+      handleInventoryKeydown(event);
+    }
+
     /** @param {Event} event */
     function handleInventorySelect(event) {
+      const validEvent = (event instanceof MouseEvent && event.type === 'click')
+        || (event instanceof KeyboardEvent && (['Enter', ' '].includes(event.key)));
+      if (!validEvent) return;
+
       const target = /** @type {HTMLElement} */ (event.currentTarget);
       const inventoryId = Number(target.dataset.inventoryId);
       selectInventory(inventoryId);
@@ -516,6 +535,44 @@ export class SupplierDetailsDialogElement extends HTMLElement {
     useEffect(host, function syncErrorAlertDialogState() {
       if (state.error instanceof Error) errorAlertDialog.open = true;
       else errorAlertDialog.open = false;
+    });
+
+    useEffect(host, function syncErrorAlertDialogElement() {
+      const dialogElement = errorAlertDialog.element.value;
+      if (dialogElement instanceof HTMLDialogElement) {
+        if (errorAlertDialog.open) dialogElement.showModal();
+        else dialogElement.close();
+      }
+    });
+
+    useEffect(host, function syncErrorAlertDialogCloseEvent() {
+      const dialogElement = errorAlertDialog.element.value;
+      if (dialogElement instanceof HTMLDialogElement) {
+        function handleClose() { errorAlertDialog.open = false; }
+        dialogElement.addEventListener('close', handleClose);
+        return function cleanup() {
+          dialogElement.removeEventListener('close', handleClose);
+        };
+      }
+    });
+
+    useEffect(host, function syncDeleteConfirmDialogElement() {
+      const dialogElement = deleteConfirmDialog.element.value;
+      if (dialogElement instanceof HTMLDialogElement) {
+        if (deleteConfirmDialog.open) dialogElement.showModal();
+        else dialogElement.close();
+      }
+    });
+
+    useEffect(host, function syncDeleteConfirmDialogCloseEvent() {
+      const dialogElement = deleteConfirmDialog.element.value;
+      if (dialogElement instanceof HTMLDialogElement) {
+        function handleClose() { deleteConfirmDialog.open = false; }
+        dialogElement.addEventListener('close', handleClose);
+        return function cleanup() {
+          dialogElement.removeEventListener('close', handleClose);
+        };
+      }
     });
 
     function renderLoadingState() {
@@ -701,8 +758,8 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                       tabindex="0"
                       aria-selected="false"
                       data-inventory-id="${inv.id}"
-                      @click=${handleInventorySelect}
-                      @keydown=${handleInventoryKeydown}
+                      @click=${handleInventorySelectClick}
+                      @keydown=${handleInventorySelectKeydown}
                       style="
                         padding: 12px 16px;
                         cursor: pointer;
@@ -749,7 +806,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                     inputmode="numeric"
                     min="1"
                     placeholder=" "
-                    .value=${String(state.newQuantityConversion ?? '')}
+                    ${readValue(state, 'newQuantityConversion')}
                     @input=${handleQuantityConversionInput}
                   />
                 </div>
@@ -762,7 +819,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                     id="add-supplier-name-input"
                     type="text"
                     placeholder=" "
-                    .value=${state.newSupplierName}
+                    ${readValue(state, 'newSupplierName')}
                     @input=${handleSupplierNameInput}
                   />
                 </div>
@@ -815,7 +872,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                   inputmode="numeric"
                   min="1"
                   placeholder=" "
-                  .value=${String(state.newQuantityConversion ?? '')}
+                  ${readValue(state, 'newQuantityConversion')}
                   @input=${handleQuantityConversionInput}
                 />
               </div>
@@ -828,7 +885,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                   id="edit-supplier-name-input"
                   type="text"
                   placeholder=" "
-                  .value=${state.newSupplierName}
+                  ${readValue(state, 'newSupplierName')}
                   @input=${handleSupplierNameInput}
                 />
               </div>
@@ -942,11 +999,11 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           </div>
         </dialog>
 
-        <dialog ${errorAlertDialog.element} role="alertdialog">
+        <dialog ${errorAlertDialog.element} role="alertdialog" aria-labelledby="error-alert-dialog-title" style="z-index: 1000;">
           <div class="container">
             <material-symbols name="error"></material-symbols>
             <header>
-              <h3>${t('supplier', 'errorDialogTitle')}</h3>
+              <h3 id="error-alert-dialog-title">${t('supplier', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
               <p>${state.error?.message}</p>

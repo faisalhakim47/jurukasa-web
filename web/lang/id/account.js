@@ -25,6 +25,7 @@ export default /** @type {Partial<AccountTranslation>} */ ({
   invalidNormalBalanceError: 'Saldo normal tidak valid.',
   accountTypeRequiredError: 'Tipe akun wajib diisi.',
   errorDialogTitle: 'Kesalahan',
+  unknownErrorMessage: 'Terjadi kesalahan tak terduga. Silakan coba lagi.',
   dismissButtonLabel: 'Tutup',
 
   // Account Selector Dialog
@@ -39,7 +40,7 @@ export default /** @type {Partial<AccountTranslation>} */ ({
   cancelButtonLabel: 'Batal',
 
   // Account Tag Assignment Dialog
-  manageTagDialogTitle: 'Kelola Tag: %s',
+  manageTagDialogTitle: 'Kelola Tag %s',
   manageTagAriaLabel: 'Kelola penugasan tag %s',
   categoryLabel: 'Kategori:',
   accountsAssignedMessage: '%d akun ditetapkan',
@@ -96,6 +97,8 @@ export default /** @type {Partial<AccountTranslation>} */ ({
   tableHeaderStatus: 'Status',
   tableHeaderKind: 'Jenis',
   accountAriaLabel: 'Akun %s',
+  expandAccountAriaLabel: 'Bentangkan %s',
+  collapseAccountAriaLabel: 'Ciutkan %s',
   accountStatusActive: 'Aktif',
   accountStatusInactive: 'Nonaktif',
   accountKindPosting: 'Posting',
@@ -129,6 +132,8 @@ export default /** @type {Partial<AccountTranslation>} */ ({
   noAccountTagsFoundMessage: 'Coba sesuaikan pencarian atau filter Anda.',
   noAccountTagsFoundEmptyMessage: 'Tag akun digunakan untuk mengkategorikan akun untuk pelaporan keuangan. Buat akun dan tetapkan tag untuk mengatur bagan akun Anda.',
   tagAriaLabel: 'Tag %s',
+  expandTagAriaLabel: 'Bentangkan %s',
+  collapseTagAriaLabel: 'Ciutkan %s',
   accountTagsTableAriaLabel: 'Tag Akun',
   categoryFilterAriaLabel: 'Filter kategori',
   tableHeaderTag: 'Tag',

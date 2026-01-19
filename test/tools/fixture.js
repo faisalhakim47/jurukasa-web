@@ -9,7 +9,7 @@ const __dirname = dirname(__filname);
 
 /** @param {Page} page */
 export async function loadEmptyFixture(page) {
-  await page.goto('/test/fixtures/empty.html', { waitUntil: 'domcontentloaded' });
+  await page.goto('/test/fixtures/empty.html', { waitUntil: 'load' });
   const componentTags = [
     ...await listComponentTags(join(__dirname, '../../web/components')),
     ...await listComponentTags(join(__dirname, '../../web/contexts')),
@@ -17,8 +17,8 @@ export async function loadEmptyFixture(page) {
   ];
   await page.evaluate(async function waitUntilCoreElementsReady(coreElementTags) {
     try {
-      await Promise.all(coreElementTags.map(function tagToWaiter(tag) {
-        return customElements.whenDefined(tag);
+      await Promise.all(coreElementTags.map(async function tagToWaiter(tag) {
+        await customElements.whenDefined(tag);
       }));
     }
     catch (error) {
@@ -44,7 +44,7 @@ async function listComponentTags(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     if (entry.isDirectory()) return;
     else if (entry.isFile() && entry.name.endsWith('.js')) {
-      const tag = entry.name.split('.')[0]
+      const tag = entry.name.split('.')[0];
       tags.push(tag);
     }
   }

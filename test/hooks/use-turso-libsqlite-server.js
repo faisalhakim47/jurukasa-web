@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
+import { createClient } from '@libsql/client';
 /** @import { test } from '@playwright/test' */
 
 /**
@@ -9,7 +10,7 @@ import { createServer } from 'node:net';
 
 /**
  * This hook will spawn clean/empty Turso LibSQLite database server before each test and destroy it after each test.
- * 
+ *
  * @param {typeof test} test
  * @returns {function(): TursoLibSQLiteServerState}
  */
@@ -81,7 +82,7 @@ async function startTursoLibSQLiteServer() {
     if (settled) {
       settled = false;
       resolve({
-        url: `http://localhost:${tursoDevPort}`,
+        url: `http://127.0.0.1:${tursoDevPort}`,
         async teardown() {
           await new Promise(function stopTursoProcess(resolve) {
             // @ts-ignore
@@ -96,18 +97,22 @@ async function startTursoLibSQLiteServer() {
 
 /** @param {number} port */
 async function waitForTursoSQLiteServerReady(port) {
-  const url = `http://localhost:${port}/health`;
-  while (true) {
+  const url = `http://127.0.0.1:${port}`;
+  const maxWait = 5000;
+  const startTime = Date.now();
+  while (Date.now() - startTime < maxWait) {
     try {
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(500),
-      });
-      if (response.ok) return;
+      const client = createClient({ url });
+      await client.execute('SELECT name FROM sqlite_master LIMIT 1;');
+      client.close();
+      // console.debug('Turso server is ready at', url);
+      return;
     }
-    catch (error) {
-      // console.warn(`Waiting for Turso LibSQLite server at ${url}...`);
+    catch(error) {
+      // console.debug('Waiting for Turso server to be ready at', url, 'error:', error?.message);
     }
   }
+  throw new Error(`Turso server at port ${port} did not become ready within ${maxWait}ms`);
 }
 
 async function findAvailablePort() {

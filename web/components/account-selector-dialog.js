@@ -244,7 +244,9 @@ export class AccountSelectorDialogElement extends HTMLElement {
         >
           <form class="container" style="max-width: min(320px, 90vw);">
             <header>
-              <h2 id="account-selector-dialog-title">${t('account', 'selectDialogTitle')}</h2>
+              <hgroup>
+                <h2 id="account-selector-dialog-title">${t('account', 'selectDialogTitle')}</h2>
+              </hgroup>
             </header>
 
             <div class="content">

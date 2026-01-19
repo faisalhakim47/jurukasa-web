@@ -213,14 +213,16 @@ describe('Purchases View', function () {
     await expect(page.getByRole('table', { name: 'Purchases list' })).toBeVisible();
     await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
 
-    await page.evaluate(async function () {
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (2, 1, 2000000, 2000000)`;
-    });
+    await page.evaluate(insertNewPurchase);
 
     await page.getByRole('button', { name: 'Refresh' }).click();
 
     await expect(page.getByRole('button', { name: '#2' })).toBeVisible();
   });
+
+  function insertNewPurchase() {
+    /** @type {DatabaseContextElement} */
+    const database = document.querySelector('database-context');
+    return database.sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (2, 1, 2000000, 2000000)`;
+  }
 });

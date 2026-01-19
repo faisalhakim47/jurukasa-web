@@ -23,6 +23,7 @@ const account = {
   invalidNormalBalanceError: 'Invalid normal balance.',
   accountTypeRequiredError: 'Account type is required.',
   errorDialogTitle: 'Error',
+  unknownErrorMessage: 'An unknown error occurred. Please try again.',
   dismissButtonLabel: 'Dismiss',
 
   // Account Selector Dialog
@@ -37,7 +38,7 @@ const account = {
   cancelButtonLabel: 'Cancel',
 
   // Account Tag Assignment Dialog
-  manageTagDialogTitle: 'Manage Tag: %s',
+  manageTagDialogTitle: 'Manage Tag %s',
   manageTagAriaLabel: 'Manage %s tag assignments',
   categoryLabel: 'Category:',
   accountsAssignedMessage: '%d account assigned',
@@ -94,6 +95,8 @@ const account = {
   tableHeaderStatus: 'Status',
   tableHeaderKind: 'Kind',
   accountAriaLabel: 'Account %s',
+  expandAccountAriaLabel: 'Expand %s',
+  collapseAccountAriaLabel: 'Collapse %s',
   accountStatusActive: 'Active',
   accountStatusInactive: 'Inactive',
   accountKindPosting: 'Posting',
@@ -127,6 +130,8 @@ const account = {
   noAccountTagsFoundMessage: 'Try adjusting your search or filters.',
   noAccountTagsFoundEmptyMessage: 'Account tags are used to categorize accounts for financial reporting. Create accounts and assign tags to organize your chart of accounts.',
   tagAriaLabel: 'Tag %s',
+  expandTagAriaLabel: 'Expand %s',
+  collapseTagAriaLabel: 'Collapse %s',
   accountTagsTableAriaLabel: 'Account Tags',
   categoryFilterAriaLabel: 'Category filter',
   tableHeaderTag: 'Tag',

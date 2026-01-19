@@ -7,8 +7,10 @@ import { useExposed } from '#web/hooks/use-exposed.js';
 import { provideContext, useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useAttribute } from '#web/hooks/use-attribute.js';
+import { createTursoDatabaseClient } from '#web/databases/turso.js';
+import { createLocalDatabaseClient } from '#web/databases/local.js';
 
-/** @import { Client } from '@libsql/client' */
+/** @import { DatabaseClient, TransactionMode, TransactionClient, SQLFunction } from '#web/database.js' */
 
 /**
  * @typedef {'local'|'turso'} DatabaseProvider
@@ -80,9 +82,7 @@ export class DatabaseContextElement extends HTMLElement {
     let { promise: promisedClient, resolve: resolveClient } = Promise.withResolvers();
     let isPromisedClientResolved = false;
     useEffect(host, function monitorClientAvailability() {
-      console.info('Monitoring database client availability', connection.client);
       if (connection.client) {
-        console.info('Database client is now available', isPromisedClientResolved);
         if (isPromisedClientResolved) promisedClient = Promise.resolve(connection.client);
         else {
           isPromisedClientResolved = true;
@@ -112,7 +112,6 @@ export class DatabaseContextElement extends HTMLElement {
           connection.state = 'connected';
           connection.provider = config.provider;
           connection.client = client;
-          console.info('Database connected successfully using provider:', config.provider);
         })
         .catch(function failedToConnect(error) {
           console.info('Database connection failed:', error);
@@ -162,24 +161,6 @@ async function initiateDatabase(config) {
   try {
     const client = await createDatabaseClient(config);
     await client.connect();
-    if (typeof client.executeMultiple === 'function') await client.executeMultiple(`
-      -- Commented out pragmas are not supported in Turso
-      -- PRAGMA journal_mode = WAL;
-      -- PRAGMA synchronous = FULL;
-      PRAGMA foreign_keys = ON;
-      -- PRAGMA temp_store = MEMORY;
-      -- PRAGMA cache_size = -32000;
-      -- PRAGMA mmap_size = 67108864;
-    `);
-    else {
-      // Commented out pragmas are not supported in Turso
-      // await client.sql`PRAGMA journal_mode = WAL;`;
-      // await client.sql`PRAGMA synchronous = FULL;`;
-      await client.sql`PRAGMA foreign_keys = ON;`;
-      // await client.sql`PRAGMA temp_store = MEMORY;`;
-      // await client.sql`PRAGMA cache_size = -32000;`;
-      // await client.sql`PRAGMA mmap_size = 67108864;`;
-    }
     await autoMigrate(client);
     return client;
   }
@@ -194,8 +175,8 @@ async function initiateDatabase(config) {
  * @returns {Promise<DatabaseClient>}
  */
 async function createDatabaseClient(config) {
-  if (config.provider === 'local') return createLocalClient();
-  else if (config.provider === 'turso') return createTursoClient(config.url, config.authToken ?? '');
+  if (config.provider === 'local') return createLocalDatabaseClient();
+  else if (config.provider === 'turso') return createTursoDatabaseClient(config.url, config.authToken ?? '');
   else throw new DatabaseError(`Unknown database provider: ${/** @type {any} */ (config).provider}`);
 }
 
@@ -204,24 +185,39 @@ async function createDatabaseClient(config) {
  */
 async function autoMigrate(client) {
   const schemaVersion = await getSchemaVersion(client);
-  if (schemaVersion === '005-fixed-assets') return; // Already latest schema
+  if (schemaVersion === '007-cash-count') return; // Already latest schema
+  else if (schemaVersion === '006-account-reconciliation') {
+    await migrate(client, '/web/schemas/007-cash-count.sql');
+  }
+  else if (schemaVersion === '005-fixed-assets') {
+    await migrate(client, '/web/schemas/006-account-reconciliation.sql');
+    await migrate(client, '/web/schemas/007-cash-count.sql');
+  }
   else if (schemaVersion === '004-revenue-tracking') {
     await migrate(client, '/web/schemas/005-fixed-assets.sql');
+    await migrate(client, '/web/schemas/006-account-reconciliation.sql');
+    await migrate(client, '/web/schemas/007-cash-count.sql');
   }
   else if (schemaVersion === '003-chart-of-accounts') {
     await migrate(client, '/web/schemas/004-revenue-tracking.sql');
     await migrate(client, '/web/schemas/005-fixed-assets.sql');
+    await migrate(client, '/web/schemas/006-account-reconciliation.sql');
+    await migrate(client, '/web/schemas/007-cash-count.sql');
   }
   else if (schemaVersion === '002-pos') {
     await migrate(client, '/web/schemas/003-chart-of-accounts.sql');
     await migrate(client, '/web/schemas/004-revenue-tracking.sql');
     await migrate(client, '/web/schemas/005-fixed-assets.sql');
+    await migrate(client, '/web/schemas/006-account-reconciliation.sql');
+    await migrate(client, '/web/schemas/007-cash-count.sql');
   }
   else if (schemaVersion === '001-accounting') {
     await migrate(client, '/web/schemas/002-pos.sql');
     await migrate(client, '/web/schemas/003-chart-of-accounts.sql');
     await migrate(client, '/web/schemas/004-revenue-tracking.sql');
     await migrate(client, '/web/schemas/005-fixed-assets.sql');
+    await migrate(client, '/web/schemas/006-account-reconciliation.sql');
+    await migrate(client, '/web/schemas/007-cash-count.sql');
   }
   else if (schemaVersion === undefined) {
     await migrate(client, '/web/schemas/001-accounting.sql');
@@ -229,6 +225,8 @@ async function autoMigrate(client) {
     await migrate(client, '/web/schemas/003-chart-of-accounts.sql');
     await migrate(client, '/web/schemas/004-revenue-tracking.sql');
     await migrate(client, '/web/schemas/005-fixed-assets.sql');
+    await migrate(client, '/web/schemas/006-account-reconciliation.sql');
+    await migrate(client, '/web/schemas/007-cash-count.sql');
   }
 }
 
@@ -293,176 +291,10 @@ async function getSchemaVersion(client) {
     return /** @type {string} */ (result.rows[0].value);
   }
   catch (error) {
-    console.log('Schema version check failed', error);
     if (error instanceof Error && error.message.includes('no such table: config')) return undefined;
-    else throw error;
-  }
-}
-
-/**
- * @typedef {object} SQLResult
- * @property {Array<{[column: string]: unknown}>} rows
- * @property {number} rowsAffected
- * @property {number} lastInsertRowid
- */
-
-/**
- * Execute a SQLite query using tagged function template literals
- * Warning! The query implementor is responsible making sure proper use of template interpolations:
- * - The interpolated values shall be a SQL value in the query parameters.
- * - The interpolated values shall NOT be a SQL identifier or SQL keyword.
- * 
- * @typedef {function(TemplateStringsArray, ...unknown): Promise<SQLResult>} SQLFunction
- */
-
-/**
- * @typedef {object} TransactionClient
- * @property {SQLFunction} sql
- * @property {function(string): Promise<void>} [executeMultiple] this is optional interface for provider that supports it
- * @property {function(): Promise<void>} commit
- * @property {function(): Promise<void>} rollback
- */
-
-/**
- * @typedef {'read'|'write'} TransactionMode
- */
-
-/**
- * @typedef {object} DatabaseClient
- * @property {function():Promise<void>} connect
- * @property {SQLFunction} sql
- * @property {function(string): Promise<void>} [executeMultiple] this is optional interface for provider that supports it
- * @property {function(TransactionMode): Promise<TransactionClient>} transaction
- */
-
-/** @returns {Promise<DatabaseClient>} */
-export async function createLocalClient() {
-  // @ts-ignore the code structure of sqlite wasm client is very convoluted, hard to structure and type properly, so screw it
-  const { default: sqlite3Worker1PromiserV2 } = await import('@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm/sqlite3-worker1-promiser-bundler-friendly.mjs');
-  const promiser = await sqlite3Worker1PromiserV2();
-  /** @type {PromiseWithResolvers<string>} */
-  const { promise: promisedDbId, resolve: resolveDbId } = Promise.withResolvers();
-  async function connect() {
-    const response = await promiser('open', { filename: 'file:jurukasa.sqlite?vfs=opfs' });
-    resolveDbId(response.dbId);
-  }
-  /** @type {SQLFunction} */
-  async function sql(query, ...params) {
-    console.info('sql', query.join('?'), params);
-    assertTemplateStringsArray(query);
-    try {
-      const dbId = await promisedDbId;
-      const response = await promiser('exec', {
-        dbId,
-        sql: query.join('?'),
-        bind: paramsCorrection(params),
-        rowMode: 'object',
-        returnValue: 'resultRows',
-        countChanges: true,
-      });
-      if (response?.type === 'error') throw new Error(response?.result?.message ?? `Unknown database error occurred: ${JSON.stringify(response)}`);
-      else return {
-        rows: response?.result?.resultRows ?? [],
-        rowsAffected: response?.result?.changeCount ?? 0,
-        lastInsertRowid: response?.result?.lastInsertRowid ?? 0,
-      };
-    }
-    catch (error) {
-      if (error instanceof Error) throw error;
-      else if ('type' in error) throw new Error(error?.result?.message ?? `Unknown database error occurred: ${JSON.stringify(error)}`);
-      else throw new Error(`Unknown database error occurred: ${JSON.stringify(error)}`);
+    else {
+      console.error('Failed to get schema version', error);
+      throw error;
     }
   }
-  return {
-    connect,
-    sql,
-    async executeMultiple(queries) {
-      await sql(
-        /**
-         * @type {any} I don't like it, but a bit of "any" work-around is fine in this case.
-         *  We can't expose `execute` interface for risk to be used outside database internal.
-         *  I consider this database context as internal implementation detail, so the reason why the "any" cast necessary is very clear.
-         */
-        ([queries]),
-      );
-    },
-    async transaction(mode) {
-      console.info('transaction', mode);
-      if (mode === 'write') await sql`BEGIN EXCLUSIVE TRANSACTION;`;
-      else await sql`BEGIN DEFERRED TRANSACTION;`;
-      return {
-        sql,
-        async commit() { await sql`COMMIT TRANSACTION;`; },
-        async rollback() { await sql`ROLLBACK TRANSACTION;`; },
-      };
-    },
-  };
-}
-
-/**
- * @param {string} url
- * @param {string} authToken
- * @returns {Promise<DatabaseClient>}
- */
-export async function createTursoClient(url, authToken) {
-  const { createClient } = await import('@libsql/client/web');
-  const client = createClient({ url, authToken });
-  return createTursoBasedClient(client);
-}
-
-/**
- * @param {Client} client
- * @returns {Promise<DatabaseClient>}
- */
-export async function createTursoBasedClient(client) {
-  return {
-    async connect() { await client.execute('SELECT 1'); },
-    async executeMultiple(queries) { await client.executeMultiple(queries); },
-    async sql(query, ...params) {
-      assertTemplateStringsArray(query);
-      const result = await client.execute({ sql: query.join('?'), args: paramsCorrection(params) });
-      return {
-        rows: result.rows,
-        rowsAffected: result.rowsAffected,
-        lastInsertRowid: Number(result.lastInsertRowid),
-      };
-    },
-    async transaction(mode) {
-      const tx = await client.transaction(mode);
-      return {
-        async executeMultiple(queries) { await tx.executeMultiple(queries); },
-        async sql(query, ...params) {
-          assertTemplateStringsArray(query);
-          const result = await tx.execute({ sql: query.join('?'), args: paramsCorrection(params) });
-          return {
-            rows: result.rows,
-            rowsAffected: result.rowsAffected,
-            lastInsertRowid: Number(result.lastInsertRowid),
-          };
-        },
-        async commit() { await tx.commit(); },
-        async rollback() { await tx.rollback(); },
-      };
-    },
-  };
-}
-
-/**
- * @param {unknown} query
- * @returns {asserts query is TemplateStringsArray}
- */
-function assertTemplateStringsArray(query) {
-  if (!Array.isArray(query)) throw new TypeError('Expected TemplateStringsArray as the first argument.');
-}
-
-/**
- * preprocess sql query parameters
- * @param {Array<unknown>} params
- */
-function paramsCorrection(params) {
-  return params.map(function correction(param) {
-    if (param === null || param === undefined) return null;
-    else if (typeof param === 'number' || typeof param === 'string' || typeof param === 'boolean') return param;
-    else return JSON.stringify(param);
-  });
 }
