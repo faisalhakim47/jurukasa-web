@@ -181,8 +181,8 @@ export class SupplierDetailsDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleInventorySearchInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.inventorySearchQuery = event.target.value;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.inventorySearchQuery = event.currentTarget.value;
       loadAvailableInventories();
     }
 
@@ -215,14 +215,14 @@ export class SupplierDetailsDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleQuantityConversionInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.newQuantityConversion = parseInt(event.target.value, 10) || null;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.newQuantityConversion = parseInt(event.currentTarget.value, 10) || null;
     }
 
     /** @param {Event} event */
     function handleSupplierNameInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.newSupplierName = event.target.value;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.newSupplierName = event.currentTarget.value;
     }
 
     async function addSupplierInventory() {

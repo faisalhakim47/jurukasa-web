@@ -3935,7 +3935,6 @@ var HttpStream = class extends Stream {
 		let promise;
 		try {
 			const request = createRequest();
-			// console.debug("HTTP Request:", request);
 			const fetch$2 = this.#fetch;
 			promise = fetch$2(request);
 		} catch (error) {

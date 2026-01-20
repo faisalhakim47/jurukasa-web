@@ -154,8 +154,8 @@ export class FixedAssetsViewElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleSearchInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.searchQuery = event.target.value;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.searchQuery = event.currentTarget.value;
       state.currentPage = 1;
       loadFixedAssets();
     }

@@ -186,8 +186,8 @@ export class DiscountDetailsDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleDiscountTypeChange(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.editDiscountType = /** @type {'global' | 'inventory'} */ (event.target.value);
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.editDiscountType = /** @type {'global' | 'inventory'} */ (event.currentTarget.value);
       if (state.editDiscountType === 'global') {
         state.selectedInventory = null;
         state.selectedInventoryId = null;
@@ -196,8 +196,8 @@ export class DiscountDetailsDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleInventorySearchInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.inventorySearchQuery = event.target.value;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.inventorySearchQuery = event.currentTarget.value;
       loadAvailableInventories();
     }
 

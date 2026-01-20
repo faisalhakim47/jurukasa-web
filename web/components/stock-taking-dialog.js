@@ -107,8 +107,8 @@ export class StockTakingDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleActualStockInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.actualStock = parseInt(event.target.value, 10);
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.actualStock = parseInt(event.currentTarget.value, 10);
     }
 
     function calculateActualCost() {

@@ -334,8 +334,8 @@ export class ChartOfAccountsViewElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleSearchInput(event) {
-      if (!(event.target instanceof HTMLInputElement)) return;
-      state.searchQuery = event.target.value;
+      if (!(event.currentTarget instanceof HTMLInputElement)) return;
+      state.searchQuery = event.currentTarget.value;
       loadAccounts();
     }
 

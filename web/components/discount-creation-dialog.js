@@ -1,5 +1,6 @@
 import { reactive } from '@vue/reactivity';
 import { html, nothing } from 'lit-html';
+import { repeat } from 'lit-html/directives/repeat.js';
 
 import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
@@ -17,7 +18,6 @@ import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
-import { repeat } from 'lit-html/directives/repeat.js';
 
 /**
  * @typedef {object} InventoryOption
@@ -98,8 +98,8 @@ export class DiscountCreationDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleDiscountTypeChange(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.discountType = /** @type {'global' | 'inventory'} */ (event.target.value);
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.discountType = /** @type {'global' | 'inventory'} */ (event.currentTarget.value);
       if (state.discountType === 'global') {
         state.selectedInventory = null;
         state.selectedInventoryId = null;
@@ -108,8 +108,8 @@ export class DiscountCreationDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleInventorySearchInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.inventorySearchQuery = event.target.value;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.inventorySearchQuery = event.currentTarget.value;
       loadAvailableInventories();
     }
 

@@ -13,15 +13,17 @@ const { describe } = test;
 async function setupView(tursoDatabaseUrl) {
   document.body.innerHTML = `
     <ready-context>
-      <router-context>
-        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-          <device-context>
-            <i18n-context>
-              <journal-entries-view></journal-entries-view>
-            </i18n-context>
-          </device-context>
-        </database-context>
-      </router-context>
+      <time-context>
+        <router-context>
+          <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+            <device-context>
+              <i18n-context>
+                <journal-entries-view></journal-entries-view>
+              </i18n-context>
+            </device-context>
+          </database-context>
+        </router-context>
+      </time-context>
     </ready-context>
   `;
 }
@@ -342,7 +344,7 @@ describe('Journal Entries View - Status Filter', function () {
 });
 
 describe('Journal Entries View - Pagination', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display pagination when more than 10 entries exist', async function ({ page }) {
@@ -352,10 +354,10 @@ describe('Journal Entries View - Pagination', function () {
         await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (10100, 'Cash', 0, 0, 0)`;
         await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (40100, 'Revenue', 1, 0, 0)`;
 
-        for (let i = 1; i <= 15; i++) {
-          await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (${i}, ${1704067200000 + i * 1000}, ${'Entry ' + i}, 'Manual', ${1704067200000 + i * 1000})`;
-          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 1, 10100, 100000, 0)`;
-          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${i}, 2, 40100, 0, 100000)`;
+        for (let index = 1; index <= 15; index++) {
+          await sql`INSERT INTO journal_entries (ref, entry_time, note, source_type, post_time) VALUES (${index}, ${1704067200000 + index * 1000}, ${'Entry ' + index}, 'Manual', ${1704067200000 + index * 1000})`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${index}, 1, 10100, 100000, 0)`;
+          await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (${index}, 2, 40100, 0, 100000)`;
         }
       }),
     ]);
@@ -471,7 +473,7 @@ describe('Journal Entries View - Pagination', function () {
 });
 
 describe('Journal Entries View - Details Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall open details dialog when clicking journal entry ref', async function ({ page }) {

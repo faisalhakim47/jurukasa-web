@@ -90,13 +90,10 @@ export class AccountCreationDialogElement extends HTMLElement {
       input.setCustomValidity('');
       if (accountCode) {
         try {
-          const result = await database.sql`
-            SELECT 1 FROM accounts WHERE account_code = ${accountCode} LIMIT 1;
-          `;
+          const result = await database.sql`SELECT 1 FROM accounts WHERE account_code = ${accountCode} LIMIT 1;`;
           if (result.rows.length > 0) input.setCustomValidity(t('account', 'accountCodeExistsError'));
-        }
-        catch (error) {
-          input.setCustomValidity(t('account', 'accountCodeValidationError'));
+        } catch (error) {
+          input.setCustomValidity(t('account', 'accountCodeValidationError', error));
         }
       }
     }
@@ -109,13 +106,11 @@ export class AccountCreationDialogElement extends HTMLElement {
       input.setCustomValidity('');
       if (name) {
         try {
-          const result = await database.sql`
-            SELECT 1 FROM accounts WHERE name = ${name} LIMIT 1;
-          `;
+          const result = await database.sql`SELECT 1 FROM accounts WHERE name = ${name} LIMIT 1;`;
           if (result.rows.length > 0) input.setCustomValidity(t('account', 'accountNameExistsError'));
         }
         catch (error) {
-          input.setCustomValidity(t('account', 'accountNameValidationError'));
+          input.setCustomValidity(t('account', 'accountNameValidationError', error));
         }
       }
     }

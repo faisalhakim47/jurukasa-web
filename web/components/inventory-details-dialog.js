@@ -195,8 +195,8 @@ export class InventoryDetailsDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleNewBarcodeInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.newBarcode = event.target.value;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.newBarcode = event.currentTarget.value;
     }
 
     async function addBarcode() {

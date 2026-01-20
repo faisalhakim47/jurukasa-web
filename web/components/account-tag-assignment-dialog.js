@@ -316,8 +316,8 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleSearchInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.searchQuery = event.target.value;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.searchQuery = event.currentTarget.value;
     }
 
     function getFilteredAccounts() {

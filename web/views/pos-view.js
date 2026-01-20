@@ -611,9 +611,9 @@ export class POSViewElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleInventorySearchInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
       const currentTime = Date.now();
-      const input = event.target.value;
+      const input = event.currentTarget.value;
 
       // Track timing for barcode detection
       if (state.barcodeBuffer === '') state.barcodeStartTime = currentTime;
@@ -666,14 +666,14 @@ export class POSViewElement extends HTMLElement {
 
     /** @param {Event} event */
     function handlePaymentAmountInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.paymentAmount = parseInt(event.target.value, 10) || null;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.paymentAmount = parseInt(event.currentTarget.value, 10) || null;
     }
 
     /** @param {Event} event */
     function handleSaleTimeInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.saleTime = event.target.value;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.saleTime = event.currentTarget.value;
     }
 
     /** @param {Event} event */
@@ -730,8 +730,8 @@ export class POSViewElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleAutoApplyDiscountsToggle(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.autoApplyDiscounts = event.target.checked;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.autoApplyDiscounts = event.currentTarget.checked;
       if (state.autoApplyDiscounts) {
         autoApplyDiscounts();
       }
@@ -746,8 +746,8 @@ export class POSViewElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleAutoApplyCashPaymentToggle(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.autoApplyCashPayment = event.target.checked;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.autoApplyCashPayment = event.currentTarget.checked;
       if (state.autoApplyCashPayment) {
         autoApplyCashPayment();
       }

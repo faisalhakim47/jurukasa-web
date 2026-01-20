@@ -160,19 +160,19 @@ export class AccountReconciliationCreationDialogElement extends HTMLElement {
     /** @param {Event} event */
     function handleDateChange(event) {
       // Just let the model update through input binding if we had it, but we use native events
-      assertInstanceOf(HTMLInputElement, event.target);
-      if (event.target.name === 'statementBeginTime') {
-        form.statementBeginTime = event.target.value;
-      } else if (event.target.name === 'statementEndTime') {
-        form.statementEndTime = event.target.value;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      if (event.currentTarget.name === 'statementBeginTime') {
+        form.statementBeginTime = event.currentTarget.value;
+      } else if (event.currentTarget.name === 'statementEndTime') {
+        form.statementEndTime = event.currentTarget.value;
       }
       tryCalculateBalances();
     }
 
     /** @param {Event} event */
     function handleNoteInput(event) {
-      assertInstanceOf(HTMLTextAreaElement, event.target);
-      form.note = event.target.value;
+      assertInstanceOf(HTMLTextAreaElement, event.currentTarget);
+      form.note = event.currentTarget.value;
     }
 
     /** @param {SubmitEvent} event */

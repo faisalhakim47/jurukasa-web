@@ -73,38 +73,53 @@ export function useTranslator(host) {
      * - %c: displayed currency
      * - %D: formatted date
      * - %T: formatted time
+     * 
+     * @param {unknown} arg
+     * @param {string} match
+     * @param {string} precision
+     * @param {string} specifier
      */
+    function formatArg(arg, match, precision, specifier) {
+      switch (specifier) {
+        case 's':
+          if (typeof arg === 'string') return arg;
+          else if (arg instanceof Error) return arg.message;
+          else return String(arg);
+        case 'd':
+          const maybeNumber = parseInt(String(arg), 10);
+          const notNaN = Number.isNaN(maybeNumber) ? 0 : maybeNumber;
+          const finiteNumber = Number.isFinite(maybeNumber) ? notNaN : 0;
+          return String(finiteNumber);
+        case 'f':
+          const num = Number(arg);
+          const decimals = precision ? parseInt(precision, 10) : 2;
+          const locale = device?.locale || 'en-GB';
+          return new Intl.NumberFormat(locale, {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+          }).format(num);
+        case 'c':
+          return i18n?.displayCurrency(Number(arg)) ?? String(arg);
+        case 'D':
+          return arg instanceof Date
+            ? i18n?.date.format(arg) ?? String(arg)
+            : String(arg);
+        case 'T':
+          return arg instanceof Date
+            ? i18n?.time.format(arg) ?? String(arg)
+            : String(arg);
+        default:
+          return match;
+      }
+    }
     let argIndex = 0;
     const interpolatedText = args.length > 0
       ? text.replace(/%(?:\.(\d+))?([sdcDT]|f)/g, function interpolatePlaceholder(match, precision, specifier) {
         if (argIndex >= args.length) return match; // Not enough arguments, keep placeholder
         const arg = args[argIndex++];
-        switch (specifier) {
-          case 's':
-            return String(arg);
-          case 'd':
-            return String(Math.floor(Number(arg)));
-          case 'f':
-            const num = Number(arg);
-            const decimals = precision ? parseInt(precision, 10) : 2;
-            const locale = device?.locale || 'en-GB';
-            return new Intl.NumberFormat(locale, {
-              minimumFractionDigits: decimals,
-              maximumFractionDigits: decimals,
-            }).format(num);
-          case 'c':
-            return i18n?.displayCurrency(Number(arg)) ?? String(arg);
-          case 'D':
-            return arg instanceof Date
-              ? i18n?.date.format(arg) ?? String(arg)
-              : String(arg);
-          case 'T':
-            return arg instanceof Date
-              ? i18n?.time.format(arg) ?? String(arg)
-              : String(arg);
-          default:
-            return match;
-        }
+        const formattedArg = formatArg(arg, match, precision, specifier);
+        // console.debug('text', { text, arg, formattedArg }, { match, precision, specifier });
+        return formattedArg;
       })
       : text;
 

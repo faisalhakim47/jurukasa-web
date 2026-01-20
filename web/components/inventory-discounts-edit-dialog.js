@@ -145,10 +145,10 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleQuantityChange(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      const index = parseInt(event.target.dataset.index, 10);
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      const index = parseInt(event.currentTarget.dataset.index, 10);
       if (isNaN(index)) return;
-      const value = parseInt(event.target.value, 10);
+      const value = parseInt(event.currentTarget.value, 10);
       if (isNaN(value) || value < 1) return;
       state.discounts = state.discounts.map(function (discount, i) {
         if (i !== index) return discount;
@@ -158,10 +158,10 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleAmountChange(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      const index = parseInt(event.target.dataset.index, 10);
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      const index = parseInt(event.currentTarget.dataset.index, 10);
       if (isNaN(index)) return;
-      const value = parseInt(event.target.value, 10);
+      const value = parseInt(event.currentTarget.value, 10);
       if (isNaN(value)) return;
       state.discounts = state.discounts.map(function calculateDiscountAmount(discount, index) {
         if (index !== index) return discount;

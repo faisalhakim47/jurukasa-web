@@ -200,8 +200,8 @@ export class CashCountListViewElement extends HTMLElement {
 
     /** @param {Event} event */
     function handleSearchInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.searchQuery = event.target.value;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.searchQuery = event.currentTarget.value;
       state.filteredCashCounts = filterCashCounts(state.cashCounts);
     }
 

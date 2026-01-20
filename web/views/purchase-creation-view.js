@@ -365,15 +365,15 @@ export class PurchaseCreationViewElement extends HTMLElement {
 
     /** @param {Event} event */
     function handlePurchaseDateInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      state.purchaseDate = event.target.value;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.purchaseDate = event.currentTarget.value;
     }
 
     /** @param {Event} event */
     function handleInventorySearchInput(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
       const currentTime = Date.now();
-      const input = event.target.value;
+      const input = event.currentTarget.value;
 
       // Track timing for barcode detection
       if (state.barcodeBuffer === '') {

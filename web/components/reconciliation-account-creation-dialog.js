@@ -108,8 +108,8 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     async function validateAccountCode(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      const input = event.target;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      const input = event.currentTarget;
       const code = input.value.trim();
 
       input.setCustomValidity('');
@@ -139,8 +139,8 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
 
     /** @param {Event} event */
     async function validateAccountName(event) {
-      assertInstanceOf(HTMLInputElement, event.target);
-      const input = event.target;
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      const input = event.currentTarget;
       const name = input.value.trim();
 
       input.setCustomValidity('');

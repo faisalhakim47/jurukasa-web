@@ -134,7 +134,7 @@ export class OnboardingViewElement extends HTMLElement {
       try {
         event.preventDefault();
         databaseForm.state = 'submitting';
-        const formEl = /** @type {HTMLFormElement} */ (event.target);
+        const formEl = /** @type {HTMLFormElement} */ (event.currentTarget);
         const provider = databaseForm.selectedProvider;
 
         if (provider === 'local') {
@@ -176,7 +176,7 @@ export class OnboardingViewElement extends HTMLElement {
     /** @param {SubmitEvent} event */
     async function submitBusinessConfig(event) {
       event.preventDefault();
-      const form = /** @type {HTMLFormElement} */ (event.target);
+      const form = /** @type {HTMLFormElement} */ (event.currentTarget);
       const formData = new FormData(form);
 
       // Capture form data before changing state (which triggers re-render and disables fields)
@@ -221,7 +221,7 @@ export class OnboardingViewElement extends HTMLElement {
     /** @param {SubmitEvent} event */
     async function submitChartOfAccounts(event) {
       event.preventDefault();
-      const form = /** @type {HTMLFormElement} */ (event.target);
+      const form = /** @type {HTMLFormElement} */ (event.currentTarget);
       const formData = new FormData(form);
 
       // Capture form data before changing state (which triggers re-render and disables fields)
