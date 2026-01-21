@@ -15,16 +15,23 @@ import { createLocalDatabaseClient } from '#web/databases/local.js';
 /**
  * @typedef {'local'|'turso'} DatabaseProvider
  * @typedef {'init'|'unconfigured'|'connecting'|'connected'} DatabaseConnectionState
- * 
+ *
  * @typedef {object} LocalDatabaseConfig
  * @property {'local'} provider
- * 
+ *
  * @typedef {object} TursoDatabaseConfig
  * @property {'turso'} provider
  * @property {string} url
  * @property {string} [authToken]
- * 
+ *
  * @typedef {LocalDatabaseConfig|TursoDatabaseConfig} DatabaseConfig
+ *
+ * @typedef {object} DatabaseEntry
+ * @property {string} id
+ * @property {DatabaseProvider} provider
+ * @property {string} name
+ * @property {string} [url]
+ * @property {boolean} isActive
  */
 
 export class DatabaseError extends Error { }
@@ -77,6 +84,170 @@ export class DatabaseContextElement extends HTMLElement {
     this.error = useExposed(host, function getConnectionError() {
       return connection.error;
     });
+
+    /**
+     * Extract a readable name from Turso database URL
+     * @param {string} url
+     * @returns {string}
+     */
+    function extractDatabaseNameFromUrl(url) {
+      try {
+        const urlObj = new URL(url);
+        const hostname = urlObj.hostname;
+        const parts = hostname.split('.');
+        if (parts.length > 0) {
+          const dbPart = parts[0];
+          return dbPart.split('-')[0] || dbPart;
+        }
+        return 'Turso Database';
+      }
+      catch (error) {
+        return 'Turso Database';
+      }
+    }
+
+    /**
+     * Get list of configured databases from localStorage
+     * @returns {DatabaseEntry[]}
+     */
+    function getDatabaseList() {
+      const currentProvider = localStorage.getItem('databaseProvider');
+      const currentTursoUrl = localStorage.getItem('tursoUrl');
+
+      /** @type {DatabaseEntry[]} */
+      const databases = [];
+
+      const localDatabaseExists = currentProvider === 'local' || localStorage.getItem('localDatabaseConfigured') === 'true';
+      if (localDatabaseExists || currentProvider === 'local') databases
+        .push({
+          id: 'local',
+          provider: 'local',
+          name: 'Local Database',
+          isActive: currentProvider === 'local',
+        });
+
+      const tursoDatabaseListJson = localStorage.getItem('tursoDatabaseList');
+      if (tursoDatabaseListJson) {
+        try {
+          const tursoDatabaseList = JSON.parse(tursoDatabaseListJson);
+          for (const tursoDatabase of tursoDatabaseList) databases
+            .push({
+              id: `turso-${tursoDatabase.url}`,
+              provider: 'turso',
+              name: tursoDatabase.name || extractDatabaseNameFromUrl(tursoDatabase.url),
+              url: tursoDatabase.url,
+              isActive: currentProvider === 'turso' && currentTursoUrl === tursoDatabase.url,
+            });
+        }
+        catch (error) {
+          console.error('Failed to parse Turso database list', error);
+        }
+      }
+      else if (currentProvider === 'turso' && currentTursoUrl) databases
+        .push({
+          id: `turso-${currentTursoUrl}`,
+          provider: 'turso',
+          name: extractDatabaseNameFromUrl(currentTursoUrl),
+          url: currentTursoUrl,
+          isActive: true,
+        });
+
+      return databases;
+    }
+
+    this.getDatabaseList = getDatabaseList;
+
+    /**
+     * Add or update a Turso database in the list
+     * @param {string} url
+     * @param {string} [name]
+     */
+    function addTursoDatabase(url, name) {
+      const tursoDatabaseListJson = localStorage.getItem('tursoDatabaseList');
+      /** @type {Array<{url: string, name?: string}>} */
+      let tursoDatabaseList = [];
+
+      if (tursoDatabaseListJson) {
+        try {
+          tursoDatabaseList = JSON.parse(tursoDatabaseListJson);
+        }
+        catch (error) {
+          console.error('Failed to parse Turso database list', error);
+          tursoDatabaseList = [];
+        }
+      }
+
+      const existingIndex = tursoDatabaseList.findIndex(function (db) {
+        return db.url === url;
+      });
+
+      const databaseEntry = { url, name: name || extractDatabaseNameFromUrl(url) };
+
+      if (existingIndex >= 0) {
+        tursoDatabaseList[existingIndex] = databaseEntry;
+      }
+      else {
+        tursoDatabaseList.push(databaseEntry);
+      }
+
+      localStorage.setItem('tursoDatabaseList', JSON.stringify(tursoDatabaseList));
+      localStorage.setItem('databaseProvider', 'turso');
+      localStorage.setItem('tursoUrl', url);
+    }
+
+    this.addTursoDatabase = addTursoDatabase;
+
+    /**
+     * Remove a Turso database from the list
+     * @param {string} url
+     */
+    function removeTursoDatabase(url) {
+      const tursoDatabaseListJson = localStorage.getItem('tursoDatabaseList');
+      if (!tursoDatabaseListJson) return;
+
+      try {
+        /** @type {Array<{url: string, name?: string}>} */
+        const tursoDatabaseList = JSON.parse(tursoDatabaseListJson);
+        const filteredList = tursoDatabaseList.filter(function (db) {
+          return db.url !== url;
+        });
+        localStorage.setItem('tursoDatabaseList', JSON.stringify(filteredList));
+      }
+      catch (error) {
+        console.error('Failed to parse Turso database list', error);
+      }
+    }
+
+    this.removeTursoDatabase = removeTursoDatabase;
+
+    /**
+     * Set the active database
+     * @param {DatabaseEntry} database
+     */
+    function setActiveDatabase(database) {
+      if (database.provider === 'local') {
+        localStorage.setItem('databaseProvider', 'local');
+        localStorage.setItem('localDatabaseConfigured', 'true');
+        localStorage.removeItem('tursoUrl');
+      }
+      else if (database.provider === 'turso' && database.url) {
+        localStorage.setItem('databaseProvider', 'turso');
+        localStorage.setItem('tursoUrl', database.url);
+      }
+    }
+
+    this.setActiveDatabase = setActiveDatabase;
+
+    /**
+     * Get the currently active database entry
+     * @returns {DatabaseEntry|null}
+     */
+    function getActiveDatabase() {
+      const databases = getDatabaseList();
+      return databases.find(function (db) { return db.isActive; }) || null;
+    }
+
+    this.getActiveDatabase = getActiveDatabase;
 
     /** @type {PromiseWithResolvers<DatabaseClient>} */
     let { promise: promisedClient, resolve: resolveClient } = Promise.withResolvers();
@@ -133,22 +304,36 @@ export class DatabaseContextElement extends HTMLElement {
 
     useEffect(host, function evaluateExistingState() {
       if (connection.state === 'init' && router.route) {
-        if (providerAttr.value === 'local') connect({ provider: 'local' });
-        else if (providerAttr.value === 'turso') connect({
+        /** @type {DatabaseConfig} */
+        let databaseConfig;
+        if (false) { }
+        else if (providerAttr.value === 'local') databaseConfig = { provider: 'local' };
+        else if (providerAttr.value === 'turso' && tursoURLAttr.value) databaseConfig = {
           provider: 'turso',
-          url: tursoURLAttr.value || '',
+          url: tursoURLAttr.value,
           authToken: tursoAuthTokenAttr.value || undefined,
-        });
-        else if (typeof router.route.databaseConfig?.provider === 'string') {
-          if (router.route.databaseConfig.provider === 'local') connect({ provider: 'local' });
-          else if (router.route.databaseConfig.provider === 'turso') connect({
-            provider: 'turso',
-            url: router.route.databaseConfig.url,
-            authToken: router.route.databaseConfig.authToken,
-          });
-          else connection.state = 'unconfigured';
-        }
+        };
+        else if (router.route.databaseConfig?.provider === 'local') databaseConfig = { provider: 'local' };
+        else if (router.route.databaseConfig?.provider === 'turso') databaseConfig = {
+          provider: 'turso',
+          url: router.route.databaseConfig.url,
+          authToken: router.route.databaseConfig.authToken || undefined,
+        };
         else connection.state = 'unconfigured';
+
+        if (databaseConfig) {
+          /** @todo reorganize this database management */
+          if (databaseConfig.provider === 'local') {
+            localStorage.setItem('databaseProvider', 'local');
+            localStorage.setItem('localDatabaseConfigured', 'true');
+          }
+          else if (databaseConfig.provider === 'turso') {
+            addTursoDatabase(databaseConfig.url);
+          }
+          else throw new Error('The implement is isolated logic, see above. This case should be impossible.');
+
+          connect(databaseConfig);
+        }
       }
     });
   }

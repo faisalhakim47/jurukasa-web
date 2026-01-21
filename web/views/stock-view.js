@@ -136,14 +136,6 @@ export class StockViewElement extends HTMLElement {
               aria-hidden="${router.route.pathname.startsWith('/stock/inventories') ? 'false' : 'true'}"
               tabindex="${router.route.pathname.startsWith('/stock/inventories') ? '0' : '-1'}"
               ?inert=${router.route.pathname.startsWith('/stock/inventories') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></inventories-view>
             <barcodes-view
               ${barcodesTabpanel}
@@ -153,14 +145,6 @@ export class StockViewElement extends HTMLElement {
               aria-hidden="${router.route.pathname.startsWith('/stock/barcodes') ? 'false' : 'true'}"
               tabindex="${router.route.pathname.startsWith('/stock/barcodes') ? '0' : '-1'}"
               ?inert=${router.route.pathname.startsWith('/stock/barcodes') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></barcodes-view>
             <stock-takings-view
               ${stockTakingsTabpanel}
@@ -170,14 +154,6 @@ export class StockViewElement extends HTMLElement {
               aria-hidden="${router.route.pathname.startsWith('/stock/stock-takings') ? 'false' : 'true'}"
               tabindex="${router.route.pathname.startsWith('/stock/stock-takings') ? '0' : '-1'}"
               ?inert=${router.route.pathname.startsWith('/stock/stock-takings') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></stock-takings-view>
           </main>
         </div>

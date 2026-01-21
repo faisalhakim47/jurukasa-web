@@ -7,6 +7,7 @@ const CustomDialogFlag = Symbol('CustomDialogFlag');
 
 /**
  * This hook provide mechanism to create a custom dialog web component.
+ * Use useDialog only when the main purpose of the component is to be a dialog. Auxiliary dialogs must use useElement instead.
  * The strategy to implement custom dialog is by wrapping native <dialog> element in a web component.
  * In a component there can only be one useDialog instance to control single wrapped <dialog> element.
  * If you need multiple dialog elements in a component, use `useElement` to control them manually.

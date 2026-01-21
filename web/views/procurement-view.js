@@ -127,14 +127,6 @@ export class ProcurementViewElement extends HTMLElement {
               aria-hidden="${router.route.pathname.startsWith('/procurement/purchases') ? 'false' : 'true'}"
               tabindex="${router.route.pathname.startsWith('/procurement/purchases') ? '0' : '-1'}"
               ?inert=${router.route.pathname.startsWith('/procurement/purchases') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></purchases-view>
             <suppliers-view
               ${suppliersTabpanel}
@@ -144,14 +136,6 @@ export class ProcurementViewElement extends HTMLElement {
               aria-hidden="${router.route.pathname.startsWith('/procurement/suppliers') ? 'false' : 'true'}"
               tabindex="${router.route.pathname.startsWith('/procurement/suppliers') ? '0' : '-1'}"
               ?inert=${router.route.pathname.startsWith('/procurement/suppliers') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></suppliers-view>
           </main>
         </div>

@@ -10,7 +10,6 @@ const { describe } = test;
  * @param {string} tursoDatabaseUrl
  */
 async function setupSettingsView(tursoDatabaseUrl) {
-  await import('#web/views/settings-view.js');
   window.history.replaceState({}, '', '/settings');
   document.body.innerHTML = `
     <ready-context>

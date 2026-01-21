@@ -40,6 +40,27 @@
   display: none;
 }
 
+.tabpanellist {
+  display: flex;
+  flex-direction: row;
+  height: fit-content;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+[role="tabpanel"] {
+  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
+  height: fit-content;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  overflow-y: auto;
+}
+
 /* =================================================================
    # 2. Base Tab Item
    ================================================================= */

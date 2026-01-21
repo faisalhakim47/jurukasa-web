@@ -492,7 +492,7 @@ export class AccountReconciliationListViewElement extends HTMLElement {
 
     useEffect(host, function renderAccountReconciliationListView() {
       render(html`
-        <div class="scrollable" style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%; overflow-y: scroll;">
+        <div class="scrollable" style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%;">
           ${state.checkingAccounts === false && state.hasReconciliationAccounts === false
           ? renderMissingAccountsWarning()
           : html`

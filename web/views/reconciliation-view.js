@@ -121,14 +121,6 @@ export class ReconciliationViewElement extends HTMLElement {
               aria-hidden="${pathname.startsWith('/reconciliation/account-reconciliation') ? 'false' : 'true'}"
               tabindex="${pathname.startsWith('/reconciliation/account-reconciliation') ? '0' : '-1'}"
               ?inert=${pathname.startsWith('/reconciliation/account-reconciliation') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></account-reconciliation-list-view>
             <cash-count-list-view
               ${cashCountTabpanel}
@@ -138,14 +130,6 @@ export class ReconciliationViewElement extends HTMLElement {
               aria-hidden="${pathname.startsWith('/reconciliation/cash-count') ? 'false' : 'true'}"
               tabindex="${pathname.startsWith('/reconciliation/cash-count') ? '0' : '-1'}"
               ?inert=${pathname.startsWith('/reconciliation/cash-count') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></cash-count-list-view>
           </main>
         </div>

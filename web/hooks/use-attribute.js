@@ -8,9 +8,9 @@ import { readonly, ref } from '@vue/reactivity';
  * @returns {Readonly<Ref<string>>}
  */
 export function useAttribute(host, observedAttributeName) {
-  const attribute = ref(null);
+  const attribute = ref(host.getAttribute(observedAttributeName)?.trim() || null);
   useAttributeChangedCallback(host, function (name, oldValue, newValue) {
-    if (name === observedAttributeName) attribute.value = newValue.trim() || null;
+    if (name === observedAttributeName) attribute.value = newValue?.trim() || null;
   });
   return readonly(attribute);
 }

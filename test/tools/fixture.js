@@ -15,7 +15,7 @@ export async function loadEmptyFixture(page) {
     ...await listComponentTags(join(__dirname, '../../web/contexts')),
     ...await listComponentTags(join(__dirname, '../../web/views')),
   ];
-  await page.evaluate(async function waitUntilCoreElementsReady(coreElementTags) {
+  await page.evaluate(async function initializeTestContext(coreElementTags) {
     try {
       await Promise.all(coreElementTags.map(async function tagToWaiter(tag) {
         await customElements.whenDefined(tag);
@@ -42,8 +42,8 @@ export async function loadEmptyFixture(page) {
 async function listComponentTags(dir) {
   const tags = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) return;
-    else if (entry.isFile() && entry.name.endsWith('.js')) {
+    if (entry.isDirectory()) continue;
+    else if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.spec.js')) {
       const tag = entry.name.split('.')[0];
       tags.push(tag);
     }

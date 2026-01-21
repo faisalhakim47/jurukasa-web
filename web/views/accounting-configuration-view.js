@@ -482,7 +482,7 @@ export class AccountingConfigurationViewElement extends HTMLElement {
 
     useEffect(host, function renderAccountingConfigurationView() {
       render(html`
-        <div style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%;">
+        <div class="scrollable" style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h2 class="title-large" style="margin: 0;">${t('settings', 'accountingConfigurationTitle')}</h2>
             <button role="button" class="text" @click=${loadConfig} aria-label="${t('settings', 'refreshConfigurationAriaLabel')}">

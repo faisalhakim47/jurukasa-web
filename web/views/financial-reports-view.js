@@ -328,16 +328,13 @@ export class FinancialReportsViewElement extends HTMLElement {
           state.selectedFiscalYear = state.fiscalYears[0].begin_time;
         }
 
-        if (state.selectedReportType === 'trialBalance') {
-          await loadTrialBalance();
-        } else if (state.selectedReportType === 'balanceSheet') {
-          await loadBalanceSheet();
-        } else if (state.selectedReportType === 'incomeStatement') {
-          await loadIncomeStatement();
-        }
+        if (state.selectedReportType === 'trialBalance') await loadTrialBalance();
+        else if (state.selectedReportType === 'balanceSheet') await loadBalanceSheet();
+        else if (state.selectedReportType === 'incomeStatement') await loadIncomeStatement();
 
         state.isLoading = false;
-      } catch (error) {
+      }
+      catch (error) {
         state.error = error instanceof Error ? error : new Error(String(error));
         state.isLoading = false;
       }

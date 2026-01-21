@@ -14,6 +14,7 @@ import { useTranslator } from '#web/hooks/use-translator.js';
 import '#web/components/router-link.js';
 import '#web/views/books-view.js';
 import '#web/views/dashboard-view.js';
+import '#web/views/database-setup-view.js';
 import '#web/views/desktop-view.js';
 import '#web/views/onboarding-view.js';
 
@@ -69,7 +70,7 @@ export class MainViewElement extends HTMLElement {
         || onboarding.state === 'needs-chart-of-accounts';
       const isComplete = onboarding.state === 'complete';
 
-      if (needsOnboarding && !pathname.startsWith('/onboarding')) {
+      if (needsOnboarding && !pathname.startsWith('/onboarding') && !pathname.startsWith('/database-setup')) {
         router.navigate({ pathname: '/onboarding', replace: true });
       }
       else if (isComplete && pathname.startsWith('/onboarding')) {
@@ -80,13 +81,16 @@ export class MainViewElement extends HTMLElement {
     useEffect(host, function renderMainView() {
       const pathname = router.route?.pathname || '/';
 
-      // Show onboarding view when on /onboarding route
       if (pathname.startsWith('/onboarding')) {
         render(html`<onboarding-view></onboarding-view>`);
         return;
       }
 
-      // Show main application views
+      if (pathname.startsWith('/database-setup')) {
+        render(html`<database-setup-view></database-setup-view>`);
+        return;
+      }
+
       if (device.isDesktop) render(html`<desktop-view></desktop-view>`);
       else if (device.isMobile) render(html`
         <div style="padding: 32px;">

@@ -54,4 +54,54 @@ export default /** @type {Partial<SettingsTranslation>} */ ({
   // Error Dialog
   errorOccurredTitle: 'Terjadi Kesalahan',
   dismissButtonLabel: 'Tutup',
+
+  // Database Management Tab
+  databaseTabLabel: 'Basis Data',
+  databaseManagementTitle: 'Manajemen Basis Data',
+  refreshDatabasesAriaLabel: 'Segarkan daftar basis data',
+  newDatabaseButtonLabel: 'Basis Data Baru',
+
+  // Database List Table
+  providerColumnHeader: 'Penyedia',
+  databaseNameColumnHeader: 'Nama',
+  actionsColumnHeader: 'Tindakan',
+
+  // Provider Labels
+  localProviderLabel: 'Lokal',
+  tursoProviderLabel: 'Turso',
+
+  // Database Actions
+  databaseInfoButtonLabel: 'Info',
+  databaseUseButtonLabel: 'Gunakan',
+  databaseExportButtonLabel: 'Ekspor',
+
+  // Database Empty State
+  noDatabasesTitle: 'Belum ada basis data',
+  noDatabasesMessage: 'Tambahkan basis data untuk menyimpan data bisnis Anda. Anda dapat menggunakan basis data browser lokal atau terhubung ke basis data cloud.',
+
+  // Database Info Dialog
+  databaseInfoDialogTitle: 'Informasi Basis Data',
+  databaseInfoProviderLabel: 'Penyedia',
+  databaseInfoNameLabel: 'Nama',
+  databaseInfoUrlLabel: 'URL',
+  databaseInfoStatusLabel: 'Status',
+  databaseInfoActiveStatus: 'Aktif',
+  databaseInfoInactiveStatus: 'Tidak Aktif',
+  databaseInfoCloseButtonLabel: 'Tutup',
+
+  // Database Switch Confirmation
+  switchDatabaseDialogTitle: 'Ganti Basis Data',
+  switchDatabaseMessage: 'Apakah Anda yakin ingin beralih ke basis data ini? Aplikasi akan dimuat ulang.',
+  switchDatabaseConfirmButtonLabel: 'Ganti',
+  switchDatabaseCancelButtonLabel: 'Batal',
+
+  // Database Export
+  exportingDatabaseMessage: 'Mengekspor basis data...',
+  exportDatabaseSuccessMessage: 'Basis data berhasil diekspor.',
+  exportDatabaseErrorMessage: 'Gagal mengekspor basis data.',
+
+  // Database Setup Navigation
+  databaseSetupTitle: 'Pengaturan Basis Data',
+  databaseSetupBackButtonLabel: 'Batal',
+  databaseSetupDescription: 'Konfigurasi basis data baru untuk data bisnis Anda.',
 });

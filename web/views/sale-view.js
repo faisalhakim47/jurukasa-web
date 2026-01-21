@@ -123,14 +123,6 @@ export class SaleViewElement extends HTMLElement {
               aria-hidden="${router.route.pathname.startsWith('/sale/sales') ? 'false' : 'true'}"
               tabindex="${router.route.pathname.startsWith('/sale/sales') ? '0' : '-1'}"
               ?inert=${router.route.pathname.startsWith('/sale/sales') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></sales-view>
             <discounts-view
               ${discountsTabpanel}
@@ -140,14 +132,6 @@ export class SaleViewElement extends HTMLElement {
               aria-hidden="${router.route.pathname.startsWith('/sale/discounts') ? 'false' : 'true'}"
               tabindex="${router.route.pathname.startsWith('/sale/discounts') ? '0' : '-1'}"
               ?inert=${router.route.pathname.startsWith('/sale/discounts') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></discounts-view>
           </main>
         </div>

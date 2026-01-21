@@ -175,14 +175,6 @@ export class BooksViewElement extends HTMLElement {
               aria-hidden="${pathname.startsWith('/books/journal-entries') ? 'false' : 'true'}"
               tabindex="${pathname.startsWith('/books/journal-entries') ? '0' : '-1'}"
               ?inert=${pathname.startsWith('/books/journal-entries') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></journal-entries-view>
             <chart-of-accounts-view
               ${chartOfAccountsTabpanel}
@@ -192,14 +184,6 @@ export class BooksViewElement extends HTMLElement {
               aria-hidden="${pathname.startsWith('/books/chart-of-accounts') ? 'false' : 'true'}"
               tabindex="${pathname.startsWith('/books/chart-of-accounts') ? '0' : '-1'}"
               ?inert=${pathname.startsWith('/books/chart-of-accounts') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></chart-of-accounts-view>
             <account-tags-view
               ${accountTagsTabpanel}
@@ -209,14 +193,6 @@ export class BooksViewElement extends HTMLElement {
               aria-hidden="${pathname.startsWith('/books/account-tags') ? 'false' : 'true'}"
               tabindex="${pathname.startsWith('/books/account-tags') ? '0' : '-1'}"
               ?inert=${pathname.startsWith('/books/account-tags') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></account-tags-view>
             <financial-reports-view
               ${reportsTabpanel}
@@ -226,14 +202,6 @@ export class BooksViewElement extends HTMLElement {
               aria-hidden="${pathname.startsWith('/books/reports') ? 'false' : 'true'}"
               tabindex="${pathname.startsWith('/books/reports') ? '0' : '-1'}"
               ?inert=${pathname.startsWith('/books/reports') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></financial-reports-view>
             <fiscal-years-view
               ${fiscalYearsTabpanel}
@@ -243,14 +211,6 @@ export class BooksViewElement extends HTMLElement {
               aria-hidden="${pathname.startsWith('/books/fiscal-years') ? 'false' : 'true'}"
               tabindex="${pathname.startsWith('/books/fiscal-years') ? '0' : '-1'}"
               ?inert=${pathname.startsWith('/books/fiscal-years') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></fiscal-years-view>
             <fixed-assets-view
               ${fixedAssetsTabpanel}
@@ -260,14 +220,6 @@ export class BooksViewElement extends HTMLElement {
               aria-hidden="${pathname.startsWith('/books/fixed-assets') ? 'false' : 'true'}"
               tabindex="${pathname.startsWith('/books/fixed-assets') ? '0' : '-1'}"
               ?inert=${pathname.startsWith('/books/fixed-assets') === false}
-              style="
-                flex: 0 0 100%;
-                width: 100%;
-                min-width: 0;
-                scroll-snap-align: start;
-                scroll-snap-stop: always;
-                overflow-y: auto;
-              "
             ></fixed-assets-view>
           </main>
         </div>
