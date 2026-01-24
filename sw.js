@@ -179,6 +179,21 @@ async function hotfixSqlite3OpfsAsyncProxy(url) {
 }
 
 /**
+ * For consistency our structure list all resources from package.json, including the html files.
+ * For this reason, the html is included in caching process. But, the cache is come from some CDN.
+ * Most CDN would forbid to serve HTML by invalidating Content-Type header. We need to fix this.
+ * @param {*} url 
+ */
+async function fixCDNToServeHTML(url) {
+  if (url.endsWith('.html')) {
+    const response = await fetch(url);
+    response.headers.set('Content-Type', 'text/html; charset=utf-8');
+    return response;
+  }
+  else return await fetch(url);
+}
+
+/**
  * @param {Cache} cache
  * @param {Array<string>} urls
  */
@@ -193,6 +208,9 @@ async function addImmutableCacheUrls(cache, urls) {
       // console.debug('sw', 'cache', 'add', url);
       if (url.endsWith('dist/sqlite3-opfs-async-proxy.js')) {
         await cache.put(url, await hotfixSqlite3OpfsAsyncProxy(url));
+      }
+      else if (url.endsWith('.html')) {
+        return await cache.put(url, await fixCDNToServeHTML(url));
       }
       else await cache.add(url).catch(function logCacheAddError(error) {
         // console.debug('sw', 'cache', 'add', 'error', url, error.message);
@@ -252,7 +270,10 @@ sw.addEventListener('fetch', function handleFetch(event) {
           if (event.request.url.endsWith('dist/sqlite3-opfs-async-proxy.js')) {
             return await hotfixSqlite3OpfsAsyncProxy(event.request.url);
           }
-          return await fetch(event.request);
+          else if (event.request.url.endsWith('.html')) {
+            return await fixCDNToServeHTML(event.request.url);
+          }
+          else return await fetch(event.request);
         }
       }
     }
