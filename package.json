@@ -6,9 +6,14 @@
     "email": "faisalhakim47@gmail.com",
     "name": "Faisal Hakim"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/faisalhakim47/jurukasa-web.git"
+  },
   "license": "FSL-1.1-MIT",
   "type": "module",
   "main": "web/app.js",
+  "browser": "web/app.js",
   "scripts": {
     "start": "web-dev-server --app-index index.dev.html",
     "test": "npm run test:db && npm run test:db",

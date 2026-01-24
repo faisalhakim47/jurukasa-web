@@ -239,6 +239,7 @@ sw.addEventListener('fetch', function handleFetch(event) {
             const indexResponse = cachedIndexResponse instanceof Response
               ? cachedIndexResponse
               : await fetch(event.request);
+            indexResponse.headers.set('Content-Type', 'text/html; charset=utf-8');
             indexResponse.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
             indexResponse.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
             // if (!(cachedIndexResponse instanceof Response)) console.debug('sw', 'cache', 'miss', appIndex);
