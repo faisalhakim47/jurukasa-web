@@ -42,6 +42,6 @@ const en = {
   supplier,
 };
 
-/** @typedef {typeof en} EnTranslationPack as the default language */
+/** @typedef {typeof en} EnLangPack as the default language */
 
 export default en;

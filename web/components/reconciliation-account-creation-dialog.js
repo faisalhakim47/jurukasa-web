@@ -39,10 +39,10 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
-    const formElement = useElement(host, HTMLFormElement);
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
+    const form = useElement(host, HTMLFormElement);
+    const state = reactive({
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
       accountType: /** @type {ReconciliationAccountType | null} */ (null),
       accountCode: /** @type {string} */ (''),
       accountName: /** @type {string} */ (''),
@@ -56,8 +56,8 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
      * @returns {string}
      */
     function getTagForAccountType() {
-      if (form.accountType === 'adjustment') return 'Reconciliation - Adjustment';
-      if (form.accountType === 'cashOverShort') return 'Reconciliation - Cash Over/Short';
+      if (state.accountType === 'adjustment') return 'Reconciliation - Adjustment';
+      if (state.accountType === 'cashOverShort') return 'Reconciliation - Cash Over/Short';
       return '';
     }
 
@@ -67,9 +67,9 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
      */
     function getSuggestedAccountCode() {
       // Suggest 82200 range for reconciliation adjustment (Other Expenses)
-      if (form.accountType === 'adjustment') return 82200;
+      if (state.accountType === 'adjustment') return 82200;
       // Suggest 82210 for Cash Over/Short
-      if (form.accountType === 'cashOverShort') return 82210;
+      if (state.accountType === 'cashOverShort') return 82210;
       return 82200;
     }
 
@@ -78,8 +78,8 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
      * @returns {string}
      */
     function getSuggestedAccountName() {
-      if (form.accountType === 'adjustment') return t('reconciliation', 'reconciliationAdjustmentAccountName');
-      if (form.accountType === 'cashOverShort') return t('reconciliation', 'cashOverShortAccountName');
+      if (state.accountType === 'adjustment') return t('reconciliation', 'reconciliationAdjustmentAccountName');
+      if (state.accountType === 'cashOverShort') return t('reconciliation', 'cashOverShortAccountName');
       return '';
     }
 
@@ -88,11 +88,11 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
      * @param {ReconciliationAccountType} type
      */
     function handleAccountTypeSelect(type) {
-      form.accountType = type;
-      form.accountCode = getSuggestedAccountCode().toString();
-      form.accountName = getSuggestedAccountName();
-      form.codeValidation = null;
-      form.nameValidation = null;
+      state.accountType = type;
+      state.accountCode = getSuggestedAccountCode().toString();
+      state.accountName = getSuggestedAccountName();
+      state.codeValidation = null;
+      state.nameValidation = null;
     }
 
     /** @param {Event} event */
@@ -103,7 +103,7 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
     }
 
     function handleBackClick() {
-      form.accountType = null;
+      state.accountType = null;
     }
 
     /** @param {Event} event */
@@ -113,14 +113,14 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
       const code = input.value.trim();
 
       input.setCustomValidity('');
-      form.codeValidation = null;
+      state.codeValidation = null;
 
       if (!code) return;
 
       const accountCode = parseInt(code, 10);
       if (isNaN(accountCode)) {
         input.setCustomValidity(t('account', 'invalidAccountCodeError'));
-        form.codeValidation = new Error(t('account', 'invalidAccountCodeError'));
+        state.codeValidation = new Error(t('account', 'invalidAccountCodeError'));
         return;
       }
 
@@ -128,11 +128,11 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
         const result = await database.sql`SELECT account_code FROM accounts WHERE account_code = ${accountCode}`;
         if (result.rows.length > 0) {
           input.setCustomValidity(t('account', 'accountCodeExistsError'));
-          form.codeValidation = new Error(t('account', 'accountCodeExistsError'));
+          state.codeValidation = new Error(t('account', 'accountCodeExistsError'));
         }
       } catch (error) {
         input.setCustomValidity(t('account', 'accountCodeValidationError'));
-        form.codeValidation = new Error(t('account', 'accountCodeValidationError'));
+        state.codeValidation = new Error(t('account', 'accountCodeValidationError'));
         console.error('Account code validation error:', error);
       }
     }
@@ -144,7 +144,7 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
       const name = input.value.trim();
 
       input.setCustomValidity('');
-      form.nameValidation = null;
+      state.nameValidation = null;
 
       if (!name) return;
 
@@ -152,11 +152,11 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
         const result = await database.sql`SELECT name FROM accounts WHERE name = ${name}`;
         if (result.rows.length > 0) {
           input.setCustomValidity(t('account', 'accountNameExistsError'));
-          form.nameValidation = new Error(t('account', 'accountNameExistsError'));
+          state.nameValidation = new Error(t('account', 'accountNameExistsError'));
         }
       } catch (error) {
         input.setCustomValidity(t('account', 'accountNameValidationError'));
-        form.nameValidation = new Error(t('account', 'accountNameValidationError'));
+        state.nameValidation = new Error(t('account', 'accountNameValidationError'));
         console.error('Account name validation error:', error);
       }
     }
@@ -165,23 +165,24 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
     async function handleSubmit(event) {
       event.preventDefault();
 
-      if (form.state === 'submitting') return;
+      if (state.formState === 'submitting') return;
 
       assertInstanceOf(HTMLFormElement, event.currentTarget);
-      const formData = new FormData(event.currentTarget);
+      const form = event.currentTarget;
+      const data = new FormData(form);
 
-      const accountCode = parseInt(String(formData.get('accountCode') || ''), 10);
-      const name = String(formData.get('name') || '').trim();
-      const accountType = form.accountType;
+      const accountCode = parseInt(String(data.get('accountCode') || ''), 10);
+      const accountName = String(data.get('name') || '').trim();
+      const accountType = state.accountType;
 
       try {
 
         if (!accountCode || isNaN(accountCode)) throw new Error(t('account', 'invalidAccountCodeError'));
-        if (!name) throw new Error(t('account', 'accountNameRequiredError'));
+        if (!accountName) throw new Error(t('account', 'accountNameRequiredError'));
         if (!accountType) throw new Error(t('reconciliation', 'accountTypeRequiredError'));
 
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
         const tx = await database.transaction('write');
 
@@ -189,7 +190,7 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
           // Create the account - Expense accounts have normal_balance = 0 (Debit)
           await tx.sql`
             INSERT INTO accounts (account_code, name, normal_balance, control_account_code, create_time, update_time)
-            VALUES (${accountCode}, ${name}, ${0}, ${form.parentAccountCode}, ${Date.now()}, ${Date.now()});
+            VALUES (${accountCode}, ${accountName}, ${0}, ${state.parentAccountCode}, ${Date.now()}, ${Date.now()});
           `;
 
           // Add the Expense tag
@@ -213,7 +214,7 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
 
           await tx.commit();
 
-          form.state = 'success';
+          state.formState = 'success';
 
           host.dispatchEvent(new CustomEvent('reconciliation-account-created', {
             bubbles: true,
@@ -228,29 +229,29 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
         }
       }
       catch (error) {
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         errorAlertDialog.value?.showModal();
       }
     }
 
     useWatch(host, dialog, 'open', function onDialogOpenChange(isOpen) {
       if (isOpen) {
-        form.state = 'idle';
-        form.error = null;
-        form.accountType = null;
-        form.accountCode = '';
-        form.accountName = '';
-        form.parentAccountCode = null;
-        form.codeValidation = null;
-        form.nameValidation = null;
-        formElement.value?.reset();
+        state.formState = 'idle';
+        state.formError = null;
+        state.accountType = null;
+        state.accountCode = '';
+        state.accountName = '';
+        state.parentAccountCode = null;
+        state.codeValidation = null;
+        state.nameValidation = null;
+        form.value?.reset();
       }
     });
 
     /** @param {Event} event */
     function handleDialogClose(event) {
-      if (form.state === 'submitting') {
+      if (state.formState === 'submitting') {
         event.preventDefault();
         return;
       }
@@ -267,10 +268,10 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
           @close=${handleDialogClose}
         >
           <form
-            ${formElement}
+            ${form}
             method="dialog"
             class="container"
-            ?disabled=${form.state !== 'idle'}
+            ?disabled=${state.formState !== 'idle'}
             @submit=${handleSubmit}
           >
             <header>
@@ -289,12 +290,12 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
                 role="button"
                 type="submit"
                 name="action"
-                ?disabled=${form.state !== 'idle' || !form.accountType}
+                ?disabled=${state.formState !== 'idle' || !state.accountType}
               >${t('account', 'createDialogSubmitLabel')}</button>
             </header>
 
             <div class="content">
-              ${form.state !== 'idle' ? html`
+              ${state.formState !== 'idle' ? html`
                 <div role="status" aria-live="polite" aria-busy="true">
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
@@ -303,11 +304,11 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
                 </div>
               ` : nothing}
 
-              ${form.state === 'idle' ? html`
+              ${state.formState === 'idle' ? html`
                 <div style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0px; max-width: 600px; margin: 0 auto;">
 
                   <!-- Account Type Selection -->
-                  ${!form.accountType ? html`
+                  ${!state.accountType ? html`
                     <div style="display: flex; flex-direction: column; gap: 16px;">
                       <h3 class="title-medium">${t('reconciliation', 'selectAccountTypeLabel')}</h3>
                       <p class="body-medium" style="color: var(--md-sys-color-on-surface-variant);">
@@ -375,12 +376,12 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
                         aria-label="${t('reconciliation', 'changeAccountTypeAriaLabel')}"
                       ><material-symbols name="arrow_back"></material-symbols></button>
                       <h3 class="title-medium">
-                        ${form.accountType === 'adjustment' ? t('reconciliation', 'adjustmentAccountLabel') : t('reconciliation', 'cashOverShortAccountLabel')}
+                        ${state.accountType === 'adjustment' ? t('reconciliation', 'adjustmentAccountLabel') : t('reconciliation', 'cashOverShortAccountLabel')}
                       </h3>
                     </div>
 
                     <!-- Account Code -->
-                    <div class="outlined-text-field ${form.codeValidation ? 'error' : ''}">
+                    <div class="outlined-text-field ${state.codeValidation ? 'error' : ''}">
                       <div class="container">
                         <label for="account-code-input">${t('account', 'accountCodeLabel')}</label>
                         <input
@@ -391,18 +392,18 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
                           pattern="[0-9]*"
                           placeholder=" "
                           required
-                          value="${form.accountCode}"
-                          ${readValue(form, 'accountCode')}
+                          value="${state.accountCode}"
+                          ${readValue(state, 'accountCode')}
                           @blur=${validateAccountCode}
                         />
                       </div>
-                      <div class="supporting-text ${form.codeValidation ? 'error' : ''}">
-                        ${form.codeValidation ? form.codeValidation.message : t('account', 'accountCodeSupportingText')}
+                      <div class="supporting-text ${state.codeValidation ? 'error' : ''}">
+                        ${state.codeValidation ? state.codeValidation.message : t('account', 'accountCodeSupportingText')}
                       </div>
                     </div>
 
                     <!-- Account Name -->
-                    <div class="outlined-text-field ${form.nameValidation ? 'error' : ''}">
+                    <div class="outlined-text-field ${state.nameValidation ? 'error' : ''}">
                       <div class="container">
                         <label for="account-name-input">${t('account', 'accountNameLabel')}</label>
                         <input
@@ -411,13 +412,13 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
                           type="text"
                           placeholder=" "
                           required
-                          value="${form.accountName}"
-                          ${readValue(form, 'accountName')}
+                          value="${state.accountName}"
+                          ${readValue(state, 'accountName')}
                           @blur=${validateAccountName}
                         />
                       </div>
-                      <div class="supporting-text ${form.nameValidation ? 'error' : ''}">
-                        ${form.nameValidation ? form.nameValidation.message : ''}
+                      <div class="supporting-text ${state.nameValidation ? 'error' : ''}">
+                        ${state.nameValidation ? state.nameValidation.message : ''}
                       </div>
                     </div>
 
@@ -461,7 +462,7 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
               </hgroup>
             </header>
             <div class="content">
-              <p>${form.error?.message || t('account', 'unknownErrorMessage')}</p>
+              <p>${state.formError?.message || t('account', 'unknownErrorMessage')}</p>
             </div>
             <menu>
               <li>

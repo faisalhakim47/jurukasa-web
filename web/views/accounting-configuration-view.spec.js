@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
-import { useConsoleOutput } from '#test/hooks/use-console-output.js';
-import { loadEmptyFixture } from '#test/tools/fixture.js';
-import { setupDatabase } from '#test/tools/database.js';
-import { useStrict } from '#test/hooks/use-strict.js';
+import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
+import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
+import { setupDatabase } from '#test/playwright/tools/database.js';
+import { useStrict } from '#test/playwright/hooks/use-strict.js';
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
 const { describe } = test;
@@ -284,13 +284,14 @@ describe('Accounting Configuration View', function () {
 
     await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
 
-    await page.evaluate(async function dropConfigTable() {
+    await page.getByLabel('Business Name').fill('Test');
+
+    await page.evaluate(async function simulateCorruptedSchema() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       await database.sql`DROP TABLE config`;
     });
 
-    await page.getByLabel('Business Name').fill('Test');
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
     await expect(page.getByRole('alertdialog')).toBeVisible();

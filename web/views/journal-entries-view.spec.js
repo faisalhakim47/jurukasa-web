@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
-import { useConsoleOutput } from '#test/hooks/use-console-output.js';
-import { loadEmptyFixture } from '#test/tools/fixture.js';
-import { setupDatabase } from '#test/tools/database.js';
-import { useStrict } from '#test/hooks/use-strict.js';
+import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
+import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
+import { setupDatabase } from '#test/playwright/tools/database.js';
+import { useStrict } from '#test/playwright/hooks/use-strict.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -344,7 +344,7 @@ describe('Journal Entries View - Status Filter', function () {
 });
 
 describe('Journal Entries View - Pagination', function () {
-  useConsoleOutput(test);
+  // useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display pagination when more than 10 entries exist', async function ({ page }) {
@@ -473,7 +473,7 @@ describe('Journal Entries View - Pagination', function () {
 });
 
 describe('Journal Entries View - Details Dialog', function () {
-  useConsoleOutput(test);
+  // useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall open details dialog when clicking journal entry ref', async function ({ page }) {

@@ -1,1 +1,0 @@
-export { createClient } from '@libsql/client/web';

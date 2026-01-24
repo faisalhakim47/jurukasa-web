@@ -19,6 +19,7 @@ import '#web/components/material-symbols.js';
 import '#web/components/fiscal-year-creation-dialog.js';
 import '#web/components/fiscal-year-closing-dialog.js';
 import '#web/components/fiscal-year-reversal-dialog.js';
+import { when } from 'lit-html/directives/when.js';
 
 /**
  * @typedef {object} FiscalYearRow
@@ -220,7 +221,9 @@ export class FiscalYearsViewElement extends HTMLElement {
                   color: ${fiscalYear.reversal_time ? 'var(--md-sys-color-on-error-container)' : fiscalYear.post_time ? 'var(--md-sys-color-on-tertiary-container)' : 'var(--md-sys-color-on-secondary-container)'};
                 "
               >
-                <material-symbols name="${fiscalYear.reversal_time ? 'history' : fiscalYear.post_time ? 'lock' : 'lock_open'}" size="16" aria-hidden="true"></material-symbols>
+                ${when(fiscalYear.reversal_time, () => html`<material-symbols name="history" size="16" aria-hidden="true"></material-symbols>`)}
+                ${when(!fiscalYear.reversal_time && fiscalYear.post_time, () => html`<material-symbols name="lock" size="16" aria-hidden="true"></material-symbols>`)}
+                ${when(!fiscalYear.reversal_time && !fiscalYear.post_time, () => html`<material-symbols name="lock_open" size="16" aria-hidden="true"></material-symbols>`)}
                 ${statusText}
               </span>
               ${canReverse ? html`

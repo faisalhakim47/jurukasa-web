@@ -35,12 +35,14 @@
  */
 
 /**
- * preprocess sql query parameters
  * @param {Array<unknown>} params
+ * @returns {Array<boolean|number|string|ArrayBufferLike>}
  */
 export function unknownToSQLArgs(params) {
   return params.map(function correction(param) {
     if (param === null || param === undefined) return null;
+    else if (param instanceof ArrayBuffer) return param;
+    else if (param instanceof Uint8Array) return param.buffer;
     else if (typeof param === 'number') {
       if (Number.isNaN(param)) throw new TypeError('SQL query parameter cannot be NaN');
       else if (!Number.isFinite(param)) throw new TypeError('SQL query parameter cannot be Infinity');

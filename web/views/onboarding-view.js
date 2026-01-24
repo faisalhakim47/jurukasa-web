@@ -52,9 +52,9 @@ export class OnboardingViewElement extends HTMLElement {
       selectedProvider: /** @type {DatabaseProvider} */ ('local'),
     });
 
-    const businessForm = reactive({
-      state: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
-      errorMessage: /** @type {string} */ (undefined),
+    const state = reactive({
+      formState: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
+      formErrorMessage: /** @type {string} */ (undefined),
     });
 
     const chartForm = reactive({
@@ -112,7 +112,7 @@ export class OnboardingViewElement extends HTMLElement {
 
     function loadChartOfAccountsTemplates() {
       database.sql`SELECT name FROM chart_of_accounts_templates`
-        .then(function (result) {
+        .then(function assignTemplates(result) {
           onboarding.templateNames = result.rows.map(function rowToTemplateName(row) { return String(row.name); });
         });
     }
@@ -176,23 +176,19 @@ export class OnboardingViewElement extends HTMLElement {
     /** @param {SubmitEvent} event */
     async function submitBusinessConfig(event) {
       event.preventDefault();
-      const form = /** @type {HTMLFormElement} */ (event.currentTarget);
+      assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
       const formData = new FormData(form);
 
       // Capture form data before changing state (which triggers re-render and disables fields)
-      businessForm.state = 'submitting';
+      state.formState = 'submitting';
+      state.formErrorMessage = undefined;
 
-      console.info('Saving business configuration:', {
-        businessName: formData.get('business-name'),
-        businessType: formData.get('business-type'),
-        currencyCode: formData.get('currency-code'),
-        currencyDecimals: formData.get('currency-decimals'),
-        locale: formData.get('locale'),
-      });
-      console.info(database.transaction);
+      // console.debug('submitBusinessConfig', 'begin');
       const tx = await database.transaction('write');
-      console.info('Started transaction for saving business configuration');
       try {
+        // console.debug('submitBusinessConfig', Array.from(formData.entries()));
+
         await tx.sql`UPDATE config SET value = ${formData.get('business-name') || ''} WHERE key = 'Business Name'`;
         await tx.sql`UPDATE config SET value = ${formData.get('business-type') || ''} WHERE key = 'Business Type'`;
         await tx.sql`UPDATE config SET value = ${formData.get('currency-code') || ''} WHERE key = 'Currency Code'`;
@@ -201,20 +197,21 @@ export class OnboardingViewElement extends HTMLElement {
         await tx.sql`UPDATE config SET value = ${formData.get('language') || ''} WHERE key = 'Language'`;
         await tx.sql`UPDATE config SET value = ${formData.get('fiscal-year-start-month') || ''} WHERE key = 'Fiscal Year Start Month'`;
         await tx.commit();
-        businessForm.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         onboarding.step = 'chart-of-accounts';
         onboarding.isInitialized = true;
+
         loadChartOfAccountsTemplates();
       }
       catch (error) {
         console.error('Failed to save configuration', error);
         await tx.rollback();
-        businessForm.state = 'failure';
-        businessForm.errorMessage = error.message;
+        state.formState = 'failure';
+        state.formErrorMessage = error.message;
         await feedbackDelay();
-        businessForm.state = 'ready';
+        state.formState = 'ready';
       }
     }
 
@@ -491,7 +488,7 @@ export class OnboardingViewElement extends HTMLElement {
     }
 
     function renderBusinessConfigStep() {
-      const formState = businessForm.state;
+      const formState = state.formState;
       const formDisabled = formState !== 'ready';
       return html`
         <dialog

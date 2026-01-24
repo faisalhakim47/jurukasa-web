@@ -15,6 +15,7 @@ import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
 import '#web/components/material-symbols.js';
+import { when } from 'lit-html/directives/when.js';
 
 /**
  * @typedef {object} BalanceReportRow
@@ -835,7 +836,8 @@ export class FinancialReportsViewElement extends HTMLElement {
                       color: ${isBalanced ? '#2E7D32' : '#C62828'};
                     "
                   >
-                    <material-symbols name="${isBalanced ? 'check_circle' : 'error'}" size="20"></material-symbols>
+                    ${when(isBalanced, () => html`<material-symbols name="check_circle" size="20"></material-symbols>`)}
+                    ${when(!isBalanced, () => html`<material-symbols name="error" size="20"></material-symbols>`)}
                     ${isBalanced ? t('financialReport', 'balanceSheetBalancedMessage') : t('financialReport', 'balanceSheetOutOfBalanceMessage', i18n.displayCurrency(Math.abs(totalAssets - totalLiabilities - totalEquity)))}
                   </span>
                 </td>

@@ -53,11 +53,8 @@ export class DiscountCreationDialogElement extends HTMLElement {
       isLoadingInventories: false,
       selectedInventoryId: /** @type {number | null} */ (null),
       selectedInventory: /** @type {InventoryOption | null} */ (null),
-    });
-
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
     });
 
     async function loadAvailableInventories() {
@@ -157,14 +154,15 @@ export class DiscountCreationDialogElement extends HTMLElement {
     async function handleSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       const tx = await database.transaction('write');
 
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(form);
         const name = /** @type {string} */ (data.get('name'))?.trim();
         const multipleOfQuantity = parseInt(/** @type {string} */ (data.get('multipleOfQuantity')) || '1', 10);
         const amount = parseInt(/** @type {string} */ (data.get('amount')) || '0', 10);
@@ -187,7 +185,7 @@ export class DiscountCreationDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         host.dispatchEvent(new CustomEvent('discount-created', {
@@ -198,7 +196,7 @@ export class DiscountCreationDialogElement extends HTMLElement {
 
         dialog.open = false;
 
-        event.currentTarget.reset();
+        form.reset();
         state.discountType = 'global';
         state.selectedInventory = null;
         state.selectedInventoryId = null;
@@ -206,24 +204,24 @@ export class DiscountCreationDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         await feedbackDelay();
       }
       finally {
-        form.state = 'idle';
+        state.formState = 'idle';
       }
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
       const errorDialogElement = errorAlertDialog.value;
       if (errorDialogElement instanceof HTMLDialogElement) {
-        if (form.error instanceof Error) errorDialogElement.showModal();
+        if (state.formError instanceof Error) errorDialogElement.showModal();
         else errorDialogElement.close();
       }
     });
 
-    function handleDismissErrorDialog() { form.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     function renderInventorySelector() {
       if (state.discountType !== 'inventory') return nothing;
@@ -338,7 +336,7 @@ export class DiscountCreationDialogElement extends HTMLElement {
             </header>
 
             <div class="content">
-              ${form.state !== 'idle' ? html`
+              ${state.formState !== 'idle' ? html`
                 <div role="status" aria-live="polite" aria-busy="true">
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
@@ -457,7 +455,7 @@ export class DiscountCreationDialogElement extends HTMLElement {
               </hgroup>
             </header>
             <div class="content">
-              <p>${form.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>

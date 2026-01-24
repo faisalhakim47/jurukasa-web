@@ -15,6 +15,7 @@ import { webStyleSheets } from '#web/styles.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
+import { when } from 'lit-html/directives/when.js';
 
 /**
  * @typedef {object} FiscalYearDetail
@@ -330,7 +331,9 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                           : 'background-color: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container);'}
                       "
                     >
-                      <material-symbols name="${isReversed ? 'history' : fy.post_time !== null ? 'lock' : 'lock_open'}" size="20" aria-hidden="true"></material-symbols>
+                      ${when(isReversed, () => html`<material-symbols name="history" size="20" aria-hidden="true"></material-symbols>`)}
+                      ${when(!isReversed && fy.post_time, () => html`<material-symbols name="lock" size="20" aria-hidden="true"></material-symbols>`)}
+                      ${when(!isReversed && !fy.post_time, () => html`<material-symbols name="lock_open" size="20" aria-hidden="true"></material-symbols>`)}
                       ${isReversed ? t('fiscalYear', 'statusReversed') : fy.post_time !== null ? t('fiscalYear', 'statusClosed') : t('fiscalYear', 'statusOpen')}
                     </span>
                   </div>

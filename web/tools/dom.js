@@ -29,15 +29,20 @@ const cachedMeta = new Map();
 export function getMetaContent(name, defaultContent) {
   if (cachedMeta.has(name)) return cachedMeta.get(name) || defaultContent;
   else {
-    const meta = document.head.querySelector(`meta[name="${name}"]`);
-    cachedMeta.set(name, meta instanceof HTMLMetaElement ? meta.content : defaultContent);
-    return cachedMeta.get(name) || defaultContent;
+    const metas = document.head.getElementsByTagName('meta');
+    for (const meta of metas) {
+      if (meta.name === name) {
+        cachedMeta.set(name, meta instanceof HTMLMetaElement ? meta.content : defaultContent);
+        return cachedMeta.get(name) || defaultContent;
+      }
+    }
+    return defaultContent;
   }
 }
 
 /** @param {HTMLElement} element */
 export function scrollIntoView(element) {
-  const applicationEnvironment = getMetaContent('application-environment', 'production');
+  const applicationEnvironment = getMetaContent('app-env', 'production');
   element.scrollIntoView({
     behavior: applicationEnvironment === 'testing' ? 'instant' : 'smooth',
     block: 'nearest',

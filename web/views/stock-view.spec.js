@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
-import { loadEmptyFixture } from '#test/tools/fixture.js';
-import { useStrict } from '#test/hooks/use-strict.js';
+import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
+import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
+import { useStrict } from '#test/playwright/hooks/use-strict.js';
 
 const { describe } = test;
 

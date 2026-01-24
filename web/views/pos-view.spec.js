@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
-import { loadEmptyFixture } from '#test/tools/fixture.js';
-import { setupDatabase } from '#test/tools/database.js';
-import { useStrict } from '#test/hooks/use-strict.js';
-import { useConsoleOutput } from '#test/hooks/use-console-output.js';
+import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
+import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
+import { setupDatabase } from '#test/playwright/tools/database.js';
+import { useStrict } from '#test/playwright/hooks/use-strict.js';
+import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -33,7 +33,7 @@ describe('POS View', function () {
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   /**
-   * @param {import('#test/tools/database.js').SQLFunction} sql
+   * @param {import('#test/playwright/tools/database.js').SQLFunction} sql
    */
   async function setupPOSData(sql) {
     // All accounts and most tags already exist from default chart, just add specific inventories, payment methods, and discounts

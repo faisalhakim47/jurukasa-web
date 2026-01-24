@@ -48,13 +48,10 @@ export class StockTakingDialogElement extends HTMLElement {
 
     const state = reactive({
       inventory: /** @type {InventoryData | null} */ (null),
-      isLoadingInventory: false,
+      inventoryLoading: false,
       actualStock: /** @type {number | null} */ (null),
-    });
-
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
     });
 
     async function loadInventory() {
@@ -67,7 +64,7 @@ export class StockTakingDialogElement extends HTMLElement {
       }
 
       try {
-        state.isLoadingInventory = true;
+        state.inventoryLoading = true;
 
         const result = await database.sql`
           SELECT id, name, stock, cost, unit_of_measurement
@@ -78,7 +75,7 @@ export class StockTakingDialogElement extends HTMLElement {
         if (result.rows.length === 0) {
           state.inventory = null;
           state.actualStock = null;
-          state.isLoadingInventory = false;
+          state.inventoryLoading = false;
           return;
         }
 
@@ -91,10 +88,10 @@ export class StockTakingDialogElement extends HTMLElement {
           unit_of_measurement: row.unit_of_measurement ? String(row.unit_of_measurement) : null,
         });
         state.actualStock = state.inventory.stock;
-        state.isLoadingInventory = false;
+        state.inventoryLoading = false;
       }
       catch (error) {
-        state.isLoadingInventory = false;
+        state.inventoryLoading = false;
         console.error('Failed to load inventory:', error);
       }
     }
@@ -140,15 +137,15 @@ export class StockTakingDialogElement extends HTMLElement {
       assertInstanceOf(HTMLFormElement, event.currentTarget);
 
       if (!state.inventory || state.actualStock === null) {
-        form.error = new Error('Please enter actual stock.');
+        state.formError = new Error('Please enter actual stock.');
         return;
       }
 
       const tx = await database.transaction('write');
 
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
         const expectedStock = state.inventory.stock;
         const expectedCost = state.inventory.cost;
@@ -167,7 +164,7 @@ export class StockTakingDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         host.dispatchEvent(new CustomEvent('stock-taking-created', {
@@ -177,26 +174,25 @@ export class StockTakingDialogElement extends HTMLElement {
         }));
 
         dialog.open = false;
-        // Reset form
         state.actualStock = null;
       }
       catch (error) {
         await tx.rollback();
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         await feedbackDelay();
       }
       finally {
-        form.state = 'idle';
+        state.formState = 'idle';
       }
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      if (state.formError instanceof Error) errorAlertDialog.value?.showModal();
       else errorAlertDialog.value?.close();
     });
 
-    function handleDismissErrorDialog() { form.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     function renderLoadingIndicator() {
       return html`
@@ -370,7 +366,7 @@ export class StockTakingDialogElement extends HTMLElement {
             </header>
 
             <div class="content">
-              ${form.state !== 'idle' ? html`
+              ${state.formState !== 'idle' ? html`
                 <div role="status" aria-live="polite" aria-busy="true">
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
@@ -379,7 +375,7 @@ export class StockTakingDialogElement extends HTMLElement {
                 </div>
               ` : nothing}
 
-              ${state.isLoadingInventory ? renderLoadingIndicator() : renderStockTakingForm()}
+              ${state.inventoryLoading ? renderLoadingIndicator() : renderStockTakingForm()}
             </div>
           </form>
         </dialog>
@@ -391,7 +387,7 @@ export class StockTakingDialogElement extends HTMLElement {
               <h3>${t('stock', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
-              <p>${form.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>

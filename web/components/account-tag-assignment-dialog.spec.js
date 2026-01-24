@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { useConsoleOutput } from '#test/hooks/use-console-output.js';
-import { useStrict } from '#test/hooks/use-strict.js';
-import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
-import { setupDatabase } from '#test/tools/database.js';
-import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
+import { useStrict } from '#test/playwright/hooks/use-strict.js';
+import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
+import { setupDatabase } from '#test/playwright/tools/database.js';
+import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 /** @import { AccountTagAssignmentDialogElement } from '#web/components/account-tag-assignment-dialog.js' */

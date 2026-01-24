@@ -7,7 +7,8 @@ import { reactive } from '@vue/reactivity';
 
 /** @type {Map<string, Promise<HTMLTemplateElement>>} */
 const svgTemplateMap = new Map();
-const applicationEnvironment = getMetaContent('application-environment', 'production');
+const applicationEnvironment = getMetaContent('app-env', 'production');
+const materialSymbolsProviderUrl = getMetaContent('material-symbols-provider-url', 'https://cdn.jsdelivr.net/npm/@material-symbols/svg-{WEIGHT}@0.40.2/{STYLE}/{NAME}{FILL}.svg');
 
 export class MaterialSymbolsElement extends HTMLElement {
   static observedAttributes = ['provider-url', 'weight', 'style', 'fill', 'size', 'name', 'label'];
@@ -19,7 +20,7 @@ export class MaterialSymbolsElement extends HTMLElement {
     const ready = useBusyStateResolver(host);
 
     const icon = reactive({
-      providerUrl: this.getAttribute('provider-url') || 'https://cdn.jsdelivr.net/npm/@material-symbols/svg-{WEIGHT}@0.40.2/{STYLE}/{NAME}{FILL}.svg',
+      providerUrl: this.getAttribute('provider-url') || materialSymbolsProviderUrl,
       weight: this.getAttribute('weight') || '400',
       style: this.getAttribute('style') || 'rounded',
       fill: this.getAttribute('fill') || 'true',

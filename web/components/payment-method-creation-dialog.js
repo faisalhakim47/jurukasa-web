@@ -35,9 +35,9 @@ export class PaymentMethodCreationDialogElement extends HTMLElement {
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
+    const state = reactive({
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
       accountCode: /** @type {number | null} */ (null),
       accountName: /** @type {string | null} */ (null),
     });
@@ -45,13 +45,13 @@ export class PaymentMethodCreationDialogElement extends HTMLElement {
     /** @param {CustomEvent} event */
     function handleAccountSelect(event) {
       const detail = event.detail;
-      form.accountCode = detail.accountCode;
-      form.accountName = detail.accountName;
+      state.accountCode = detail.accountCode;
+      state.accountName = detail.accountName;
     }
 
     function clearAccount() {
-      form.accountCode = null;
-      form.accountName = null;
+      state.accountCode = null;
+      state.accountName = null;
     }
 
     /** @param {FocusEvent} event */
@@ -77,14 +77,15 @@ export class PaymentMethodCreationDialogElement extends HTMLElement {
     async function handleSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       const tx = await database.transaction('write');
 
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(form);
         const name = /** @type {string} */ (data.get('name'))?.trim();
         const minFee = parseInt(/** @type {string} */ (data.get('minFee')) || '0', 10) || 0;
         const maxFee = parseInt(/** @type {string} */ (data.get('maxFee')) || '0', 10) || 0;
@@ -95,7 +96,7 @@ export class PaymentMethodCreationDialogElement extends HTMLElement {
 
         // Validate inputs
         if (!name) throw new Error(t('paymentMethod', 'paymentMethodNameRequiredError'));
-        if (!form.accountCode) throw new Error(t('paymentMethod', 'accountRequiredError'));
+        if (!state.accountCode) throw new Error(t('paymentMethod', 'accountRequiredError'));
         if (minFee < 0) throw new Error(t('paymentMethod', 'minimumFeeNegativeError'));
         if (maxFee < 0) throw new Error(t('paymentMethod', 'maximumFeeNegativeError'));
         if (maxFee > 0 && maxFee < minFee) throw new Error(t('paymentMethod', 'maximumFeeLessThanMinimumError'));
@@ -104,7 +105,7 @@ export class PaymentMethodCreationDialogElement extends HTMLElement {
         // Verify account has POS - Payment Method tag
         const accountCheck = await tx.sql`
           SELECT 1 FROM account_tags
-          WHERE account_code = ${form.accountCode}
+          WHERE account_code = ${state.accountCode}
             AND tag = 'POS - Payment Method'
           LIMIT 1;
         `;
@@ -115,7 +116,7 @@ export class PaymentMethodCreationDialogElement extends HTMLElement {
         // Insert payment method
         const result = await tx.sql`
           INSERT INTO payment_methods (account_code, name, min_fee, max_fee, rel_fee)
-          VALUES (${form.accountCode}, ${name}, ${minFee}, ${maxFee}, ${relFee})
+          VALUES (${state.accountCode}, ${name}, ${minFee}, ${maxFee}, ${relFee})
           RETURNING id;
         `;
 
@@ -123,7 +124,7 @@ export class PaymentMethodCreationDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         host.dispatchEvent(new CustomEvent('payment-method-created', {
@@ -133,27 +134,27 @@ export class PaymentMethodCreationDialogElement extends HTMLElement {
         }));
 
         dialog.open = false;
-        // Reset form
-        event.currentTarget.reset();
+
+        form.reset();
         clearAccount();
       }
       catch (error) {
         await tx.rollback();
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         await feedbackDelay();
       }
       finally {
-        form.state = 'idle';
+        state.formState = 'idle';
       }
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      if (state.formError instanceof Error) errorAlertDialog.value?.showModal();
       else errorAlertDialog.value?.close();
     });
 
-    function handleDismissErrorDialog() { form.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     useEffect(host, function renderDialog() {
       render(html`
@@ -178,7 +179,7 @@ export class PaymentMethodCreationDialogElement extends HTMLElement {
             </header>
 
             <div class="content">
-              ${form.state !== 'idle' ? html`
+              ${state.formState !== 'idle' ? html`
                 <div role="status" aria-live="polite" aria-busy="true">
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
@@ -216,11 +217,11 @@ export class PaymentMethodCreationDialogElement extends HTMLElement {
                       readonly
                       required
                       placeholder=" "
-                      value="${form.accountCode ? `${form.accountCode} - ${form.accountName}` : ''}"
+                      value="${state.accountCode ? `${state.accountCode} - ${state.accountName}` : ''}"
                       commandfor="account-selector-dialog"
                       command="--open"
                     />
-                    ${form.accountCode ? html`
+                    ${state.accountCode ? html`
                       <button
                         type="button"
                         class="trailing-icon"
@@ -311,7 +312,7 @@ export class PaymentMethodCreationDialogElement extends HTMLElement {
               <h3>${t('paymentMethod', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
-              <p>${form.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>

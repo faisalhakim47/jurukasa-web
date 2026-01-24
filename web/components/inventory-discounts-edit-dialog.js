@@ -57,13 +57,10 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
     const state = reactive({
       inventory: /** @type {InventoryInfo | null} */ (null),
       discounts: /** @type {DiscountRow[]} */ ([]),
-      isLoading: false,
-      error: /** @type {Error | null} */ (null),
-    });
-
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
+      discountsLoading: false,
+      discountsError: /** @type {Error | null} */ (null),
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
     });
 
     async function loadInventoryAndDiscounts() {
@@ -71,10 +68,9 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
         const inventoryId = parseInt(dialog.context?.dataset.inventoryId, 10);
         if (isNaN(inventoryId)) return;
 
-        state.isLoading = true;
-        state.error = null;
+        state.discountsLoading = true;
+        state.discountsError = null;
 
-        // Load inventory info
         const inventoryResult = await database.sql`
           SELECT id, name, unit_price
           FROM inventories
@@ -84,7 +80,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
         if (inventoryResult.rows.length === 0) {
           state.inventory = null;
           state.discounts = [];
-          state.isLoading = false;
+          state.discountsLoading = false;
           return;
         }
 
@@ -110,11 +106,11 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
           });
         });
 
-        state.isLoading = false;
+        state.discountsLoading = false;
       }
       catch (error) {
-        state.error = error instanceof Error ? error : new Error(String(error));
-        state.isLoading = false;
+        state.discountsError = error instanceof Error ? error : new Error(String(error));
+        state.discountsLoading = false;
       }
     }
 
@@ -183,20 +179,23 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
     /** @param {SubmitEvent} event */
     async function handleSubmit(event) {
       event.preventDefault();
+
+      /** @todo use FormData instead of state variable to handle form data */
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
+      const data = new FormData(form);
 
       if (!state.inventory) return;
 
       const tx = await database.transaction('write');
 
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
         const inventoryId = state.inventory.id;
         const inventoryName = state.inventory.name;
 
-        // Validate discounts
         for (let i = 0; i < state.discounts.length; i++) {
           const discount = state.discounts[i];
           if (discount.multiple_of_quantity < 1) {
@@ -232,7 +231,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         host.dispatchEvent(new CustomEvent('inventory-discounts-updated', {
@@ -245,21 +244,21 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         await feedbackDelay();
       }
       finally {
-        form.state = 'idle';
+        state.formState = 'idle';
       }
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      if (state.formError instanceof Error) errorAlertDialog.value?.showModal();
       else errorAlertDialog.value?.close();
     });
 
-    function handleDismissErrorDialog() { form.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     function renderLoadingState() {
       return html`
@@ -384,7 +383,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
       const inventory = state.inventory;
 
       return html`
-        ${form.state !== 'idle' ? html`
+        ${state.formState !== 'idle' ? html`
           <div role="status" aria-live="polite" aria-busy="true">
             <div role="progressbar" class="linear indeterminate">
               <div class="track"><div class="indicator"></div></div>
@@ -469,14 +468,14 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
                 role="button"
                 type="submit"
                 name="action"
-                ?disabled=${form.state === 'submitting' || !state.inventory}
+                ?disabled=${state.formState === 'submitting' || !state.inventory}
               >${t('inventory', 'saveButtonLabel')}</button>
             </header>
 
             <div class="content" style="max-width: 600px; margin: 0 auto; padding: 16px;">
-              ${state.isLoading ? renderLoadingState() : nothing}
-              ${!state.isLoading && !state.inventory ? renderNotFoundState() : nothing}
-              ${!state.isLoading && state.inventory ? renderFormContent() : nothing}
+              ${state.discountsLoading ? renderLoadingState() : nothing}
+              ${!state.discountsLoading && !state.inventory ? renderNotFoundState() : nothing}
+              ${!state.discountsLoading && state.inventory ? renderFormContent() : nothing}
             </div>
           </form>
         </dialog>
@@ -488,7 +487,7 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
               <h3>${t('inventory', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
-              <p>${form.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>

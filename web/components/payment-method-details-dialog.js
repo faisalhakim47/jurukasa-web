@@ -58,18 +58,15 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
 
     const state = reactive({
       paymentMethod: /** @type {PaymentMethodDetails | null} */ (null),
-      isLoading: false,
-      loadError: /** @type {Error | null} */ (null),
+      paymentMethodLoading: false,
+      paymentMethodError: /** @type {Error | null} */ (null),
       accounts: /** @type {AccountOption[]} */ ([]),
-      isLoadingAccounts: false,
+      accountsLoading: false,
       selectedAccountCode: /** @type {number | null} */ (null),
       selectedAccountName: '',
       isEditing: false,
-    });
-
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
     });
 
     async function loadPaymentMethod() {
@@ -81,8 +78,8 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
       }
 
       try {
-        state.isLoading = true;
-        state.loadError = null;
+        state.paymentMethodLoading = true;
+        state.paymentMethodError = null;
 
         const result = await database.sql`
           SELECT
@@ -115,17 +112,17 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
 
         state.selectedAccountCode = state.paymentMethod.accountCode;
         state.selectedAccountName = state.paymentMethod.accountName;
-        state.isLoading = false;
+        state.paymentMethodLoading = false;
       }
       catch (error) {
-        state.loadError = error instanceof Error ? error : new Error(String(error));
-        state.isLoading = false;
+        state.paymentMethodError = error instanceof Error ? error : new Error(String(error));
+        state.paymentMethodLoading = false;
       }
     }
 
     async function loadPaymentMethodAccounts() {
       try {
-        state.isLoadingAccounts = true;
+        state.accountsLoading = true;
 
         const result = await database.sql`
           SELECT a.account_code, a.name
@@ -144,10 +141,10 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
           });
         });
 
-        state.isLoadingAccounts = false;
+        state.accountsLoading = false;
       }
       catch (error) {
-        state.isLoadingAccounts = false;
+        state.accountsLoading = false;
         console.error('Failed to load payment method accounts:', error);
       }
     }
@@ -204,17 +201,18 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
     async function handleSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       if (!state.paymentMethod) return;
 
       const tx = await database.transaction('write');
 
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
-        const data = new FormData(event.currentTarget);
-        const name = /** @type {string} */ (data.get('name'))?.trim();
+        const data = new FormData(form);
+        const accountName = /** @type {string} */ (data.get('name'))?.trim();
         const accountCode = state.selectedAccountCode;
         const minFee = parseInt(/** @type {string} */ (data.get('minFee')) || '0', 10) || 0;
         const maxFee = parseInt(/** @type {string} */ (data.get('maxFee')) || '0', 10) || 0;
@@ -223,8 +221,7 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
         // Convert percentage to internal representation (0.01% = 1, 100% = 1000000)
         const relFee = Math.round(relFeePercent * 10000);
 
-        // Validate inputs
-        if (!name) throw new Error(t('paymentMethod', 'paymentMethodNameRequiredError'));
+        if (!accountName) throw new Error(t('paymentMethod', 'paymentMethodNameRequiredError'));
         if (!accountCode) throw new Error(t('paymentMethod', 'accountRequiredError'));
         if (minFee < 0) throw new Error(t('paymentMethod', 'minimumFeeNegativeError'));
         if (maxFee < 0) throw new Error(t('paymentMethod', 'maximumFeeNegativeError'));
@@ -236,13 +233,13 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
         // Update payment method
         await tx.sql`
           UPDATE payment_methods
-          SET account_code = ${accountCode}, name = ${name}, min_fee = ${minFee}, max_fee = ${maxFee}, rel_fee = ${relFee}
+          SET account_code = ${accountCode}, name = ${accountName}, min_fee = ${minFee}, max_fee = ${maxFee}, rel_fee = ${relFee}
           WHERE id = ${paymentMethodId}
         `;
 
         await tx.commit();
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         host.dispatchEvent(new CustomEvent('payment-method-updated', {
@@ -256,12 +253,12 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         await feedbackDelay();
       }
       finally {
-        form.state = 'idle';
+        state.formState = 'idle';
       }
     }
 
@@ -275,8 +272,8 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
       const tx = await database.transaction('write');
 
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
         const paymentMethodId = state.paymentMethod.id;
 
@@ -296,7 +293,7 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         host.dispatchEvent(new CustomEvent('payment-method-deleted', {
@@ -310,22 +307,22 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         deleteConfirmDialog.value?.close();
         await feedbackDelay();
       }
       finally {
-        form.state = 'idle';
+        state.formState = 'idle';
       }
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      if (state.formError instanceof Error) errorAlertDialog.value?.showModal();
       else errorAlertDialog.value?.close();
     });
 
-    function handleDismissErrorDialog() { form.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     /**
      * Format fee percentage for display
@@ -442,7 +439,7 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
 
       return html`
         <form @submit=${handleSubmit} style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0px; max-width: 600px; margin: 0 auto;">
-          ${form.state === 'submitting' ? html`
+          ${state.formState === 'submitting' ? html`
             <div role="status" aria-live="polite" aria-busy="true">
               <div role="progressbar" class="linear indeterminate">
                 <div class="track"><div class="indicator"></div></div>
@@ -471,7 +468,7 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
           <!-- Account Selection -->
           <div style="display: flex; flex-direction: column; gap: 8px;">
             <label class="label-medium" style="color: var(--md-sys-color-on-surface-variant);">${t('paymentMethod', 'accountLabel')}</label>
-            ${state.isLoadingAccounts ? html`
+            ${state.accountsLoading ? html`
               <div style="display: flex; align-items: center; gap: 8px; padding: 12px; background-color: var(--md-sys-color-surface-container); border-radius: var(--md-sys-shape-corner-medium);">
                 <div role="progressbar" class="linear indeterminate" style="width: 100px;">
                   <div class="track"><div class="indicator"></div></div>
@@ -574,10 +571,10 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
 
           <!-- Actions -->
           <div style="display: flex; gap: 12px; justify-content: flex-end; padding-top: 16px;">
-            <button role="button" type="button" class="text" @click=${cancelEditing} ?disabled=${form.state === 'submitting'}>
+            <button role="button" type="button" class="text" @click=${cancelEditing} ?disabled=${state.formState === 'submitting'}>
               ${t('paymentMethod', 'cancelButtonLabel')}
             </button>
-            <button role="button" type="submit" class="filled" ?disabled=${form.state === 'submitting'}>
+            <button role="button" type="submit" class="filled" ?disabled=${state.formState === 'submitting'}>
               <material-symbols name="save"></material-symbols>
               ${t('paymentMethod', 'saveChangesButtonLabel')}
             </button>
@@ -610,9 +607,9 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
             </header>
 
             <div class="content">
-              ${state.isLoading ? renderLoadingState() : nothing}
-              ${state.loadError instanceof Error ? renderErrorState(state.loadError) : nothing}
-              ${!state.isLoading && !(state.loadError instanceof Error) && state.paymentMethod
+              ${state.paymentMethodLoading ? renderLoadingState() : nothing}
+              ${state.paymentMethodError instanceof Error ? renderErrorState(state.paymentMethodError) : nothing}
+              ${!state.paymentMethodLoading && !(state.paymentMethodError instanceof Error) && state.paymentMethod
                 ? (state.isEditing ? renderEditMode() : renderViewMode())
                 : nothing}
             </div>
@@ -650,7 +647,7 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
               <h3>${t('paymentMethod', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
-              <p>${form.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>

@@ -60,9 +60,9 @@ export class InventoryDetailsDialogElement extends HTMLElement {
       inventory: /** @type {InventoryDetail | null} */ (null),
       barcodes: /** @type {BarcodeRow[]} */ ([]),
       isLoading: false,
-      error: /** @type {Error | null} */ (null),
+      formError: /** @type {Error | null} */ (null),
       isEditing: false,
-      isSaving: false,
+      formSaving: false,
       newBarcode: '',
     });
 
@@ -72,7 +72,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
         if (isNaN(inventoryId)) return;
 
         state.isLoading = true;
-        state.error = null;
+        state.formError = null;
 
         const inventoryResult = await database.sql`
           SELECT
@@ -126,7 +126,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
         state.isLoading = false;
       }
       catch (error) {
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
         state.isLoading = false;
       }
     }
@@ -140,16 +140,17 @@ export class InventoryDetailsDialogElement extends HTMLElement {
     async function handleUpdateSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       if (!state.inventory) return;
 
       const tx = await database.transaction('write');
 
       try {
-        state.isSaving = true;
-        state.error = null;
+        state.formSaving = true;
+        state.formError = null;
 
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(form);
         const name = /** @type {string} */ (data.get('name'))?.trim();
         const unitPrice = parseInt(/** @type {string} */(data.get('unitPrice')), 10);
         const unitOfMeasurement = /** @type {string} */ (data.get('unitOfMeasurement'))?.trim() || null;
@@ -186,10 +187,10 @@ export class InventoryDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
       }
       finally {
-        state.isSaving = false;
+        state.formSaving = false;
       }
     }
 
@@ -234,7 +235,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
       }
     }
 
@@ -255,7 +256,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
       }
     }
 
@@ -266,14 +267,14 @@ export class InventoryDetailsDialogElement extends HTMLElement {
       removeBarcode(barcodeCode);
     }
 
-    function handleDismissErrorDialog() { state.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     function toggleEditMode() {
       state.isEditing = !state.isEditing;
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (state.error instanceof Error) errorAlertDialog.value?.showModal();
+      if (state.formError instanceof Error) errorAlertDialog.value?.showModal();
       else errorAlertDialog.value?.close();
     });
 
@@ -443,7 +444,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
 
       return html`
         <form @submit=${handleUpdateSubmit} style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
-          ${state.isSaving ? html`
+          ${state.formSaving ? html`
             <div role="status" aria-live="polite" aria-busy="true">
               <div role="progressbar" class="linear indeterminate">
                 <div class="track"><div class="indicator"></div></div>
@@ -550,7 +551,7 @@ export class InventoryDetailsDialogElement extends HTMLElement {
               <h3>${t('inventory', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
-              <p>${state.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>

@@ -39,9 +39,9 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
+    const state = reactive({
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
       // Account selections
       assetAccountCode: /** @type {number | null} */ (null),
       assetAccountName: /** @type {string | null} */ (null),
@@ -58,85 +58,86 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
     /** @param {CustomEvent} event */
     function handleAccountSelect(event) {
       const detail = event.detail;
-      if (form.selectingAccount === 'asset') {
-        form.assetAccountCode = detail.accountCode;
-        form.assetAccountName = detail.accountName;
+      if (state.selectingAccount === 'asset') {
+        state.assetAccountCode = detail.accountCode;
+        state.assetAccountName = detail.accountName;
       }
-      else if (form.selectingAccount === 'accumulated') {
-        form.accumulatedDepreciationAccountCode = detail.accountCode;
-        form.accumulatedDepreciationAccountName = detail.accountName;
+      else if (state.selectingAccount === 'accumulated') {
+        state.accumulatedDepreciationAccountCode = detail.accountCode;
+        state.accumulatedDepreciationAccountName = detail.accountName;
       }
-      else if (form.selectingAccount === 'expense') {
-        form.depreciationExpenseAccountCode = detail.accountCode;
-        form.depreciationExpenseAccountName = detail.accountName;
+      else if (state.selectingAccount === 'expense') {
+        state.depreciationExpenseAccountCode = detail.accountCode;
+        state.depreciationExpenseAccountName = detail.accountName;
       }
-      else if (form.selectingAccount === 'payment') {
-        form.paymentAccountCode = detail.accountCode;
-        form.paymentAccountName = detail.accountName;
+      else if (state.selectingAccount === 'payment') {
+        state.paymentAccountCode = detail.accountCode;
+        state.paymentAccountName = detail.accountName;
       }
-      form.selectingAccount = null;
+      state.selectingAccount = null;
     }
 
     function handleSelectAssetAccount() {
-      form.selectingAccount = 'asset';
+      state.selectingAccount = 'asset';
     }
 
     function handleSelectAccumulatedAccount() {
-      form.selectingAccount = 'accumulated';
+      state.selectingAccount = 'accumulated';
     }
 
     function handleSelectExpenseAccount() {
-      form.selectingAccount = 'expense';
+      state.selectingAccount = 'expense';
     }
 
     function handleSelectPaymentAccount() {
-      form.selectingAccount = 'payment';
+      state.selectingAccount = 'payment';
     }
 
     function clearAssetAccount() {
-      form.assetAccountCode = null;
-      form.assetAccountName = null;
+      state.assetAccountCode = null;
+      state.assetAccountName = null;
     }
 
     function clearAccumulatedAccount() {
-      form.accumulatedDepreciationAccountCode = null;
-      form.accumulatedDepreciationAccountName = null;
+      state.accumulatedDepreciationAccountCode = null;
+      state.accumulatedDepreciationAccountName = null;
     }
 
     function clearExpenseAccount() {
-      form.depreciationExpenseAccountCode = null;
-      form.depreciationExpenseAccountName = null;
+      state.depreciationExpenseAccountCode = null;
+      state.depreciationExpenseAccountName = null;
     }
 
     function clearPaymentAccount() {
-      form.paymentAccountCode = null;
-      form.paymentAccountName = null;
+      state.paymentAccountCode = null;
+      state.paymentAccountName = null;
     }
 
     function resetForm() {
-      form.assetAccountCode = null;
-      form.assetAccountName = null;
-      form.accumulatedDepreciationAccountCode = null;
-      form.accumulatedDepreciationAccountName = null;
-      form.depreciationExpenseAccountCode = null;
-      form.depreciationExpenseAccountName = null;
-      form.paymentAccountCode = null;
-      form.paymentAccountName = null;
-      form.selectingAccount = null;
+      state.assetAccountCode = null;
+      state.assetAccountName = null;
+      state.accumulatedDepreciationAccountCode = null;
+      state.accumulatedDepreciationAccountName = null;
+      state.depreciationExpenseAccountCode = null;
+      state.depreciationExpenseAccountName = null;
+      state.paymentAccountCode = null;
+      state.paymentAccountName = null;
+      state.selectingAccount = null;
     }
 
     /** @param {SubmitEvent} event */
     async function handleSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       const tx = await database.transaction('write');
 
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(form);
         const name = /** @type {string} */ (data.get('name'))?.trim();
         const description = /** @type {string} */ (data.get('description'))?.trim() || null;
         const acquisitionDateStr = /** @type {string} */ (data.get('acquisitionDate'));
@@ -153,16 +154,16 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
         if (salvageValue >= acquisitionCost) throw new Error(t('fixedAsset', 'salvageValueTooHigh'));
 
         // Validate account selections
-        if (!form.assetAccountCode) throw new Error(t('fixedAsset', 'assetAccountRequired'));
-        if (!form.accumulatedDepreciationAccountCode) throw new Error(t('fixedAsset', 'accumulatedDepreciationAccountRequired'));
-        if (!form.depreciationExpenseAccountCode) throw new Error(t('fixedAsset', 'depreciationExpenseAccountRequired'));
-        if (!form.paymentAccountCode) throw new Error(t('fixedAsset', 'paymentAccountRequired'));
+        if (!state.assetAccountCode) throw new Error(t('fixedAsset', 'assetAccountRequired'));
+        if (!state.accumulatedDepreciationAccountCode) throw new Error(t('fixedAsset', 'accumulatedDepreciationAccountRequired'));
+        if (!state.depreciationExpenseAccountCode) throw new Error(t('fixedAsset', 'depreciationExpenseAccountRequired'));
+        if (!state.paymentAccountCode) throw new Error(t('fixedAsset', 'paymentAccountRequired'));
 
         // Validate accounts are different
         const accountCodes = [
-          form.assetAccountCode,
-          form.accumulatedDepreciationAccountCode,
-          form.depreciationExpenseAccountCode,
+          state.assetAccountCode,
+          state.accumulatedDepreciationAccountCode,
+          state.depreciationExpenseAccountCode,
         ];
         if (new Set(accountCodes).size !== accountCodes.length) {
           throw new Error(t('fixedAsset', 'accountsMustBeDifferent'));
@@ -199,10 +200,10 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
             ${acquisitionCost},
             ${usefulLifeYears},
             ${salvageValue},
-            ${form.assetAccountCode},
-            ${form.accumulatedDepreciationAccountCode},
-            ${form.depreciationExpenseAccountCode},
-            ${form.paymentAccountCode},
+            ${state.assetAccountCode},
+            ${state.accumulatedDepreciationAccountCode},
+            ${state.depreciationExpenseAccountCode},
+            ${state.paymentAccountCode},
             ${currentTime},
             ${currentTime}
           )
@@ -213,7 +214,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         host.dispatchEvent(new CustomEvent('fixed-asset-created', {
@@ -229,21 +230,21 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         await feedbackDelay();
       }
       finally {
-        form.state = 'idle';
+        state.formState = 'idle';
       }
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      if (state.formError instanceof Error) errorAlertDialog.value?.showModal();
       else errorAlertDialog.value?.close();
     });
 
-    function handleDismissErrorDialog() { form.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     /**
      * @param {string} label
@@ -318,7 +319,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
             </header>
 
             <div class="content">
-              ${form.state !== 'idle' ? html`
+              ${state.formState !== 'idle' ? html`
                 <div role="status" aria-live="polite" aria-busy="true">
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
@@ -441,8 +442,8 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                   ${renderAccountSelector(
                     t('fixedAsset', 'fixedAssetAccountLabel'),
                     'asset-account-input',
-                    form.assetAccountCode,
-                    form.assetAccountName,
+                    state.assetAccountCode,
+                    state.assetAccountName,
                     handleSelectAssetAccount,
                     clearAssetAccount,
                     t('fixedAsset', 'fixedAssetAccountSupportingText')
@@ -451,8 +452,8 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                   ${renderAccountSelector(
                     t('fixedAsset', 'accumulatedDepreciationAccountLabel'),
                     'accumulated-depreciation-input',
-                    form.accumulatedDepreciationAccountCode,
-                    form.accumulatedDepreciationAccountName,
+                    state.accumulatedDepreciationAccountCode,
+                    state.accumulatedDepreciationAccountName,
                     handleSelectAccumulatedAccount,
                     clearAccumulatedAccount,
                     t('fixedAsset', 'accumulatedDepreciationAccountSupportingText')
@@ -461,8 +462,8 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                   ${renderAccountSelector(
                     t('fixedAsset', 'depreciationExpenseAccountLabel'),
                     'depreciation-expense-input',
-                    form.depreciationExpenseAccountCode,
-                    form.depreciationExpenseAccountName,
+                    state.depreciationExpenseAccountCode,
+                    state.depreciationExpenseAccountName,
                     handleSelectExpenseAccount,
                     clearExpenseAccount,
                     t('fixedAsset', 'depreciationExpenseAccountSupportingText')
@@ -471,8 +472,8 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                   ${renderAccountSelector(
                     t('fixedAsset', 'paymentAccountLabel'),
                     'payment-account-input',
-                    form.paymentAccountCode,
-                    form.paymentAccountName,
+                    state.paymentAccountCode,
+                    state.paymentAccountName,
                     handleSelectPaymentAccount,
                     clearPaymentAccount,
                     t('fixedAsset', 'paymentAccountSupportingText')
@@ -491,7 +492,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
               <h3>${t('fixedAsset', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
-              <p>${form.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>

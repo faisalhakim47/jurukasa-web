@@ -216,14 +216,6 @@ export class DatabaseSetupViewElement extends HTMLElement {
 
       businessForm.state = 'submitting';
 
-      console.info('Saving business configuration:', {
-        businessName: formData.get('business-name'),
-        businessType: formData.get('business-type'),
-        currencyCode: formData.get('currency-code'),
-        currencyDecimals: formData.get('currency-decimals'),
-        locale: formData.get('locale'),
-      });
-
       const tx = await database.transaction('write');
       try {
         await tx.sql`UPDATE config SET value = ${formData.get('business-name') || ''} WHERE key = 'Business Name'`;

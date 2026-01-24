@@ -1,12 +1,36 @@
 import { test, expect } from '@playwright/test';
-import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
-import { useConsoleOutput } from '#test/hooks/use-console-output.js';
-import { loadEmptyFixture } from '#test/tools/fixture.js';
-import { useStrict } from '#test/hooks/use-strict.js';
+import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
+import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
+import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
+import { useStrict } from '#test/playwright/hooks/use-strict.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
 const { describe } = test;
+
+/** @param {string} tursoDatabaseUrl */
+async function setupView(tursoDatabaseUrl) {
+  document.body.innerHTML = `
+    <ready-context>
+      <router-context>
+        <database-context provider="turso" turso-url="${tursoDatabaseUrl}">
+          <device-context>
+            <i18n-context>
+              <button
+                type="button"
+                commandfor="account-creation-dialog"
+                command="--open"
+              >Create Account</button>
+              <account-creation-dialog
+                id="account-creation-dialog"
+              ></account-creation-dialog>
+            </i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </ready-context>
+  `;
+}
 
 describe('Account Creation Dialog', function () {
   // useConsoleOutput(test);
@@ -17,28 +41,7 @@ describe('Account Creation Dialog', function () {
   test('it shall create a new account', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function setupView(tursoDatabaseUrl) {
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context provider="turso" turso-url="${tursoDatabaseUrl}">
-              <device-context>
-                <i18n-context>
-                  <button
-                    type="button"
-                    commandfor="account-creation-dialog"
-                    command="--open"
-                  >Create Account</button>
-                  <account-creation-dialog
-                    id="account-creation-dialog"
-                  ></account-creation-dialog>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await page.getByRole('button', { name: 'Create Account' }).click();
 
@@ -53,8 +56,6 @@ describe('Account Creation Dialog', function () {
 
     await dialog.getByLabel('Account Type').click();
     await dialog.getByRole('menuitem', { name: 'Asset', exact: true }).click();
-
-    await page.pause();
 
     const [accountCreatedEvent] = await Promise.all([
       page.evaluate(async function eventTest() {
@@ -81,9 +82,9 @@ describe('Account Creation Dialog', function () {
       return result.rows[0];
     });
 
-    expect(account.account_code).toBe(12345);
+    expect(account.account_code).toBe('12345');
     expect(account.name).toBe('Test Account');
-    expect(account.normal_balance).toBe(0);
+    expect(account.normal_balance).toBe('0');
     expect(account.tag).toBe('Asset');
   });
 

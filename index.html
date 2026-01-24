@@ -1,26 +1,42 @@
 <!DOCTYPE html>
+<title>JuruKasa</title>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta name="application-environment" content="production">
-<title>JuruKasa</title>
-<link rel="icon" type="image/png" href="/web/assets/jurukasa-brand.png">
+<meta name="app-env" content="production">
+<meta name="app-dir" content="https://cdn.jsdelivr.net/npm/jurukasa-web@2026.1.24">
+<meta name="app-index" content="index.html">
+<meta name="material-symbols-provider-url" content="https://cdn.jsdelivr.net/npm/@material-symbols/svg-{WEIGHT}@0.40.2/{STYLE}/{NAME}{FILL}.svg">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/web/assets/jurukasa-brand.png" type="image/png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/source-sans-3@5.2.9/wght.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/source-sans-3@5.2.9/wght-italic.css">
+<link rel="prefetch" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/source-sans-3@5.2.9/source-sans-3-latin-wght-italic.woff2" as="font">
+<link rel="prefetch" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/source-sans-3@5.2.9/source-sans-3-latin-wght-normal.woff2" as="font">
+<link rel="prefetch" href="https://cdn.jsdelivr.net/npm/@sqlite.org/sqlite-wasm@3.51.2-build3/dist/sqlite3-opfs-async-proxy.js">
+<link rel="prefetch" href="https://cdn.jsdelivr.net/npm/@sqlite.org/sqlite-wasm@3.51.2-build3/dist/sqlite3-worker1.mjs">
+<link rel="prefetch" href="https://cdn.jsdelivr.net/npm/@sqlite.org/sqlite-wasm@3.51.2-build3/dist/sqlite3.wasm">
 <script type="importmap">
 {
   "imports": {
-    "@libsql/client/web": "/web/vendor/libsql-client-web.js",
-    "@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm/": "/web/vendor/@sqlite.org/sqlite-wasm/sqlite-wasm/jswasm/",
-    "@vue/reactivity": "/web/vendor/bundle01.js",
-    "#web/": "/web/",
-    "lit-html": "/web/vendor/bundle02.js",
-    "lit-html/async-directive.js": "/web/vendor/bundle02.js",
-    "lit-html/directive.js": "/web/vendor/bundle02.js",
-    "lit-html/directives/ref.js": "/web/vendor/bundle02.js",
-    "lit-html/directives/repeat.js": "/web/vendor/bundle02.js",
-    "lit-html/directives/unsafe-html.js": "/web/vendor/bundle02.js"
+    "@sqlite.org/sqlite-wasm": "https://cdn.jsdelivr.net/npm/@sqlite.org/sqlite-wasm@3.51.2-build3/dist/index.mjs",
+    "@vue/reactivity": "https://cdn.jsdelivr.net/npm/@vue/reactivity@3.6.0-beta.3/dist/reactivity.esm-browser.prod.js",
+    "#web/": "https://cdn.jsdelivr.net/npm/jurukasa-web@2026.1.24/web/",
+    "lit-html": "https://cdn.jsdelivr.net/npm/lit-html@3.3.2/lit-html.js",
+    "lit-html/async-directive.js": "https://cdn.jsdelivr.net/npm/lit-html@3.3.2/async-directive.js",
+    "lit-html/directive-helpers.js": "https://cdn.jsdelivr.net/npm/lit-html@3.3.2/directive-helpers.js",
+    "lit-html/directive.js": "https://cdn.jsdelivr.net/npm/lit-html@3.3.2/directive.js",
+    "lit-html/directives/ref.js": "https://cdn.jsdelivr.net/npm/lit-html@3.3.2/directives/ref.js",
+    "lit-html/directives/repeat.js": "https://cdn.jsdelivr.net/npm/lit-html@3.3.2/directives/repeat.js",
+    "lit-html/directives/unsafe-html.js": "https://cdn.jsdelivr.net/npm/lit-html@3.3.2/directives/unsafe-html.js",
+    "lit-html/directives/when.js": "https://cdn.jsdelivr.net/npm/lit-html@3.3.2/directives/when.js"
   }
 }
 </script>
-<script type="module" src="/web/app.js"></script>
+<script type="module">
+  import '#web/app.js';
+  import { webStyleSheets } from '#web/styles.js';
+  document.adoptedStyleSheets = webStyleSheets;
+</script>
 <ready-context>
   <template shadowrootmode="open">
     <slot></slot>
@@ -46,20 +62,23 @@
         padding: 0;
         margin: 0;
         background: black;
-      "
-    ><p><span aria-hidden="true">...</span></p></dialog>
+      ">
+      <p><span aria-hidden="true">...</span></p>
+    </dialog>
   </template>
-  <font-context>
-    <time-context>
-      <router-context>
-        <database-context>
-          <device-context>
-            <i18n-context>
-              <main-view></main-view>
-            </i18n-context>
-          </device-context>
-        </database-context>
-      </router-context>
-    </time-context>
-  </font-context>
+  <service-worker-context>
+    <font-context>
+      <time-context>
+        <router-context>
+          <database-context>
+            <device-context>
+              <i18n-context>
+                <main-view></main-view>
+              </i18n-context>
+            </device-context>
+          </database-context>
+        </router-context>
+      </time-context>
+    </font-context>
+  </service-worker-context>
 </ready-context>

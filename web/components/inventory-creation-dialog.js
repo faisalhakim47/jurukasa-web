@@ -35,9 +35,9 @@ export class InventoryCreationDialogElement extends HTMLElement {
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
+    const state = reactive({
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
       accountCode: /** @type {number | null} */ (null),
       accountName: /** @type {string | null} */ (null),
     });
@@ -64,27 +64,28 @@ export class InventoryCreationDialogElement extends HTMLElement {
     /** @param {CustomEvent} event */
     function handleAccountSelect(event) {
       const detail = event.detail;
-      form.accountCode = detail.accountCode;
-      form.accountName = detail.accountName;
+      state.accountCode = detail.accountCode;
+      state.accountName = detail.accountName;
     }
 
     function clearAccount() {
-      form.accountCode = null;
-      form.accountName = null;
+      state.accountCode = null;
+      state.accountName = null;
     }
 
     /** @param {SubmitEvent} event */
     async function handleSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       const tx = await database.transaction('write');
 
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(form);
         const name = /** @type {string} */ (data.get('name'))?.trim();
         const unitPrice = parseInt(/** @type {string} */(data.get('unitPrice')), 10);
         const unitOfMeasurement = /** @type {string} */ (data.get('unitOfMeasurement'))?.trim() || null;
@@ -92,12 +93,12 @@ export class InventoryCreationDialogElement extends HTMLElement {
         // Validate inputs
         if (!name) throw new Error(t('inventory', 'inventoryNameRequiredError'));
         if (isNaN(unitPrice) || unitPrice < 0) throw new Error(t('inventory', 'invalidUnitPriceError'));
-        if (!form.accountCode) throw new Error(t('inventory', 'selectInventoryAccountError'));
+        if (!state.accountCode) throw new Error(t('inventory', 'selectInventoryAccountError'));
 
         // Verify account has POS - Inventory tag
         const accountCheck = await tx.sql`
           SELECT 1 FROM account_tags
-          WHERE account_code = ${form.accountCode}
+          WHERE account_code = ${state.accountCode}
             AND tag = 'POS - Inventory'
           LIMIT 1;
         `;
@@ -108,7 +109,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
         // Insert inventory
         const result = await tx.sql`
           INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code)
-          VALUES (${name}, ${unitPrice}, ${unitOfMeasurement}, ${form.accountCode})
+          VALUES (${name}, ${unitPrice}, ${unitOfMeasurement}, ${state.accountCode})
           RETURNING id;
         `;
 
@@ -116,7 +117,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         host.dispatchEvent(new CustomEvent('inventory-created', {
@@ -126,27 +127,27 @@ export class InventoryCreationDialogElement extends HTMLElement {
         }));
 
         dialog.open = false;
-        // Reset form
-        event.currentTarget.reset();
+        form.reset();
+
         clearAccount();
       }
       catch (error) {
         await tx.rollback();
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         await feedbackDelay();
       }
       finally {
-        form.state = 'idle';
+        state.formState = 'idle';
       }
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      if (state.formError instanceof Error) errorAlertDialog.value?.showModal();
       else errorAlertDialog.value?.close();
     });
 
-    function handleDismissErrorDialog() { form.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     useEffect(host, function renderDialog() {
       render(html`
@@ -170,7 +171,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
             </header>
 
             <div class="content">
-              ${form.state !== 'idle' ? html`
+              ${state.formState !== 'idle' ? html`
                 <div role="status" aria-live="polite" aria-busy="true">
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
@@ -238,11 +239,11 @@ export class InventoryCreationDialogElement extends HTMLElement {
                       readonly
                       required
                       placeholder=" "
-                      value="${form.accountCode ? `${form.accountCode} - ${form.accountName}` : ''}"
+                      value="${state.accountCode ? `${state.accountCode} - ${state.accountName}` : ''}"
                       commandfor="account-selector-dialog"
                       command="--open"
                     />
-                    ${form.accountCode ? html`
+                    ${state.accountCode ? html`
                       <button
                         type="button"
                         class="trailing-icon"
@@ -274,7 +275,7 @@ export class InventoryCreationDialogElement extends HTMLElement {
               <h3>${t('inventory', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
-              <p>${form.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>

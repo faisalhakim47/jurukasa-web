@@ -30,7 +30,7 @@ export class ReadyContextElement extends HTMLElement {
       /** @type {PromiseWithResolvers<void>} */
       const { promise, resolve } = Promise.withResolvers();
       // Only track resolvers if shadow root is present
-      if (shadowRoot instanceof ShadowRoot) pendingResolvers.push(promise);
+      pendingResolvers.push(promise);
       return resolve;
     };
 
@@ -38,18 +38,19 @@ export class ReadyContextElement extends HTMLElement {
     const { promise: readyPromise, resolve: resolveReady } = Promise.withResolvers();
 
     useWindowEventListener(host, 'load', async function resolveBusyResolvers() {
-      if (!(shadowRoot instanceof ShadowRoot)) return;
       while (pendingResolvers.length) {
         const resolves = pendingResolvers;
         pendingResolvers = [];
         await Promise.allSettled(resolves);
       }
-      const dialog = shadowRoot.querySelector('dialog[aria-busy="true"]');
-      if (dialog instanceof HTMLDialogElement) {
-        dialog.removeAttribute('aria-busy');
-        dialog.close();
+      if (shadowRoot instanceof ShadowRoot) {
+        const dialog = shadowRoot.querySelector('dialog[aria-busy="true"]');
+        if (dialog instanceof HTMLDialogElement) {
+          dialog.removeAttribute('aria-busy');
+          dialog.close();
+        }
+        else throw new Error('ReadyContextElement: Busy dialog not found in <ready-context>.');
       }
-      else throw new Error('ReadyContextElement: Busy dialog not found in <ready-context>.');
       queueMicrotask(function readyTask() {
         requestAnimationFrame(function waitForAnimationToReady() {
           resolveReady();

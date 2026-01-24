@@ -37,9 +37,9 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
+    const state = reactive({
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
     });
 
     const defaultDates = reactive({
@@ -175,14 +175,13 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
     async function handleSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
-
-      const formElement = event.currentTarget;
+      const form = event.currentTarget;
 
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
-        const data = new FormData(formElement);
+        const data = new FormData(form);
         const name = /** @type {string} */ (data.get('name')).trim() || null;
         const beginDateStr = /** @type {string} */ (data.get('beginDate'));
         const endDateStr = /** @type {string} */ (data.get('endDate'));
@@ -201,12 +200,12 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
           VALUES (${beginTime}, ${endTime}, ${name})
         `;
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         // Close dialog and reset form first
         dialog.open = false;
-        formElement.reset();
+        form.reset();
 
         // Then dispatch the event
         host.dispatchEvent(new CustomEvent('fiscal-year-created', {
@@ -216,19 +215,19 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
         }));
       }
       catch (error) {
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         await feedbackDelay();
       }
       finally {
-        form.state = 'idle';
+        state.formState = 'idle';
       }
     }
 
-    function handleDismissErrorDialog() { form.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (form.error instanceof Error) errorAlertDialog.value?.showModal();
+      if (state.formError instanceof Error) errorAlertDialog.value?.showModal();
       else errorAlertDialog.value?.close();
     });
 
@@ -256,12 +255,12 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
             </header>
 
             <div class="content">
-              ${form.state !== 'idle' ? html`
+              ${state.formState !== 'idle' ? html`
                 <div role="status" aria-live="polite" aria-busy="true">
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
                   </div>
-                  <p>${form.state === 'submitting' ? t('fiscalYear', 'creationLoadingLabel') : form.state === 'success' ? t('fiscalYear', 'creationSuccessLabel') : ''}</p>
+                  <p>${state.formState === 'submitting' ? t('fiscalYear', 'creationLoadingLabel') : state.formState === 'success' ? t('fiscalYear', 'creationSuccessLabel') : ''}</p>
                 </div>
               ` : nothing}
 
@@ -339,7 +338,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
               <h3>${t('fiscalYear', 'errorTitle')}</h3>
             </header>
             <div class="content">
-              <p>${form.error}</p>
+              <p>${state.formError}</p>
             </div>
             <menu>
               <li>

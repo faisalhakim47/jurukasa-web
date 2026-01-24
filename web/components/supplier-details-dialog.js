@@ -69,9 +69,9 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       supplier: /** @type {SupplierDetail | null} */ (null),
       supplierInventories: /** @type {SupplierInventoryRow[]} */ ([]),
       isLoading: false,
-      error: /** @type {Error | null} */ (null),
+      formError: /** @type {Error | null} */ (null),
       isEditing: false,
-      isSaving: false,
+      formIsSaving: false,
 
       // Supplier inventory management
       isAddingInventory: false,
@@ -92,7 +92,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
 
       try {
         state.isLoading = true;
-        state.error = null;
+        state.formError = null;
 
         const result = await database.sql`
           SELECT id, name, phone_number
@@ -138,7 +138,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
         state.isLoading = false;
       }
       catch (error) {
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
         state.isLoading = false;
       }
     }
@@ -231,7 +231,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       const tx = await database.transaction('write');
 
       try {
-        state.isSaving = true;
+        state.formIsSaving = true;
 
         const supplierId = state.supplier.id;
         const inventoryId = state.selectedInventory.id;
@@ -269,10 +269,10 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
       }
       finally {
-        state.isSaving = false;
+        state.formIsSaving = false;
       }
     }
 
@@ -290,7 +290,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       const tx = await database.transaction('write');
 
       try {
-        state.isSaving = true;
+        state.formIsSaving = true;
 
         const supplierId = state.supplier.id;
         const inventoryId = state.isEditingInventory.inventory_id;
@@ -349,10 +349,10 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
       }
       finally {
-        state.isSaving = false;
+        state.formIsSaving = false;
       }
     }
 
@@ -371,7 +371,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       const tx = await database.transaction('write');
 
       try {
-        state.isSaving = true;
+        state.formIsSaving = true;
 
         const supplierId = state.supplier.id;
         const inventoryId = state.pendingDeleteInventory.inventory_id;
@@ -397,10 +397,10 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
       }
       finally {
-        state.isSaving = false;
+        state.formIsSaving = false;
       }
     }
 
@@ -475,20 +475,20 @@ export class SupplierDetailsDialogElement extends HTMLElement {
     async function handleUpdateSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       if (!state.supplier) return;
 
       const tx = await database.transaction('write');
 
       try {
-        state.isSaving = true;
-        state.error = null;
+        state.formIsSaving = true;
+        state.formError = null;
 
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(form);
         const name = /** @type {string} */ (data.get('name'))?.trim();
         const phoneNumber = /** @type {string} */ (data.get('phoneNumber'))?.trim() || null;
 
-        // Validate inputs
         if (!name) throw new Error(t('supplier', 'supplierNameRequiredError'));
 
         // Check for duplicate name (excluding current supplier)
@@ -499,7 +499,6 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           throw new Error(t('supplier', 'supplierNameExistsError'));
         }
 
-        // Update supplier
         await tx.sql`
           UPDATE suppliers
           SET name = ${name}, phone_number = ${phoneNumber}
@@ -519,21 +518,21 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
       }
       finally {
-        state.isSaving = false;
+        state.formIsSaving = false;
       }
     }
 
-    function handleDismissErrorDialog() { state.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     function toggleEditMode() {
       state.isEditing = !state.isEditing;
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
-      if (state.error instanceof Error) errorAlertDialog.open = true;
+      if (state.formError instanceof Error) errorAlertDialog.open = true;
       else errorAlertDialog.open = false;
     });
 
@@ -833,7 +832,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                 type="button"
                 class="tonal"
                 @click=${addSupplierInventory}
-                ?disabled=${!state.selectedInventory || !state.newQuantityConversion || state.isSaving}
+                ?disabled=${!state.selectedInventory || !state.newQuantityConversion || state.formIsSaving}
               >
                 <material-symbols name="add"></material-symbols>
                 ${t('supplier', 'addMappingSubmitButtonLabel')}
@@ -900,7 +899,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
               type="button"
               class="tonal"
               @click=${updateSupplierInventory}
-              ?disabled=${!state.newQuantityConversion || state.isSaving}
+              ?disabled=${!state.newQuantityConversion || state.formIsSaving}
             >
               <material-symbols name="check"></material-symbols>
               ${t('supplier', 'saveChangesInventoryButtonLabel')}
@@ -916,7 +915,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
 
       return html`
         <form @submit=${handleUpdateSubmit} style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
-          ${state.isSaving ? html`
+          ${state.formIsSaving ? html`
             <div role="status" aria-live="polite" aria-busy="true">
               <div role="progressbar" class="linear indeterminate">
                 <div class="track"><div class="indicator"></div></div>
@@ -1006,7 +1005,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
               <h3 id="error-alert-dialog-title">${t('supplier', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
-              <p>${state.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>
@@ -1049,7 +1048,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                   class="text"
                   style="color: var(--md-sys-color-error);"
                   @click=${deleteSupplierInventory}
-                  ?disabled=${state.isSaving}
+                  ?disabled=${state.formIsSaving}
                 >${t('supplier', 'removeButtonLabel')}</button>
               </li>
             </menu>

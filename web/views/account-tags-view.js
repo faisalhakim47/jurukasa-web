@@ -239,7 +239,6 @@ export class AccountTagsViewElement extends HTMLElement {
     function handleTagRowClick(event) {
       assertInstanceOf(HTMLButtonElement, event.currentTarget);
       const tag = event.currentTarget.dataset.tag;
-      console.info('Tag row clicked:', tag);
       if (state.expandedTags.has(tag)) state.expandedTags.delete(tag);
       else if (tag) state.expandedTags.add(tag);
       else return;

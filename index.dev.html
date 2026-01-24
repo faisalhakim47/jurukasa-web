@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<title>JuruKasa</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="app-env" content="development">
+<meta name="app-dir" content="/">
+<meta name="app-index" content="index.dev.html">
+<meta name="material-symbols-provider-url" content="/node_modules/@material-symbols/svg-{WEIGHT}/{STYLE}/{NAME}{FILL}.svg">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/web/assets/jurukasa-brand.png" type="image/png">
+<link rel="stylesheet" href="/node_modules/@fontsource-variable/source-sans-3/wght.css">
+<link rel="stylesheet" href="/node_modules/@fontsource-variable/source-sans-3/wght-italic.css">
+<link rel="prefetch" href="/node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-italic.woff2" as="font" type="font/woff2">
+<link rel="prefetch" href="/node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2">
+<link rel="prefetch" href="/node_modules/@sqlite.org/sqlite-wasm/dist/sqlite3-opfs-async-proxy.js">
+<link rel="prefetch" href="/node_modules/@sqlite.org/sqlite-wasm/dist/sqlite3-worker1.mjs">
+<link rel="prefetch" href="/node_modules/@sqlite.org/sqlite-wasm/dist/sqlite3.wasm">
+<script type="importmap">
+{
+  "imports": {
+    "@sqlite.org/sqlite-wasm": "/node_modules/@sqlite.org/sqlite-wasm/dist/index.mjs",
+    "@vue/reactivity": "/node_modules/@vue/reactivity/dist/reactivity.esm-browser.prod.js",
+    "#web/": "/web/",
+    "lit-html": "/node_modules/lit-html/lit-html.js",
+    "lit-html/async-directive.js": "/node_modules/lit-html/async-directive.js",
+    "lit-html/directive-helpers.js": "/node_modules/lit-html/directive-helpers.js",
+    "lit-html/directive.js": "/node_modules/lit-html/directive.js",
+    "lit-html/directives/ref.js": "/node_modules/lit-html/directives/ref.js",
+    "lit-html/directives/repeat.js": "/node_modules/lit-html/directives/repeat.js",
+    "lit-html/directives/unsafe-html.js": "/node_modules/lit-html/directives/unsafe-html.js",
+    "lit-html/directives/when.js": "/node_modules/lit-html/directives/when.js"
+  }
+}
+</script>
+<script type="module">
+  import '#web/app.js';
+  import { webStyleSheets } from '#web/styles.js';
+  document.adoptedStyleSheets = webStyleSheets;
+</script>
+<ready-context>
+  <template shadowrootmode="open">
+    <slot></slot>
+    <style>
+      dialog[open] { display: flex; }
+      dialog:not([open]) { display: none; }
+    </style>
+    <dialog
+      open
+      aria-live="assertive"
+      aria-busy="true"
+      aria-label="Application is loading"
+      style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        width: 100vw;
+        height: 100vh;
+        border: none;
+        padding: 0;
+        margin: 0;
+        background: black;
+      "
+    ><p><span aria-hidden="true">...</span></p></dialog>
+  </template>
+  <service-worker-context>
+    <font-context>
+      <time-context>
+        <router-context>
+          <database-context>
+            <device-context>
+              <i18n-context>
+                <main-view></main-view>
+              </i18n-context>
+            </device-context>
+          </database-context>
+        </router-context>
+      </time-context>
+    </font-context>
+  </service-worker-context>
+</ready-context>

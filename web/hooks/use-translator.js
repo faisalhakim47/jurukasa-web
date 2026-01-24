@@ -3,13 +3,21 @@ import { DeviceContextElement } from '#web/contexts/device-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
-/** @import { EnTranslationPack as DefaultTranslationPack } from '#web/lang/en.js' */
+/** @import { EnLangPack as DefaultLangPack } from '#web/lang/en.js' */
 
 /**
- * @template {keyof DefaultTranslationPack} BaseKey
- * @template {keyof DefaultTranslationPack[BaseKey]} TextKey
+ * @template {keyof DefaultLangPack} BaseKey
+ * @template {keyof DefaultLangPack[BaseKey]} TextKey
  * @typedef {(baseKey: BaseKey, textKey: TextKey, ...args: unknown[]) => string} TranslatorFunction
  */
+
+/** @type {Map<string, DefaultLangPack | Promise<DefaultLangPack>>} */
+const langPackCache = new Map();
+const defaultLang = 'en';
+const langPackImportMap = {
+  async en() { return import('#web/lang/en.js'); },
+  async id() { return import('#web/lang/id.js'); }
+};
 
 /**
  * @param {HTMLElement} host
@@ -20,15 +28,15 @@ export function useTranslator(host) {
 
   const state = reactive({
     isReady: false,
-    defaultTranslationPack: /** @type {DefaultTranslationPack | null} */ (null),
-    translationPack: /** @type {DefaultTranslationPack | null} */ (null),
+    defaultLangPack: /** @type {DefaultLangPack | null} */ (null),
+    langPack: /** @type {DefaultLangPack | null} */ (null),
   });
 
-  useEffect(host, function loadTranslationPacks() {
-    Promise.all([getTranslationPack(defaultLang), getTranslationPack(device.language)])
-      .then(function setTranslation([defaultTranslationPack, translationPack]) {
-        state.defaultTranslationPack = Object.freeze(defaultTranslationPack);
-        state.translationPack = Object.freeze(translationPack);
+  useEffect(host, function loadLangPacks() {
+    Promise.all([getLangPack(defaultLang), getLangPack(device.language)])
+      .then(function setTranslation([defaultLangPack, langPack]) {
+        state.defaultLangPack = Object.freeze(defaultLangPack);
+        state.langPack = Object.freeze(langPack);
       })
       .finally(function makeReady() {
         state.isReady = true;
@@ -36,8 +44,8 @@ export function useTranslator(host) {
   });
 
   /**
-   * @template {keyof DefaultTranslationPack} BaseKey
-   * @template {keyof DefaultTranslationPack[BaseKey]} TextKey
+   * @template {keyof DefaultLangPack} BaseKey
+   * @template {keyof DefaultLangPack[BaseKey]} TextKey
    * @param {BaseKey} baseKey
    * @param {TextKey} textKey
    * @param {...Array<unknown>} args
@@ -45,10 +53,10 @@ export function useTranslator(host) {
    */
   return function translate(baseKey, textKey, ...args) {
     if (!state.isReady) return '';
-    if (!state.defaultTranslationPack) return '';
+    if (!state.defaultLangPack) return '';
 
-    const base = state.translationPack?.[baseKey]
-      ?? state.defaultTranslationPack?.[baseKey];
+    const base = state.langPack?.[baseKey]
+      ?? state.defaultLangPack?.[baseKey];
 
     if (!base) {
       console.warn(`translator: Missing base key '${baseKey}' in language pack`);
@@ -56,7 +64,7 @@ export function useTranslator(host) {
     }
 
     let text = /** @type {string} */ (base?.[textKey]
-      ?? state.defaultTranslationPack?.[baseKey]?.[textKey]);
+      ?? state.defaultLangPack?.[baseKey]?.[textKey]);
 
     if (typeof text === 'string' && text.length > 0) { /* no-op, text is valid */ }
     else if (typeof text === 'boolean' && text === true) text = String(textKey); // literal translation support
@@ -133,7 +141,7 @@ export function useTranslator(host) {
 export function useLiteral(host) {
   const translate = useTranslator(host);
   /**
-   * @param {keyof DefaultTranslationPack['literal']} textKey
+   * @param {keyof DefaultLangPack['literal']} textKey
    * @param {...Array<unknown>} args
    * @returns {string}
    */
@@ -142,41 +150,33 @@ export function useLiteral(host) {
   };
 }
 
-/** @type {Map<string, DefaultTranslationPack | Promise<DefaultTranslationPack>>} */
-const translationPackCache = new Map();
-const defaultLang = 'en';
-const langImportMap = {
-  async en() { return import('#web/lang/en.js'); },
-  async id() { return import('#web/lang/id.js'); }
-};
-
 /**
  * @param {string} language
- * @returns {Promise<DefaultTranslationPack>}
+ * @returns {Promise<DefaultLangPack>}
  */
-async function getTranslationPack(language) {
+async function getLangPack(language) {
   // Normalize language code to just the primary language tag (e.g., 'en-US' -> 'en')
   const langCode = language.split('-')[0].toLowerCase();
 
-  if (translationPackCache.has(langCode)) {
-    const cachedTranslationPack = translationPackCache.get(langCode);
-    if (cachedTranslationPack instanceof Promise) return cachedTranslationPack;
-    return Promise.resolve(cachedTranslationPack);
+  if (langPackCache.has(langCode)) {
+    const cachedLangPack = langPackCache.get(langCode);
+    if (cachedLangPack instanceof Promise) return cachedLangPack;
+    return Promise.resolve(cachedLangPack);
   }
 
-  const translationPackPromise = (async function loadTranslationPack() {
+  const langPackPromise = (async function loadLangPack() {
     try {
-      const { default: translationpack } = await langImportMap[langCode]?.() ?? langImportMap[defaultLang]();
-      translationPackCache.set(langCode, translationpack);
-      return translationpack;
+      const { default: langPack } = await langPackImportMap[langCode]?.() ?? langPackImportMap[defaultLang]();
+      langPackCache.set(langCode, langPack);
+      return langPack;
     }
     catch {
-      translationPackCache.set(langCode, null);
+      langPackCache.set(langCode, null);
       throw new Error(`Failed to load language pack for '${langCode}'`);
     }
   })();
 
-  translationPackCache.set(langCode, translationPackPromise);
+  langPackCache.set(langCode, langPackPromise);
 
-  return translationPackPromise;
+  return langPackPromise;
 }

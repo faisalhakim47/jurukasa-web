@@ -4,7 +4,7 @@
     "checkJs": true,
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM", "WebWorker"],
     "paths": {
       "#web/*": ["./web/*"],
       "#test/*": ["./test/*"]
@@ -13,6 +13,7 @@
   "include": [
     "test/**/*.js",
     "web/**/*.js",
-    "web/global.d.ts"
+    "web/global.d.ts",
+    "sw.js"
   ]
 }

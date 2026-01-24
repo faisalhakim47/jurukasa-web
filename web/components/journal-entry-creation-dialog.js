@@ -148,10 +148,10 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
     }
 
     let nextLineId = 1;
-    const form = reactive({
+    const state = reactive({
       lineIds: [nextLineId++, nextLineId++],
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: null,
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: null,
     });
 
     const initialEntryDatetime = computed(function initialEntryDatetime() {
@@ -161,7 +161,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
       }
     });
 
-    function addJournalEntryLine() { form.lineIds.push(nextLineId++); }
+    function addJournalEntryLine() { state.lineIds.push(nextLineId++); }
 
     /** @param {MouseEvent} event */
     function removeJournalEntryLineHandler(event) {
@@ -169,9 +169,9 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
       const lineIdStr = event.currentTarget.dataset.lineId;
       const lineId = parseInt(lineIdStr, 10);
       if (isNaN(lineId)) throw new Error('Invalid line ID to remove.');
-      const index = form.lineIds.indexOf(lineId);
+      const index = state.lineIds.indexOf(lineId);
       if (index === -1) throw new Error('Line ID to remove not found.');
-      form.lineIds.splice(index, 1);
+      state.lineIds.splice(index, 1);
       syncSumOfDebitAndCredit();
     }
 
@@ -192,14 +192,15 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
     async function handleSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       const tx = await database.transaction('write');
 
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(form);
         const entryTimeStr = /** @type {string} */ (data.get('entryTime'));
         const note = /** @type {string} */ (data.get('note'));
 
@@ -231,14 +232,14 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
         }
 
         if (journalEntryLines.length === 0) {
-          form.state = 'error';
-          form.error = new Error(t('journalEntry', 'linesRequired'));
+          state.formState = 'error';
+          state.formError = new Error(t('journalEntry', 'linesRequired'));
           return;
         }
 
         if (totalDebit !== totalCredit) {
-          form.state = 'error';
-          form.error = new Error(t('journalEntry', 'unbalancedEntry'));
+          state.formState = 'error';
+          state.formError = new Error(t('journalEntry', 'unbalancedEntry'));
           return;
         }
 
@@ -259,7 +260,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         host.dispatchEvent(new CustomEvent('journal-entry-created', {
@@ -272,23 +273,23 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        form.state = 'error';
-        form.error = error;
+        state.formState = 'error';
+        state.formError = error;
         await feedbackDelay();
       }
       finally {
-        form.state = 'idle';
+        state.formState = 'idle';
       }
     }
 
     useEffect(host, async function syncErrorAlertDialogState() {
       if (errorAlertDialog.value instanceof HTMLDialogElement) {
-        if (form.error instanceof Error) errorAlertDialog.value.showModal();
+        if (state.formError instanceof Error) errorAlertDialog.value.showModal();
         else errorAlertDialog.value.close();
       }
     });
 
-    function handleDismissErrorDialog() { form.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     useEffect(host, function renderDialog() {
       render(html`
@@ -307,7 +308,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
             </header>
 
             <div class="content">
-              ${form.state !== 'idle' ? html`
+              ${state.formState !== 'idle' ? html`
                 <div role="status" aria-live="polite" aria-busy="true">
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
@@ -365,7 +366,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                     </tr>
                   </thead>
                   <tbody ${journalEntryLinesTBody}>
-                    ${repeat(form.lineIds, (lineId) => lineId, (lineId, index) => html`
+                    ${repeat(state.lineIds, (lineId) => lineId, (lineId, index) => html`
                       <tr>
                         <td style="text-align: center; width: 64px;">${index + 1}</td>
                         <td style="text-align: left; width: 128px;">
@@ -436,7 +437,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                             aria-label=${`Remove line ${index + 1}`}
                             data-line-id=${lineId}
                             @click=${removeJournalEntryLineHandler}
-                            ?disabled=${form.lineIds.length <= 2}
+                            ?disabled=${state.lineIds.length <= 2}
                           ><material-symbols name="delete"></material-symbols></button>
                         </td>
                       </tr>
@@ -465,7 +466,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
               <h3>${t('journalEntry', 'dialogErrorTitle')}</h3>
             </header>
             <div class="content">
-              <p>${form.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>

@@ -1,6 +1,7 @@
 import { reactive } from '@vue/reactivity';
 import { html, nothing } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
+import { when } from 'lit-html/directives/when.js';
 
 import { defineWebComponent } from '#web/component.js';
 import { readValue } from '#web/directives/read-value.js';
@@ -119,13 +120,13 @@ export class CashCountCreationDialogElement extends HTMLElement {
       if (form.state === 'submitting') return;
 
       assertInstanceOf(HTMLFormElement, event.currentTarget);
-      const formData = new FormData(event.currentTarget);
+      const data = new FormData(event.currentTarget);
 
-      const accountCode = Number(formData.get('accountCode'));
-      const countedAmountStr = String(formData.get('countedAmount') || '0');
+      const accountCode = Number(data.get('accountCode'));
+      const countedAmountStr = String(data.get('countedAmount') || '0');
       const countedAmount = parseInt(countedAmountStr, 10);
-      const note = String(formData.get('note') || '');
-      const countTimeStr = String(formData.get('countTime') || '');
+      const note = String(data.get('note') || '');
+      const countTimeStr = String(data.get('countTime') || '');
 
       try {
         form.state = 'submitting';
@@ -207,7 +208,6 @@ export class CashCountCreationDialogElement extends HTMLElement {
         if (isBalanced) {
           var backgroundColor = 'var(--md-sys-color-primary-container)';
           var textColor = 'var(--md-sys-color-on-primary-container)';
-          var iconName = 'check_circle';
           var labelText = t('reconciliation', 'balancedLabel');
           var amountText = '';
           var messageText = t('reconciliation', 'cashCountBalancedMessage');
@@ -215,7 +215,6 @@ export class CashCountCreationDialogElement extends HTMLElement {
         else {
           var backgroundColor = isShortage ? 'var(--md-sys-color-error-container)' : 'var(--md-sys-color-tertiary-container)';
           var textColor = isShortage ? 'var(--md-sys-color-on-error-container)' : 'var(--md-sys-color-on-tertiary-container)';
-          var iconName = isShortage ? 'warning' : 'info';
           var labelText = isShortage ? t('reconciliation', 'cashShortageLabel') : t('reconciliation', 'cashOverageLabel');
           var amountText = i18n.displayCurrency(Math.abs(discrepancy));
           var messageText = t('reconciliation', 'discrepancyWillBeRecordedMessage');
@@ -232,7 +231,9 @@ export class CashCountCreationDialogElement extends HTMLElement {
             gap: 8px;
           ">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <material-symbols name="${iconName}"></material-symbols>
+              ${when(isBalanced, () => html`<material-symbols name="check_circle"></material-symbols>`)}
+              ${when(!isBalanced && isShortage, () => html`<material-symbols name="warning"></material-symbols>`)}
+              ${when(!isBalanced && !isShortage, () => html`<material-symbols name="info"></material-symbols>`)}
               <span class="label-medium">${labelText}</span>
             </div>
             ${amountText ? html`<p class="title-medium" style="margin: 0;">${amountText}</p>` : nothing}

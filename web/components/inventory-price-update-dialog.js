@@ -50,13 +50,10 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
 
     const state = reactive({
       inventory: /** @type {InventoryInfo | null} */ (null),
-      isLoading: false,
-      error: /** @type {Error | null} */ (null),
-    });
-
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
+      inventoryLoading: false,
+      inventoryError: /** @type {Error | null} */ (null),
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
     });
 
     async function loadInventory() {
@@ -64,8 +61,8 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
         const inventoryId = parseInt(dialog.context?.dataset.inventoryId, 10);
         if (isNaN(inventoryId)) return;
 
-        state.isLoading = true;
-        state.error = null;
+        state.inventoryLoading = true;
+        state.inventoryError = null;
 
         const result = await database.sql`
           SELECT id, name, unit_price, unit_of_measurement
@@ -86,11 +83,11 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
           };
         }
 
-        state.isLoading = false;
+        state.inventoryLoading = false;
       }
       catch (error) {
-        state.error = error instanceof Error ? error : new Error(String(error));
-        state.isLoading = false;
+        state.inventoryError = error instanceof Error ? error : new Error(String(error));
+        state.inventoryLoading = false;
       }
     }
 
@@ -103,16 +100,17 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
     async function handleSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       if (!state.inventory) return;
 
       const tx = await database.transaction('write');
 
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(form);
         const unitPrice = parseInt(/** @type {string} */(data.get('unitPrice')), 10);
 
         // Validate inputs
@@ -127,7 +125,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         host.dispatchEvent(new CustomEvent('inventory-price-updated', {
@@ -140,24 +138,24 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         await feedbackDelay();
       }
       finally {
-        form.state = 'idle';
+        state.formState = 'idle';
       }
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
       const errorDialogElement = errorAlertDialog.element.value;
       if (errorDialogElement instanceof HTMLDialogElement) {
-        if (form.error instanceof Error) errorDialogElement.showModal();
+        if (state.formError instanceof Error) errorDialogElement.showModal();
         else errorDialogElement.close();
       }
     });
 
-    function handleDismissErrorDialog() { form.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     function renderLoadingState() {
       return html`
@@ -209,7 +207,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
       if (!state.inventory) return nothing;
       const inventory = state.inventory;
       return html`
-        ${form.state !== 'idle' ? html`
+        ${state.formState !== 'idle' ? html`
           <div role="status" aria-live="polite" aria-busy="true">
             <div role="progressbar" class="linear indeterminate">
               <div class="track"><div class="indicator"></div></div>
@@ -263,9 +261,9 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
             </header>
 
             <div class="content">
-              ${state.isLoading ? renderLoadingState() : nothing}
-              ${!state.isLoading && !state.inventory ? renderNotFoundState() : nothing}
-              ${!state.isLoading && state.inventory ? renderUpdateFormContent() : nothing}
+              ${state.inventoryLoading ? renderLoadingState() : nothing}
+              ${!state.inventoryLoading && !state.inventory ? renderNotFoundState() : nothing}
+              ${!state.inventoryLoading && state.inventory ? renderUpdateFormContent() : nothing}
             </div>
 
             <menu>
@@ -275,12 +273,12 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
                 class="text"
                 commandfor="inventory-price-update-dialog"
                 command="close"
-                ?disabled=${form.state === 'submitting'}
+                ?disabled=${state.formState === 'submitting'}
               >${t('inventory', 'cancelButtonLabel')}</button>
               <button
                 role="button"
                 type="submit"
-                ?disabled=${form.state === 'submitting' || !state.inventory}
+                ?disabled=${state.formState === 'submitting' || !state.inventory}
               >${t('inventory', 'updatePriceButtonLabel')}</button>
             </menu>
           </form>
@@ -293,7 +291,7 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
               <h3>${t('inventory', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
-              <p>${form.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>

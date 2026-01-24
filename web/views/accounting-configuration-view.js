@@ -62,7 +62,7 @@ export class AccountingConfigurationViewElement extends HTMLElement {
         for (const row of result.rows) {
           const key = String(row.key);
           const value = String(row.value);
-          
+
           if (key === 'Business Name') state.businessName = value;
           else if (key === 'Business Type') state.businessType = value;
           else if (key === 'Currency Code') state.currencyCode = value;
@@ -86,6 +86,7 @@ export class AccountingConfigurationViewElement extends HTMLElement {
     async function handleConfigFormSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       const tx = await database.transaction('write');
 
@@ -93,7 +94,7 @@ export class AccountingConfigurationViewElement extends HTMLElement {
         state.configFormState = 'submitting';
         state.configFormError = null;
 
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(form);
         const updateTime = Date.now();
 
         for (const [key, value] of data.entries()) {
@@ -120,29 +121,27 @@ export class AccountingConfigurationViewElement extends HTMLElement {
         }
 
         state.configFormState = 'idle';
-
-        loadConfig();
       }
       catch (error) {
-        await tx.rollback();
         state.configFormState = 'error';
         state.configFormError = error instanceof Error ? error : new Error(String(error));
+        await tx.rollback();
+      }
+      finally {
+        await loadConfig();
       }
     }
 
     function handleDismissErrorDialog() {
+      console.trace('handleDismissErrorDialog');
       state.configFormError = null;
       state.configFormState = 'idle';
     }
 
     useEffect(host, function syncErrorAlertDialogState() {
       if (errorAlertDialog.value instanceof HTMLDialogElement) {
-        if (state.configFormError instanceof Error && state.configFormState !== 'submitting') {
-          errorAlertDialog.value.showModal();
-        }
-        else {
-          errorAlertDialog.value.close();
-        }
+        if (state.configFormError instanceof Error && state.configFormState !== 'submitting') errorAlertDialog.value.showModal();
+        else errorAlertDialog.value.close();
       }
     });
 

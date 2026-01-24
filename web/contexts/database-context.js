@@ -9,6 +9,8 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useAttribute } from '#web/hooks/use-attribute.js';
 import { createTursoDatabaseClient } from '#web/databases/turso.js';
 import { createLocalDatabaseClient } from '#web/databases/local.js';
+import { getContextValue } from '#web/context.js';
+import { ServiceWorkerContextElement } from '#web/contexts/service-worker-context.js';
 
 /** @import { DatabaseClient, TransactionMode, TransactionClient, SQLFunction } from '#web/database.js' */
 
@@ -278,6 +280,18 @@ export class DatabaseContextElement extends HTMLElement {
     async function connect(config) {
       connection.state = 'connecting';
       connection.error = undefined;
+
+      // optionally apply hotfix here
+      if (config.provider === 'local') {
+        try {
+          const serviceWorkerContext = getContextValue(host, ServiceWorkerContextElement);
+          await serviceWorkerContext.hotfixSqlite3OpfsAsyncProxy();
+        }
+        catch (error) {
+          // console.debug('service-worker-context', 'connect', error);
+        }
+      }
+
       await initiateDatabase(config)
         .then(function connected(client) {
           connection.state = 'connected';
@@ -285,7 +299,6 @@ export class DatabaseContextElement extends HTMLElement {
           connection.client = client;
         })
         .catch(function failedToConnect(error) {
-          console.info('Database connection failed:', error);
           connection.state = 'unconfigured';
           connection.error = error;
         });
@@ -350,7 +363,7 @@ async function initiateDatabase(config) {
     return client;
   }
   catch (error) {
-    console.info('Error during database initiation', error);
+    // console.debug('Error during database initiation', error);
     throw new FailedToConnectDatabaseError('Failed to connect to the database', { cause: error });
   }
 }
@@ -361,7 +374,7 @@ async function initiateDatabase(config) {
  */
 async function createDatabaseClient(config) {
   if (config.provider === 'local') return createLocalDatabaseClient();
-  else if (config.provider === 'turso') return createTursoDatabaseClient(config.url, config.authToken ?? '');
+  else if (config.provider === 'turso') return createTursoDatabaseClient(config);
   else throw new DatabaseError(`Unknown database provider: ${/** @type {any} */ (config).provider}`);
 }
 

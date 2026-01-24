@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { useConsoleOutput } from '#test/hooks/use-console-output.js';
-import { useStrict } from '#test/hooks/use-strict.js';
-import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
-import { setupDatabase } from '#test/tools/database.js';
-import { loadEmptyFixture } from '#test/tools/fixture.js';
-
+import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
+import { useStrict } from '#test/playwright/hooks/use-strict.js';
+import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
+import { setupDatabase } from '#test/playwright/tools/database.js';
+import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
+/** @import { InventoryPriceUpdateDialogElement } from '#web/components/inventory-price-update-dialog.js' */
 
 const { describe } = test;
 
@@ -96,9 +96,9 @@ describe('Inventory Price Update Dialog', function () {
       return result.rows[0];
     });
 
-    expect(inventory.id).toBe(1);
+    expect(inventory.id).toBe('1');
     expect(inventory.name).toBe('Test Product');
-    expect(inventory.unit_price).toBe(15000);
+    expect(inventory.unit_price).toBe('15000');
 
     await expect(page.getByRole('dialog', { name: 'Update Unit Price' })).not.toBeVisible();
   });
@@ -179,20 +179,12 @@ describe('Inventory Price Update Dialog', function () {
 
     const [priceUpdatedEvent] = await Promise.all([
       page.evaluate(async function waitForPriceUpdatedEvent() {
-        return new Promise(function (resolve, reject) {
-          let settled = false;
-          const dialog = document.getElementById('inventory-price-update-dialog');
-          dialog.addEventListener('inventory-price-updated', function (event) {
-            if (settled) return;
-            settled = true;
-            resolve(event.detail);
-          });
-          setTimeout(function () {
-            if (settled) return;
-            settled = true;
-            reject(new Error('Timeout waiting for inventory-price-updated event'));
-          }, 5000);
-        });
+        const { waitForEvent } = await import('#web/tools/dom.js');
+        /** @type {InventoryPriceUpdateDialogElement} */
+        const dialog = document.getElementById('inventory-price-update-dialog');
+        const event = await waitForEvent(dialog, 'inventory-price-updated', 2000);
+        if (event instanceof CustomEvent) return event.detail;
+        else throw new Error('Timeout waiting for inventory-price-updated event');
       }),
       page.getByRole('dialog', { name: 'Update Unit Price' }).getByRole('button', { name: 'Update Price' }).click(),
     ]);
@@ -202,14 +194,10 @@ describe('Inventory Price Update Dialog', function () {
     const inventory = await page.evaluate(async function getInventoryFromDatabase() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
-      const result = await database.sql`
-        SELECT id, unit_price
-        FROM inventories
-        WHERE id = 1
-      `;
+      const result = await database.sql`SELECT id, unit_price FROM inventories WHERE id = 1`;
       return result.rows[0];
     });
 
-    expect(inventory.unit_price).toBe(0);
+    expect(inventory.unit_price).toBe('0');
   });
 });

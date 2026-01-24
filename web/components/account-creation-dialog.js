@@ -17,7 +17,7 @@ import { feedbackDelay } from '#web/tools/timing.js';
 import '#web/components/material-symbols.js';
 import '#web/components/account-selector-dialog.js';
 
-/** @import { EnTranslationPack as DefaultTranslationPack } from '#web/lang/en.js' */
+/** @import { EnLangPack as DefaultLangPack } from '#web/lang/en.js' */
 
 const accountTypes = /** @type {const} */ ([
   'Asset',
@@ -32,7 +32,7 @@ const accountTypes = /** @type {const} */ ([
   'Contra Expense',
 ]);
 
-/** @type {Record<string, keyof DefaultTranslationPack['account']>} */
+/** @type {Record<string, keyof DefaultLangPack['account']>} */
 const accountTypeTranslationKeyMap = {
   'Asset': 'accountTypeAsset',
   'Liability': 'accountTypeLiability',
@@ -49,7 +49,7 @@ const accountTypeTranslationKeyMap = {
 /**
  * Map account type to translation key
  * @param {string} accountType
- * @returns {keyof DefaultTranslationPack['account']}
+ * @returns {keyof DefaultLangPack['account']}
  */
 function getAccountTypeTranslationKey(accountType) {
   return accountTypeTranslationKeyMap[accountType] || 'accountTypeAsset';
@@ -73,9 +73,9 @@ export class AccountCreationDialogElement extends HTMLElement {
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
+    const state = reactive({
+      formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
       parentAccountCode: /** @type {number | null} */ (null),
       parentAccountName: /** @type {string | null} */ (null),
       normalBalance: /** @type {'Debit' | 'Credit'} */ (null),
@@ -118,19 +118,19 @@ export class AccountCreationDialogElement extends HTMLElement {
     /** @param {CustomEvent} event */
     function handleAccountSelect(event) {
       const detail = event.detail;
-      form.parentAccountCode = detail.accountCode;
-      form.parentAccountName = detail.accountName;
+      state.parentAccountCode = detail.accountCode;
+      state.parentAccountName = detail.accountName;
     }
 
     function clearParentAccount() {
-      form.parentAccountCode = null;
-      form.parentAccountName = null;
+      state.parentAccountCode = null;
+      state.parentAccountName = null;
     }
 
     /** @param {Event} event */
     function handleNormalBalanceSelect(event) {
       assertInstanceOf(HTMLElement, event.currentTarget);
-      form.normalBalance = event.currentTarget.getAttribute('data-value') === 'Debit'
+      state.normalBalance = event.currentTarget.getAttribute('data-value') === 'Debit'
         ? 'Debit'
         : 'Credit';
       host.shadowRoot?.getElementById('normal-balance-menu')?.hidePopover();
@@ -138,7 +138,7 @@ export class AccountCreationDialogElement extends HTMLElement {
 
     /** @param {string} value */
     function handleAccountTypeSelect(value) {
-      form.accountType = value;
+      state.accountType = value;
       host.shadowRoot?.getElementById('account-type-menu')?.hidePopover();
     }
 
@@ -153,13 +153,14 @@ export class AccountCreationDialogElement extends HTMLElement {
     async function handleSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       const tx = await database.transaction('write');
       try {
-        form.state = 'submitting';
-        form.error = null;
+        state.formState = 'submitting';
+        state.formError = null;
 
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(form);
         const accountCode = parseInt(/** @type {string} */(data.get('accountCode')), 10);
         const name = /** @type {string} */ (data.get('name'));
         const normalBalance = /** @type {string} */ (data.get('normalBalance'));
@@ -172,7 +173,7 @@ export class AccountCreationDialogElement extends HTMLElement {
 
         await tx.sql`
           INSERT INTO accounts (account_code, name, normal_balance, control_account_code, create_time, update_time)
-          VALUES (${accountCode}, ${name}, ${normalBalance === 'Debit' ? 0 : 1}, ${form.parentAccountCode}, ${Date.now()}, ${Date.now()});
+          VALUES (${accountCode}, ${name}, ${normalBalance === 'Debit' ? 0 : 1}, ${state.parentAccountCode}, ${Date.now()}, ${Date.now()});
         `;
 
         await tx.sql`
@@ -182,7 +183,7 @@ export class AccountCreationDialogElement extends HTMLElement {
 
         await tx.commit();
 
-        form.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         host.dispatchEvent(new CustomEvent('account-created', {
@@ -193,29 +194,32 @@ export class AccountCreationDialogElement extends HTMLElement {
 
         dialog.open = false;
 
-        event.currentTarget.reset();
+        form.reset();
         clearParentAccount();
 
-        form.normalBalance = null;
-        form.accountType = null;
-      } catch (error) {
+        state.normalBalance = null;
+        state.accountType = null;
+      }
+      catch (error) {
+        // console.debug(error);
         await tx.rollback();
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = error instanceof Error ? error : new Error(String(error));
         await feedbackDelay();
-      } finally {
-        form.state = 'idle';
+      }
+      finally {
+        state.formState = 'idle';
       }
     }
 
     useEffect(host, async function syncErrorAlertDialogState() {
       if (errorAlertDialog.value instanceof HTMLDialogElement) {
-        if (form.error instanceof Error) errorAlertDialog.value.showModal();
+        if (state.formError instanceof Error) errorAlertDialog.value.showModal();
         else errorAlertDialog.value.close();
       }
     });
 
-    function handleDismissErrorDialog() { form.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     useEffect(host, function renderDialog() {
       render(html`
@@ -242,7 +246,7 @@ export class AccountCreationDialogElement extends HTMLElement {
             </header>
 
             <div class="content">
-              ${form.state !== 'idle' ? html`
+              ${state.formState !== 'idle' ? html`
                 <div role="status" aria-live="polite" aria-busy="true">
                   <div role="progressbar" class="linear indeterminate">
                     <div class="track"><div class="indicator"></div></div>
@@ -290,13 +294,13 @@ export class AccountCreationDialogElement extends HTMLElement {
                 <div class="outlined-text-field" style="anchor-name: --normal-balance-menu-anchor;">
                   <div class="container">
                     <label for="normal-balance-input">${t('account', 'normalBalanceLabel')}</label>
-                    <input type="hidden" name="normalBalance" value="${form.normalBalance ?? ''}">
+                    <input type="hidden" name="normalBalance" value="${state.normalBalance ?? ''}">
                     <input
                       type="button"
                       id="normal-balance-input"
                       popovertarget="normal-balance-menu"
                       style="text-align: start;"
-                      value="${form.normalBalance ? t('account', form.normalBalance === 'Debit' ? 'normalBalanceDebit' : 'normalBalanceCredit') : ''}"
+                      value="${state.normalBalance ? t('account', state.normalBalance === 'Debit' ? 'normalBalanceDebit' : 'normalBalanceCredit') : ''}"
                     />
                     <label for="normal-balance-input" class="trailing-icon">
                       <material-symbols name="arrow_drop_down"></material-symbols>
@@ -320,13 +324,13 @@ export class AccountCreationDialogElement extends HTMLElement {
                 <div class="outlined-text-field" style="anchor-name: --account-type-menu-anchor;">
                   <div class="container">
                     <label for="account-type-input">${t('account', 'accountTypeLabel')}</label>
-                    <input type="hidden" name="accountType" value="${form.accountType ?? ''}">
+                    <input type="hidden" name="accountType" value="${state.accountType ?? ''}">
                     <input
                       type="button"
                       id="account-type-input"
                       popovertarget="account-type-menu"
                       style="text-align: start;"
-                      value="${form.accountType ? t('account', getAccountTypeTranslationKey(form.accountType)) : ''}"
+                      value="${state.accountType ? t('account', getAccountTypeTranslationKey(state.accountType)) : ''}"
                     />
                     <label for="account-type-input" class="trailing-icon">
                       <material-symbols name="arrow_drop_down"></material-symbols>
@@ -352,11 +356,11 @@ export class AccountCreationDialogElement extends HTMLElement {
                       type="button"
                       readonly
                       placeholder=" "
-                      value="${form.parentAccountCode ? `${form.parentAccountCode} - ${form.parentAccountName}` : ''}"
+                      value="${state.parentAccountCode ? `${state.parentAccountCode} - ${state.parentAccountName}` : ''}"
                       commandfor="account-selector-dialog"
                       command="--open"
                     />
-                    ${form.parentAccountCode ? html`
+                    ${state.parentAccountCode ? html`
                       <button
                         type="button"
                         class="trailing-icon"
@@ -388,7 +392,7 @@ export class AccountCreationDialogElement extends HTMLElement {
               <h3>${t('account', 'errorDialogTitle')}</h3>
             </header>
             <div class="content">
-              <p>${form.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>

@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { useTursoLibSQLiteServer } from '#test/hooks/use-turso-libsqlite-server.js';
-import { setupDatabase } from '#test/tools/database.js';
-import { useStrict } from '#test/hooks/use-strict.js';
-import { loadEmptyFixture } from '#test/tools/fixture.js';
+import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
+import { setupDatabase } from '#test/playwright/tools/database.js';
+import { useStrict } from '#test/playwright/hooks/use-strict.js';
+import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
@@ -169,9 +169,9 @@ describe('Reconciliation Account Creation Dialog', function () {
         return result.rows[0];
       });
 
-      expect(accountData.account_code).toBe(82201);
+      expect(accountData.account_code).toBe('82201');
       expect(accountData.name).toBe('Reconciliation Adjustments');
-      expect(accountData.normal_balance).toBe(0); // Debit normal balance for expense accounts
+      expect(accountData.normal_balance).toBe('0'); // Debit normal balance for expense accounts
 
       const tags = String(accountData.tags).split(',');
       expect(tags).toContain('Expense');
@@ -246,9 +246,9 @@ describe('Reconciliation Account Creation Dialog', function () {
         return result.rows[0];
       });
 
-      expect(accountData.account_code).toBe(82210);
+      expect(accountData.account_code).toBe('82210');
       expect(accountData.name).toBe('Cash Over and Short');
-      expect(accountData.normal_balance).toBe(0); // Debit normal balance for expense accounts
+      expect(accountData.normal_balance).toBe('0'); // Debit normal balance for expense accounts
 
       const tags = String(accountData.tags).split(',');
       expect(tags).toContain('Expense');
@@ -337,11 +337,11 @@ describe('Reconciliation Account Creation Dialog', function () {
       });
 
       // Old account should only have Expense tag
-      expect(accountsData[0].account_code).toBe(82209);
+      expect(accountsData[0].account_code).toBe('82209');
       expect(accountsData[0].tags).toBe('Expense');
 
       // New account should have both tags
-      expect(accountsData[1].account_code).toBe(82210);
+      expect(accountsData[1].account_code).toBe('82210');
       const newTags = String(accountsData[1].tags).split(',');
       expect(newTags).toContain('Expense');
       expect(newTags).toContain('Reconciliation - Cash Over/Short');

@@ -247,7 +247,6 @@ export class ChartOfAccountsViewElement extends HTMLElement {
       assertInstanceOf(HTMLButtonElement, event.currentTarget);
       const button = event.currentTarget;
       const hasChildren = button.dataset.hasChildren === 'true';
-      console.info('Toggling expanded for account code:', button.dataset.accountCode, 'Has children:', hasChildren);
       if (!hasChildren) return; // No children to expand/collapse
       const accountCode = Number(button.dataset.accountCode);
       if (state.expandedCodes.has(accountCode)) state.expandedCodes.delete(accountCode);
@@ -270,8 +269,6 @@ export class ChartOfAccountsViewElement extends HTMLElement {
         return accountsToInclude.has(account.account_code);
       });
       state.accountTree = buildAccountTree(accountsForTree);
-
-      console.info(state.accountTree);
     }
 
     function expandAll() {

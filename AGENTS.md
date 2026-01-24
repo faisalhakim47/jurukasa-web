@@ -124,41 +124,32 @@ const accountResult = await database.sql`
 - We implement `useLiteral` helper hook to easily access the literal translation. For convention, define the literal variable as `l`, like `const l = useLiteral(host);`. The usage is simply `l('Hello %s', 'world')`.
 - The literal translation also supports `printf`-like placeholder syntax for dynamic text interpolation, same as the translate function.
 
-## Vendor (External Dependencies) Build
-
-- App uses dependencies like: lit-html, @vue/reactivity, @libsql/client/web, @sqlite.org/sqlite-wasm, etc.
-- We generate a vendor bundle in `web/vendor/` directory.
-- The vendor build script is `scripts/build.sh`.
-- App separate multiple bundles to avoid naming conflict. App use importmap so exported name must be the same as the original package.
-
 ## Testing
 
 We have two test setups:
-- `.test.js` suffixed test files are intended to be run in Node.js environment.
-- `.spec.js` suffixed test files are intended to be run in Playwright test runner environment.
+- All `.test.js` suffixed test files are intended to be run in Node.js environment.
+- All `.spec.js` suffixed test files are intended to be run in Playwright runner environment.
 
-### Schema Test Setup
+### Node.js Test Setup
 
 - Test suite uses the `node:test` Node.js internal module.
-- Test files is located in `web/schemas/*.test.js`.
-- Run all tests by command `node --test web/schemas/*.test.js` (slow).
-- Run a test by command `node --test web/schemas/$TEST_FILE_NAME` (fast).
+- Run all tests by command `node --test **/*.test.js` (slow).
+- Run a test by command `node --test $TEST_FILE_RELATIVE_PATH` (fast).
 
-### Schema Test Writing Guidelines
+### Node.js Test Writing Guidelines
 
-- Each schema file shall have a corresponding test file named `<schema-file-name>.test.js` (e.g., `001-accounting.test.js`).
+- Test files is located alongside its implementation file with `.test.js` suffix.
 - Test pre-conditions setup must be explicit and deterministic. No external randomness allowed.
 - Test assertion must be deterministic. Branching logic (if/else/switch/try-catch) is forbidden.
 - All date/time values must be absolute and deterministic (e.g., `new Date('2025-12-24T06:05:00.000Z')`).
 
-### End-to-end Test Setup
+### Playwright Test Setup
 
-- Test suite uses playwright.
 - Test files is located alongside its implementation file with `.spec.js` suffix.
 - Run all tests by command `npx playwright test` (slow).
 - Run a test by command `npx playwright test $SPEC_FILE_RELATIVE_PATH` (fast).
 
-### End-to-end Test Writing Guidelines
+### Playwright Test Writing Guidelines
 
 - Each web component should have test file alongside it with `.spec.js` suffix.
 - Test pre-conditions setup must be explicit and deterministic. No external randomness allowed.

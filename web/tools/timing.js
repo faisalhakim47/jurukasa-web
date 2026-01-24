@@ -1,6 +1,6 @@
 import { getMetaContent } from '#web/tools/dom.js';
 
-const applicationEnvironment = getMetaContent('application-environment', 'production');
+const applicationEnvironment = getMetaContent('app-env', 'production');
 
 /**
  * @param {number} duration

@@ -62,9 +62,9 @@ export class DiscountDetailsDialogElement extends HTMLElement {
     const state = reactive({
       discount: /** @type {DiscountDetail | null} */ (null),
       isLoading: false,
-      error: /** @type {Error | null} */ (null),
+      formError: /** @type {Error | null} */ (null),
       isEditing: false,
-      isSaving: false,
+      formSaving: false,
       isDeleting: false,
 
       // Edit mode state
@@ -82,7 +82,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
 
       try {
         state.isLoading = true;
-        state.error = null;
+        state.formError = null;
 
         const result = await database.sql`
           SELECT
@@ -117,7 +117,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
         state.isLoading = false;
       }
       catch (error) {
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
         state.isLoading = false;
       }
     }
@@ -226,16 +226,17 @@ export class DiscountDetailsDialogElement extends HTMLElement {
     async function handleUpdateSubmit(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
 
       if (!state.discount) return;
 
       const tx = await database.transaction('write');
 
       try {
-        state.isSaving = true;
-        state.error = null;
+        state.formSaving = true;
+        state.formError = null;
 
-        const data = new FormData(event.currentTarget);
+        const data = new FormData(form);
         const name = /** @type {string} */ (data.get('name'))?.trim();
         const multipleOfQuantity = parseInt(/** @type {string} */(data.get('multipleOfQuantity')) || '1', 10);
         const amount = parseInt(/** @type {string} */(data.get('amount')) || '0', 10);
@@ -277,10 +278,10 @@ export class DiscountDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
       }
       finally {
-        state.isSaving = false;
+        state.formSaving = false;
       }
     }
 
@@ -301,7 +302,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
 
       try {
         state.isDeleting = true;
-        state.error = null;
+        state.formError = null;
 
         // Check if discount is used in any sales
         const usageCheck = await tx.sql`
@@ -331,7 +332,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.formError = error instanceof Error ? error : new Error(String(error));
         const deleteDialogElement = deleteConfirmDialog.value;
         if (deleteDialogElement instanceof HTMLDialogElement) deleteDialogElement.close();
       }
@@ -340,12 +341,12 @@ export class DiscountDetailsDialogElement extends HTMLElement {
       }
     }
 
-    function handleDismissErrorDialog() { state.error = null; }
+    function handleDismissErrorDialog() { state.formError = null; }
 
     useEffect(host, function syncErrorAlertDialogState() {
       const errorDialogElement = errorAlertDialog.value;
       if (errorDialogElement instanceof HTMLDialogElement) {
-        if (state.error instanceof Error) errorDialogElement.showModal();
+        if (state.formError instanceof Error) errorDialogElement.showModal();
         else errorDialogElement.close();
       }
     });
@@ -503,7 +504,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
 
       return html`
         <form @submit=${handleUpdateSubmit} style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
-          ${state.isSaving ? html`
+          ${state.formSaving ? html`
             <div role="status" aria-live="polite" aria-busy="true">
               <div role="progressbar" class="linear indeterminate">
                 <div class="track"><div class="indicator"></div></div>
@@ -685,7 +686,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
 
           <div style="display: flex; gap: 12px; justify-content: flex-end;">
             <button role="button" type="button" class="text" @click=${toggleEditMode}>${t('discount', 'cancelButtonLabel')}</button>
-            <button role="button" type="submit" class="tonal" ?disabled=${state.isSaving}>${t('discount', 'saveChangesButtonLabel')}</button>
+            <button role="button" type="submit" class="tonal" ?disabled=${state.formSaving}>${t('discount', 'saveChangesButtonLabel')}</button>
           </div>
         </form>
       `;
@@ -739,7 +740,7 @@ export class DiscountDetailsDialogElement extends HTMLElement {
               </hgroup>
             </header>
             <div class="content">
-              <p>${state.error?.message}</p>
+              <p>${state.formError?.message}</p>
             </div>
             <menu>
               <li>
