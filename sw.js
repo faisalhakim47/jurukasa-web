@@ -257,11 +257,21 @@ sw.addEventListener('fetch', function handleFetch(event) {
             const indexResponse = cachedIndexResponse instanceof Response
               ? cachedIndexResponse
               : await fetch(event.request);
-            indexResponse.headers.set('Content-Type', 'text/html; charset=utf-8');
-            indexResponse.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-            indexResponse.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
             // if (!(cachedIndexResponse instanceof Response)) console.debug('sw', 'cache', 'miss', appIndex);
-            return indexResponse;
+            const fixedIndexResponse = new Response(indexResponse.body, {
+              status: 200,
+              headers: {
+                ...Array.from(indexResponse.headers.entries())
+                  .reduce(function filterHeaders(headers, [key, value]) {
+                    headers[key] = value;
+                    return headers;
+                  }, {}),
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cross-Origin-Opener-Policy': 'same-origin',
+                'Cross-Origin-Embedder-Policy': 'require-corp',
+              },
+            });
+            return fixedIndexResponse;
           }
         }
         /** this could be: unmanaged request or sqlite api request */
