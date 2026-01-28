@@ -39,13 +39,13 @@ export function useLibSQLiteClient() {
       PRAGMA mmap_size = 67108864;
     `);
     const migrationFiles = [
-      join(__dirname, '../../001-accounting.sql'),
-      join(__dirname, '../../002-pos.sql'),
-      join(__dirname, '../../003-chart-of-accounts.sql'),
-      join(__dirname, '../../004-revenue-tracking.sql'),
-      join(__dirname, '../../005-fixed-assets.sql'),
-      join(__dirname, '../../006-account-reconciliation.sql'),
-      join(__dirname, '../../007-cash-count.sql'),
+      join(__dirname, '../../../web/schemas/001-accounting.sql'),
+      join(__dirname, '../../../web/schemas/002-pos.sql'),
+      join(__dirname, '../../../web/schemas/003-chart-of-accounts.sql'),
+      join(__dirname, '../../../web/schemas/004-revenue-tracking.sql'),
+      join(__dirname, '../../../web/schemas/005-fixed-assets.sql'),
+      join(__dirname, '../../../web/schemas/006-account-reconciliation.sql'),
+      join(__dirname, '../../../web/schemas/007-cash-count.sql'),
     ];
     for (const filePath of migrationFiles) {
       const sql = await readFile(filePath, { encoding: 'utf-8' });

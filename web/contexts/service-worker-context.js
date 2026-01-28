@@ -7,7 +7,7 @@ import { useWatch } from '#web/hooks/use-watch.js';
 import { getMetaContent } from '#web/tools/dom.js';
 import { waitForValue } from '#web/tools/reactivity.js';
 
-const appDir = getMetaContent('app-dir', '/');
+const appPrefix = getMetaContent('app-prefix', '/');
 const appIndex = getMetaContent('app-index', 'index.html');
 const materialSymbolsProviderUrl = getMetaContent('material-symbols-provider-url', 'https://cdn.jsdelivr.net/npm/@material-symbols/svg-{WEIGHT}@0.40.2/{STYLE}/{NAME}{FILL}.svg');
 
@@ -81,8 +81,8 @@ export class ServiceWorkerContextElement extends HTMLElement {
             ...relFiles,
             ...importmapFiles,
           ];
-          await sendMessage({ command: 'init-cache', appDir, additionalFiles, materialSymbolsProviderUrl }, 30 * 1000);
-          await sendMessage({ command: 'set-cache', appDir, appIndex }, 3 * 1000);
+          await sendMessage({ command: 'init-cache', appPrefix, additionalFiles, materialSymbolsProviderUrl }, 30 * 1000);
+          await sendMessage({ command: 'set-cache', appPrefix, appIndex }, 3 * 1000);
         }
         resolveReady();
       }
@@ -103,7 +103,7 @@ export class ServiceWorkerContextElement extends HTMLElement {
         const messageId = state.messageId++;
         /** @param {MessageEvent} event */
         function clientInBound(event) {
-          console.debug('sendMessage', 'clientInBound', event.data);
+          // console.debug('sendMessage', 'clientInBound', event.data);
           if (event.data.messageId === messageId) {
             clearTimeout(timeout);
             navigator.serviceWorker.removeEventListener('message', clientInBound);
@@ -115,7 +115,7 @@ export class ServiceWorkerContextElement extends HTMLElement {
           navigator.serviceWorker.removeEventListener('message', clientInBound);
           reject(new Error(`ServiceWorker message timeout: ${duration}ms`));
         }, duration);
-        console.debug('service-worker-context', 'postMessage', messageId, payload?.command);
+        // console.debug('service-worker-context', 'postMessage', messageId, payload?.command);
         state.serviceWorker.postMessage({
           ...payload,
           messageId,

@@ -28,6 +28,9 @@ export default /** @type {Partial<OnboardingTranslation>} */ ({
   // Local SQLite provider
   localDatabaseLabel: 'Database Lokal',
   localDatabaseDescription: 'Simpan data di penyimpanan browser. Direkomendasikan untuk penggunaan perangkat tunggal.',
+  localDatabaseNameLabel: 'Nama Database',
+  localDatabaseNamePlaceholder: 'Bisnis Saya',
+  localDatabaseNameDescription: 'Nama yang mudah diingat untuk mengidentifikasi database ini.',
 
   // Turso provider
   tursoDatabaseLabel: 'Turso SQLite',

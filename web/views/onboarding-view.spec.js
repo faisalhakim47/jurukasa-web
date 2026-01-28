@@ -1,7 +1,7 @@
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
 import { expect } from '@playwright/test';
-import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
+import { loadDevFixture, loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 import { jurukasaTest } from '#test/playwright/test-setup.js';
 import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
@@ -48,7 +48,7 @@ async function setupOnboardingViewWithoutDatabase() {
 }
 
 describe('Onboarding View', function () {
-  useConsoleOutput(test);
+  // useConsoleOutput(test);
   useStrict(test);
 
   describe('Welcome Step', function () {
@@ -124,6 +124,7 @@ describe('Onboarding View', function () {
       await page.getByRole('button', { name: 'Get Started' }).click();
       await page.getByRole('radio', { name: 'Turso SQLite' }).check();
 
+      await expect(page.getByLabel('Database Name')).toBeVisible();
       await expect(page.getByLabel('Database URL')).toBeVisible();
       await expect(page.getByLabel('Auth Token')).toBeVisible();
     });
@@ -137,6 +138,7 @@ describe('Onboarding View', function () {
 
       await page.getByRole('button', { name: 'Get Started' }).click();
       await page.getByRole('radio', { name: 'Turso SQLite' }).check();
+      await page.getByLabel('Database Name').fill('Test Turso Database');
       await page.getByLabel('Database URL').fill(dbUrl);
       await page.getByRole('button', { name: 'Connect' }).click();
 
@@ -286,7 +288,18 @@ describe('Onboarding View', function () {
   });
 
   describe('Local Database Test', function () {
-    test('it shall connect using Local Database provider and proceed to business config', async function ({ page }) {
+    test('it shall show database name input when Local Database provider is selected', async function ({ page }) {
+      await loadEmptyFixture(page);
+
+      await page.evaluate(setupOnboardingViewWithoutDatabase);
+
+      await page.getByRole('button', { name: 'Get Started' }).click();
+      await page.getByRole('radio', { name: 'Local Database' }).check();
+
+      await expect(page.getByLabel('Database Name')).toBeVisible();
+    });
+
+    test('it shall require database name for Local Database provider', async function ({ page }) {
       await loadEmptyFixture(page);
 
       await page.evaluate(setupOnboardingViewWithoutDatabase);
@@ -295,17 +308,30 @@ describe('Onboarding View', function () {
       await page.getByRole('radio', { name: 'Local Database' }).check();
       await page.getByRole('button', { name: 'Connect' }).click();
 
+      // Should still be on database setup dialog because name is required
+      await expect(page.getByRole('dialog', { name: 'Configure Database' })).toBeVisible();
+      await expect(page.getByLabel('Database Name')).toBeFocused();
+    });
+
+    test('it shall connect using Local Database provider and proceed to business config', async function ({ page }) {
+      await loadDevFixture(page);
+
+      await page.getByRole('button', { name: 'Get Started' }).click();
+      await page.getByRole('radio', { name: 'Local Database' }).check();
+      await page.getByLabel('Database Name').fill('Local DB Store');
+      await page.getByRole('button', { name: 'Connect' }).click();
+
       const businessConfigDialog = page.getByRole('dialog', { name: 'Configure Business' });
       await expect(businessConfigDialog).toBeVisible();
-      await businessConfigDialog.getByLabel('Business Name').fill('Local DB Store');
+      await businessConfigDialog.getByLabel('Business Name').fill('My Local Business');
       await businessConfigDialog.getByRole('button', { name: 'Next' }).click();
-
-      await page.pause();
 
       const chartOfAccountsDialog = page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' });
       await expect(chartOfAccountsDialog).toBeVisible();
       await chartOfAccountsDialog.getByRole('radio', { name: 'Retail Business - Indonesia' }).check();
       await chartOfAccountsDialog.getByRole('button', { name: 'Finish' }).click();
+
+      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
     });
   });
 });

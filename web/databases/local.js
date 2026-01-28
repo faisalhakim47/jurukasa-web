@@ -1,11 +1,13 @@
 import { unknownToSQLArgs } from '#web/database.js';
 import { assertTemplateStringsArray } from '#web/tools/assertion.js';
 /** @import { DatabaseClient, SQLFunction } from '#web/database.js' */
+/** @import { DatabaseConfig } from '#web/contexts/database-context.js' */
 
-/** @returns {Promise<DatabaseClient>} */
-export async function createLocalDatabaseClient() {
-  
-
+/**
+ * @param {DatabaseConfig} config
+ * @returns {Promise<DatabaseClient>}
+ */
+export async function createLocalDatabaseClient(config) {
   // @ts-ignore the code structure of sqlite wasm client is very convoluted, hard to structure and type properly, so screw it
   const { sqlite3Worker1Promiser } = await import('@sqlite.org/sqlite-wasm');
   // console.debug('createLocalDatabaseClient', sqlite3Worker1Promiser.toString());
@@ -15,7 +17,8 @@ export async function createLocalDatabaseClient() {
   const { promise: promisedDbId, resolve: resolveDbId } = Promise.withResolvers();
   async function connect() {
     // console.debug('database', 'local', 'connect');
-    const response = await promiser('open', { filename: 'file:jurukasa.sqlite?vfs=opfs' });
+    const filename = config.name.replace(/[^a-zA-Z0-9]+/g, '_');
+    const response = await promiser('open', { filename: `file:jurukasa-${filename}.sqlite?vfs=opfs` });
     // console.debug('database', 'local', 'connected', response.dbId);
     resolveDbId(response.dbId);
     // sql`PRAGMA journal_mode = WAL`;

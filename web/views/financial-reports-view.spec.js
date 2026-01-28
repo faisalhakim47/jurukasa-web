@@ -121,10 +121,16 @@ describe('Financial Reports', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
+      // Wait for the Reports panel to be visible and in viewport
+      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
+      await expect(reportsPanel).toBeInViewport();
+
       await page.getByLabel('Report Type', { exact: true }).click();
       const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
       await expect(reportTypeMenu).toBeVisible();
-      await reportTypeMenu.getByRole('menuitemradio', { name: 'Balance Sheet' }).click();
+      const balanceSheetOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Balance Sheet' });
+      await expect(balanceSheetOption).toBeVisible();
+      await balanceSheetOption.click({ force: true });
 
       await expect(page.getByLabel('Report Type', { exact: true })).toHaveValue('Balance Sheet');
     });
@@ -137,10 +143,16 @@ describe('Financial Reports', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
+      // Wait for the Reports panel to be visible and in viewport
+      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
+      await expect(reportsPanel).toBeInViewport();
+
       await page.getByLabel('Report Type', { exact: true }).click();
       const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
       await expect(reportTypeMenu).toBeVisible();
-      await reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' }).click();
+      const incomeStatementOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' });
+      await expect(incomeStatementOption).toBeVisible();
+      await incomeStatementOption.click({ force: true });
 
       await expect(page.getByLabel('Report Type', { exact: true })).toHaveValue('Income Statement');
     });
@@ -153,10 +165,16 @@ describe('Financial Reports', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
+      // Wait for the Reports panel to be visible and in viewport
+      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
+      await expect(reportsPanel).toBeInViewport();
+
       await page.getByLabel('Report Type', { exact: true }).click();
       const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
       await expect(reportTypeMenu).toBeVisible();
-      await reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' }).click();
+      const incomeStatementOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' });
+      await expect(incomeStatementOption).toBeVisible();
+      await incomeStatementOption.click({ force: true });
 
       await expect(page.getByLabel('Fiscal Year', { exact: true })).toBeVisible();
     });
@@ -180,10 +198,16 @@ describe('Financial Reports', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
+      // Wait for the Reports panel to be visible and in viewport
+      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
+      await expect(reportsPanel).toBeInViewport();
+
       await page.getByLabel('Report Type', { exact: true }).click();
       const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
       await expect(reportTypeMenu).toBeVisible();
-      await reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' }).click();
+      const incomeStatementOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' });
+      await expect(incomeStatementOption).toBeVisible();
+      await incomeStatementOption.click({ force: true });
 
       await expect(page.getByLabel('Report Date', { exact: true })).not.toBeVisible();
     });
@@ -328,10 +352,16 @@ describe('Financial Reports', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
+      // Wait for the Reports panel to be visible and in viewport
+      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
+      await expect(reportsPanel).toBeInViewport();
+
       await page.getByLabel('Report Type', { exact: true }).click();
       const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
       await expect(reportTypeMenu).toBeVisible();
-      await reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' }).click();
+      const incomeStatementOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' });
+      await expect(incomeStatementOption).toBeVisible();
+      await incomeStatementOption.click({ force: true });
 
       await expect(page.getByRole('heading', { name: 'No income statement data' })).toBeVisible();
       await expect(page.getByText('Create a fiscal year to generate income statements.')).toBeVisible();
@@ -345,12 +375,17 @@ describe('Financial Reports', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
+      // Wait for the Reports panel to be visible and in viewport
+      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
+      await expect(reportsPanel).toBeInViewport();
+
       await page.getByLabel('Report Type', { exact: true }).click();
       const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
       await expect(reportTypeMenu).toBeVisible();
-      await reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' }).click();
+      const incomeStatementOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' });
+      await expect(incomeStatementOption).toBeVisible();
+      await incomeStatementOption.click({ force: true });
 
-      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
       const headerGenerateButton = reportsPanel.getByRole('button', { name: 'Generate Report' });
       await expect(headerGenerateButton).not.toBeVisible();
     });

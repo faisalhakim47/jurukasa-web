@@ -22,7 +22,7 @@ async function setupView() {
 }
 
 describe('Service Worker Context', function () {
-  useConsoleOutput(test);
+  // useConsoleOutput(test);
   useStrict(test);
 
   test('service worker strategy overview', async function ({ context }) {

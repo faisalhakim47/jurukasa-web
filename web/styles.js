@@ -9,6 +9,7 @@ import { default as typographyCss } from '#web/styles/typography.css' with { typ
 import { default as appBarCss } from '#web/styles/app-bar.css' with { type: 'css' };
 import { default as buttonCommonCss } from '#web/styles/button/common.css' with { type: 'css' };
 import { default as cardsCss } from '#web/styles/cards.css' with { type: 'css' };
+import { default as chipCss } from '#web/styles/chip.css' with { type: 'css' };
 import { default as dialogCss } from '#web/styles/dialog.css' with { type: 'css' };
 import { default as iconCss } from '#web/styles/icon.css' with { type: 'css' };
 import { default as listCss } from '#web/styles/list.css' with { type: 'css' };
@@ -24,6 +25,7 @@ export const webStyleSheets = [
   appBarCss,
   buttonCommonCss,
   cardsCss,
+  chipCss,
   dialogCss,
   globalCss,
   iconCss,

@@ -53,7 +53,7 @@ function applyStrictLocator(locator) {
     const getByRole = locator.getByRole;
     locator.getByRole = function strictGetByRole(role, options) {
       if (options && options.name && typeof options.name !== 'string') {
-        throw new Error(`getByRole() name option must be a exact explicit string for better test correctness.`);
+        throw new Error(`getByRole() name option must be a exact literal string instead of regex, for better test correctness.`);
       }
       const childLocator = getByRole.call(locator, role, options);
       applyStrictLocator(childLocator);
@@ -65,7 +65,7 @@ function applyStrictLocator(locator) {
     const getByText = locator.getByText;
     locator.getByText = function strictGetByText(text, options) {
       if (typeof text !== 'string') {
-        throw new Error(`getByText() text argument must be a exact explicit string for better test correctness.`);
+        throw new Error(`getByText() text argument must be a exact literal string instead of regex for better test correctness.`);
       }
       const childLocator = getByText.call(locator, text, options);
       applyStrictLocator(childLocator);

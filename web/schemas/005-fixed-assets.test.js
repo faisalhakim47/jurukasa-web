@@ -2,7 +2,7 @@ import { ok, equal } from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { rejects } from 'node:assert/strict';
 
-import { useSql } from '#web/schemas/test/hooks/use-sql.js';
+import { useSql } from '#test/nodejs/hooks/use-sql.js';
 
 describe('Fixed Assets Schema Tests', function () {
   const sql = useSql();

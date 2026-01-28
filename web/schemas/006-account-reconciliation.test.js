@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import { equal, rejects } from 'node:assert/strict';
 
-import { useSql } from '#web/schemas/test/hooks/use-sql.js';
+import { useSql } from '#test/nodejs/hooks/use-sql.js';
 
 describe('Account Reconciliation Schema Tests', function () {
   const sql = useSql();

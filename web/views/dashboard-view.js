@@ -489,9 +489,7 @@ export class DashboardViewElement extends HTMLElement {
             </div>
           ` : nothing}
         </main>
-        <sale-details-dialog
-          id="sale-details-dialog"
-        ></sale-details-dialog>
+        <sale-details-dialog id="sale-details-dialog"></sale-details-dialog>
       `);
     });
   }

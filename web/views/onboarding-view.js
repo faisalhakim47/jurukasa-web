@@ -17,6 +17,8 @@ import { assertInstanceOf } from '#web/tools/assertion.js';
 
 import '#web/components/material-symbols.js';
 
+/** @import { LocalDatabaseConfig, TursoDatabaseConfig } from '#web/contexts/database-context.js' */
+
 /** @typedef {'local'|'turso'} DatabaseProvider */
 
 /**
@@ -83,7 +85,7 @@ export class OnboardingViewElement extends HTMLElement {
               onboarding.isInitialized = true;
             }
             else {
-              database.sql`SELECT count(*) as count FROM accounts`
+              database.sql`SELECT count(*) AS count FROM accounts`
                 .then(function handleAccountsCount(result) {
                   if (onboarding.isInitialized) return; // Already initialized by user action
                   const count = Number(result.rows[0]?.count || 0);
@@ -138,26 +140,32 @@ export class OnboardingViewElement extends HTMLElement {
         const provider = databaseForm.selectedProvider;
 
         if (provider === 'local') {
-          await database.connect({ provider: 'local' });
+          const config = /** @type {LocalDatabaseConfig} */ ({
+            provider: 'local',
+            name: formEl.elements['database-name'].value,
+          });
+          await database.connect(config);
           databaseForm.state = 'success';
           await feedbackDelay();
           router.navigate({
             pathname: '/onboarding',
-            databaseProvider: 'local',
-            database: { provider: 'local' },
+            database: config,
             replace: true,
           });
         }
         else if (provider === 'turso') {
-          const tursoUrl = formEl.elements['turso-url'].value;
-          const tursoAuthToken = formEl.elements['turso-auth-token'].value;
-          await database.connect({ provider: 'turso', url: tursoUrl, authToken: tursoAuthToken });
+          const config = /** @type {TursoDatabaseConfig} */ ({
+            provider: 'turso',
+            name: formEl.elements['database-name'].value,
+            url: formEl.elements['turso-url'].value,
+            authToken: formEl.elements['turso-auth-token'].value,
+          });
+          await database.connect(config);
           databaseForm.state = 'success';
           await feedbackDelay();
           router.navigate({
             pathname: '/onboarding',
-            databaseProvider: 'turso',
-            database: { provider: 'turso', url: tursoUrl, authToken: tursoAuthToken },
+            database: config,
             replace: true,
           });
         }
@@ -415,6 +423,25 @@ export class OnboardingViewElement extends HTMLElement {
                       </p>
                     </div>
                   </label>
+                  ${selectedProvider === 'local' ? html`
+                    <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+                      <div class="outlined-text-field">
+                        <div class="container">
+                          <label for="database-name">${t('onboarding', 'localDatabaseNameLabel')}</label>
+                          <input
+                            id="database-name"
+                            name="database-name"
+                            type="text"
+                            autocomplete="off"
+                            required
+                            ?disabled=${formDisabled}
+                            placeholder="${t('onboarding', 'localDatabaseNamePlaceholder')}"
+                          />
+                        </div>
+                        <p class="supporting-text">${t('onboarding', 'localDatabaseNameDescription')}</p>
+                      </div>
+                    </div>
+                  ` : ''}
                 </li>
                 <!-- Remote Turso Provider -->
                 <li role="presentation" style="border: 1px solid var(--md-sys-color-outline); border-radius: var(--md-sys-shape-corner-small); overflow: hidden;">
@@ -444,6 +471,21 @@ export class OnboardingViewElement extends HTMLElement {
                   </label>
                   ${selectedProvider === 'turso' ? html`
                     <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+                      <div class="outlined-text-field">
+                        <div class="container">
+                          <label for="database-name">${t('onboarding', 'localDatabaseNameLabel')}</label>
+                          <input
+                            id="database-name"
+                            name="database-name"
+                            type="text"
+                            autocomplete="off"
+                            required
+                            ?disabled=${formDisabled}
+                            placeholder="${t('onboarding', 'localDatabaseNamePlaceholder')}"
+                          />
+                        </div>
+                        <p class="supporting-text">${t('onboarding', 'localDatabaseNameDescription')}</p>
+                      </div>
                       <div class="outlined-text-field">
                         <div class="container">
                           <label for="turso-url">${t('onboarding', 'tursoUrlLabel')}</label>
@@ -500,9 +542,18 @@ export class OnboardingViewElement extends HTMLElement {
           <form class="container" ?disabled=${formDisabled} @submit=${submitBusinessConfig}>
             <header>
               <h2 id="business-config-title" class="headline">${t('onboarding', 'businessConfigTitle')}</h2>
-              <button role="button" class="text" type="submit">${t('onboarding', 'businessConfigSubmitLabel')}</button>
+              <button
+                role="button"
+                class="text"
+                type="submit"
+                ?disabled=${formDisabled}
+              >${t('onboarding', 'businessConfigSubmitLabel')}</button>
             </header>
             <div class="content">
+              <div role="status" aria-live="polite">
+                <progress>On progress...</progress>
+              </div>
+
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="business-name">${t('onboarding', 'businessNameLabel')}</label>
@@ -665,7 +716,10 @@ export class OnboardingViewElement extends HTMLElement {
       else if (onboarding.step === 'database-setup') render(renderDatabaseSetupStep());
       else if (onboarding.step === 'business-config') render(renderBusinessConfigStep());
       else if (onboarding.step === 'chart-of-accounts') render(renderChartOfAccountsStep());
-      else if (onboarding.step === 'complete') render(html`<p>${t('onboarding', 'loadingIndicatorLabel')}</p>`);
+      else if (onboarding.step === 'complete') render(html`
+        <p>${t('onboarding', 'onboardingComplete')}</p>
+        <p><router-link href="/" replace>${t('onboarding', 'goToDashboard')}</router-link></p>
+      `);
       else render(html`<p>${t('onboarding', 'unknownState', onboarding.step)}</p>`);
     });
   }

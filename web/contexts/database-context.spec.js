@@ -11,14 +11,14 @@ const test = jurukasaTest;
 const { describe } = test;
 
 describe('Database Context', function () {
-  useConsoleOutput(test);
+  // useConsoleOutput(test);
   useStrict(test);
 
   describe('Connection State', function () {
     test('it shall provide connection state as unconfigured when no database configuration', async function ({ page }) {
       await loadEmptyFixture(page);
 
-      await page.evaluate(function setupInnerHtml() {
+      await page.evaluate(function setupView() {
         document.body.innerHTML = `
           <ready-context>
             <router-context>

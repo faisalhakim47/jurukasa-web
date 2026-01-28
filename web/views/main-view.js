@@ -28,60 +28,17 @@ export class MainViewElement extends HTMLElement {
     const t = useTranslator(host);
     const render = useRender(host);
 
-    const onboarding = reactive({
-      state: /** @type {'init'|'needs-database'|'needs-business-config'|'needs-chart-of-accounts'|'complete'} */ ('init'),
-    });
-
-    useBusyStateUntil(host, function evaluateReady() {
-      return onboarding.state !== 'init';
-    });
 
     useEffect(host, function evaluateOnboardingState() {
-      if (onboarding.state === 'complete') { /* nothing to do */ }
-      else if (database.isReady && database.state === 'unconfigured') {
-        onboarding.state = 'needs-database';
-      }
-      else if (database.isReady && database.state === 'connected') {
-        database.sql`SELECT value FROM config WHERE key = 'Business Name' LIMIT 1;`
-          .then(function handleBusinessName(result) {
-            const row = result.rows[0];
-            const isBusinessConfigured = String(row?.value || '').trim().length > 0;
-            if (isBusinessConfigured) {
-              database.sql`SELECT COUNT(*) AS count FROM accounts`
-                .then(function handleAccountsCount(result) {
-                  const count = Number(result.rows[0]?.count || 0);
-                  if (count > 0) onboarding.state = 'complete';
-                  else onboarding.state = 'needs-chart-of-accounts';
-                });
-            }
-            else onboarding.state = 'needs-business-config';
-          })
-          .catch(function (error) {
-            console.error('Failed to check configuration', error);
-            onboarding.state = 'needs-business-config';
-          });
-      }
-    });
-
-    useEffect(host, function handleOnboardingRedirect() {
-      const pathname = router.route?.pathname || '/';
-      const needsOnboarding = onboarding.state === 'needs-database'
-        || onboarding.state === 'needs-business-config'
-        || onboarding.state === 'needs-chart-of-accounts';
-      const isComplete = onboarding.state === 'complete';
-
-      // console.debug('main-view', 'handleOnboardingRedirect', pathname, onboarding.state, needsOnboarding, isComplete);
-
-      if (needsOnboarding && !pathname.startsWith('/onboarding') && !pathname.startsWith('/database-setup')) {
+      // console.debug('main-view', 'evaluateOnboardingState', router.route?.pathname, typeof router.route?.pathname === 'string', database.isReady, database.state);
+      if (typeof router.route?.pathname === 'string' && database.isReady && database.state === 'unconfigured') {
         router.navigate({ pathname: '/onboarding', replace: true });
-      }
-      else if (isComplete && pathname.startsWith('/onboarding')) {
-        router.navigate({ pathname: '/dashboard', replace: true });
       }
     });
 
     useEffect(host, function renderMainView() {
       const pathname = router.route?.pathname || '/';
+      // console.debug('main-view', 'renderMainView', pathname, device.isDesktop); 
 
       if (pathname.startsWith('/onboarding')) {
         render(html`<onboarding-view></onboarding-view>`);

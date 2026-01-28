@@ -1,7 +1,7 @@
 import { ok, equal } from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { useSql } from '#web/schemas/test/hooks/use-sql.js';
+import { useSql } from '#test/nodejs/hooks/use-sql.js';
 
 describe('POS Schema Tests', function () {
   const sql = useSql();

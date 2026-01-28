@@ -109,8 +109,24 @@ const settings = {
   refreshVersionsAriaLabel: 'Refresh version list',
   noAppVersionsTitle: 'No app versions found',
   noAppVersionsMessage: 'No application versions are currently stored in the service worker configuration.',
-  versionNameColumnHeader: 'Name',
-  versionValueColumnHeader: 'Value',
+  versionPrefixColumnHeader: 'Prefix',
+  versionValueColumnHeader: 'Version',
+  versionSourcesColumnHeader: 'Sources',
+  versionActionsColumnHeader: 'Actions',
+  versionManagerTableAriaLabel: 'App versions list',
+  versionUseButtonLabel: 'Use',
+  versionUseButtonAriaLabel: 'Use version %s',
+  versionCurrentLabel: 'Current',
+
+  // Version Switch Dialog
+  versionSwitchDialogTitle: 'Switch Version',
+  versionSwitchDialogMessage: 'Are you sure you want to switch to version %s? The application will reload after the new version is downloaded.',
+  versionSwitchDialogConfirmButtonLabel: 'Switch',
+  versionSwitchDialogCancelButtonLabel: 'Cancel',
+  versionSwitchDialogLoadingMessage: 'Downloading and activating version...',
+  versionSwitchDialogLoadingNote: 'The application will automatically reload when ready.',
+  versionLocalSourceLabel: 'Local',
+  versionNpmSourceLabel: 'NPM',
 };
 
 /** @typedef {typeof settings} SettingsTranslation */

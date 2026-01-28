@@ -6,13 +6,13 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const appDir = resolve(join(__dirname, '../'));
+const appPrefix = resolve(join(__dirname, '../'));
 
 /** @param {string} dir */
 async function *includeFiles(dir) {
   const files = await readdir(dir, { recursive: true, withFileTypes: true });
   for (const file of files) {
-    if (file.isFile()) yield `${file.parentPath.replace(`${appDir}/`, '')}/${file.name}`;
+    if (file.isFile()) yield `${file.parentPath.replace(`${appPrefix}/`, '')}/${file.name}`;
   }
 }
 

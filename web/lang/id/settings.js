@@ -105,4 +105,28 @@ export default /** @type {Partial<SettingsTranslation>} */ ({
   databaseSetupTitle: 'Pengaturan Basis Data',
   databaseSetupBackButtonLabel: 'Batal',
   databaseSetupDescription: 'Konfigurasi basis data baru untuk data bisnis Anda.',
+
+  // Version Manager
+  versionManagerTitle: 'Manajer Versi',
+  refreshVersionsAriaLabel: 'Segarkan daftar versi',
+  noAppVersionsTitle: 'Tidak ada versi aplikasi',
+  noAppVersionsMessage: 'Tidak ada versi aplikasi yang tersimpan dalam konfigurasi service worker.',
+  versionPrefixColumnHeader: 'Prefiks',
+  versionValueColumnHeader: 'Versi',
+  versionSourcesColumnHeader: 'Sumber',
+  versionActionsColumnHeader: 'Tindakan',
+  versionManagerTableAriaLabel: 'Daftar versi aplikasi',
+  versionUseButtonLabel: 'Gunakan',
+  versionUseButtonAriaLabel: 'Gunakan versi %s',
+  versionCurrentLabel: 'Saat Ini',
+
+  // Version Switch Dialog
+  versionSwitchDialogTitle: 'Ganti Versi',
+  versionSwitchDialogMessage: 'Apakah Anda yakin ingin beralih ke versi %s? Aplikasi akan dimuat ulang setelah versi baru diunduh.',
+  versionSwitchDialogConfirmButtonLabel: 'Ganti',
+  versionSwitchDialogCancelButtonLabel: 'Batal',
+  versionSwitchDialogLoadingMessage: 'Mengunduh dan mengaktifkan versi...',
+  versionSwitchDialogLoadingNote: 'Aplikasi akan otomatis dimuat ulang saat siap.',
+  versionLocalSourceLabel: 'Lokal',
+  versionNpmSourceLabel: 'NPM',
 });

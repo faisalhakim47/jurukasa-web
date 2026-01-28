@@ -26,6 +26,9 @@ const onboarding = {
   // Local SQLite provider
   localDatabaseLabel: 'Local Database',
   localDatabaseDescription: 'Store data in browser storage. Recommended for single-device use.',
+  localDatabaseNameLabel: 'Database Name',
+  localDatabaseNamePlaceholder: 'My Business',
+  localDatabaseNameDescription: 'A friendly name to identify this database.',
 
   // Turso provider
   tursoDatabaseLabel: 'Turso SQLite',
@@ -51,6 +54,10 @@ const onboarding = {
   // Chart of accounts setup
   chartOfAccountsSetupTitle: 'Choose Chart of Accounts Template',
   chartOfAccountsSetupSubmitLabel: 'Finish',
+
+  // Finish
+  onboardingComplete: 'Onboarding Complete',
+  goToDashboard: 'Go to Dashboard',
 
   unknownState: 'Unknown state: %d',
 };

@@ -1,0 +1,207 @@
+/**
+ * Material 3 Expressive Chip Styles
+ * 
+ * Chips are compact elements that represent an input, attribute, or action.
+ * - Assist chips: represent smart or automated actions
+ * - Filter chips: used for filtering content
+ * - Input chips: represent discrete information
+ * - Suggestion chips: help narrow intent
+ */
+
+/* Base Chip Styles */
+.chip {
+  --chip-height: 32px;
+  --chip-padding: 16px;
+  --chip-gap: 8px;
+  --chip-border-radius: var(--md-sys-shape-corner-small, 8px);
+  --chip-bg-color: var(--md-sys-color-surface-container-low);
+  --chip-text-color: var(--md-sys-color-on-surface-variant);
+  --chip-border-color: var(--md-sys-color-outline);
+  --chip-icon-size: 18px;
+  
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--chip-gap);
+  height: var(--chip-height);
+  padding: 0 var(--chip-padding);
+  border-radius: var(--chip-border-radius);
+  background-color: var(--chip-bg-color);
+  color: var(--chip-text-color);
+  border: 1px solid var(--md-sys-color-outline);
+  font-family: var(--md-sys-typescale-label-large-font, system-ui);
+  font-size: var(--md-sys-typescale-label-large-size, 14px);
+  font-weight: var(--md-sys-typescale-label-large-weight, 500);
+  line-height: var(--md-sys-typescale-label-large-line-height, 20px);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking, 0.0075em);
+  cursor: default;
+  white-space: nowrap;
+  user-select: none;
+  transition: 
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* Chip with icon - reduce padding to balance visual weight */
+.chip:has(.icon, .material-symbols, svg, img) {
+  padding-inline: 12px var(--chip-padding);
+}
+
+/* Elevated Chip */
+.chip.elevated {
+  --chip-bg-color: var(--md-sys-color-surface-container-low);
+  border-color: transparent;
+  box-shadow: 
+    0 1px 3px 1px rgba(0, 0, 0, 0.15),
+    0 1px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.chip.elevated:hover {
+  box-shadow: 
+    0 2px 6px 2px rgba(0, 0, 0, 0.15),
+    0 1px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Outlined Chip (default) */
+.chip.outlined {
+  --chip-bg-color: transparent;
+  --chip-text-color: var(--md-sys-color-on-surface-variant);
+  border-color: var(--md-sys-color-outline);
+}
+
+/* Filled Chip */
+.chip.filled {
+  --chip-bg-color: var(--md-sys-color-secondary-container);
+  --chip-text-color: var(--md-sys-color-on-secondary-container);
+  border-color: transparent;
+}
+
+/* Tonal Chip */
+.chip.tonal {
+  --chip-bg-color: var(--md-sys-color-surface-container-highest);
+  --chip-text-color: var(--md-sys-color-on-surface-variant);
+  border-color: transparent;
+}
+
+/* Chip with Primary Color Accent */
+.chip.primary {
+  --chip-bg-color: var(--md-sys-color-primary-container);
+  --chip-text-color: var(--md-sys-color-on-primary-container);
+  border-color: transparent;
+}
+
+/* Chip with Secondary Color Accent */
+.chip.secondary {
+  --chip-bg-color: var(--md-sys-color-secondary-container);
+  --chip-text-color: var(--md-sys-color-on-secondary-container);
+  border-color: transparent;
+}
+
+/* Chip with Tertiary Color Accent */
+.chip.tertiary {
+  --chip-bg-color: var(--md-sys-color-tertiary-container);
+  --chip-text-color: var(--md-sys-color-on-tertiary-container);
+  border-color: transparent;
+}
+
+/* Error Chip */
+.chip.error {
+  --chip-bg-color: var(--md-sys-color-error-container);
+  --chip-text-color: var(--md-sys-color-on-error-container);
+  border-color: transparent;
+}
+
+/* Success Chip */
+.chip.success {
+  --chip-bg-color: var(--md-sys-color-primary-container);
+  --chip-text-color: var(--md-sys-color-on-primary-container);
+  --chip-bg-color: color-mix(in srgb, var(--md-sys-color-primary-container) 80%, var(--md-sys-color-success, #4caf50));
+  border-color: transparent;
+}
+
+/* Disabled Chip */
+.chip:disabled,
+.chip.disabled {
+  --chip-bg-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+  --chip-text-color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+  border-color: transparent;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Chip Hover State (for interactive chips) */
+.chip.interactive:hover:not(:disabled, .disabled) {
+  --chip-bg-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 8%, var(--md-sys-color-surface-container-low));
+}
+
+.chip.interactive:active:not(:disabled, .disabled) {
+  --chip-bg-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 12%, var(--md-sys-color-surface-container-low));
+}
+
+/* Chip Focus State */
+.chip:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* Chip Icon */
+.chip .icon,
+.chip .material-symbols,
+.chip svg,
+.chip img {
+  width: var(--chip-icon-size);
+  height: var(--chip-icon-size);
+  flex-shrink: 0;
+  fill: currentColor;
+  color: currentColor;
+}
+
+/* Small Chip */
+.chip.small {
+  --chip-height: 24px;
+  --chip-padding: 12px;
+  --chip-gap: 6px;
+  --chip-icon-size: 14px;
+  font-size: var(--md-sys-typescale-label-medium-size, 12px);
+  font-weight: var(--md-sys-typescale-label-medium-weight, 500);
+  line-height: var(--md-sys-typescale-label-medium-line-height, 16px);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking, 0.025em);
+}
+
+.chip.small:has(.icon, .material-symbols, svg, img) {
+  padding-inline: 8px var(--chip-padding);
+}
+
+/* Large Chip */
+.chip.large {
+  --chip-height: 40px;
+  --chip-padding: 20px;
+  --chip-gap: 10px;
+  --chip-icon-size: 20px;
+  font-size: var(--md-sys-typescale-label-large-size, 14px);
+}
+
+.chip.large:has(.icon, .material-symbols, svg, img) {
+  padding-inline: 16px var(--chip-padding);
+}
+
+/* Chip Group */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Chip Group - Vertical */
+.chip-group.vertical {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Compact Chip Group */
+.chip-group.compact {
+  gap: 4px;
+}

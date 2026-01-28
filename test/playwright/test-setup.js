@@ -42,7 +42,7 @@ TerminalReporter.prototype.onTestEnd = function overriddenOnTestEnd(test, result
 export const jurukasaTest = test.extend({
   async page({ context, page }, use, testInfo) {
     await use(page);
-    if (testInfo.status === 'failed') {
+    if (testInfo.status === 'failed' || testInfo.status === 'timedOut') {
       const cdpClient = await context.newCDPSession(page);
       await cdpClient.send('Accessibility.enable');
       const fullAXTree = await cdpClient.send('Accessibility.getFullAXTree');

@@ -129,8 +129,8 @@ async function getAppConfig() {
     const idb = await idbConnect();
     const appConfig = await idbRead(idb, ['sw:config'], async function (transaction) {
       const configStore = transaction.objectStore('sw:config');
-      const [appDirConfig, appIndexConfig] = await Promise.all([
-        idbGet(configStore, 'appDir'),
+      const [appPrefixConfig, appIndexConfig] = await Promise.all([
+        idbGet(configStore, 'appPrefix'),
         idbGet(configStore, 'appIndex'),
       ]);
       /** @param {unknown} config */
@@ -141,16 +141,16 @@ async function getAppConfig() {
           ? config.value : null;
       }
       return {
-        appDir: getValue(appDirConfig),
+        appPrefix: getValue(appPrefixConfig),
         appIndex: getValue(appIndexConfig),
       };
     });
-    // console.debug('getAppConfig', 'result', appConfig);
+    // console.debug('sw', 'getAppConfig', 'result', appConfig);
     return appConfig;
   }
   catch (error) {
     // console.debug('sw', 'getAppDir', error);
-    return { appDir: null, appIndex: null };
+    return { appPrefix: null, appIndex: null };
   }
 }
 
@@ -161,7 +161,7 @@ let promisedAppConfig = getAppConfig();
  * @param {object} payload
  */
 function responseMessage(event, payload) {
-  console.debug('sw', 'responseMessage', event.data?.messageId, payload);
+  // console.debug('sw', 'responseMessage', event.data?.messageId, payload);
   if (Date.now() <= event.data.deadline) event.source.postMessage({
     ...payload,
     messageId: event.data.messageId,
@@ -191,7 +191,7 @@ async function hotfixSqlite3OpfsAsyncProxy(url) {
   const body = await response.text();
   const fixedBody = body.replace('export {};', '');
   const fixedResponse = new Response(fixedBody, response);
-  // console.debug('hotfixSqlite3OpfsAsyncProxy', await fixedResponse.clone().text());
+  // console.debug('sw', 'hotfixSqlite3OpfsAsyncProxy', (await fixedResponse.clone().text()).includes('export {};'));
   return fixedResponse;
 }
 
@@ -266,10 +266,10 @@ sw.addEventListener('activate', function handleActivate() {
 
 sw.addEventListener('fetch', function handleFetch(event) {
   event.respondWith((async function theCachingStrategy() {
-    const { appDir, appIndex } = await promisedAppConfig;
+    const { appPrefix, appIndex } = await promisedAppConfig;
     // console.debug('sw', 'theCachingStrategy', event.request.url);
-    if (typeof appDir === 'string') {
-      const cache = await caches.open(`jurukasa-web:${appDir}`);
+    if (typeof appPrefix === 'string') {
+      const cache = await caches.open(`jurukasa-web:${appPrefix}`);
       const response = await cache.match(event.request);
       if (response instanceof Response) {
         // console.debug('sw', 'cache', 'hit', event.request.url);
@@ -284,8 +284,8 @@ sw.addEventListener('fetch', function handleFetch(event) {
             return await fetch(event.request);
           }
           else {
-            // console.debug('sw', 'cache', 'miss', 'index', appDir, appIndex);
-            const appIndexUrl = `${appDir}/${appIndex}`;
+            // console.debug('sw', 'cache', 'miss', 'index', appPrefix, appIndex);
+            const appIndexUrl = `${appPrefix}/${appIndex}`;
             const cachedIndexResponse = await cache.match(appIndexUrl);
             if (cachedIndexResponse instanceof Response) console.debug('sw', 'cache', 'hit', 'index', appIndexUrl);
             else console.debug('sw', 'cache', 'miss', 'index', appIndexUrl);
@@ -338,6 +338,13 @@ sw.addEventListener('fetch', function handleFetch(event) {
  * @property {number} deadline
  */
 
+/**
+ * @typedef {object} AppVersion
+ * @property {string} prefix
+ * @property {string} version
+ * @property {Array<string>} sources
+ */
+
 sw.addEventListener('message', async function serviceWorkerInBound(event) {
   // console.debug('sw', 'message', event.data);
 
@@ -355,17 +362,18 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
       if (
         true
         && ('command' in data && data.command === 'init-cache')
-        && ('appDir' in data && typeof data.appDir === 'string')
+        && ('appPrefix' in data && typeof data.appPrefix === 'string')
         && ('additionalFiles' in data && Array.isArray(data.additionalFiles))
         && ('materialSymbolsProviderUrl' in data && typeof data.materialSymbolsProviderUrl === 'string')
       ) {
-        const appDir = data.appDir.endsWith('/') ? data.appDir.slice(0, -1) : data.appDir;
-        // console.debug('sw', 'init-cache', `${appDir}/package.json`);
-        const [packageJson, materialSymbolsListResp] = await Promise.all([
-          fetch(`${appDir}/package.json`),
-          fetch(`${appDir}/web/material-symbols-list.txt`),
+        const appPrefix = data.appPrefix.endsWith('/') ? data.appPrefix.slice(0, -1) : data.appPrefix;
+        // console.debug('sw', 'init-cache', `${appPrefix}/package.json`);
+        const packageJsonUrl = `${appPrefix}/package.json`;
+        const [packageJsonResp, materialSymbolsListResp] = await Promise.all([
+          fetch(packageJsonUrl),
+          fetch(`${appPrefix}/web/material-symbols-list.txt`),
         ]);
-        const packageData = /** @type {unknown} */ (await packageJson.json());
+        const packageData = /** @type {unknown} */ (await packageJsonResp.clone().json());
         const materialSymbolsNames = (await materialSymbolsListResp.text())
           .split('\n')
           .map(function trimmedLine(line) { return line.trim(); })
@@ -393,9 +401,11 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
           ].map(function clearPrefix(file) {
             return file.startsWith('/') ? file.slice(1) : file;
           });
-          const cache = await caches.open(`jurukasa-web:${appDir}`);
+          const cache = await caches.open(`jurukasa-web:${appPrefix}`);
+          // Cache package.json first
+          await cache.put(packageJsonUrl, packageJsonResp);
           await addImmutableCacheUrls(cache, files.map(function fileToUrl(file) {
-            return file.startsWith('http') ? file : `${appDir}/${file}`;
+            return file.startsWith('http') ? file : `${appPrefix}/${file}`;
           }));
           responseMessage(event, true);
         }
@@ -404,16 +414,122 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
       else if (
         true
         && ('command' in data && data.command === 'set-cache')
-        && ('appDir' in data && typeof data.appDir === 'string')
+        && ('appPrefix' in data && typeof data.appPrefix === 'string')
         && ('appIndex' in data && typeof data.appIndex === 'string')
       ) {
-        const appDir = data.appDir.endsWith('/') ? data.appDir.slice(0, -1) : data.appDir;
+        const appPrefix = data.appPrefix.endsWith('/') ? data.appPrefix.slice(0, -1) : data.appPrefix;
         const appIndex = data.appIndex.startsWith('/') ? data.appIndex.slice(1) : data.appIndex;
         const idb = await idbConnect();
         checkDeadline(data);
         await idbWrite(idb, ['sw:config'], function transactionHandler(transaction) {
           const configStore = transaction.objectStore('sw:config');
-          configStore.put({ name: 'appDir', value: appDir });
+          configStore.put({ name: 'appPrefix', value: appPrefix });
+          configStore.put({ name: 'appIndex', value: appIndex });
+        });
+        promisedAppConfig = getAppConfig();
+        responseMessage(event, true);
+      }
+      else if (
+        true
+        && ('command' in data && data.command === 'set-active-appPrefix')
+        && ('appPrefix' in data && typeof data.appPrefix === 'string')
+        && ('appIndex' in data && typeof data.appIndex === 'string')
+        && ('sources' in data && Array.isArray(data.sources))
+      ) {
+        const appPrefix = data.appPrefix.endsWith('/') ? data.appPrefix.slice(0, -1) : data.appPrefix;
+        const appIndex = data.appIndex.startsWith('/') ? data.appIndex.slice(1) : data.appIndex;
+
+        // If the version is from npm and not yet cached, we need to download it first
+        const isNpmSource = data.sources.includes('npm');
+        const isLocalSource = data.sources.includes('local');
+        const cacheName = `jurukasa-web:${appPrefix}`;
+
+        // Check if already cached (local source means it's already cached)
+        const isAlreadyCached = isLocalSource;
+
+        if (!isAlreadyCached && isNpmSource) {
+          // Download and cache the npm version
+          checkDeadline(data);
+          const packageJsonUrl = `${appPrefix}/package.json`;
+          const materialSymbolsListUrl = `${appPrefix}/web/material-symbols-list.txt`;
+
+          const [packageJsonResp, materialSymbolsListResp] = await Promise.all([
+            fetch(packageJsonUrl),
+            fetch(materialSymbolsListUrl),
+          ]);
+
+          if (!packageJsonResp.ok) {
+            throw new Error(`Failed to fetch package.json from ${packageJsonUrl}`);
+          }
+
+          const packageData = await packageJsonResp.clone().json();
+          checkDeadline(data);
+
+          if (
+            typeof packageData === 'object'
+            && packageData !== null
+            && 'files' in packageData
+            && Array.isArray(packageData.files)
+          ) {
+            const materialSymbolsNames = (await materialSymbolsListResp.text())
+              .split('\n')
+              .map(function trimmedLine(line) { return line.trim(); })
+              .filter(function nonEmptyLine(line) { return line.length !== 0; });
+
+            const materialSymbolsProviderUrl = 'https://cdn.jsdelivr.net/npm/@material-symbols/svg-400@0.40.2/rounded/{NAME}{FILL}.svg';
+            const materialSymbolsFiles = [
+              ...materialSymbolsNames.map(function outlinedSymbols(name) {
+                return materialSymbolsProviderUrl.replace('{NAME}', name).replace('{FILL}', '');
+              }),
+              ...materialSymbolsNames.map(function filledSymbols(name) {
+                return materialSymbolsProviderUrl.replace('{NAME}', name).replace('{FILL}', '-fill');
+              }),
+            ];
+
+            const additionalFiles = [
+              appIndex,
+              'manifest.json',
+            ];
+
+            const files = [
+              ...additionalFiles,
+              ...packageData.files,
+              ...materialSymbolsFiles,
+            ].map(function clearPrefix(file) {
+              return file.startsWith('/') ? file.slice(1) : file;
+            });
+
+            const cache = await caches.open(cacheName);
+            // Cache package.json first
+            await cache.put(packageJsonUrl, packageJsonResp);
+            checkDeadline(data);
+
+            // Cache all files
+            await Promise.all(files.map(async function cacheFile(file) {
+              const fileUrl = file.startsWith('http') ? file : `${appPrefix}/${file}`;
+              const cachedResponse = await cache.match(fileUrl);
+              if (cachedResponse) {
+                // Already cached, skip
+                return;
+              }
+              const response = await fetch(fileUrl);
+              if (response.ok) {
+                await cache.put(fileUrl, response);
+              }
+            }));
+            checkDeadline(data);
+          }
+          else {
+            throw new Error('Invalid package.json structure from npm');
+          }
+        }
+
+        // Now set the active appPrefix in IndexedDB
+        const idb = await idbConnect();
+        checkDeadline(data);
+        await idbWrite(idb, ['sw:config'], function transactionHandler(transaction) {
+          const configStore = transaction.objectStore('sw:config');
+          configStore.put({ name: 'appPrefix', value: appPrefix });
           configStore.put({ name: 'appIndex', value: appIndex });
         });
         promisedAppConfig = getAppConfig();
@@ -430,13 +546,110 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
         true
         && ('command' in data && data.command === 'get-app-versions')
       ) {
-        const idb = await idbConnect();
         checkDeadline(data);
-        const appVersions = await idbRead(idb, ['sw:config'], async function (transaction) {
-          const configStore = transaction.objectStore('sw:config');
-          const allConfigs = await idbGetAll(configStore);
-          return allConfigs;
-        });
+        const [cachedAppVersions, npmAppVersions] = await Promise.all([
+          (async function loadCachedAppVersions() {
+            const cacheNames = await caches.keys();
+            const jurukasaCaches = cacheNames.filter(function filterJurukasaCaches(name) {
+              return name.startsWith('jurukasa-web:');
+            });
+            /** @type {Array<AppVersion>} */
+            const localAppVersions = await Promise.all(
+              jurukasaCaches.map(async function cacheToVersion(cacheName) {
+                const cache = await caches.open(cacheName);
+                // Extract appPrefix from cache name (jurukasa-web:${appPrefix})
+                const appPrefix = cacheName.slice('jurukasa-web:'.length);
+                const packageJsonUrl = appPrefix ? `${appPrefix}/package.json` : '/package.json';
+                const packageJsonResponse = await cache.match(packageJsonUrl);
+                let version = 'unknown';
+                if (packageJsonResponse) {
+                  try {
+                    const packageData = await packageJsonResponse.json();
+                    if (packageData && typeof packageData.version === 'string') {
+                      version = packageData.version;
+                    }
+                  }
+                  catch (error) {
+                    // Ignore parse errors, keep version as 'unknown'
+                  }
+                }
+                return /** @type {AppVersion} */ ({
+                  prefix: appPrefix,
+                  version,
+                  sources: ['local'],
+                });
+              }),
+            );
+            return localAppVersions;
+          })(),
+          (async function loadNpmAppVersions() {
+            try {
+              const response = await fetch('https://data.jsdelivr.com/v1/packages/npm/jurukasa-web');
+              /** @type {unknown} */
+              const data = await response.json();
+              // console.debug('sw', 'get-app-versions', 'npm', JSON.stringify(data));
+              if (
+                typeof data === 'object'
+                && data !== null
+                && 'versions' in data
+                && Array.isArray(data.versions)
+              ) {
+                return data.versions
+                  .map(function entryToVersion(/** @type {unknown} */ entry) {
+                    if (
+                      true
+                      && typeof entry === 'object'
+                      && entry !== null
+                      && 'version' in entry
+                      && typeof entry.version === 'string'
+                    ) return /** @type {AppVersion} */ ({
+                      prefix: `https://cdn.jsdelivr.net/npm/jurukasa-web@${entry.version}`,
+                      version: entry.version,
+                      sources: ['npm'],
+                    });
+                    else return null;
+                  })
+                  .filter(function nonNull(entry) {
+                    return entry !== null;
+                  });
+              }
+              return [];
+            }
+            catch (error) {
+              console.error('sw', 'get-app-versions', 'npm', error);
+              return [];
+            }
+          })(),
+        ]);
+
+        checkDeadline(data);
+
+        // Create a map to combine local and npm versions
+        /** @type {Map<string, AppVersion>} */
+        const versionMap = new Map();
+
+        // Add local versions first
+        for (const localVersion of cachedAppVersions) {
+          versionMap.set(localVersion.version, {
+            prefix: localVersion.prefix,
+            version: localVersion.version,
+            sources: ['local'],
+          });
+        }
+
+        // Add npm versions, merging sources if version already exists locally
+        for (const npmVersion of npmAppVersions) {
+          const existing = versionMap.get(npmVersion.version);
+          if (existing) existing.sources.push('npm');
+          else versionMap.set(npmVersion.version, {
+            prefix: npmVersion.prefix,
+            version: npmVersion.version,
+            sources: ['npm'],
+          });
+        }
+
+        const appVersions = Array.from(versionMap.values());
+
         responseMessage(event, { appVersions });
       }
       else throw new Error('Unhandled message payload');
@@ -451,4 +664,5 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
       data,
     });
   }
+
 });

@@ -17,12 +17,14 @@ import { assertInstanceOf } from '#web/tools/assertion.js';
 
 import '#web/components/material-symbols.js';
 
+/** @import { LocalDatabaseConfig, TursoDatabaseConfig } from '#web/contexts/database-context.js' */
+
 /** @typedef {'local'|'turso'} DatabaseProvider */
 
 /**
  * Database Setup View handles the database configuration flow for adding new databases.
  * This is separate from onboarding and includes a back/cancel button to restore previous route state.
- * 
+ *
  * Steps:
  * 1. Database connection setup
  * 2. Business information configuration
@@ -58,9 +60,9 @@ export class DatabaseSetupViewElement extends HTMLElement {
       selectedProvider: /** @type {DatabaseProvider} */ ('local'),
     });
 
-    const businessForm = reactive({
-      state: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
-      errorMessage: /** @type {string} */ (undefined),
+    const state = reactive({
+      formState: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
+      formErrorMessage: /** @type {string} */ (undefined),
     });
 
     const chartForm = reactive({
@@ -70,22 +72,22 @@ export class DatabaseSetupViewElement extends HTMLElement {
 
     function loadChartOfAccountsTemplates() {
       database.sql`SELECT name FROM chart_of_accounts_templates`
-        .then(function (result) {
+        .then(function assignTemplates(result) {
           setup.templateNames = result.rows.map(function rowToTemplateName(row) { return String(row.name); });
         });
     }
 
     function handleCancelSetup() {
       // Restore previous route state from sessionStorage
-      const previousStateJson = sessionStorage.getItem('previousRouteState');
-      if (previousStateJson) {
+      const previousRouteJson = sessionStorage.getItem('previousRouteState');
+      if (previousRouteJson) {
         try {
-          const previousState = JSON.parse(previousStateJson);
+          const previousRoute = JSON.parse(previousRouteJson);
           sessionStorage.removeItem('previousRouteState');
           router.navigate({
-            pathname: previousState.pathname || '/settings/database',
-            databaseProvider: previousState.databaseProvider,
-            database: previousState.databaseConfig,
+            pathname: previousRoute?.pathname || '/settings/database',
+            search: previousRoute?.search,
+            database: previousRoute?.database,
             replace: true,
           });
         }
@@ -114,33 +116,32 @@ export class DatabaseSetupViewElement extends HTMLElement {
         const provider = databaseForm.selectedProvider;
 
         if (provider === 'local') {
-          // Mark local database as configured
-          localStorage.setItem('localDatabaseConfigured', 'true');
-          await database.connect({ provider: 'local' });
+          const config = /** @type {LocalDatabaseConfig} */ ({
+            provider: 'local',
+            name: formEl.elements['database-name'].value,
+          });
+          await database.connect(config);
           databaseForm.state = 'success';
           await feedbackDelay();
           router.navigate({
             pathname: '/database-setup',
-            databaseProvider: 'local',
-            database: { provider: 'local' },
+            database: config,
             replace: true,
           });
         }
         else if (provider === 'turso') {
-          const tursoUrl = formEl.elements['turso-url'].value;
-          const tursoAuthToken = formEl.elements['turso-auth-token'].value;
-
-          await database.connect({ provider: 'turso', url: tursoUrl, authToken: tursoAuthToken });
-
-          // Add to Turso database list in localStorage
-          addTursoDatabaseToList(tursoUrl, tursoAuthToken);
-
+          const config = /** @type {TursoDatabaseConfig} */ ({
+            provider: 'turso',
+            name: formEl.elements['database-name'].value,
+            url: formEl.elements['turso-url'].value,
+            authToken: formEl.elements['turso-auth-token'].value,
+          });
+          await database.connect(config);
           databaseForm.state = 'success';
           await feedbackDelay();
           router.navigate({
             pathname: '/database-setup',
-            databaseProvider: 'turso',
-            database: { provider: 'turso', url: tursoUrl, authToken: tursoAuthToken },
+            database: config,
             replace: true,
           });
         }
@@ -156,65 +157,16 @@ export class DatabaseSetupViewElement extends HTMLElement {
       }
     }
 
-    /**
-     * Add a Turso database to the stored list
-     * @param {string} url
-     * @param {string} [authToken]
-     */
-    function addTursoDatabaseToList(url, authToken) {
-      const listJson = localStorage.getItem('tursoDatabaseList');
-      let list = [];
-      if (listJson) {
-        try {
-          list = JSON.parse(listJson);
-        }
-        catch (error) {
-          console.error('Failed to parse Turso database list', error);
-        }
-      }
-
-      // Check if already exists
-      const existingIndex = list.findIndex((db) => db.url === url);
-      if (existingIndex >= 0) {
-        // Update existing
-        list[existingIndex] = { url, authToken, name: extractDatabaseNameFromUrl(url) };
-      }
-      else {
-        // Add new
-        list.push({ url, authToken, name: extractDatabaseNameFromUrl(url) });
-      }
-
-      localStorage.setItem('tursoDatabaseList', JSON.stringify(list));
-    }
-
-    /**
-     * Extract a readable name from Turso database URL
-     * @param {string} url
-     * @returns {string}
-     */
-    function extractDatabaseNameFromUrl(url) {
-      try {
-        const urlObj = new URL(url);
-        const hostname = urlObj.hostname;
-        const parts = hostname.split('.');
-        if (parts.length > 0) {
-          const dbPart = parts[0];
-          return dbPart.split('-')[0] || dbPart;
-        }
-        return 'Turso Database';
-      }
-      catch (error) {
-        return 'Turso Database';
-      }
-    }
-
     /** @param {SubmitEvent} event */
     async function submitBusinessConfig(event) {
       event.preventDefault();
-      const form = /** @type {HTMLFormElement} */ (event.currentTarget);
+      assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
       const formData = new FormData(form);
 
-      businessForm.state = 'submitting';
+      // Capture form data before changing state (which triggers re-render and disables fields)
+      state.formState = 'submitting';
+      state.formErrorMessage = undefined;
 
       const tx = await database.transaction('write');
       try {
@@ -226,19 +178,20 @@ export class DatabaseSetupViewElement extends HTMLElement {
         await tx.sql`UPDATE config SET value = ${formData.get('language') || ''} WHERE key = 'Language'`;
         await tx.sql`UPDATE config SET value = ${formData.get('fiscal-year-start-month') || ''} WHERE key = 'Fiscal Year Start Month'`;
         await tx.commit();
-        businessForm.state = 'success';
+        state.formState = 'success';
         await feedbackDelay();
 
         setup.step = 'chart-of-accounts';
+
         loadChartOfAccountsTemplates();
       }
       catch (error) {
         console.error('Failed to save configuration', error);
         await tx.rollback();
-        businessForm.state = 'failure';
-        businessForm.errorMessage = error.message;
+        state.formState = 'failure';
+        state.formErrorMessage = error.message;
         await feedbackDelay();
-        businessForm.state = 'ready';
+        state.formState = 'ready';
       }
     }
 
@@ -248,6 +201,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
       const form = /** @type {HTMLFormElement} */ (event.currentTarget);
       const formData = new FormData(form);
 
+      // Capture form data before changing state (which triggers re-render and disables fields)
       chartForm.state = 'submitting';
 
       const tx = await database.transaction('write');
@@ -266,7 +220,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
       }
       catch (error) {
         console.error('Failed to submit chart of accounts', error);
-        try { await tx.rollback(); } catch (err) { console.error('Failed to rollback transaction', err); }
+        try { await tx.rollback(); } catch (error) { console.error('Failed to rollback transaction', error); }
         chartForm.state = 'failure';
         chartForm.errorMessage = error.message;
         await feedbackDelay();
@@ -348,6 +302,25 @@ export class DatabaseSetupViewElement extends HTMLElement {
                       </p>
                     </div>
                   </label>
+                  ${selectedProvider === 'local' ? html`
+                    <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+                      <div class="outlined-text-field">
+                        <div class="container">
+                          <label for="database-name">${t('onboarding', 'localDatabaseNameLabel')}</label>
+                          <input
+                            id="database-name"
+                            name="database-name"
+                            type="text"
+                            autocomplete="off"
+                            required
+                            ?disabled=${formDisabled}
+                            placeholder="${t('onboarding', 'localDatabaseNamePlaceholder')}"
+                          />
+                        </div>
+                        <p class="supporting-text">${t('onboarding', 'localDatabaseNameDescription')}</p>
+                      </div>
+                    </div>
+                  ` : ''}
                 </li>
                 <!-- Remote Turso Provider -->
                 <li role="presentation" style="border: 1px solid var(--md-sys-color-outline); border-radius: var(--md-sys-shape-corner-small); overflow: hidden;">
@@ -377,6 +350,21 @@ export class DatabaseSetupViewElement extends HTMLElement {
                   </label>
                   ${selectedProvider === 'turso' ? html`
                     <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+                      <div class="outlined-text-field">
+                        <div class="container">
+                          <label for="database-name">${t('onboarding', 'localDatabaseNameLabel')}</label>
+                          <input
+                            id="database-name"
+                            name="database-name"
+                            type="text"
+                            autocomplete="off"
+                            required
+                            ?disabled=${formDisabled}
+                            placeholder="${t('onboarding', 'localDatabaseNamePlaceholder')}"
+                          />
+                        </div>
+                        <p class="supporting-text">${t('onboarding', 'localDatabaseNameDescription')}</p>
+                      </div>
                       <div class="outlined-text-field">
                         <div class="container">
                           <label for="turso-url">${t('onboarding', 'tursoUrlLabel')}</label>
@@ -421,7 +409,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
     }
 
     function renderBusinessConfigStep() {
-      const formState = businessForm.state;
+      const formState = state.formState;
       const formDisabled = formState !== 'ready';
       return html`
         <dialog

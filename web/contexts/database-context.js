@@ -237,7 +237,7 @@ async function initiateDatabase(config) {
  * @returns {Promise<DatabaseClient>}
  */
 async function createDatabaseClient(config) {
-  if (config.provider === 'local') return createLocalDatabaseClient();
+  if (config.provider === 'local') return createLocalDatabaseClient(config);
   else if (config.provider === 'turso') return createTursoDatabaseClient(config);
   else throw new DatabaseError(`Unknown database provider: ${/** @type {any} */ (config).provider}`);
 }
