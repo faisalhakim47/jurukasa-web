@@ -55,11 +55,13 @@ search_off
 settings
 shopping_basket
 shopping_cart
+storage
 storefront
 swap_horiz
 sync_alt
 undo
 unfold_less
 unfold_more
+update
 visibility
 warning

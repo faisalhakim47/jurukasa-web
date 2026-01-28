@@ -65,6 +65,7 @@ import '#web/tools/array.js';
 import '#web/tools/assertion.js';
 import '#web/tools/dom.js';
 import '#web/tools/fetch.js';
+import '#web/tools/reactivity.js';
 import '#web/tools/string.js';
 import '#web/tools/timing.js';
 
