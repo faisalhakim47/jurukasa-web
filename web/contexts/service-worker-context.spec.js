@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { jurukasaTest } from '#test/playwright/test-setup.js';
 import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
 import { useStrict } from '#test/playwright/hooks/use-strict.js';
 import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
@@ -6,6 +7,7 @@ import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 /** @import { ReadyContextElement } from '#web/contexts/ready-context.js' */
 /** @import { ServiceWorkerContextElement } from '#web/contexts/service-worker-context.js' */
 
+const test = jurukasaTest;
 const { describe } = test;
 
 async function setupView() {

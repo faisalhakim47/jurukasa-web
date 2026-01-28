@@ -3,8 +3,9 @@ import { defineWebComponent } from '#web/component.js';
 import { useBusyStateResolver } from '#web/contexts/ready-context.js';
 import { provideContext } from '#web/hooks/use-context.js';
 import { useConnectedCallback } from '#web/hooks/use-lifecycle.js';
-import { getMetaContent } from '#web/tools/dom.js';
 import { useWatch } from '#web/hooks/use-watch.js';
+import { getMetaContent } from '#web/tools/dom.js';
+import { waitForValue } from '#web/tools/reactivity.js';
 
 const appDir = getMetaContent('app-dir', '/');
 const appIndex = getMetaContent('app-index', 'index.html');
@@ -90,43 +91,44 @@ export class ServiceWorkerContextElement extends HTMLElement {
 
     /**
      * @param {object} payload
-     * @param {number} duration
+     * @param {number} [duration]
      * @returns {Promise<unknown>}
      */
-    function sendMessage(payload, duration) {
+    async function sendMessage(payload, duration = 3000) {
+      await waitForValue(function waitForServiceWorker() {
+        return state.serviceWorker instanceof ServiceWorker;
+      }, 3000);
       return new Promise(function responsePromise(resolve, reject) {
-        if (state.serviceWorker instanceof ServiceWorker) {
-          const deadline = Date.now() + duration;
-          const messageId = state.messageId++;
-          /** @param {MessageEvent} event */
-          function clientInBound(event) {
-            // console.debug('sendMessage', 'clientInBound', event.data);
-            if (event.data.messageId === messageId) {
-              clearTimeout(timeout);
-              navigator.serviceWorker.removeEventListener('message', clientInBound);
-              resolve(event.data.result);
-            }
-          }
-          navigator.serviceWorker.addEventListener('message', clientInBound);
-          const timeout = setTimeout(function inBoundTimeout() {
+        const deadline = Date.now() + duration;
+        const messageId = state.messageId++;
+        /** @param {MessageEvent} event */
+        function clientInBound(event) {
+          console.debug('sendMessage', 'clientInBound', event.data);
+          if (event.data.messageId === messageId) {
+            clearTimeout(timeout);
             navigator.serviceWorker.removeEventListener('message', clientInBound);
-            reject(new Error(`ServiceWorker message timeout: ${duration}ms`));
-          }, duration);
-          state.serviceWorker.postMessage({
-            ...payload,
-            messageId,
-            deadline,
-          });
-          // console.debug('sendMessage', payload);
+            resolve(event.data);
+          }
         }
-        else reject(new Error('ServiceWorker not ready'));
+        navigator.serviceWorker.addEventListener('message', clientInBound);
+        const timeout = setTimeout(function inBoundTimeout() {
+          navigator.serviceWorker.removeEventListener('message', clientInBound);
+          reject(new Error(`ServiceWorker message timeout: ${duration}ms`));
+        }, duration);
+        console.debug('service-worker-context', 'postMessage', messageId, payload?.command);
+        state.serviceWorker.postMessage({
+          ...payload,
+          messageId,
+          deadline,
+        });
+        // console.debug('sendMessage', payload);
       });
     }
+    this.sendMessage = sendMessage;
 
     async function hotfixSqlite3OpfsAsyncProxy() {
       await sendMessage({ command: 'hotfix-sqlite3-opfs-async-proxy' }, 5 * 1000);
     }
-
     this.hotfixSqlite3OpfsAsyncProxy = hotfixSqlite3OpfsAsyncProxy;
   }
 }

@@ -135,18 +135,24 @@ export function useTranslator(host) {
   };
 }
 
+/** @template {string} T @typedef {T | (string & {})} LiteralUnion */
+
 /**
  * @param {HTMLElement} host
  */
 export function useLiteral(host) {
   const translate = useTranslator(host);
   /**
-   * @param {keyof DefaultLangPack['literal']} textKey
+   * @param {LiteralUnion<keyof DefaultLangPack['literal']>} textKey
    * @param {...Array<unknown>} args
    * @returns {string}
    */
   return function literal(textKey, ...args) {
-    return translate('literal', textKey, ...args);
+    return translate(
+      'literal',
+      /** @type {any} mandatory any cast */ (textKey),
+      ...args,
+    );
   };
 }
 

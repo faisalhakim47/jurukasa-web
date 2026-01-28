@@ -7,6 +7,7 @@ const settings = {
   // Tab Labels
   accountingConfigTabLabel: 'Accounting Config',
   paymentMethodsTabLabel: 'Payment Methods',
+  versionsTabLabel: 'App Versions',
 
   // Loading State
   loadingAriaLabel: 'Loading',
@@ -102,6 +103,14 @@ const settings = {
   databaseSetupTitle: 'Database Setup',
   databaseSetupBackButtonLabel: 'Cancel',
   databaseSetupDescription: 'Configure a new database for your business data.',
+
+  // Version Manager
+  versionManagerTitle: 'Version Manager',
+  refreshVersionsAriaLabel: 'Refresh version list',
+  noAppVersionsTitle: 'No app versions found',
+  noAppVersionsMessage: 'No application versions are currently stored in the service worker configuration.',
+  versionNameColumnHeader: 'Name',
+  versionValueColumnHeader: 'Value',
 };
 
 /** @typedef {typeof settings} SettingsTranslation */

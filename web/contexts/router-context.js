@@ -3,23 +3,25 @@ import { defineWebComponent } from '#web/component.js';
 import { provideContext } from '#web/hooks/use-context.js';
 import { useWindowEventListener } from '#web/hooks/use-window-event-listener.js';
 
+/** @import { DatabaseConfig } from '#web/contexts/database-context.js' */
+
 /**
- * @typedef {'local'|'turso'} DatabaseProvider
- * 
- * @typedef {object} LocalDatabaseConfig
- * @property {'local'} provider
- * 
- * @typedef {object} TursoDatabaseConfig
- * @property {'turso'} provider
- * @property {string} url
- * @property {string} [authToken]
- * 
- * @typedef {LocalDatabaseConfig|TursoDatabaseConfig} DatabaseConfig
- * 
- * @typedef {object} Route
+ * @typedef {object} PersistedRoute
+ * @property {DatabaseConfig} [database]
+ */
+
+/**
+ * @typedef {object} SessionRoute
  * @property {string} pathname
- * @property {DatabaseProvider} [databaseProvider]
- * @property {DatabaseConfig} [databaseConfig]
+ * @property {string} [search]
+ */
+
+/**
+ * @typedef {PersistedRoute & SessionRoute} Route
+ */
+
+/**
+ * @typedef {Partial<Route & { replace?: boolean }>} RouteTarget
  */
 
 export class RouterContextElement extends HTMLElement {
@@ -29,90 +31,85 @@ export class RouterContextElement extends HTMLElement {
     provideContext(this);
 
     const host = this;
-
-    // Load persisted database configuration
-    const persistedProvider = /** @type {DatabaseProvider|null} */ (localStorage.getItem('databaseProvider'));
-    const persistedConfig = loadPersistedDatabaseConfig(persistedProvider);
+    const persistedRoute = getPersistedRouteState();
+    const initialRoute = (function evaluateInitialRoute() {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.has('initialRoute')) {
+          const initialRouteTarget = JSON.parse(atob(searchParams.get('initialRoute')));
+          searchParams.delete('initialRoute');
+          return /** @type {RouteTarget} */ ({
+            ...initialRouteTarget,
+            search: searchParams.size === 0 ? '' : `?${searchParams.toString()}`,
+            replace: true,
+          });
+        }
+      }
+      catch (error) {
+        console.warn('router-context', 'evaluateInitialRoute', error);
+        return {};
+      }
+    })();
 
     const route = reactive(/** @type {Route} */({
-      pathname: window.location.pathname,
-      databaseProvider: persistedProvider || window.history.state?.databaseProvider,
-      databaseConfig: persistedConfig || window.history.state?.databaseConfig,
+      pathname: initialRoute?.pathname || window.location.pathname,
+      database: false
+        || initialRoute?.database
+        || persistedRoute?.database
+        || window.history.state?.database,
     }));
 
     this.route = readonly(route);
 
     function syncNavigatorToRouter() {
       route.pathname = window.location.pathname;
-      route.databaseProvider = window.history.state?.databaseProvider;
-      route.databaseConfig = window.history.state?.databaseConfig;
+      route.database = window.history.state?.database ?? route.database;
+      // console.debug('router-context', 'syncNavigatorToRouter', route?.pathname, route?.database?.provider);
     };
 
     useWindowEventListener(host, 'popstate', syncNavigatorToRouter);
     useWindowEventListener(host, 'load', syncNavigatorToRouter);
 
-    /**
-     * @param {Partial<Route & { replace?: boolean }>} target
-     */
+    /** @param {RouteTarget} target */
     this.navigate = function navigate(target) {
-      const state = /** @type {Route} */ ({
-        databaseProvider: target.databaseProvider ?? route.databaseProvider,
-        databaseConfig: {
-          ...route.databaseConfig,
-        },
-        pathname: target.pathname ?? route.pathname,
+      const nextSearch = target.search ?? route.search ?? window.location.search ?? '';
+      const nextRoute = /** @type {Route} */ ({
+        ...target,
+        pathname: target.pathname ?? route.pathname ?? window.location.pathname,
+        search: nextSearch.startsWith('?') ? nextSearch : `?${nextSearch}`,
+        database: { ...route.database, ...target.database },
       });
 
-      // Persist database configuration
-      if (state.databaseProvider && state.databaseConfig) {
-        localStorage.setItem('databaseProvider', state.databaseProvider);
-        persistDatabaseConfig(state.databaseConfig);
-      }
-      else clearDatabaseConfig();
+      persistRouteState(nextRoute);
 
-      const url = (target.pathname ?? route.pathname);
-      if (target?.replace === true) window.history.replaceState(state, '', url);
-      else window.history.pushState(state, '', url);
+      const url = `${nextRoute.pathname}${nextRoute.search}`;
 
-      window.dispatchEvent(new PopStateEvent('popstate', { state }));
+      if (target?.replace === true) window.history.replaceState(nextRoute, '', url);
+      else window.history.pushState(nextRoute, '', url);
+
+      window.dispatchEvent(new PopStateEvent('popstate', { state: nextRoute }));
+
+      // console.debug('router-context', 'navigate', JSON.stringify(nextRoute), JSON.stringify(route.database));
     };
   }
 }
 
-/**
- * @param {DatabaseProvider|null} provider
- * @returns {DatabaseConfig|undefined}
- */
-function loadPersistedDatabaseConfig(provider) {
-  if (provider === 'local') {
-    return { provider: 'local' };
-  }
-  else if (provider === 'turso') {
-    const url = localStorage.getItem('tursoUrl');
-    const authToken = localStorage.getItem('tursoAuthToken') || undefined;
-    if (!url) return undefined;
-    return { provider: 'turso', url, authToken };
-  }
-  else return undefined;
-}
-
-/**
- * @param {DatabaseConfig} config
- */
-function persistDatabaseConfig(config) {
-  if (config.provider === 'local') {
-    // No additional data needed for local storage
-  }
-  else if (config.provider === 'turso') {
-    localStorage.setItem('tursoUrl', config.url);
-    localStorage.setItem('tursoAuthToken', config.authToken || '');
-  }
-}
-
-function clearDatabaseConfig() {
-  localStorage.removeItem('databaseProvider');
-  localStorage.removeItem('tursoUrl');
-  localStorage.removeItem('tursoAuthToken');
-}
-
 defineWebComponent('router-context', RouterContextElement);
+
+
+/** @returns {PersistedRoute} */
+function getPersistedRouteState() {
+  const persistedRouteStateJson = localStorage.getItem('persistedRouteState');
+  const persistedRouteState = JSON.parse(persistedRouteStateJson);
+  return persistedRouteState;
+}
+
+/**
+ * @param {Route} route
+ */
+function persistRouteState(route) {
+  const persistedRouteState = /** @type {PersistedRoute} */ ({
+    database: route.database,
+  });
+  localStorage.setItem('persistedRouteState', JSON.stringify(persistedRouteState));
+}

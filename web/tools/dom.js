@@ -42,11 +42,13 @@ export function getMetaContent(name, defaultContent) {
 
 /** @param {HTMLElement} element */
 export function scrollIntoView(element) {
-  const applicationEnvironment = getMetaContent('app-env', 'production');
+  const appEnv = getMetaContent('app-env', 'production');
+  /** @type {ScrollBehavior} */
+  const behavior = appEnv === 'development' ? 'instant' : 'smooth';
   element.scrollIntoView({
-    behavior: applicationEnvironment === 'testing' ? 'instant' : 'smooth',
+    behavior,
     block: 'nearest',
-    inline: 'start',
+    inline: 'center',
   });
 }
 

@@ -1,5 +1,6 @@
+import { computed, reactive } from '@vue/reactivity';
 import { html, nothing } from 'lit-html';
-import { reactive } from '@vue/reactivity';
+import { repeat } from 'lit-html/directives/repeat.js';
 
 import { defineWebComponent } from '#web/component.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
@@ -8,26 +9,23 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { useMounted } from '#web/hooks/use-mounted.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
 import '#web/components/material-symbols.js';
-import { useElement } from '#web/hooks/use-element.js';
-import { repeat } from 'lit-html/directives/repeat.js';
+
+/** @import { DatabaseConfig } from '#web/contexts/database-context.js' */
 
 /**
- * @typedef {'local'|'turso'} DatabaseProvider
- * 
- * @typedef {object} DatabaseEntry
- * @property {string} id
- * @property {DatabaseProvider} provider
- * @property {string} name
- * @property {string} [url]
+ * @typedef {object} DatabaseModel
  * @property {boolean} isActive
  */
+
+/** @typedef {DatabaseConfig & DatabaseModel} DatabaseViewModel */
 
 /**
  * Database Management View displays a list of configured databases
@@ -40,43 +38,57 @@ export class DatabaseManagementViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const router = useContext(host, RouterContextElement);
+    const l = useLiteral(host);
     const t = useTranslator(host);
+
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
     const state = reactive({
       isLoading: /** @type {boolean} */ (true),
-      databases: /** @type {DatabaseEntry[]} */ ([]),
-      selectedDatabase: /** @type {DatabaseEntry|null} */ (null),
+      databases: /** @type {DatabaseViewModel[]} */ ([]),
+      selectedDatabase: /** @type {DatabaseViewModel|null} */ (null),
+      errors: /** @type {Array<Error>} */ ([]),
     });
 
     const infoDialog = useElement(host, HTMLDialogElement);
     const switchDialog = useElement(host, HTMLDialogElement);
+    const errorDialog = useElement(host, HTMLDialogElement);
+
+    const displayedError = computed(function firstError() {
+      return state.errors.at(0);
+    });
+
+    useEffect(host, function displayStackedErrors() {
+      if (state.errors.length > 0) errorDialog.value?.showModal();
+    });
 
     function loadDatabaseList() {
-      state.isLoading = true;
-      state.databases = database.getDatabaseList();
-      state.isLoading = false;
+      try {
+        state.isLoading = true;
+        state.databases = database.getDatabases().map(function toViewModel(database) {
+          return {
+            ...database,
+            isActive: database.name === state.selectedDatabase?.name,
+          };
+        });
+      }
+      catch (error) {
+        state.errors.push(error);
+      }
+      finally {
+        state.isLoading = false;
+      }
     }
 
     useMounted(host, loadDatabaseList);
 
-    /** @param {Event} event */
-    function handleRefreshClick(event) {
-      loadDatabaseList();
-    }
-
     function handleNewDatabaseClick() {
-      const previousRouteState = {
-        pathname: router.route.pathname,
-        databaseProvider: router.route.databaseProvider,
-        databaseConfig: router.route.databaseConfig,
-      };
+      const previousRouteState = structuredClone(router.route);
 
       router.navigate({
         pathname: '/database-setup',
-        databaseProvider: undefined,
-        databaseConfig: undefined,
+        database: undefined,
         replace: false,
       });
 
@@ -86,12 +98,12 @@ export class DatabaseManagementViewElement extends HTMLElement {
     /** @param {Event} event */
     function handleInfoClick(event) {
       assertInstanceOf(HTMLButtonElement, event.currentTarget);
-      const databaseId = event.currentTarget.dataset.databaseId;
-      const database = state.databases.find(function byId(database) {
-        return database.id === databaseId;
+      const databaseName = event.currentTarget.dataset.databaseName;
+      const selectedDatabase = state.databases.find(function byName(database) {
+        return database.name === databaseName;
       });
-      if (database) {
-        state.selectedDatabase = database;
+      if (selectedDatabase) {
+        state.selectedDatabase = selectedDatabase;
         assertInstanceOf(HTMLDialogElement, infoDialog.value);
         infoDialog.value.dispatchEvent(new CommandEvent('command', { command: 'show-modal' }));
       }
@@ -100,40 +112,26 @@ export class DatabaseManagementViewElement extends HTMLElement {
     /** @param {Event} event */
     function handleUseClick(event) {
       assertInstanceOf(HTMLButtonElement, event.currentTarget);
-      const databaseId = event.currentTarget.dataset.databaseId;
-      const database = state.databases.find(function byId(database) {
-        return database.id === databaseId;
+      const databaseName = event.currentTarget.dataset.databaseName;
+      const selectedDatabase = state.databases.find(function byName(database) {
+        return database.name === databaseName;
       });
-      if (database && !database.isActive) {
-        state.selectedDatabase = database;
+      if (selectedDatabase && !selectedDatabase.isActive) {
+        state.selectedDatabase = selectedDatabase;
         assertInstanceOf(HTMLDialogElement, infoDialog.value);
         switchDialog.value.dispatchEvent(new CommandEvent('command', { command: 'show-modal' }));
       }
     }
 
     function handleSwitchConfirm() {
-      const selectedDatabase = state.selectedDatabase;
-      if (!selectedDatabase) return;
-
-      database.setActiveDatabase(selectedDatabase);
-
-      if (selectedDatabase.provider === 'local') router.navigate({
-        pathname: '/dashboard',
-        databaseProvider: 'local',
-        databaseConfig: { provider: 'local' },
-        replace: true,
-      });
-      else if (selectedDatabase.provider === 'turso' && selectedDatabase.url) {
-        const authToken = localStorage.getItem('tursoAuthToken') || undefined;
+      if (state.selectedDatabase?.provider) {
         router.navigate({
           pathname: '/dashboard',
-          databaseProvider: 'turso',
-          databaseConfig: { provider: 'turso', url: selectedDatabase.url, authToken },
+          search: router.route.search,
+          database: state.selectedDatabase,
           replace: true,
         });
       }
-
-      window.location.reload();
     }
 
     function handleSwitchCancel() {
@@ -145,44 +143,37 @@ export class DatabaseManagementViewElement extends HTMLElement {
     /** @param {Event} event */
     async function handleExportClick(event) {
       assertInstanceOf(HTMLButtonElement, event.currentTarget);
-      const databaseId = event.currentTarget.dataset.databaseId;
-      const database = state.databases.find(function byId(database) {
-        return database.id === databaseId;
+      const databaseName = event.currentTarget.dataset.databaseName;
+      const selectedDatabase = state.databases.find(function byName(database) {
+        return database.name === databaseName;
       });
 
-      if (!database) return;
-
-      // For now, export is only supported for the active local database
-      if (database.provider === 'local' && database.isActive) {
-        try {
-          // Export using the OPFS API
+      try {
+        if (selectedDatabase?.provider === 'local') {
           const root = await navigator.storage.getDirectory();
           const files = [];
-
-          // Try to find the database file
           for await (const [name, handle] of root.entries()) {
             if (name.includes('jurukasa') && handle.kind === 'file') {
               const file = await handle.getFile();
               files.push({ name, file });
             }
           }
-
           if (files.length > 0) {
-            // Create a download link for the first matching file
             const { name, file } = files[0];
             const blob = new Blob([await file.arrayBuffer()], { type: 'application/octet-stream' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `jurukasa-backup-${new Date().toISOString().split('T')[0]}.sqlite`;
-            a.click();
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = `jurukasa-${name}-${new Date().toISOString().split('T')[0]}.sqlite`;
+            anchor.click();
             URL.revokeObjectURL(url);
           }
-          else console.warn('No database file found for export');
+          else state.errors.push(new Error('No database file found for export'));
         }
-        catch (error) {
-          console.error('Failed to export database', error);
-        }
+        else state.errors.push(new Error('Unsupported database provider for export'));
+      }
+      catch (error) {
+        state.errors.push(new Error('Failed to export database', { cause: error }));
       }
     }
 
@@ -220,7 +211,7 @@ export class DatabaseManagementViewElement extends HTMLElement {
     }
 
     /**
-     * @param {DatabaseEntry} database
+     * @param {DatabaseViewModel} database
      */
     function renderDatabaseRow(database) {
       const providerLabel = database.provider === 'local'
@@ -254,7 +245,7 @@ export class DatabaseManagementViewElement extends HTMLElement {
               commandfor="database-info-dialog"
               command="show-modal"
               @click=${handleInfoClick}
-              data-database-id="${database.id}"
+              data-database-name="${database.name}"
             >
               <material-symbols name="info" size="20"></material-symbols>
               ${t('settings', 'databaseInfoButtonLabel')}
@@ -268,7 +259,7 @@ export class DatabaseManagementViewElement extends HTMLElement {
                 commandfor="database-use-dialog"
                 command="show-modal"
                 @click=${handleUseClick}
-                data-database-id="${database.id}"
+                data-database-name="${database.name}"
               >
                 <material-symbols name="swap_horiz" size="20"></material-symbols>
                 ${t('settings', 'databaseUseButtonLabel')}
@@ -281,7 +272,7 @@ export class DatabaseManagementViewElement extends HTMLElement {
                 class="text"
                 style="--md-sys-density: -4;"
                 @click=${handleExportClick}
-                data-database-id="${database.id}"
+                data-database-name="${database.name}"
               >
                 <material-symbols name="download" size="20"></material-symbols>
                 ${t('settings', 'databaseExportButtonLabel')}
@@ -303,55 +294,55 @@ export class DatabaseManagementViewElement extends HTMLElement {
             </tr>
           </thead>
           <tbody>
-            ${repeat(state.databases, (database) => database.id, renderDatabaseRow)}
+            ${repeat(state.databases, (database) => database.name, renderDatabaseRow)}
           </tbody>
         </table>
       `;
     }
 
     function renderInfoDialog() {
-      if (!state.selectedDatabase) return nothing;
-
-      const providerLabel = state.selectedDatabase.provider === 'local'
-        ? t('settings', 'localProviderLabel')
-        : t('settings', 'tursoProviderLabel');
-
-      return html`
-        <dialog ${infoDialog} id="database-info-dialog" aria-labelledby="database-info-title">
-          <div class="container">
-            <header>
-              <hgroup>
-                <h2 id="database-info-title">${t('settings', 'databaseInfoDialogTitle')}</h2>
-              </hgroup>
-            </header>
-            <section class="content">
-              <dl style="margin: 0;">
-                <dt style="font-weight: 500; margin-top: 16px;">${t('settings', 'databaseInfoProviderLabel')}</dt>
-                <dd style="margin: 4px 0 0 0; color: var(--md-sys-color-on-surface-variant);">${providerLabel}</dd>
-                <dt style="font-weight: 500; margin-top: 16px;">${t('settings', 'databaseInfoNameLabel')}</dt>
-                <dd style="margin: 4px 0 0 0; color: var(--md-sys-color-on-surface-variant);">${state.selectedDatabase.name}</dd>
-                ${state.selectedDatabase.url ? html`
-                  <dt style="font-weight: 500; margin-top: 16px;">${t('settings', 'databaseInfoUrlLabel')}</dt>
-                  <dd style="margin: 4px 0 0 0; color: var(--md-sys-color-on-surface-variant); word-break: break-all;">${state.selectedDatabase.url}</dd>
-                ` : nothing}
-                <dt style="font-weight: 500; margin-top: 16px;">${t('settings', 'databaseInfoStatusLabel')}</dt>
-                <dd style="margin: 4px 0 0 0; color: var(--md-sys-color-on-surface-variant);">
-                  ${state.selectedDatabase.isActive ? t('settings', 'databaseInfoActiveStatus') : t('settings', 'databaseInfoInactiveStatus')}
-                </dd>
-              </dl>
-            </section>
-            <menu>
-              <button
-                role="button"
-                type="button"
-                class="text"
-                commandfor="database-info-dialog"
-                command="close"
-              >${t('settings', 'databaseInfoCloseButtonLabel')}</button>
-            </menu>
-          </div>
-        </dialog>
-      `;
+      if (state.selectedDatabase?.provider) {
+        const providerLabel = state.selectedDatabase.provider === 'local'
+          ? t('settings', 'localProviderLabel')
+          : t('settings', 'tursoProviderLabel');
+        return html`
+          <dialog ${infoDialog} id="database-info-dialog" aria-labelledby="database-info-title">
+            <div class="container">
+              <header>
+                <hgroup>
+                  <h2 id="database-info-title">${t('settings', 'databaseInfoDialogTitle')}</h2>
+                </hgroup>
+              </header>
+              <section class="content">
+                <dl style="margin: 0;">
+                  <dt style="font-weight: 500; margin-top: 16px;">${t('settings', 'databaseInfoProviderLabel')}</dt>
+                  <dd style="margin: 4px 0 0 0; color: var(--md-sys-color-on-surface-variant);">${providerLabel}</dd>
+                  <dt style="font-weight: 500; margin-top: 16px;">${t('settings', 'databaseInfoNameLabel')}</dt>
+                  <dd style="margin: 4px 0 0 0; color: var(--md-sys-color-on-surface-variant);">${state.selectedDatabase?.name}</dd>
+                  ${'url' in state.selectedDatabase ? html`
+                    <dt style="font-weight: 500; margin-top: 16px;">${t('settings', 'databaseInfoUrlLabel')}</dt>
+                    <dd style="margin: 4px 0 0 0; color: var(--md-sys-color-on-surface-variant); word-break: break-all;">${state.selectedDatabase.url}</dd>
+                  ` : nothing}
+                  <dt style="font-weight: 500; margin-top: 16px;">${t('settings', 'databaseInfoStatusLabel')}</dt>
+                  <dd style="margin: 4px 0 0 0; color: var(--md-sys-color-on-surface-variant);">
+                    ${state.selectedDatabase.isActive ? t('settings', 'databaseInfoActiveStatus') : t('settings', 'databaseInfoInactiveStatus')}
+                  </dd>
+                </dl>
+              </section>
+              <menu>
+                <button
+                  role="button"
+                  type="button"
+                  class="text"
+                  commandfor="database-info-dialog"
+                  command="close"
+                >${t('settings', 'databaseInfoCloseButtonLabel')}</button>
+              </menu>
+            </div>
+          </dialog>
+        `;
+      }
+      else return nothing;
     }
 
     function renderSwitchDialog() {
@@ -396,7 +387,7 @@ export class DatabaseManagementViewElement extends HTMLElement {
                 type="button"
                 class="text"
                 aria-label="${t('settings', 'refreshDatabasesAriaLabel')}"
-                @click=${handleRefreshClick}
+                @click=${loadDatabaseList}
               >
                 <material-symbols name="refresh" size="24"></material-symbols>
                 ${t('settings', 'refreshButtonLabel')}
@@ -413,6 +404,27 @@ export class DatabaseManagementViewElement extends HTMLElement {
         </div>
         ${renderInfoDialog()}
         ${renderSwitchDialog()}
+        <dialog role="alertdialog" ${errorDialog} id="error-dialog" aria-labelledby="error-dialog-title">
+          <div class="container">
+            <header>
+              <hgroup>
+                <h2 id="error-dialog-title">${t('common', 'errorDialogTitle')}</h2>
+              </hgroup>
+            </header>
+            <section class="content">
+              <p>${displayedError.value instanceof Error ? l(displayedError.value.message) : t('common', 'errorDialogUnknownError', displayedError.value)}</p>
+            </section>
+            <menu>
+              <button
+                role="button"
+                type="button"
+                class="filled"
+                commandfor="error-dialog"
+                command="close"
+              >${t('common', 'errorDialogDismissButtonLabel')}</button>
+            </menu>
+          </div>
+        </dialog>
       `);
     });
   }

@@ -51,6 +51,11 @@ const common = {
   updatingApplicationMessage: 'Updating application...',
   updateLaterButtonLabel: 'Later',
   updateNowButtonLabel: 'Update Now',
+
+  // Error Dialog
+  errorDialogTitle: 'Error Occurred',
+  errorDialogUnknownError: 'Unknown error occurred: %s',
+  errorDialogDismissButtonLabel: 'Dismiss',
 };
 
 /** @typedef {typeof common} CommonTranslation */

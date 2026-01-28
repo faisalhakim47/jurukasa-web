@@ -1,16 +1,15 @@
-/** @import { Page } from '@playwright/test' */
-
 import { readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { waitForDOMCustomEventDetail } from '#test/playwright/tools/dom.js';
+import { expect } from '@playwright/test';
+/** @import { Page } from '@playwright/test' */
 
 const __filname = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filname);
 
 /** @param {Page} page */
-export async function loadEmptyFixture(page) {
-  await page.goto('/test/playwright/fixtures/empty.html', { waitUntil: 'load' });
-  await page.pause();
+async function testContextInitiation(page) {
   const componentTags = [
     ...await listComponentTags(join(__dirname, '../../../web/components')),
     ...await listComponentTags(join(__dirname, '../../../web/contexts')),
@@ -22,7 +21,7 @@ export async function loadEmptyFixture(page) {
       /** @type {Set<string>} */
       const definedComponents = new Set();
       Promise
-        .all(componentTags.map(async function waitForComponent(componentTag) {
+        .all(componentTags.map(async function waitForComponents(componentTag) {
           await customElements.whenDefined(componentTag);
           if (settled) return;
           definedComponents.add(componentTag);
@@ -46,9 +45,25 @@ export async function loadEmptyFixture(page) {
           return !definedComponents.has(componentTag);
         });
         reject(new Error(`Timeout while waiting for components definitions: ${undefinedComponentTags.join(', ')}`));
-      }, /** this should be lower than test timeout */ (4000));
+      }, /** this should be lower than test timeout */(4000));
     });
   }, componentTags);
+  await expect(page.getByRole('dialog', { name: 'Application is loading' })).not.toBeVisible();
+}
+
+/** @param {Page} page */
+export async function loadEmptyFixture(page) {
+  await page.goto('/test/playwright/fixtures/empty.html', { waitUntil: 'load' });
+  await testContextInitiation(page);
+}
+
+/** @param {Page} page */
+export async function loadDevFixture(page) {
+  await page.goto('/test/playwright/fixtures/dev.html', { waitUntil: 'domcontentloaded' });
+  await Promise.all([
+    testContextInitiation(page),
+    waitForDOMCustomEventDetail(page, 'ready-context', 'ready-context:ready'),
+  ]);
 }
 
 /** @param {string} dir */

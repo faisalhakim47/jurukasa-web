@@ -1,9 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 import { setupDatabase } from '#test/playwright/tools/database.js';
-import { bypassForbiddenLocator, useStrict } from '#test/playwright/hooks/use-strict.js';
+import { jurukasaTest } from '#test/playwright/test-setup.js';
+import { useStrict } from '#test/playwright/hooks/use-strict.js';
 
+const test = jurukasaTest;
 const { describe } = test;
 
 /** @param {string} tursoDatabaseUrl */
@@ -13,7 +15,7 @@ async function setupView(tursoDatabaseUrl) {
     <ready-context>
       <time-context>
         <router-context>
-          <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+          <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
             <device-context>
               <i18n-context>
                 <books-view></books-view>
@@ -33,7 +35,7 @@ async function setupViewWithChartOfAccounts(tursoDatabaseUrl) {
     <ready-context>
       <time-context>
         <router-context>
-          <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+          <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
             <device-context>
               <i18n-context>
                 <books-view></books-view>
@@ -243,6 +245,8 @@ describe('Chart of Accounts', function () {
       await expect(chartOfAccountsPanel.getByRole('row')).toHaveCount(8);
 
       await page.getByRole('textbox', { name: 'Search', exact: true }).fill('Kas & Bank');
+
+      await page.pause();
 
       // 1 Header + 1 filtered account
       await expect(chartOfAccountsPanel.getByRole('row')).toHaveCount(2);

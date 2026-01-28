@@ -105,6 +105,23 @@ async function idbGet(objectStore, query) {
 }
 
 /**
+ * @param {IDBObjectStore} objectStore
+ * @returns {Promise<Array<unknown>>}
+ */
+async function idbGetAll(objectStore) {
+  const objectRequest = objectStore.getAll();
+  return new Promise(function getAllPromise(resolve, reject) {
+    objectRequest.addEventListener('success', function getAllSuccess(event) {
+      if ('result' in event.target) resolve(/** @type {Array<unknown>} */(event.target.result));
+      else throw reject(new Error('IndexedDB getAll result not found', { cause: event }));
+    });
+    objectRequest.addEventListener('error', function getAllError(event) {
+      reject(new Error('IndexedDB getAll error', { cause: event }));
+    });
+  });
+}
+
+/**
  * this promised app directory function must not throw error
  */
 async function getAppConfig() {
@@ -144,6 +161,7 @@ let promisedAppConfig = getAppConfig();
  * @param {object} payload
  */
 function responseMessage(event, payload) {
+  console.debug('sw', 'responseMessage', event.data?.messageId, payload);
   if (Date.now() <= event.data.deadline) event.source.postMessage({
     ...payload,
     messageId: event.data.messageId,
@@ -173,8 +191,7 @@ async function hotfixSqlite3OpfsAsyncProxy(url) {
   const body = await response.text();
   const fixedBody = body.replace('export {};', '');
   const fixedResponse = new Response(fixedBody, response);
-  // const sampleFixedResponse = fixedResponse.clone();
-  // console.debug('hotfixSqlite3OpfsAsyncProxy', await sampleFixedResponse.text());
+  // console.debug('hotfixSqlite3OpfsAsyncProxy', await fixedResponse.clone().text());
   return fixedResponse;
 }
 
@@ -182,13 +199,25 @@ async function hotfixSqlite3OpfsAsyncProxy(url) {
  * For consistency our structure list all resources from package.json, including the html files.
  * For this reason, the html is included in caching process. But, the cache is come from some CDN.
  * Most CDN would forbid to serve HTML by invalidating Content-Type header. We need to fix this.
- * @param {*} url 
+ * 
+ * @param {string} url
  */
 async function fixCDNToServeHTML(url) {
   if (url.endsWith('.html')) {
     const response = await fetch(url);
-    response.headers.set('Content-Type', 'text/html; charset=utf-8');
-    return response;
+    return new Response(response.body, {
+      status: 200,
+      headers: {
+        ...Array.from(response.headers.entries())
+          .reduce(function compileHeaders(headers, [key, value]) {
+            headers[key] = value;
+            return headers;
+          }, {}),
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+      },
+    });
   }
   else return await fetch(url);
 }
@@ -210,7 +239,8 @@ async function addImmutableCacheUrls(cache, urls) {
         await cache.put(url, await hotfixSqlite3OpfsAsyncProxy(url));
       }
       else if (url.endsWith('.html')) {
-        return await cache.put(url, await fixCDNToServeHTML(url));
+        // console.debug('sw', 'cache', 'add', 'html', url);
+        await cache.put(url, await fixCDNToServeHTML(url));
       }
       else await cache.add(url).catch(function logCacheAddError(error) {
         // console.debug('sw', 'cache', 'add', 'error', url, error.message);
@@ -237,6 +267,7 @@ sw.addEventListener('activate', function handleActivate() {
 sw.addEventListener('fetch', function handleFetch(event) {
   event.respondWith((async function theCachingStrategy() {
     const { appDir, appIndex } = await promisedAppConfig;
+    // console.debug('sw', 'theCachingStrategy', event.request.url);
     if (typeof appDir === 'string') {
       const cache = await caches.open(`jurukasa-web:${appDir}`);
       const response = await cache.match(event.request);
@@ -253,16 +284,23 @@ sw.addEventListener('fetch', function handleFetch(event) {
             return await fetch(event.request);
           }
           else {
-            const cachedIndexResponse = await cache.match(`${appDir}/${appIndex}`);
+            // console.debug('sw', 'cache', 'miss', 'index', appDir, appIndex);
+            const appIndexUrl = `${appDir}/${appIndex}`;
+            const cachedIndexResponse = await cache.match(appIndexUrl);
+            if (cachedIndexResponse instanceof Response) console.debug('sw', 'cache', 'hit', 'index', appIndexUrl);
+            else console.debug('sw', 'cache', 'miss', 'index', appIndexUrl);
             const indexResponse = cachedIndexResponse instanceof Response
               ? cachedIndexResponse
-              : await fetch(event.request);
-            // if (!(cachedIndexResponse instanceof Response)) console.debug('sw', 'cache', 'miss', appIndex);
+              : await fetch(appIndexUrl).catch(function logFetchError(error) {
+                // console.debug('sw', 'fetch', 'error', appIndexUrl, error.message);
+                throw error;
+              });
+            // console.debug('sw', 'cache', 'miss', 'index', 'loaded', appIndexUrl);
             const fixedIndexResponse = new Response(indexResponse.body, {
               status: 200,
               headers: {
                 ...Array.from(indexResponse.headers.entries())
-                  .reduce(function filterHeaders(headers, [key, value]) {
+                  .reduce(function compileHeaders(headers, [key, value]) {
                     headers[key] = value;
                     return headers;
                   }, {}),
@@ -352,7 +390,7 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
             ...data.additionalFiles,
             ...packageData.files,
             ...materialSymbolsFiles,
-          ].map(function unprefix(file) {
+          ].map(function clearPrefix(file) {
             return file.startsWith('/') ? file.slice(1) : file;
           });
           const cache = await caches.open(`jurukasa-web:${appDir}`);
@@ -370,12 +408,13 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
         && ('appIndex' in data && typeof data.appIndex === 'string')
       ) {
         const appDir = data.appDir.endsWith('/') ? data.appDir.slice(0, -1) : data.appDir;
+        const appIndex = data.appIndex.startsWith('/') ? data.appIndex.slice(1) : data.appIndex;
         const idb = await idbConnect();
         checkDeadline(data);
         await idbWrite(idb, ['sw:config'], function transactionHandler(transaction) {
           const configStore = transaction.objectStore('sw:config');
           configStore.put({ name: 'appDir', value: appDir });
-          configStore.put({ name: 'appIndex', value: data.appIndex });
+          configStore.put({ name: 'appIndex', value: appIndex });
         });
         promisedAppConfig = getAppConfig();
         responseMessage(event, true);
@@ -386,6 +425,19 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
       ) {
         await sw.clients.claim();
         responseMessage(event, true);
+      }
+      else if (
+        true
+        && ('command' in data && data.command === 'get-app-versions')
+      ) {
+        const idb = await idbConnect();
+        checkDeadline(data);
+        const appVersions = await idbRead(idb, ['sw:config'], async function (transaction) {
+          const configStore = transaction.objectStore('sw:config');
+          const allConfigs = await idbGetAll(configStore);
+          return allConfigs;
+        });
+        responseMessage(event, { appVersions });
       }
       else throw new Error('Unhandled message payload');
     }

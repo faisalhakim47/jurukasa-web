@@ -144,7 +144,7 @@ export class OnboardingViewElement extends HTMLElement {
           router.navigate({
             pathname: '/onboarding',
             databaseProvider: 'local',
-            databaseConfig: { provider: 'local' },
+            database: { provider: 'local' },
             replace: true,
           });
         }
@@ -157,7 +157,7 @@ export class OnboardingViewElement extends HTMLElement {
           router.navigate({
             pathname: '/onboarding',
             databaseProvider: 'turso',
-            databaseConfig: { provider: 'turso', url: tursoUrl, authToken: tursoAuthToken },
+            database: { provider: 'turso', url: tursoUrl, authToken: tursoAuthToken },
             replace: true,
           });
         }

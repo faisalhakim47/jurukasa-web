@@ -1,6 +1,6 @@
 import { getMetaContent } from '#web/tools/dom.js';
 
-const applicationEnvironment = getMetaContent('app-env', 'production');
+const appEnv = getMetaContent('app-env', 'production');
 
 /**
  * @param {number} duration
@@ -31,7 +31,7 @@ export async function nextTick() {
  * No delay is added when in testing environment.
  */
 export async function feedbackDelay() {
-  if (applicationEnvironment === 'testing') {
+  if (appEnv === 'development') {
     await new Promise(function nearInstantDelay(resolve) {
       requestAnimationFrame(function delayUntilNextFrame() {
         requestIdleCallback(function delayUntilIdle() {

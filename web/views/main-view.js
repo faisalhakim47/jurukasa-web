@@ -70,6 +70,8 @@ export class MainViewElement extends HTMLElement {
         || onboarding.state === 'needs-chart-of-accounts';
       const isComplete = onboarding.state === 'complete';
 
+      // console.debug('main-view', 'handleOnboardingRedirect', pathname, onboarding.state, needsOnboarding, isComplete);
+
       if (needsOnboarding && !pathname.startsWith('/onboarding') && !pathname.startsWith('/database-setup')) {
         router.navigate({ pathname: '/onboarding', replace: true });
       }

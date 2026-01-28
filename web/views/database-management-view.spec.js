@@ -1,21 +1,31 @@
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { jurukasaTest } from '#test/playwright/test-setup.js';
 import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
 import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
 import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 import { useStrict } from '#test/playwright/hooks/use-strict.js';
 import { setupDatabase } from '#test/playwright/tools/database.js';
+/** @import { RouteTarget } from '#web/contexts/router-context.js' */
 
+const test = jurukasaTest;
 const { describe } = test;
 
 /**
  * @param {string} tursoDatabaseUrl
  */
 async function setupSettingView(tursoDatabaseUrl) {
-  window.history.replaceState({}, '', '/settings/database');
+  window.history.replaceState(/** @type {RouteTarget} */({
+    replace: true,
+    database: {
+      name: 'My Business',
+      provider: 'turso',
+      url: tursoDatabaseUrl,
+    },
+  }), '', '/settings/database');
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+        <database-context>
           <device-context>
             <i18n-context>
               <settings-view></settings-view>
@@ -32,17 +42,11 @@ async function setupSettingView(tursoDatabaseUrl) {
  */
 async function setupDatabaseSetupView(tursoDatabaseUrl) {
   window.history.replaceState({}, '', '/database-setup');
-  // Store previous route state for cancel functionality testing
-  sessionStorage.setItem('previousRouteState', JSON.stringify({
-    pathname: '/settings/database',
-    databaseProvider: 'turso',
-    databaseConfig: { provider: 'turso', url: tursoDatabaseUrl },
-  }));
   document.body.innerHTML = `
     <ready-context>
       <time-context>
         <router-context>
-          <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+          <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
             <device-context>
               <i18n-context>
                 <database-setup-view></database-setup-view>
@@ -56,7 +60,7 @@ async function setupDatabaseSetupView(tursoDatabaseUrl) {
 }
 
 describe('Database Management Feature', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Database Tab in Settings', function () {
@@ -126,7 +130,7 @@ describe('Database Management Feature', function () {
 
       const databasePanel = page.getByRole('tabpanel', { name: 'Database' });
       await expect(databasePanel.getByText('Turso')).toBeVisible();
-      await expect(databasePanel.getByText('Active')).toBeVisible();
+      await expect(databasePanel.getByText('My Business')).toBeVisible();
     });
 
     test('shall display Info button for database entry', async function ({ page }) {

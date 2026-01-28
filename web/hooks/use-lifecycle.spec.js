@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { jurukasaTest } from '#test/playwright/test-setup.js';
 import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
 import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 
+const test = jurukasaTest;
 const { describe } = test;
 
 async function setupUseLifecycleScenario() {

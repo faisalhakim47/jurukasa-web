@@ -85,7 +85,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
           router.navigate({
             pathname: previousState.pathname || '/settings/database',
             databaseProvider: previousState.databaseProvider,
-            databaseConfig: previousState.databaseConfig,
+            database: previousState.databaseConfig,
             replace: true,
           });
         }
@@ -122,7 +122,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
           router.navigate({
             pathname: '/database-setup',
             databaseProvider: 'local',
-            databaseConfig: { provider: 'local' },
+            database: { provider: 'local' },
             replace: true,
           });
         }
@@ -140,7 +140,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
           router.navigate({
             pathname: '/database-setup',
             databaseProvider: 'turso',
-            databaseConfig: { provider: 'turso', url: tursoUrl, authToken: tursoAuthToken },
+            database: { provider: 'turso', url: tursoUrl, authToken: tursoAuthToken },
             replace: true,
           });
         }

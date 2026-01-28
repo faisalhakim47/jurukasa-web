@@ -1,26 +1,30 @@
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
+import { jurukasaTest } from '#test/playwright/test-setup.js';
 import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
 import { useStrict } from '#test/playwright/hooks/use-strict.js';
 
+const test = jurukasaTest;
 const { describe } = test;
 
 /** @param {string} tursoDatabaseUrl */
 async function setupOnboardingView(tursoDatabaseUrl) {
   document.body.innerHTML = `
     <ready-context>
-      <router-context>
-        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
-          <device-context>
-            <i18n-context>
-              <onboarding-view></onboarding-view>
-            </i18n-context>
-          </device-context>
-        </database-context>
-      </router-context>
+      <service-worker-context>
+        <router-context>
+          <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
+            <device-context>
+              <i18n-context>
+                <onboarding-view></onboarding-view>
+              </i18n-context>
+            </device-context>
+          </database-context>
+        </router-context>
+      </service-worker-context>
     </ready-context>
   `;
 }
@@ -28,15 +32,17 @@ async function setupOnboardingView(tursoDatabaseUrl) {
 async function setupOnboardingViewWithoutDatabase() {
   document.body.innerHTML = `
     <ready-context>
-      <router-context>
-        <database-context>
-          <device-context>
-            <i18n-context>
-              <onboarding-view></onboarding-view>
-            </i18n-context>
-          </device-context>
-        </database-context>
-      </router-context>
+      <service-worker-context>
+        <router-context>
+          <database-context>
+            <device-context>
+              <i18n-context>
+                <onboarding-view></onboarding-view>
+              </i18n-context>
+            </device-context>
+          </database-context>
+        </router-context>
+      </service-worker-context>
     </ready-context>
   `;
 }

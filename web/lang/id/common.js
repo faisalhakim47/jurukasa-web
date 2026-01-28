@@ -53,4 +53,9 @@ export default /** @type {Partial<CommonTranslation>} */ ({
   updatingApplicationMessage: 'Memperbarui aplikasi...',
   updateLaterButtonLabel: 'Nanti',
   updateNowButtonLabel: 'Perbarui Sekarang',
+
+  // Error Dialog
+  errorDialogTitle: 'Terjadi Kesalahan',
+  errorDialogUnknownError: 'Kesalahan tidak diketahui: %s',
+  errorDialogDismissButtonLabel: 'Tutup',
 });

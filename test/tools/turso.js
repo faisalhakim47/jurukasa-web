@@ -1,6 +1,9 @@
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { createClient } from '@libsql/client';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { mkdir, rm } from 'node:fs/promises';
 
 /**
  * @param {{ authToken?: string }} [config]
@@ -15,9 +18,14 @@ export async function startTursoLibSQLiteServer(config) {
     }
 
     const tursoDevPort = await findAvailablePort();
-    const tursoProcess = spawn('turso', [
-      'dev',
-      ...['--port', tursoDevPort.toString()],
+    const tursoDevDir = join(tmpdir(), `jurukasa-test-${tursoDevPort}-${Date.now()}`);
+    await rm(tursoDevDir, { recursive: true, force: true });
+    await mkdir(tursoDevDir, { recursive: true });
+    const tursoDevPath = join(tursoDevDir, 'database.sqlite');
+    const tursoProcess = spawn('sqld', [
+      '--no-welcome',
+      ...['--http-listen-addr', `0.0.0.0:${tursoDevPort.toString()}`],
+      ...['--db-path', tursoDevPath],
       ...(typeof config?.authToken === 'string' ? ['--auth-jwt-key-file', config?.authToken] : []),
     ]);
 
@@ -40,6 +48,7 @@ export async function startTursoLibSQLiteServer(config) {
       resolve({
         url: `http://127.0.0.1:${tursoDevPort}`,
         async teardown() {
+          await rm(tursoDevDir, { force: true, recursive: true });
           await new Promise(function stopTursoProcess(resolve) {
             tursoProcess.on('exit', function tursoProcessExited() {
               resolve();
@@ -48,6 +57,7 @@ export async function startTursoLibSQLiteServer(config) {
             if (tursoProcess.stderr) tursoProcess.stderr.destroy();
             if (tursoProcess.stdin) tursoProcess.stdin.destroy();
             tursoProcess.kill('SIGKILL');
+            tursoProcess.kill('SIGTERM');
           });
         },
       });

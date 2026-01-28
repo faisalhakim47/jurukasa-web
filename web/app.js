@@ -100,3 +100,4 @@ import '#web/views/stock-taking-creation-view.js';
 import '#web/views/stock-takings-view.js';
 import '#web/views/stock-view.js';
 import '#web/views/suppliers-view.js';
+import '#web/views/version-manager-view.js';

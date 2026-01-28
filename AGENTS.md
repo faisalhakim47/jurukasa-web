@@ -10,7 +10,7 @@ JuruKasa is point-of-sales (POS) web application with following features:
 
 - `index.html` the entrypoint of single page application.
 - `web/` the implementation of web application.
-- `web/schemas/` database schema definitions (core business logic implemented as SQLite triggers).
+- `web/schemas/` database schema definitions (the source of truth, the core business logics are implemented as SQLite triggers).
 - `web/components/` reusable web components.
 - `web/lang/` translation.
 - `web/contexts/` application contexts following subset of context protocol by w3c's Web Components Community Group.
@@ -22,7 +22,7 @@ JuruKasa is point-of-sales (POS) web application with following features:
 
 - Chromium-based browser above 140 (as of December 2025)
 
-## Design Requirements
+## UI/UX Design Requirements
 
 - App implement latest Material 3 Expressive Design System by Google.
 - App implement adaptive design principles (instead of responsive design) to achive multi-size screen support.
@@ -69,6 +69,8 @@ JuruKasa is point-of-sales (POS) web application with following features:
 - To supply params to a custom dialog, we use `dataset`/`data-` attributes on the invoker element. The custom dialog will read the data from `dialog.context?.dataset` property.
 
 ### SQLite Migration Writing Guidelines
+
+IMPORTANT NOTE! The database schemas is the source of truth regarding business logic in entire application. All core business logics are implemented in SQLite triggers.
 
 - Each schema migration is designed to be executed once atomicly (no idempotency).
 - Schema naming convention:
@@ -148,6 +150,7 @@ We have two test setups:
 - Test files is located alongside its implementation file with `.spec.js` suffix.
 - Run all tests by command `npx playwright test` (slow).
 - Run a test by command `npx playwright test $SPEC_FILE_RELATIVE_PATH` (fast).
+- When debugging, read Accessibility Tree file to see the latest state of accessible HTML.
 
 ### Playwright Test Writing Guidelines
 

@@ -7,7 +7,7 @@ import { reactive } from '@vue/reactivity';
 
 /** @type {Map<string, Promise<HTMLTemplateElement>>} */
 const svgTemplateMap = new Map();
-const applicationEnvironment = getMetaContent('app-env', 'production');
+const appEnv = getMetaContent('app-env', 'production');
 const materialSymbolsProviderUrl = getMetaContent('material-symbols-provider-url', 'https://cdn.jsdelivr.net/npm/@material-symbols/svg-{WEIGHT}@0.40.2/{STYLE}/{NAME}{FILL}.svg');
 
 export class MaterialSymbolsElement extends HTMLElement {
@@ -90,7 +90,7 @@ export class MaterialSymbolsElement extends HTMLElement {
       const svgResponse = svgTemplateMap.has(iconUrl)
         ? svgTemplateMap.get(iconUrl)
         : (async function fetchSvg() {
-          if (applicationEnvironment === 'testing') {
+          if (appEnv === 'development') {
             await Promise.resolve();
             const template = document.createElement('template');
             template.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>${icon.label || icon.name}</title><path fill="currentColor" d="M12 2L2 7v6c0 5 3.8 9.7 9 11 5.2-1.3 9-6 9-11V7l-10-5z"></path></svg>`;

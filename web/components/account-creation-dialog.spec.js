@@ -1,11 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
+import { jurukasaTest } from '#test/playwright/test-setup.js';
 import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 import { useStrict } from '#test/playwright/hooks/use-strict.js';
+import { waitForDOMCustomEventDetail } from '#test/playwright/tools/dom.js';
 
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
+const test = jurukasaTest;
 const { describe } = test;
 
 /** @param {string} tursoDatabaseUrl */
@@ -13,7 +16,7 @@ async function setupView(tursoDatabaseUrl) {
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context provider="turso" turso-url="${tursoDatabaseUrl}">
+        <database-context provider="turso" name="My Business" turso-url="${tursoDatabaseUrl}">
           <device-context>
             <i18n-context>
               <button
@@ -58,13 +61,7 @@ describe('Account Creation Dialog', function () {
     await dialog.getByRole('menuitem', { name: 'Asset', exact: true }).click();
 
     const [accountCreatedEvent] = await Promise.all([
-      page.evaluate(async function eventTest() {
-        const { waitForEvent } = await import('#web/tools/dom.js');
-        const accountCreationDialog = document.getElementsByTagName('account-creation-dialog').item(0);
-        const event = await waitForEvent(accountCreationDialog, 'account-created', 5000);
-        if (event instanceof CustomEvent) return event.detail;
-        else throw new Error('Unexpected event type');
-      }),
+      waitForDOMCustomEventDetail(page, 'account-creation-dialog', 'account-created'),
       dialog.getByRole('button', { name: 'Create Account' }).click(),
     ]);
 
@@ -95,7 +92,7 @@ describe('Account Creation Dialog', function () {
       document.body.innerHTML = `
         <ready-context>
           <router-context>
-            <database-context provider="turso" turso-url="${tursoDatabaseUrl}">
+            <database-context provider="turso" name="My Business" turso-url="${tursoDatabaseUrl}">
               <device-context>
                 <i18n-context>
                   <button

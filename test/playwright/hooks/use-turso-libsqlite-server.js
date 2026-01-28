@@ -23,6 +23,8 @@ export function useTursoLibSQLiteServer(test) {
     while (true) {
       try {
         tursoLibSQLiteServer = await startTursoLibSQLiteServer();
+        process.addListener('beforeExit', tursoLibSQLiteServer.teardown);
+        process.addListener('exit', tursoLibSQLiteServer.teardown);
         break;
       }
       catch (error) {
@@ -33,6 +35,8 @@ export function useTursoLibSQLiteServer(test) {
   });
 
   afterEach(async function teardownTursoLibSQLiteServer() {
+    process.removeListener('beforeExit', tursoLibSQLiteServer.teardown);
+    process.removeListener('exit', tursoLibSQLiteServer.teardown);
     await tursoLibSQLiteServer.teardown();
   });
 

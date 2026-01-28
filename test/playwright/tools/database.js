@@ -3,15 +3,11 @@ import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { createClient } from '@libsql/client';
 
-/** @import { ResultSet } from '@libsql/client' */
+/** @import { SQLFunction } from '#web/database.js' */
 /** @import { TursoLibSQLiteServerState } from '#test/playwright/hooks/use-turso-libsqlite-server.js' */
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-/**
- * @typedef {function(TemplateStringsArray, ...unknown): Promise<ResultSet>} SQLFunction
- */
 
 /**
  * This helper expect to be run on clean database.
@@ -48,7 +44,7 @@ export async function setupDatabase(tursoLibSQLiteServer, setup) {
   try {
     if (typeof setup === 'function') await setup(async function sql(query, ...params) {
       if (!Array.isArray(query)) throw new TypeError('Expected TemplateStringsArray as the first argument.');
-      return client.execute({
+      const result = await client.execute({
         sql: query.join('?'),
         args: params.map(function unknownToArg(param) {
           if (param === null || param === undefined) return null;
@@ -56,6 +52,11 @@ export async function setupDatabase(tursoLibSQLiteServer, setup) {
           else return JSON.stringify(param);
         }),
       });
+      return {
+        rows: result.rows,
+        lastInsertRowid: Number(result.lastInsertRowid),
+        rowsAffected: result.rowsAffected,
+      }
     });
   }
   catch (error) {

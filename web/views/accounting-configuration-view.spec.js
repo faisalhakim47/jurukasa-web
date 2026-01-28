@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { jurukasaTest } from '#test/playwright/test-setup.js';
 import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
 import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
@@ -6,6 +7,7 @@ import { setupDatabase } from '#test/playwright/tools/database.js';
 import { useStrict } from '#test/playwright/hooks/use-strict.js';
 /** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
+const test = jurukasaTest;
 const { describe } = test;
 
 /** @param {string} tursoDatabaseUrl */
@@ -13,7 +15,7 @@ async function setupView(tursoDatabaseUrl) {
   document.body.innerHTML = `
     <ready-context>
       <router-context>
-        <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+        <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
               <accounting-configuration-view></accounting-configuration-view>
@@ -237,7 +239,7 @@ describe('Accounting Configuration View', function () {
       document.body.innerHTML = `
         <ready-context>
           <router-context>
-            <database-context provider="turso" turso-url="${tursoDatabaseUrl}">
+            <database-context provider="turso" name="My Business" turso-url="${tursoDatabaseUrl}">
               <device-context>
                 <i18n-context></i18n-context>
               </device-context>
@@ -270,7 +272,7 @@ describe('Accounting Configuration View', function () {
       document.body.innerHTML = `
         <ready-context>
           <router-context>
-            <database-context provider="turso" turso-url=${tursoDatabaseUrl}>
+            <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
               <device-context>
                 <i18n-context>
                   <accounting-configuration-view></accounting-configuration-view>
