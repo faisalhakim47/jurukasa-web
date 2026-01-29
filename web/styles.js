@@ -16,7 +16,7 @@ import { default as listCss } from '#web/styles/list.css' with { type: 'css' };
 import { default as menuCss } from '#web/styles/menu.css' with { type: 'css' };
 import { default as navigationRailCss } from '#web/styles/navigation/rail.css' with { type: 'css' };
 import { default as outlinedTextFieldCss } from '#web/styles/text-field/outlined.css' with { type: 'css' };
-import { default as progressLinearCss } from '#web/styles/progress/linear.css' with { type: 'css' };
+import { default as progressIndicatorCss } from '#web/styles/progress-indicator.css' with { type: 'css' };
 import { default as scrollbarCss } from '#web/styles/scrollbar.css' with { type: 'css' };
 import { default as tableCss } from '#web/styles/table.css' with { type: 'css' };
 import { default as tabsCss } from '#web/styles/tabs.css' with { type: 'css' };
@@ -33,7 +33,7 @@ export const webStyleSheets = [
   menuCss,
   navigationRailCss,
   outlinedTextFieldCss,
-  progressLinearCss,
+  progressIndicatorCss,
   resetCss,
   scrollbarCss,
   tableCss,

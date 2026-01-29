@@ -22,10 +22,10 @@ import { computed } from '@vue/reactivity';
  * @returns {T}
  */
 export function useExposed(host, computeFnOrRef) {
-  const symbol = Symbol('ComputedPlaceholder');
+  const placeholder = Symbol('ComputedPlaceholder');
   useConnectedCallback(host, function initExposed() {
     for (const key in host) {
-      if (host[key] === symbol) {
+      if (host[key] === placeholder) {
         const ref = typeof computeFnOrRef === 'function'
           ? computed(computeFnOrRef)
           : computeFnOrRef;
@@ -35,5 +35,5 @@ export function useExposed(host, computeFnOrRef) {
       }
     }
   });
-  return /** @type {object} workaround, this ref will be replaced after connectedCallback */ (symbol);
+  return /** @type {object} workaround, this ref will be replaced after connectedCallback */ (placeholder);
 }

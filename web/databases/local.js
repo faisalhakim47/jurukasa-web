@@ -1,5 +1,6 @@
 import { unknownToSQLArgs } from '#web/database.js';
 import { assertTemplateStringsArray } from '#web/tools/assertion.js';
+import { removeIndentation } from '#web/tools/string.js';
 /** @import { DatabaseClient, SQLFunction } from '#web/database.js' */
 /** @import { DatabaseConfig } from '#web/contexts/database-context.js' */
 
@@ -31,9 +32,9 @@ export async function createLocalDatabaseClient(config) {
   /** @type {SQLFunction} */
   async function sql(query, ...params) {
     assertTemplateStringsArray(query);
-    const sqlQuery = query.join('?');
+    const sqlQuery = removeIndentation(query.join('?'));
     const sqlArgs = unknownToSQLArgs(params);
-    // console.debug('database', 'local', 'sql', sqlQuery, sqlArgs);
+    // console.debug('database', 'local', 'sql', `\n  ` + sqlQuery.slice(0, 500).replace(/\n/g, '\n  '), sqlQuery.length > 500 ? '...' : '');
     try {
       const dbId = await promisedDbId;
       const response = await promiser('exec', {

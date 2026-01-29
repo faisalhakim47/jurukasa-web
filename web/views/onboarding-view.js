@@ -549,11 +549,10 @@ export class OnboardingViewElement extends HTMLElement {
                 ?disabled=${formDisabled}
               >${t('onboarding', 'businessConfigSubmitLabel')}</button>
             </header>
+            <div role="status">
+              ${formState === 'submitting' ? html`<progress aria-label=${t('onboarding', 'businessConfigProgressIndicatorLabel')}></progress>` : ''}
+            </div>
             <div class="content">
-              <div role="status" aria-live="polite">
-                <progress>On progress...</progress>
-              </div>
-
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="business-name">${t('onboarding', 'businessNameLabel')}</label>

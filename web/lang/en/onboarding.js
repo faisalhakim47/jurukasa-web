@@ -50,6 +50,7 @@ const onboarding = {
   businessLocaleLabel: 'Locale',
   businessLanguageLabel: 'Language',
   businessFiscalYearStartMonthLabel: 'Fiscal Year Start Month',
+  businessConfigProgressIndicatorLabel: 'Configuring business...',
 
   // Chart of accounts setup
   chartOfAccountsSetupTitle: 'Choose Chart of Accounts Template',
