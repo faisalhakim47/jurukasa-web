@@ -32,6 +32,7 @@ const fiscalYear = {
   creationSubmitLabel: 'Create',
   creationLoadingLabel: 'Creating fiscal year...',
   creationSuccessLabel: 'Fiscal year created!',
+  creationProgressIndicatorLabel: 'Creating fiscal year',
   closeDialogLabel: 'Close dialog',
   loadingFormLabel: 'Loading form...',
   

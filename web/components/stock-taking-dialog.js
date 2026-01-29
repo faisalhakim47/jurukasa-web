@@ -365,16 +365,11 @@ export class StockTakingDialogElement extends HTMLElement {
               >${t('stock', 'recordStockTakingButtonLabel')}</button>
             </header>
 
-            <div class="content">
-              ${state.formState !== 'idle' ? html`
-                <div role="status" aria-live="polite" aria-busy="true">
-                  <div role="progressbar" class="linear indeterminate">
-                    <div class="track"><div class="indicator"></div></div>
-                  </div>
-                  <p>${t('stock', 'recordingStockTakingMessage')}</p>
-                </div>
-              ` : nothing}
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.formState === 'submitting' ? html`<progress aria-label="${t('stock', 'recordingStockTakingProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
 
+            <div class="content">
               ${state.inventoryLoading ? renderLoadingIndicator() : renderStockTakingForm()}
             </div>
           </form>

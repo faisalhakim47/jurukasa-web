@@ -1,5 +1,5 @@
 import { reactive } from '@vue/reactivity';
-import { html } from 'lit-html';
+import { html, nothing } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
 
 import { defineWebComponent } from '#web/component.js';
@@ -549,8 +549,8 @@ export class OnboardingViewElement extends HTMLElement {
                 ?disabled=${formDisabled}
               >${t('onboarding', 'businessConfigSubmitLabel')}</button>
             </header>
-            <div role="status">
-              ${formState === 'submitting' ? html`<progress aria-label=${t('onboarding', 'businessConfigProgressIndicatorLabel')}></progress>` : ''}
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${formState === 'submitting' ? html`<progress aria-label="${t('onboarding', 'businessConfigProgressIndicatorLabel')}"></progress>` : nothing}
             </div>
             <div class="content">
               <div class="outlined-text-field">

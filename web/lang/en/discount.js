@@ -4,6 +4,7 @@ const discount = {
   createButtonLabel: 'Create',
   closeButtonAriaLabel: 'Close',
   creatingDiscountMessage: 'Creating discount...',
+  creatingDiscountProgressIndicatorLabel: 'Creating discount',
   discountNameLabel: 'Discount Name',
   discountNameSupportingText: 'A unique name for this discount (e.g., "Buy 3 Get 500 Off")',
   discountNameExistsError: 'Discount name already exists.',
@@ -40,6 +41,7 @@ const discount = {
   saveChangesButtonLabel: 'Save Changes',
   cancelButtonLabel: 'Cancel',
   savingChangesMessage: 'Saving changes...',
+  savingChangesProgressIndicatorLabel: 'Saving changes',
 
   // Discount Details - Information Section
   discountInformationSectionTitle: 'Discount Information',

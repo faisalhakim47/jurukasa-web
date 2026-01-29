@@ -383,15 +383,6 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
       const inventory = state.inventory;
 
       return html`
-        ${state.formState !== 'idle' ? html`
-          <div role="status" aria-live="polite" aria-busy="true">
-            <div role="progressbar" class="linear indeterminate">
-              <div class="track"><div class="indicator"></div></div>
-            </div>
-            <p>${t('inventory', 'savingDiscountsMessage')}</p>
-          </div>
-        ` : nothing}
-
         <!-- Inventory Info -->
         <div style="background-color: var(--md-sys-color-primary-container); padding: 12px; border-radius: var(--md-sys-shape-corner-small); margin-bottom: 16px;">
           <p class="label-small" style="margin: 0; color: var(--md-sys-color-on-primary-container);">${t('inventory', 'inventoryFieldLabel')}</p>
@@ -471,6 +462,10 @@ export class InventoryDiscountsEditDialogElement extends HTMLElement {
                 ?disabled=${state.formState === 'submitting' || !state.inventory}
               >${t('inventory', 'saveButtonLabel')}</button>
             </header>
+
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.formState === 'submitting' ? html`<progress aria-label="${t('inventory', 'savingDiscountsProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
 
             <div class="content" style="max-width: 600px; margin: 0 auto; padding: 16px;">
               ${state.discountsLoading ? renderLoadingState() : nothing}

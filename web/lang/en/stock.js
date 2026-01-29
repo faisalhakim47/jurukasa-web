@@ -30,6 +30,7 @@ const stock = {
   inventoryShrinkageJournalNote: 'A journal entry will be created to record the inventory shrinkage.',
   recordStockTakingButtonLabel: 'Record Stock Taking',
   recordingStockTakingMessage: 'Recording stock taking...',
+  recordingStockTakingProgressIndicatorLabel: 'Recording stock taking',
   errorDialogTitle: 'Error',
   dismissButtonLabel: 'Dismiss',
 

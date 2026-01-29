@@ -262,20 +262,13 @@ export class VersionManagerViewElement extends HTMLElement {
                 <h2 id="version-switch-dialog-title">${t('settings', 'versionSwitchDialogTitle')}</h2>
               </hgroup>
             </header>
+
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.isSwitching ? html`<progress aria-label="${t('settings', 'switchingVersionProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
+
             <section class="content">
-              ${state.isSwitching ? html`
-                <div role="status" aria-live="polite" aria-busy="true">
-                  <div role="progressbar" class="linear indeterminate">
-                    <div class="track"><div class="indicator"></div></div>
-                  </div>
-                  <p style="margin-top: 16px;">${t('settings', 'versionSwitchDialogLoadingMessage')}</p>
-                  <p style="margin-top: 8px; color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;">
-                    ${t('settings', 'versionSwitchDialogLoadingNote')}
-                  </p>
-                </div>
-              ` : html`
-                <p>${t('settings', 'versionSwitchDialogMessage', versionValue)}</p>
-              `}
+              ${state.isSwitching ? nothing : html`<p>${t('settings', 'versionSwitchDialogMessage', versionValue)}</p>`}
             </section>
             <menu>
               <button

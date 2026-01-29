@@ -915,15 +915,6 @@ export class SupplierDetailsDialogElement extends HTMLElement {
 
       return html`
         <form @submit=${handleUpdateSubmit} style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
-          ${state.formIsSaving ? html`
-            <div role="status" aria-live="polite" aria-busy="true">
-              <div role="progressbar" class="linear indeterminate">
-                <div class="track"><div class="indicator"></div></div>
-              </div>
-              <p>${t('supplier', 'savingChangesMessage')}</p>
-            </div>
-          ` : nothing}
-
           <!-- Supplier Name -->
           <div class="outlined-text-field">
             <div class="container">
@@ -961,6 +952,17 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       `;
     }
 
+    function renderProgressIndicator() {
+      if (!state.isEditing || !state.formIsSaving) return nothing;
+
+      return html`
+        <div role="status" aria-live="polite" aria-busy="true">
+          <progress aria-label="${t('supplier', 'savingChangesProgressIndicatorLabel')}"></progress>
+          <p>${t('supplier', 'savingChangesMessage')}</p>
+        </div>
+      `;
+    }
+
     useEffect(host, function renderDialog() {
       render(html`
         <dialog
@@ -988,6 +990,11 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                 </button>
               ` : nothing}
             </header>
+
+
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.formIsSaving ? html`<progress aria-label="${t('supplier', 'savingChangesProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
 
             <div class="content" style="max-width: 600px; margin: 0 auto;">
               ${state.isLoading ? renderLoadingState() : nothing}

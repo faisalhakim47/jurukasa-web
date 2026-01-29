@@ -250,14 +250,9 @@ export class AccountingConfigurationViewElement extends HTMLElement {
 
       return html`
         <form @submit=${handleConfigFormSubmit} style="display: flex; flex-direction: column; gap: 24px; max-width: 600px;">
-          ${state.configFormState === 'submitting' ? html`
-            <div role="status" aria-live="polite" aria-busy="true">
-              <div role="progressbar" class="linear indeterminate">
-                <div class="track"><div class="indicator"></div></div>
-              </div>
-              <p style="text-align: center; color: var(--md-sys-color-on-surface-variant);">${t('settings', 'savingConfigurationMessage')}</p>
-            </div>
-          ` : nothing}
+          <div role="status" aria-live="polite" aria-busy="true">
+            ${state.configFormState === 'submitting' ? html`<progress aria-label="${t('settings', 'savingConfigurationProgressIndicatorLabel')}"></progress>` : nothing}
+          </div>
 
           <div class="outlined-text-field">
             <div class="container">

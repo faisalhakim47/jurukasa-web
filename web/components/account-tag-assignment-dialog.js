@@ -465,15 +465,11 @@ export class AccountTagAssignmentDialogElement extends HTMLElement {
               ><material-symbols name="close"></material-symbols></button>
             </header>
 
-            <div class="content" style="display: flex; flex-direction: column; gap: 16px;">
-              ${state.isSaving ? html`
-                <div role="status" aria-live="polite" aria-busy="true">
-                  <div role="progressbar" class="linear indeterminate">
-                    <div class="track"><div class="indicator"></div></div>
-                  </div>
-                </div>
-              ` : nothing}
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.isSaving ? html`<progress aria-label="${t('account', 'savingTagAssignmentProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
 
+            <div class="content" style="display: flex; flex-direction: column; gap: 16px;">
               ${category ? html`
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <span class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('account', 'categoryLabel')}</span>

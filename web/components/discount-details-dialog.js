@@ -504,15 +504,6 @@ export class DiscountDetailsDialogElement extends HTMLElement {
 
       return html`
         <form @submit=${handleUpdateSubmit} style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
-          ${state.formSaving ? html`
-            <div role="status" aria-live="polite" aria-busy="true">
-              <div role="progressbar" class="linear indeterminate">
-                <div class="track"><div class="indicator"></div></div>
-              </div>
-              <p>${t('discount', 'savingChangesMessage')}</p>
-            </div>
-          ` : nothing}
-
           <!-- Discount Name -->
           <div class="outlined-text-field">
             <div class="container">
@@ -721,6 +712,10 @@ export class DiscountDetailsDialogElement extends HTMLElement {
                 </button>
               ` : nothing}
             </header>
+
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.isEditing && state.formSaving ? html`<progress aria-label="${t('discount', 'savingChangesProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
 
             <div class="content" style="max-width: 600px; margin: 0 auto;">
               ${state.isLoading ? renderLoadingState() : nothing}

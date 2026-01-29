@@ -4,6 +4,7 @@ const fixedAsset = {
   addAssetActionLabel: 'Add Asset',
   closeActionLabel: 'Close',
   creatingAssetLabel: 'Creating fixed asset...',
+  creatingAssetProgressIndicatorLabel: 'Creating fixed asset',
 
   // Basic Information Section
   basicInfoSectionTitle: 'Basic Information',
@@ -42,6 +43,7 @@ const fixedAsset = {
   saveChangesActionLabel: 'Save Changes',
   cancelActionLabel: 'Cancel',
   savingChangesLabel: 'Saving changes...',
+  savingChangesProgressIndicatorLabel: 'Saving changes',
   loadingDetailsLabel: 'Loading asset details...',
   assetNotFoundTitle: 'Fixed Asset Not Found',
   assetNotFoundMessage: 'The requested fixed asset could not be found.',

@@ -439,15 +439,6 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
 
       return html`
         <form @submit=${handleSubmit} style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0px; max-width: 600px; margin: 0 auto;">
-          ${state.formState === 'submitting' ? html`
-            <div role="status" aria-live="polite" aria-busy="true">
-              <div role="progressbar" class="linear indeterminate">
-                <div class="track"><div class="indicator"></div></div>
-              </div>
-              <p style="text-align: center; color: var(--md-sys-color-on-surface-variant);">${t('paymentMethod', 'savingChangesMessage')}</p>
-            </div>
-          ` : nothing}
-
           <!-- Payment Method Name -->
           <div class="outlined-text-field">
             <div class="container">
@@ -605,6 +596,10 @@ export class PaymentMethodDetailsDialogElement extends HTMLElement {
                 command="close"
               ><material-symbols name="close"></material-symbols></button>
             </header>
+
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.isEditing && state.formState === 'submitting' ? html`<progress aria-label="${t('paymentMethod', 'savingChangesProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
 
             <div class="content">
               ${state.paymentMethodLoading ? renderLoadingState() : nothing}

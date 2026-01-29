@@ -18,6 +18,8 @@ const account = {
   clearParentAccountAriaLabel: 'Clear parent account',
   selectParentAccountAriaLabel: 'Select parent account',
   creatingAccountMessage: 'Creating account...',
+  savingTagAssignmentProgressIndicatorLabel: 'Saving tag assignment',
+  creatingAccountProgressIndicatorLabel: 'Creating account',
   invalidAccountCodeError: 'Invalid account code.',
   accountNameRequiredError: 'Account name is required.',
   invalidNormalBalanceError: 'Invalid normal balance.',

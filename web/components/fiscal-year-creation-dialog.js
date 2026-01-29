@@ -254,16 +254,11 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
               <button role="button" type="submit" name="action" ?disabled=${defaultDates.isLoading}>${t('fiscalYear', 'creationSubmitLabel')}</button>
             </header>
 
-            <div class="content">
-              ${state.formState !== 'idle' ? html`
-                <div role="status" aria-live="polite" aria-busy="true">
-                  <div role="progressbar" class="linear indeterminate">
-                    <div class="track"><div class="indicator"></div></div>
-                  </div>
-                  <p>${state.formState === 'submitting' ? t('fiscalYear', 'creationLoadingLabel') : state.formState === 'success' ? t('fiscalYear', 'creationSuccessLabel') : ''}</p>
-                </div>
-              ` : nothing}
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.formState === 'submitting' ? html`<progress aria-label="${t('fiscalYear', 'creationProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
 
+            <div class="content">
               ${defaultDates.isLoading ? html`
                 <div role="status" aria-live="polite" aria-busy="true" style="padding: 32px; text-align: center;">
                   <div role="progressbar" class="linear indeterminate">

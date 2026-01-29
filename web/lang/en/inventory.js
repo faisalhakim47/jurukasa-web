@@ -19,6 +19,7 @@ const inventory = {
   selectInventoryAccountError: 'Please select an inventory account.',
   accountNotTaggedError: 'Selected account must be tagged as "POS - Inventory".',
   creatingInventoryMessage: 'Creating inventory...',
+  creatingInventoryProgressIndicatorLabel: 'Creating inventory',
   errorDialogTitle: 'Error',
   dismissButtonLabel: 'Dismiss',
 
@@ -33,6 +34,7 @@ const inventory = {
   saveChangesButtonLabel: 'Save Changes',
   cancelButtonLabel: 'Cancel',
   savingChangesMessage: 'Saving changes...',
+  savingChangesProgressIndicatorLabel: 'Saving changes',
 
   // Inventory Details - Basic Information Section
   basicInformationSectionTitle: 'Basic Information',
@@ -67,11 +69,13 @@ const inventory = {
   currentUnitPriceLabel: 'Current Unit Price',
   newUnitPriceLabel: 'New Unit Price',
   updatingPriceMessage: 'Updating price...',
+  updatingPriceProgressIndicatorLabel: 'Updating price',
   updatePriceButtonLabel: 'Update Price',
 
   // Inventory Discounts Edit Dialog
   discountsEditDialogTitle: 'Edit Inventory Discounts',
   savingDiscountsMessage: 'Saving discounts...',
+  savingDiscountsProgressIndicatorLabel: 'Saving discounts',
   saveButtonLabel: 'Save',
   discountDescriptionText: 'How discounts work: For "Every N Items", the discount applies per N items purchased. Example: If N=3 and discount is 500, buying 7 items gives (7÷3)×500 = 1000 off.',
   discountsTableAriaLabel: 'Inventory discounts',

@@ -318,16 +318,11 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
               <button role="button" type="submit" name="action">${t('fixedAsset', 'addAssetActionLabel')}</button>
             </header>
 
-            <div class="content">
-              ${state.formState !== 'idle' ? html`
-                <div role="status" aria-live="polite" aria-busy="true">
-                  <div role="progressbar" class="linear indeterminate">
-                    <div class="track"><div class="indicator"></div></div>
-                  </div>
-                  <p>${t('fixedAsset', 'creatingAssetLabel')}</p>
-                </div>
-              ` : nothing}
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.formState === 'submitting' ? html`<progress aria-label="${t('fixedAsset', 'creatingAssetProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
 
+            <div class="content">
               <div style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0px; max-width: 600px; margin: 0 auto;">
 
                 <!-- Basic Information Section -->

@@ -11,6 +11,7 @@ const supplier = {
   addressLabel: 'Address (Optional)',
   addressSupportingText: 'Supplier address',
   creatingSupplierMessage: 'Creating supplier...',
+  creatingSupplierProgressIndicatorLabel: 'Creating supplier',
   createSupplierButtonLabel: 'Add Supplier',
   cancelButtonLabel: 'Cancel',
   errorDialogTitle: 'Error',
@@ -27,6 +28,7 @@ const supplier = {
   editButtonLabel: 'Edit',
   saveChangesButtonLabel: 'Save Changes',
   savingChangesMessage: 'Saving changes...',
+  savingChangesProgressIndicatorLabel: 'Saving changes',
   deleteButtonLabel: 'Delete',
   deleteButtonAriaLabel: 'Delete supplier',
 

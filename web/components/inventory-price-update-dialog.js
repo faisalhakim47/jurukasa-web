@@ -207,15 +207,6 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
       if (!state.inventory) return nothing;
       const inventory = state.inventory;
       return html`
-        ${state.formState !== 'idle' ? html`
-          <div role="status" aria-live="polite" aria-busy="true">
-            <div role="progressbar" class="linear indeterminate">
-              <div class="track"><div class="indicator"></div></div>
-            </div>
-            <p>${t('inventory', 'updatingPriceMessage')}</p>
-          </div>
-        ` : nothing}
-
         <!-- Inventory Name (Read-only) -->
         <div style="background-color: var(--md-sys-color-primary-container); padding: 12px; border-radius: var(--md-sys-shape-corner-small);">
           <p class="label-small" style="margin: 0; color: var(--md-sys-color-on-primary-container);">${t('inventory', 'inventoryFieldLabel')}</p>
@@ -259,6 +250,10 @@ export class InventoryPriceUpdateDialogElement extends HTMLElement {
             <header>
               <h2 id="inventory-price-update-dialog-title">${t('inventory', 'priceUpdateDialogTitle')}</h2>
             </header>
+
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.formState === 'submitting' ? html`<progress aria-label="${t('inventory', 'updatingPriceProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
 
             <div class="content">
               ${state.inventoryLoading ? renderLoadingState() : nothing}

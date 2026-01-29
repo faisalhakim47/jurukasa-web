@@ -444,15 +444,6 @@ export class InventoryDetailsDialogElement extends HTMLElement {
 
       return html`
         <form @submit=${handleUpdateSubmit} style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
-          ${state.formSaving ? html`
-            <div role="status" aria-live="polite" aria-busy="true">
-              <div role="progressbar" class="linear indeterminate">
-                <div class="track"><div class="indicator"></div></div>
-              </div>
-              <p>${t('inventory', 'savingChangesMessage')}</p>
-            </div>
-          ` : nothing}
-
           <!-- Inventory Name -->
           <div class="outlined-text-field">
             <div class="container">
@@ -534,6 +525,10 @@ export class InventoryDetailsDialogElement extends HTMLElement {
                 </button>
               ` : nothing}
             </header>
+
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.formSaving ? html`<progress aria-label="${t('inventory', 'savingChangesProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
 
             <div class="content" style="max-width: 600px; margin: 0 auto;">
               ${state.isLoading ? renderLoadingState() : nothing}

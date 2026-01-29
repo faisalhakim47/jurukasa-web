@@ -19,6 +19,7 @@ const settings = {
 
   // Config Form
   savingConfigurationMessage: 'Saving configuration...',
+  savingConfigurationProgressIndicatorLabel: 'Saving configuration',
   selectPlaceholder: 'Select...',
   resetButtonLabel: 'Reset',
   saveChangesButtonLabel: 'Save Changes',
@@ -124,6 +125,7 @@ const settings = {
   versionSwitchDialogConfirmButtonLabel: 'Switch',
   versionSwitchDialogCancelButtonLabel: 'Cancel',
   versionSwitchDialogLoadingMessage: 'Downloading and activating version...',
+  switchingVersionProgressIndicatorLabel: 'Switching version',
   versionSwitchDialogLoadingNote: 'The application will automatically reload when ready.',
   versionLocalSourceLabel: 'Local',
   versionNpmSourceLabel: 'NPM',

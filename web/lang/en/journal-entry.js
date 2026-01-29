@@ -2,6 +2,7 @@ const journalEntry = {
   creationParamsTitle: 'Create Journal Entry',
   creationSubmitLabel: 'Draft Entry',
   creationLoadingLabel: 'Creating journal entry...',
+  creatingEntryProgressIndicatorLabel: 'Creating journal entry',
   entryDateLabel: 'Entry Date',
   noteLabel: 'Note',
   linesSectionTitle: 'Entry Lines',
