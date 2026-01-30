@@ -28,7 +28,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Discounts View', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

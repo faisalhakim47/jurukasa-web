@@ -59,12 +59,12 @@ export class RouterContextElement extends HTMLElement {
         || window.history.state?.database,
     }));
 
-    this.route = readonly(route);
+    this.route = route;
 
     function syncNavigatorToRouter() {
       route.pathname = window.location.pathname;
       route.database = window.history.state?.database ?? route.database;
-      // console.debug('router-context', 'syncNavigatorToRouter', route?.pathname, route?.database?.provider);
+      console.debug('router-context', 'syncNavigatorToRouter', route?.pathname, route?.search, route?.database?.provider);
     };
 
     useWindowEventListener(host, 'popstate', syncNavigatorToRouter);
@@ -76,7 +76,7 @@ export class RouterContextElement extends HTMLElement {
       const nextRoute = /** @type {Route} */ ({
         ...target,
         pathname: target.pathname ?? route.pathname ?? window.location.pathname,
-        search: nextSearch.startsWith('?') ? nextSearch : `?${nextSearch}`,
+        search: nextSearch.startsWith('?') ? nextSearch : nextSearch === '' ? '' : `?${nextSearch}`,
         database: { ...route.database, ...target.database },
       });
 
@@ -89,7 +89,7 @@ export class RouterContextElement extends HTMLElement {
 
       window.dispatchEvent(new PopStateEvent('popstate', { state: nextRoute }));
 
-      // console.debug('router-context', 'navigate', JSON.stringify(nextRoute), JSON.stringify(route.database));
+      console.debug('router-context', 'navigate', JSON.stringify(nextRoute), JSON.stringify(route.database));
     };
   }
 }

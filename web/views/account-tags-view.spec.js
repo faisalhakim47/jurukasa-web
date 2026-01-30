@@ -31,7 +31,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Account Tags', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Account Tags Tab Navigation', function () {

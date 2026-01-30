@@ -51,7 +51,7 @@ async function setupUseMountLifecycleScenario() {
 }
 
 describe('useMounted', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
 
   test('it shall execute callback after first render', async function ({ page }) {
     await loadEmptyFixture(page);

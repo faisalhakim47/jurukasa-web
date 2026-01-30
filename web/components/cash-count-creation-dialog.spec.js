@@ -59,7 +59,7 @@ async function setupCashAccounts(sql) {
 }
 
 describe('Cash Count Creation Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

@@ -22,7 +22,7 @@ async function setupView() {
 }
 
 describe('Service Worker Context', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   test('service worker strategy overview', async function ({ context }) {
@@ -46,11 +46,11 @@ describe('Service Worker Context', function () {
     }
     cdp.addListener('ServiceWorker.workerVersionUpdated', watchOverServiceWorker);
 
-    cdp.addListener('ServiceWorker.workerVersionUpdated', async function debugLog(event) {
-      for (const version of event.versions) {
-        // console.debug('workerVersionUpdated', version.versionId, version.runningStatus, version.status, version.registrationId);
-      }
-    });
+    // cdp.addListener('ServiceWorker.workerVersionUpdated', async function debugLog(event) {
+    //   for (const version of event.versions) {
+    //     console.debug('workerVersionUpdated', version.versionId, version.runningStatus, version.status, version.registrationId);
+    //   }
+    // });
 
     await loadEmptyFixture(firstPage);
     await firstPage.evaluate(setupView);
@@ -81,13 +81,11 @@ describe('Service Worker Context', function () {
 
     await firstPage.close();
 
-    // console.debug('PAGE 2');
     const secondPage = await context.newPage();
     await loadEmptyFixture(secondPage);
     await secondPage.evaluate(setupView);
     await secondPage.close();
 
-    // console.debug('PAGE 3');
     const thirdPage = await context.newPage();
     await loadEmptyFixture(thirdPage);
     await thirdPage.pause();

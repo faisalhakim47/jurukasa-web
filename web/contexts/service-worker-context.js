@@ -37,8 +37,8 @@ export class ServiceWorkerContextElement extends HTMLElement {
         });
     });
 
-    useWatch(host, state, 'registration', async function handleRegistrationError(registration) {
-      // console.debug('handleRegistration', 'check', registration);
+    useWatch(host, state, 'registration', function handleRegistrationError(registration) {
+      console.debug('service-worker-context', 'handleRegistration', 'check', registration);
       if (registration) {
         /**
          * Our service worker registration strategy is all or nothing.
@@ -50,11 +50,12 @@ export class ServiceWorkerContextElement extends HTMLElement {
          * - if registration is not active, we request pre-caching current version for next visit.
          */
         if (registration.active) {
-          // console.debug('handleRegistration', 'controlled', 'yes');
+          console.debug('service-worker-context', 'handleRegistration', 'controlled', 'yes');
           state.serviceWorker = registration.active;
+          resolveReady();
         }
         else {
-          // console.debug('handleRegistration', 'controlled', 'no');
+          console.debug('service-worker-context', 'handleRegistration', 'controlled', 'no');
           state.serviceWorker = false
             || registration.installing
             || registration.waiting;
@@ -75,16 +76,25 @@ export class ServiceWorkerContextElement extends HTMLElement {
             .filter(function notDirectory(entry) {
               return typeof entry === 'string' && !entry.endsWith('/');
             });
-          // console.debug('handleRegistration', 'importmapFiles', importmapFiles);
           const additionalFiles = [
             appIndex,
             ...relFiles,
             ...importmapFiles,
           ];
-          await sendMessage({ command: 'init-cache', appPrefix, additionalFiles, materialSymbolsProviderUrl }, 30 * 1000);
-          await sendMessage({ command: 'set-cache', appPrefix, appIndex }, 3 * 1000);
+          sendMessage({ command: 'init-cache', appPrefix, additionalFiles, materialSymbolsProviderUrl }, 30 * 1000)
+            .then(function afterInitCache() {
+              console.debug('service-worker-context', 'handleRegistration', 'init-cache', 'done');
+              return sendMessage({ command: 'set-cache', appPrefix, appIndex }, 3 * 1000);
+            })
+            .then(function afterCacheReady() {
+              console.debug('service-worker-context', 'handleRegistration', 'set-cache', 'done');
+              resolveReady();
+            })
+            .catch(function initCacheFailed(error) {
+              console.error('service-worker-context', 'handleRegistration', 'error', error);
+              resolveReady();
+            });
         }
-        resolveReady();
       }
       else state.serviceWorker = undefined;
     });
@@ -103,7 +113,7 @@ export class ServiceWorkerContextElement extends HTMLElement {
         const messageId = state.messageId++;
         /** @param {MessageEvent} event */
         function clientInBound(event) {
-          // console.debug('sendMessage', 'clientInBound', event.data);
+          console.debug('service-worker-context', 'sendMessage', 'clientInBound', JSON.stringify(event.data));
           if (event.data.messageId === messageId) {
             clearTimeout(timeout);
             navigator.serviceWorker.removeEventListener('message', clientInBound);
@@ -115,13 +125,12 @@ export class ServiceWorkerContextElement extends HTMLElement {
           navigator.serviceWorker.removeEventListener('message', clientInBound);
           reject(new Error(`ServiceWorker message timeout: ${duration}ms`));
         }, duration);
-        // console.debug('service-worker-context', 'postMessage', messageId, payload?.command);
         state.serviceWorker.postMessage({
           ...payload,
           messageId,
           deadline,
         });
-        // console.debug('sendMessage', payload);
+        console.debug('service-worker-context', 'sendMessage', 'postMessage', messageId, payload);
       });
     }
     this.sendMessage = sendMessage;

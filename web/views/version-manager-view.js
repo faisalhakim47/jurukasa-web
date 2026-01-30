@@ -155,7 +155,7 @@ export class VersionManagerViewElement extends HTMLElement {
       const isLocal = app.sources.includes('local');
       const isNpm = app.sources.includes('npm');
 
-      // console.debug('version-manager-view', 'renderVersionRow', JSON.stringify(app));
+      console.debug('version-manager-view', 'renderVersionRow', JSON.stringify(app));
 
       return html`
         <tr>

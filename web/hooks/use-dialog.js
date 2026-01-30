@@ -28,10 +28,10 @@ export function useDialog(host) {
 
   host.addEventListener('command', function handleCustomDialogCommands(event) {
     assertInstanceOf(CommandEvent, event);
-    // console.debug('useDialog: command event received by', host.constructor.name, event.command);
+    console.debug('useDialog: command event received by', host.constructor.name, event.command);
     if (dialog.element.value instanceof HTMLDialogElement) {
       if (event.source instanceof HTMLElement) {
-        // console.debug('useDialog: commandfor', event.source.getAttribute('commandfor'), host.id);
+        console.debug('useDialog: commandfor', event.source.getAttribute('commandfor'), host.id);
         if (event.source.getAttribute('commandfor') !== host.id) return; // Not for us
         // Use custom commands because the 'show-modal' and 'close' commands support targeting the native dialog element only
         // The native commands won't works targeting custom web components. The solution is to use custom commands that is prefixed with '--'.

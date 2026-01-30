@@ -11,16 +11,16 @@ import { removeIndentation } from '#web/tools/string.js';
 export async function createLocalDatabaseClient(config) {
   // @ts-ignore the code structure of sqlite wasm client is very convoluted, hard to structure and type properly, so screw it
   const { sqlite3Worker1Promiser } = await import('@sqlite.org/sqlite-wasm');
-  // console.debug('createLocalDatabaseClient', sqlite3Worker1Promiser.toString());
+  console.debug('createLocalDatabaseClient', sqlite3Worker1Promiser.toString());
   const promiser = await sqlite3Worker1Promiser({
   });
   /** @type {PromiseWithResolvers<string>} */
   const { promise: promisedDbId, resolve: resolveDbId } = Promise.withResolvers();
   async function connect() {
-    // console.debug('database', 'local', 'connect');
+    console.debug('database', 'local', 'connect');
     const filename = config.name.replace(/[^a-zA-Z0-9]+/g, '_');
     const response = await promiser('open', { filename: `file:jurukasa-${filename}.sqlite?vfs=opfs` });
-    // console.debug('database', 'local', 'connected', response.dbId);
+    console.debug('database', 'local', 'connected', response.dbId);
     resolveDbId(response.dbId);
     // sql`PRAGMA journal_mode = WAL`;
     // sql`PRAGMA synchronous = FULL`;
@@ -34,7 +34,7 @@ export async function createLocalDatabaseClient(config) {
     assertTemplateStringsArray(query);
     const sqlQuery = removeIndentation(query.join('?'));
     const sqlArgs = unknownToSQLArgs(params);
-    // console.debug('database', 'local', 'sql', `\n  ` + sqlQuery.slice(0, 500).replace(/\n/g, '\n  '), sqlQuery.length > 500 ? '...' : '');
+    console.debug('database', 'local', 'sql', `\n  ` + sqlQuery.slice(0, 500).replace(/\n/g, '\n  '), sqlQuery.length > 500 ? '...' : '');
     try {
       const dbId = await promisedDbId;
       const response = await promiser('exec', {
@@ -74,7 +74,7 @@ export async function createLocalDatabaseClient(config) {
     sql,
     executeMultiple,
     async transaction(mode) {
-      // console.debug('database', 'local', 'transaction', mode);
+      console.debug('database', 'local', 'transaction', mode);
       if (mode === 'write') await sql`BEGIN EXCLUSIVE TRANSACTION;`;
       else await sql`BEGIN DEFERRED TRANSACTION;`;
       return {

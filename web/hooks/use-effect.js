@@ -10,8 +10,14 @@ export const stopEffect = Symbol('stopEffect');
 export function useEffect(host, callback) {
   useConnectedCallback(host, function setupEffect() {
     const runner = effect(function effectRunner() {
-      const flag = callback();
-      if (flag === stopEffect) queueMicrotask(cleanupRunner);
+      try {
+        const flag = callback();
+        if (flag === stopEffect) queueMicrotask(cleanupRunner);
+      }
+      catch (error) {
+        console.error('useEffect', 'error in effect for', host.tagName, error);
+        throw error;
+      }
     });
     function cleanupRunner() { stop(runner); };
     return cleanupRunner;

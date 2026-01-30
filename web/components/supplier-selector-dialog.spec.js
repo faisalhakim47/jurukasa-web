@@ -10,7 +10,7 @@ const test = jurukasaTest;
 const { describe } = test;
 
 describe('Supplier Selector Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

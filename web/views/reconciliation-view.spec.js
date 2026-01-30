@@ -31,7 +31,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Reconciliation', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Reconciliation Navigation', function () {

@@ -60,7 +60,7 @@ async function setupDatabaseSetupView(tursoDatabaseUrl) {
 }
 
 describe('Database Management Feature', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Database Tab in Settings', function () {

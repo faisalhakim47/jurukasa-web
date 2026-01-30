@@ -39,7 +39,7 @@ async function setupView([tursoDatabaseUrl, inventoryId]) {
 }
 
 describe('Inventory Price Update Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

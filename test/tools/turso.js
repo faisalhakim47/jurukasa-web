@@ -75,12 +75,9 @@ async function waitForTursoSQLiteServerReady(port) {
       const client = createClient({ url });
       await client.execute('SELECT name FROM sqlite_master LIMIT 1;');
       client.close();
-      // console.debug('Turso server is ready at', url);
       return;
     }
-    catch (error) {
-      // console.debug('Waiting for Turso server to be ready at', url, 'error:', error?.message);
-    }
+    catch { /** We can safely ignore it. */ }
   }
   throw new Error(`Turso server at port ${port} did not become ready within ${maxWait}ms`);
 }

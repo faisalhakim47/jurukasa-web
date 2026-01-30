@@ -152,8 +152,6 @@ export class AccountReconciliationDetailsDialogElement extends HTMLElement {
 
         const detailsRow = detailsResult.rows[0];
 
-        // console.debug('detailsRow', detailsRow);
-
         state.details = {
           id: Number(detailsRow.id),
           account_code: Number(detailsRow.account_code),
@@ -454,7 +452,6 @@ export class AccountReconciliationDetailsDialogElement extends HTMLElement {
     function renderDetailsContent() {
       if (!state.details) return nothing;
 
-      // console.debug('state.details.complete_time', state.details.complete_time);
       const isDraft = state.details.complete_time === null;
       const balanceDifference = state.details.statement_closing_balance - state.details.internal_closing_balance;
 

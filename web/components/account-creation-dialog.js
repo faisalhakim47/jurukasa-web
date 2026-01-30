@@ -201,7 +201,6 @@ export class AccountCreationDialogElement extends HTMLElement {
         state.accountType = null;
       }
       catch (error) {
-        // console.debug(error);
         await tx.rollback();
         state.formState = 'error';
         state.formError = error instanceof Error ? error : new Error(String(error));

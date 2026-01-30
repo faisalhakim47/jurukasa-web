@@ -4,6 +4,7 @@ import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsql
 import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 import { setupDatabase } from '#test/playwright/tools/database.js';
 import { useStrict } from '#test/playwright/hooks/use-strict.js';
+import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
 
 const test = jurukasaTest;
 const { describe } = test;
@@ -29,7 +30,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Fixed Assets', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);

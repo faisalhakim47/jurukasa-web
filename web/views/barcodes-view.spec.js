@@ -28,7 +28,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Barcodes View', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);

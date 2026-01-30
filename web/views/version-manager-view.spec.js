@@ -12,7 +12,7 @@ const test = jurukasaTest;
 const { describe } = test;
 
 describe('Version Manager View', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
@@ -22,6 +22,7 @@ describe('Version Manager View', function () {
       loadDevFixture(initialPage),
       setupDatabase(tursoLibSQLiteServer()),
     ]);
+    await initialPage.pause();
     await initialPage.close();
 
     const initialRoute = btoa(JSON.stringify(/** @type {Route} */({

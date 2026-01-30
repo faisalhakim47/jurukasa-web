@@ -126,7 +126,6 @@ export function useTranslator(host) {
         if (argIndex >= args.length) return match; // Not enough arguments, keep placeholder
         const arg = args[argIndex++];
         const formattedArg = formatArg(arg, match, precision, specifier);
-        // console.debug('text', { text, arg, formattedArg }, { match, precision, specifier });
         return formattedArg;
       })
       : text;

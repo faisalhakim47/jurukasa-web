@@ -60,7 +60,10 @@ const onboarding = {
   onboardingComplete: 'Onboarding Complete',
   goToDashboard: 'Go to Dashboard',
 
-  unknownState: 'Unknown state: %d',
+  // Unknwon step
+  unknownStepTitle: 'Oops!',
+  unknownStepMessage: 'You are on the wrong step.',
+  returnToWelcome: 'Return to Onboarding',
 };
 
 /** @typedef {typeof onboarding} OnboardingTranslation */

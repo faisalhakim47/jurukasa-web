@@ -30,7 +30,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Financial Reports', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Financial Reports Display', function () {

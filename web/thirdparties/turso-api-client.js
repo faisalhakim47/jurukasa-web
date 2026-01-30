@@ -104,7 +104,7 @@ async function pipeline(config, type, sql, rawArgs, close) {
           rowsAffected: resultOfExecute.response.result?.affected_row_count,
           lastInsertRowid: resultOfExecute.response.result?.last_insert_rowid,
         };
-        // console.debug('TursoApiClient', type, 'result', config.baton, sql.slice(0, 500), interpretedArgs, JSON.stringify(result));
+        // console.debug('turso-api-client', type, 'result', config.baton, sql.slice(0, 500), interpretedArgs, JSON.stringify(result));
         return result;
       }
       else if (type === 'sequence') {
@@ -114,19 +114,19 @@ async function pipeline(config, type, sql, rawArgs, close) {
           rowsAffected: undefined,
           lastInsertRowid: undefined,
         };
-        // console.debug('TursoApiClient', type, 'result', config.baton, sql.slice(0, 500));
+        // console.debug('turso-api-client', type, 'result', config.baton, sql.slice(0, 500));
         return result;
       }
       else throw new Error(`Turso SQL execution failed: unsupported operation type ${type}`)
     }
     else {
-      // console.debug('TursoApiClient', type, 'failed', config.baton, sql.slice(0, 500), interpretedArgs, resultOfExecute);
+      // console.debug('turso-api-client', type, 'failed', config.baton, sql.slice(0, 500), interpretedArgs, resultOfExecute);
       throw new Error(`Turso SQL execution failed: ${JSON.stringify(resultOfExecute)}`);
     }
   }
   else {
     const responseBody = await response.text();
-    // console.debug('TursoApiClient', type, 'error', config.baton, sql.slice(0, 500), responseBody);
+    // console.debug('turso-api-client', type, 'error', config.baton, sql.slice(0, 500), responseBody);
     throw new Error(`Turso SQL fetch error to POST ${config.url}/v2/pipeline with status ${response.status}: ${responseBody}`);
   }
 }

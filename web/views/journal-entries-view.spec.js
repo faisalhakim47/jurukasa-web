@@ -31,7 +31,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Journal Entries View - Basic Display', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
@@ -146,7 +146,7 @@ describe('Journal Entries View - Basic Display', function () {
 });
 
 describe('Journal Entries View - Source Filter', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall filter by source type', async function ({ page }) {
@@ -245,7 +245,7 @@ describe('Journal Entries View - Source Filter', function () {
 });
 
 describe('Journal Entries View - Status Filter', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall filter by posted status', async function ({ page }) {
@@ -346,7 +346,7 @@ describe('Journal Entries View - Status Filter', function () {
 });
 
 describe('Journal Entries View - Pagination', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display pagination when more than 10 entries exist', async function ({ page }) {
@@ -475,7 +475,7 @@ describe('Journal Entries View - Pagination', function () {
 });
 
 describe('Journal Entries View - Details Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall open details dialog when clicking journal entry ref', async function ({ page }) {

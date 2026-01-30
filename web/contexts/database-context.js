@@ -107,7 +107,7 @@ export class DatabaseContextElement extends HTMLElement {
      * @param {DatabaseConfig} config
      */
     async function connect(config) {
-      // console.debug('database-context', 'connect', JSON.stringify(config));
+      console.debug('database-context', 'connect', JSON.stringify(config));
 
       connection.state = 'connecting';
       connection.client = undefined;
@@ -120,7 +120,7 @@ export class DatabaseContextElement extends HTMLElement {
           await serviceWorkerContext.hotfixSqlite3OpfsAsyncProxy();
         }
         catch (error) {
-          // console.debug('service-worker-context', 'connect', error);
+          console.debug('service-worker-context', 'connect', error);
         }
       }
 
@@ -158,7 +158,7 @@ export class DatabaseContextElement extends HTMLElement {
     const tursoAuthTokenAttr = useAttribute(host, 'turso-auth-token');
 
     useEffect(host, function evaluateExistingState() {
-      // console.debug('database-context', 'evaluateExistingState', connection.state, JSON.stringify(router.route));
+      console.debug('database-context', 'evaluateExistingState', connection.state, JSON.stringify(router.route));
       if (connection.state === 'init' && router.route) {
         let config = /** @type {DatabaseConfig} */ (undefined);
 
@@ -175,8 +175,6 @@ export class DatabaseContextElement extends HTMLElement {
         };
         else if (router.route.database?.provider) config = router.route.database;
         else connection.state = 'unconfigured';
-
-        // console.debug('database-context', 'evaluateExistingState', connection.state, router.route?.pathname, router.route?.database?.provider);
 
         if (config) connect(config);
       }
@@ -227,7 +225,7 @@ async function initiateDatabase(config) {
     return client;
   }
   catch (error) {
-    // console.debug('Error during database initiation', error);
+    console.debug('Error during database initiation', error);
     throw new FailedToConnectDatabaseError('Failed to connect to the database', { cause: error });
   }
 }

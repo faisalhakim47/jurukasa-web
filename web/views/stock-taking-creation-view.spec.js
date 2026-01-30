@@ -29,7 +29,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Stock Taking Creation View', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

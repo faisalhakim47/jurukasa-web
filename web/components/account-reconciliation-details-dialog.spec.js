@@ -39,7 +39,7 @@ async function setupView([tursoDatabaseUrl, reconciliationId]) {
 }
 
 describe('Account Reconciliation Details Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Details Display', function () {

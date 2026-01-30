@@ -38,7 +38,7 @@ async function setupView([tursoDatabaseUrl, tag]) {
 }
 
 describe('Account Tag Assignment Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

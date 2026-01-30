@@ -36,7 +36,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Account Creation Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);

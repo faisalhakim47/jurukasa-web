@@ -6,7 +6,7 @@
  */
 export function assertInstanceOf(constructor, value) {
   if (!(value instanceof constructor)) {
-    throw new TypeError(`Expected value to be an instance of ${constructor.name}. Got: ${value}`);
+    throw new TypeError(`Expected value to be an instance of ${constructor.name}. Got: ${value?.constructor.name}`);
   }
 }
 

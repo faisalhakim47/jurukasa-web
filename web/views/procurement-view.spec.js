@@ -31,7 +31,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Procurement', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Procurement Navigation', function () {

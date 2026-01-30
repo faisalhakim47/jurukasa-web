@@ -11,7 +11,7 @@ const test = jurukasaTest;
 const { describe } = test;
 
 describe('Account Selector Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

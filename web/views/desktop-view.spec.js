@@ -30,7 +30,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Desktop View', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Navigation Rail', function () {

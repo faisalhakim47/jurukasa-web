@@ -60,7 +60,12 @@ function recursiveFormatAXTreeNode(indent, node, nodeIndex) {
       if (prop.value?.type === 'boolean' && prop.value?.value) return `[${prop.name}]`;
       if (prop.value?.type === 'booleanOrUndefined' && prop.value?.value) return `[${prop.name}]`;
       if (prop.value?.type === 'integer') return `[${prop.name}=${prop?.value?.value ?? ''}]`;
-      if (prop.value?.type === 'token') return `[${prop.name}="${prop?.value?.value ?? ''}"]`;
+      if (prop.value?.type === 'token') {
+        if (prop.value?.value === 'true') return `[${prop.name}]`;
+        else if (prop.value?.value === 'false') return null;
+        else return `[${prop.name}="${prop?.value?.value ?? ''}"]`;
+      }
+      if (prop.value?.type === 'tristate' && prop.value?.value === 'true') return `[${prop.name}]`;
       return null;
     })
     .filter(function nonNull(prop) {

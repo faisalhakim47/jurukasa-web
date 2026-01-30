@@ -1,14 +1,23 @@
 import { EOL } from 'node:os';
-import { stdout } from 'node:process';
+import { env, stdout } from 'node:process';
 /** @import { ConsoleMessage, Page, test } from '@playwright/test' */
+
+const consoleOutput = env.CONSOLE_OUTPUT === '1';
+const consoleOutputFilter = env.CONSOLE_OUTPUT_INCLUDES
+  ? new RegExp(env.CONSOLE_OUTPUT_INCLUDES)
+  : null;
 
 /** @param {ConsoleMessage} msg */
 function eachLog(msg) {
-  const type = msg.type();
-  const text = msg.text();
-  stdout.write(`[console.${type}] `);
-  stdout.write(text);
-  stdout.write(EOL);
+  if (consoleOutput) {
+    const type = msg.type();
+    const text = msg.text();
+    if (!(consoleOutputFilter instanceof RegExp) || consoleOutputFilter.test(text)) {
+      stdout.write(`[console.${type}] `);
+      stdout.write(text);
+      stdout.write(EOL);
+    }
+  }
 }
 
 /**
@@ -26,17 +35,18 @@ export function useConsoleOutput(test) {
       page.addListener('console', eachLog);
       return page;
     };
-    // context.addListener('requestfailed', function eachFailedRequest(request) {
-    //   stdout.write(`[request:failed] `);
-    //   stdout.write(`${request.method()} ${request.url()}`);
-    //   stdout.write(EOL);
-    // });
-    // context.addListener('page', function eachNewPage(page) {
-    //   page.addListener('pageerror', function eachPageError(error) {
-    //     stdout.write(`[page:error] `);
-    //     stdout.write(error.stack);
-    //     stdout.write(EOL);
-    //   });
-    // });
+    context.addListener('requestfailed', function eachFailedRequest(request) {
+      stdout.write(`[request:failed] `);
+      stdout.write(`${request.method()} ${request.url()}`);
+      stdout.write(EOL);
+    });
+    context.addListener('page', function eachNewPage(page) {
+      page.addListener('pageerror', function eachPageError(error) {
+        stdout.write(`[page:error] `);
+        stdout.write(error.message);
+        stdout.write(error.stack);
+        stdout.write(EOL);
+      });
+    });
   });
 }

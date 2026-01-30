@@ -24,7 +24,8 @@ JuruKasa is point-of-sales (POS) web application with following features:
 
 ## UI/UX Design Requirements
 
-- App implement latest Material 3 Expressive Design System by Google.
+- App implement latest Material 3 Expressive by Google as of December 2025.
+- The Material 3 Expressive design system is implemented in plain modern CSS
 - App implement adaptive design principles (instead of responsive design) to achive multi-size screen support.
 - App separate desktop and mobile layout into different web component view.
 - App design targeting 2 device sizes:
@@ -32,6 +33,19 @@ JuruKasa is point-of-sales (POS) web application with following features:
   2. Regular mobile screen size Samsung Galaxy S8 (360x740)
 
 ## Code Writing Guidelines
+
+### CSS Code Style
+
+- The CSS is written in semantically meaningful way, using HTML5 elements and attributes.
+- The general term to describe our naming methodology is "Semantic CSS".
+- The CSS is relly heavily on structural elements. For example `nav>router-link>material-symbols` instead of `.main-nav-icon`.
+- Use any accessibility attributes to indicate roles, UI states, properties, etc.
+- Use very minimum classes, only for variant modifiers. Select semantical HTML tags first.
+- Selector priority:
+  1. Semantic HTML5 elements like `<button>`, `<ul>`, `<nav>`, etc.
+  2. Accessibility attributes like `[role="tablist"]`, `[aria-selected="true"]`, etc.
+  3. Modifier classes like `.outlined`, `.elevated`, etc.
+- Use terms and naming based on official Material 3 Expressive specification.
 
 ### JavaScript Code Style
 

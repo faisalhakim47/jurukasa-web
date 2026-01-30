@@ -29,7 +29,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Inventories View - Basic Display', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
@@ -118,7 +118,7 @@ describe('Inventories View - Basic Display', function () {
 });
 
 describe('Inventories View - Price Edit Button', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

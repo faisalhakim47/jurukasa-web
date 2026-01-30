@@ -30,7 +30,7 @@ async function setupDashboardView(tursoDatabaseUrl) {
 }
 
 describe('Dashboard View', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Dashboard Page Display', function () {

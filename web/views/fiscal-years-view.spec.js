@@ -29,7 +29,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Fiscal Years View - Basic Display', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
@@ -153,7 +153,7 @@ describe('Fiscal Years View - Basic Display', function () {
 });
 
 describe('Fiscal Years View - Fiscal Year Details', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
@@ -192,7 +192,7 @@ describe('Fiscal Years View - Fiscal Year Details', function () {
 });
 
 describe('Fiscal Years View - Reverse Button', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
@@ -271,7 +271,7 @@ describe('Fiscal Years View - Reverse Button', function () {
 });
 
 describe('Fiscal Years View - Action Buttons', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
@@ -304,7 +304,7 @@ describe('Fiscal Years View - Action Buttons', function () {
 });
 
 describe('Fiscal Years View - Data Display', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

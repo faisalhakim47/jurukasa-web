@@ -145,11 +145,11 @@ async function getAppConfig() {
         appIndex: getValue(appIndexConfig),
       };
     });
-    // console.debug('sw', 'getAppConfig', 'result', appConfig);
+    console.debug('sw', 'getAppConfig', 'result', appConfig);
     return appConfig;
   }
   catch (error) {
-    // console.debug('sw', 'getAppDir', error);
+    console.debug('sw', 'getAppDir', error);
     return { appPrefix: null, appIndex: null };
   }
 }
@@ -161,7 +161,7 @@ let promisedAppConfig = getAppConfig();
  * @param {object} payload
  */
 function responseMessage(event, payload) {
-  // console.debug('sw', 'responseMessage', event.data?.messageId, payload);
+  console.debug('sw', 'responseMessage', event.data?.messageId, payload);
   if (Date.now() <= event.data.deadline) event.source.postMessage({
     ...payload,
     messageId: event.data.messageId,
@@ -191,7 +191,7 @@ async function hotfixSqlite3OpfsAsyncProxy(url) {
   const body = await response.text();
   const fixedBody = body.replace('export {};', '');
   const fixedResponse = new Response(fixedBody, response);
-  // console.debug('sw', 'hotfixSqlite3OpfsAsyncProxy', (await fixedResponse.clone().text()).includes('export {};'));
+  console.debug('sw', 'hotfixSqlite3OpfsAsyncProxy', (await fixedResponse.clone().text()).includes('export {};'));
   return fixedResponse;
 }
 
@@ -230,20 +230,18 @@ async function addImmutableCacheUrls(cache, urls) {
   await Promise.all(urls.map(async function addImmutableCacheUrl(url) {
     const response = await cache.match(url);
     if (response instanceof Response) {
-      // console.debug('sw', 'cache', 'immutable', url);
+      console.debug('sw', 'cache', 'immutable', url);
       /** no-op */
     }
     else {
-      // console.debug('sw', 'cache', 'add', url);
       if (url.endsWith('dist/sqlite3-opfs-async-proxy.js')) {
         await cache.put(url, await hotfixSqlite3OpfsAsyncProxy(url));
       }
       else if (url.endsWith('.html')) {
-        // console.debug('sw', 'cache', 'add', 'html', url);
         await cache.put(url, await fixCDNToServeHTML(url));
       }
       else await cache.add(url).catch(function logCacheAddError(error) {
-        // console.debug('sw', 'cache', 'add', 'error', url, error.message);
+        console.warn('sw', 'cache', 'add', 'error', url, error.message);
         throw error;
       });
     }
@@ -267,12 +265,12 @@ sw.addEventListener('activate', function handleActivate() {
 sw.addEventListener('fetch', function handleFetch(event) {
   event.respondWith((async function theCachingStrategy() {
     const { appPrefix, appIndex } = await promisedAppConfig;
-    // console.debug('sw', 'theCachingStrategy', event.request.url);
+    console.debug('sw', 'theCachingStrategy', event.request.url);
     if (typeof appPrefix === 'string') {
       const cache = await caches.open(`jurukasa-web:${appPrefix}`);
       const response = await cache.match(event.request);
       if (response instanceof Response) {
-        // console.debug('sw', 'cache', 'hit', event.request.url);
+        console.debug('sw', 'cache', 'hit', event.request.url);
         return response;
       }
       else {
@@ -280,11 +278,11 @@ sw.addEventListener('fetch', function handleFetch(event) {
         if (url.origin === self.location.origin) {
           /** we enforce that all assets files must have file extension and app routes must not have file extension */
           if (url.pathname.includes('.')) {
-            // console.debug('sw', 'cache', 'miss', 'assets', url.pathname);
+            console.debug('sw', 'cache', 'miss', 'assets', url.pathname);
             return await fetch(event.request);
           }
           else {
-            // console.debug('sw', 'cache', 'miss', 'index', appPrefix, appIndex);
+            console.debug('sw', 'cache', 'miss', 'index', appPrefix, appIndex);
             const appIndexUrl = `${appPrefix}/${appIndex}`;
             const cachedIndexResponse = await cache.match(appIndexUrl);
             if (cachedIndexResponse instanceof Response) console.debug('sw', 'cache', 'hit', 'index', appIndexUrl);
@@ -292,10 +290,10 @@ sw.addEventListener('fetch', function handleFetch(event) {
             const indexResponse = cachedIndexResponse instanceof Response
               ? cachedIndexResponse
               : await fetch(appIndexUrl).catch(function logFetchError(error) {
-                // console.debug('sw', 'fetch', 'error', appIndexUrl, error.message);
+                console.debug('sw', 'fetch', 'error', appIndexUrl, error.message);
                 throw error;
               });
-            // console.debug('sw', 'cache', 'miss', 'index', 'loaded', appIndexUrl);
+            console.debug('sw', 'cache', 'miss', 'index', 'loaded', appIndexUrl);
             const fixedIndexResponse = new Response(indexResponse.body, {
               status: 200,
               headers: {
@@ -314,7 +312,7 @@ sw.addEventListener('fetch', function handleFetch(event) {
         }
         /** this could be: unmanaged request or sqlite api request */
         else {
-          // console.debug('sw', 'cache', 'miss', 'assets', event.request.url);
+          console.debug('sw', 'cache', 'miss', 'assets', event.request.url);
           if (event.request.url.endsWith('dist/sqlite3-opfs-async-proxy.js')) {
             return await hotfixSqlite3OpfsAsyncProxy(event.request.url);
           }
@@ -326,7 +324,7 @@ sw.addEventListener('fetch', function handleFetch(event) {
       }
     }
     else {
-      // console.debug('sw', 'non-cache', event.request.url);
+      console.debug('sw', 'non-cache', event.request.url);
       return await fetch(event.request);
     }
   })());
@@ -346,7 +344,7 @@ sw.addEventListener('fetch', function handleFetch(event) {
  */
 
 sw.addEventListener('message', async function serviceWorkerInBound(event) {
-  // console.debug('sw', 'message', event.data);
+  console.debug('sw', 'message', event.data?.messageId);
 
   /** @type {InBoundMessage} */
   const data = event.data;
@@ -367,7 +365,7 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
         && ('materialSymbolsProviderUrl' in data && typeof data.materialSymbolsProviderUrl === 'string')
       ) {
         const appPrefix = data.appPrefix.endsWith('/') ? data.appPrefix.slice(0, -1) : data.appPrefix;
-        // console.debug('sw', 'init-cache', `${appPrefix}/package.json`);
+        console.debug('sw', 'init-cache', `${appPrefix}/package.json`);
         const packageJsonUrl = `${appPrefix}/package.json`;
         const [packageJsonResp, materialSymbolsListResp] = await Promise.all([
           fetch(packageJsonUrl),
@@ -427,6 +425,7 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
           configStore.put({ name: 'appIndex', value: appIndex });
         });
         promisedAppConfig = getAppConfig();
+        console.debug('sw', 'set-cache', await promisedAppConfig);
         responseMessage(event, true);
       }
       else if (
@@ -587,7 +586,7 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
               const response = await fetch('https://data.jsdelivr.com/v1/packages/npm/jurukasa-web');
               /** @type {unknown} */
               const data = await response.json();
-              // console.debug('sw', 'get-app-versions', 'npm', JSON.stringify(data));
+              console.debug('sw', 'get-app-versions', 'npm', JSON.stringify(data));
               if (
                 typeof data === 'object'
                 && data !== null
@@ -657,7 +656,7 @@ sw.addEventListener('message', async function serviceWorkerInBound(event) {
     else throw new Error('Invalid message payload');
   }
   catch (error) {
-    // console.debug('sw', 'message', error);
+    console.debug('sw', 'message', error);
     responseMessage(event, {
       type: 'error',
       message: error instanceof Error ? error.message : String(error),

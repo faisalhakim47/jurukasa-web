@@ -1,6 +1,4 @@
-import { reactive } from '@vue/reactivity';
-import { html, nothing } from 'lit-html';
-import { repeat } from 'lit-html/directives/repeat.js';
+import { html } from 'lit-html';
 
 import { defineWebComponent } from '#web/component.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
@@ -12,21 +10,26 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
-import { feedbackDelay } from '#web/tools/timing.js';
-import { assertInstanceOf } from '#web/tools/assertion.js';
 
-import '#web/components/material-symbols.js';
-
-/** @import { LocalDatabaseConfig, TursoDatabaseConfig } from '#web/contexts/database-context.js' */
-
-/** @typedef {'local'|'turso'} DatabaseProvider */
+import '#web/views/onboarding-welcome-view.js';
+import '#web/views/onboarding-database-view.js';
+import '#web/views/onboarding-business-view.js';
+import '#web/views/onboarding-chart-view.js';
 
 /**
  * Onboarding View handles the complete application setup flow:
- * 1. Welcome screen with feature highlights
- * 2. Database connection setup
- * 3. Business information configuration
- * 4. Chart of accounts selection
+ * 1. Welcome screen with feature highlights (/onboarding/welcome)
+ * 2. Database connection setup (/onboarding/database)
+ * 3. Business information configuration (/onboarding/business)
+ * 4. Chart of accounts selection (/onboarding/chart-of-accounts)
+ * 
+ * Each step is its own route to enable browser back/forward navigation.
+ * 
+ * State-Based Routing:
+ * Instead of tracking how the user arrived (back button vs programmatic navigation),
+ * we validate whether the current route is valid for the current onboarding state.
+ * If the route is invalid, we redirect to the appropriate step. This allows natural
+ * back navigation while ensuring users can't skip ahead of their progress.
  */
 export class OnboardingViewElement extends HTMLElement {
   constructor() {
@@ -40,686 +43,137 @@ export class OnboardingViewElement extends HTMLElement {
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
-    const onboarding = reactive({
-      step: /** @type {'welcome'|'database-setup'|'business-config'|'chart-of-accounts'|'complete'} */ ('welcome'),
-      templateNames: /** @type {string[]} */ ([]),
-      isInitialized: false,
-      selectedLanguage: 'en',
-      selectedLanguageDisplay: 'English',
-    });
-
-    const databaseForm = reactive({
-      state: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
-      errorMessage: /** @type {string} */ (undefined),
-      selectedProvider: /** @type {DatabaseProvider} */ ('local'),
-    });
-
-    const state = reactive({
-      formState: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
-      formErrorMessage: /** @type {string} */ (undefined),
-    });
-
-    const chartForm = reactive({
-      state: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
-      errorMessage: /** @type {string} */ (undefined),
-    });
-
+    /**
+     * Evaluates the current application state and redirects to the appropriate
+     * onboarding step if needed. This ensures users always land on the correct
+     * step based on their current configuration status.
+     * 
+     * State-based routing logic:
+     * - If database unconfigured: user can be on welcome or database step
+     * - If database connected but business not configured: user can be on any step up to business
+     * - If business configured but no accounts: user can be on any onboarding step
+     * - If accounts exist: onboarding complete, redirect to dashboard
+     * 
+     * This approach validates the current route against application state rather than
+     * tracking navigation history, which is more robust and allows natural back navigation.
+     */
     useEffect(host, function evaluateInitialStep() {
-      // Only evaluate initial step once
-      if (onboarding.isInitialized) return;
+      const pathname = router.route?.pathname;
 
-      // Determine which step to show based on current state
+      // Helper to check if user is on a specific step
+      const isOnWelcome = pathname === '/onboarding' 
+        || pathname === '/onboarding/'
+        || pathname.startsWith('/onboarding/welcome');
+      const isOnDatabase = pathname.startsWith('/onboarding/database');
+      const isOnBusiness = pathname.startsWith('/onboarding/business');
+      const isOnChart = pathname.startsWith('/onboarding/chart-of-accounts');
+      const isOnOnboarding = isOnWelcome || isOnDatabase || isOnBusiness || isOnChart;
+
+      // If database is not configured, only allow welcome and database steps
       if (database.state === 'unconfigured') {
-        onboarding.step = 'welcome';
-        onboarding.isInitialized = true;
+        if (isOnWelcome || isOnDatabase) {
+          // Valid steps - but normalize base path to welcome
+          if (pathname === '/onboarding' || pathname === '/onboarding/') {
+            router.navigate({ pathname: '/onboarding/welcome', replace: true });
+          }
+        }
+        else if (isOnOnboarding) {
+          // User somehow got to business/chart without database - redirect to welcome
+          router.navigate({ pathname: '/onboarding/welcome', replace: true });
+        }
+        return;
       }
-      else if (database.state === 'connected') {
-        // Check if business is configured
-        database.sql`SELECT value FROM config WHERE key = 'Business Name' LIMIT 1;`
-          .then(function handleBusinessName(result) {
-            if (onboarding.isInitialized) return; // Already initialized by user action
-            const row = result.rows[0];
-            const isBusinessConfigured = String(row?.value || '').trim().length > 0;
+
+      // Database is connected - check business configuration and accounts
+      if (database.state === 'connected') {
+        Promise.all([
+          database.sql`SELECT value FROM config WHERE key = 'Business Name' LIMIT 1;`,
+          database.sql`SELECT count(*) AS count FROM accounts;`
+        ])
+          .then(function handleStateCheck([businessResult, accountsResult]) {
+            const businessRow = businessResult.rows[0];
+            const isBusinessConfigured = String(businessRow?.value || '').trim().length > 0;
+            const accountCount = Number(accountsResult.rows[0]?.count || 0);
+            const isChartConfigured = accountCount > 0;
+
+            // Onboarding complete - redirect to dashboard
+            if (isChartConfigured) {
+              router.navigate({ pathname: '/dashboard', replace: true });
+              return;
+            }
+
+            // Database connected but business not configured
             if (!isBusinessConfigured) {
-              onboarding.step = 'business-config';
-              onboarding.isInitialized = true;
+              // If user is on welcome or database step, navigate to business config
+              // (This happens after successful database connection)
+              if (isOnWelcome || isOnDatabase) {
+                router.navigate({ pathname: '/onboarding/business' });
+              }
+              // Only block chart step for back navigation
+              else if (isOnChart) {
+                router.navigate({ pathname: '/onboarding/business', replace: true });
+              }
+              // isOnBusiness: already on correct step, no action needed
+              return;
             }
-            else {
-              database.sql`SELECT count(*) AS count FROM accounts`
-                .then(function handleAccountsCount(result) {
-                  if (onboarding.isInitialized) return; // Already initialized by user action
-                  const count = Number(result.rows[0]?.count || 0);
-                  if (count > 0) {
-                    onboarding.step = 'complete';
-                    onboarding.isInitialized = true;
-                    // Redirect to main application
-                    router.navigate({ pathname: '/dashboard', replace: true });
-                  }
-                  else {
-                    onboarding.step = 'chart-of-accounts';
-                    onboarding.isInitialized = true;
-                    loadChartOfAccountsTemplates();
-                  }
-                });
-            }
+
+            // Business configured but chart not set up - all onboarding routes are valid
+            // User can go back to review/edit previous steps
           })
-          .catch(function (error) {
-            if (onboarding.isInitialized) return;
+          .catch(function handleStateCheckError(error) {
             console.error('Failed to check configuration', error);
-            onboarding.step = 'business-config';
-            onboarding.isInitialized = true;
+            // On error, only redirect if on chart step (which definitely requires prior steps)
+            if (isOnChart) {
+              router.navigate({ pathname: '/onboarding/business', replace: true });
+            }
           });
       }
     });
-
-    function loadChartOfAccountsTemplates() {
-      database.sql`SELECT name FROM chart_of_accounts_templates`
-        .then(function assignTemplates(result) {
-          onboarding.templateNames = result.rows.map(function rowToTemplateName(row) { return String(row.name); });
-        });
-    }
-
-    function goToDatabaseSetup() {
-      // Apply the selected language from welcome screen
-      device.setLanguage(onboarding.selectedLanguage);
-      onboarding.step = 'database-setup';
-    }
-
-    /** @param {Event} event */
-    function handleDatabaseProviderChange(event) {
-      assertInstanceOf(HTMLInputElement, event.currentTarget);
-      databaseForm.selectedProvider = /** @type {DatabaseProvider} */ (event.currentTarget.value);
-    }
-
-    /** @param {SubmitEvent} event */
-    async function submitDatabaseConfig(event) {
-      try {
-        event.preventDefault();
-        databaseForm.state = 'submitting';
-        const formEl = /** @type {HTMLFormElement} */ (event.currentTarget);
-        const provider = databaseForm.selectedProvider;
-
-        if (provider === 'local') {
-          const config = /** @type {LocalDatabaseConfig} */ ({
-            provider: 'local',
-            name: formEl.elements['database-name'].value,
-          });
-          await database.connect(config);
-          databaseForm.state = 'success';
-          await feedbackDelay();
-          router.navigate({
-            pathname: '/onboarding',
-            database: config,
-            replace: true,
-          });
-        }
-        else if (provider === 'turso') {
-          const config = /** @type {TursoDatabaseConfig} */ ({
-            provider: 'turso',
-            name: formEl.elements['database-name'].value,
-            url: formEl.elements['turso-url'].value,
-            authToken: formEl.elements['turso-auth-token'].value,
-          });
-          await database.connect(config);
-          databaseForm.state = 'success';
-          await feedbackDelay();
-          router.navigate({
-            pathname: '/onboarding',
-            database: config,
-            replace: true,
-          });
-        }
-
-        // After database connection, check business config
-        onboarding.step = 'business-config';
-      }
-      catch (error) {
-        databaseForm.state = 'failure';
-        databaseForm.errorMessage = error.message;
-        await feedbackDelay();
-        databaseForm.state = 'ready';
-      }
-    }
-
-    /** @param {SubmitEvent} event */
-    async function submitBusinessConfig(event) {
-      event.preventDefault();
-      assertInstanceOf(HTMLFormElement, event.currentTarget);
-      const form = event.currentTarget;
-      const formData = new FormData(form);
-
-      // Capture form data before changing state (which triggers re-render and disables fields)
-      state.formState = 'submitting';
-      state.formErrorMessage = undefined;
-
-      // console.debug('submitBusinessConfig', 'begin');
-      const tx = await database.transaction('write');
-      try {
-        // console.debug('submitBusinessConfig', Array.from(formData.entries()));
-
-        await tx.sql`UPDATE config SET value = ${formData.get('business-name') || ''} WHERE key = 'Business Name'`;
-        await tx.sql`UPDATE config SET value = ${formData.get('business-type') || ''} WHERE key = 'Business Type'`;
-        await tx.sql`UPDATE config SET value = ${formData.get('currency-code') || ''} WHERE key = 'Currency Code'`;
-        await tx.sql`UPDATE config SET value = ${formData.get('currency-decimals') || ''} WHERE key = 'Currency Decimals'`;
-        await tx.sql`UPDATE config SET value = ${formData.get('locale') || ''} WHERE key = 'Locale'`;
-        await tx.sql`UPDATE config SET value = ${formData.get('language') || ''} WHERE key = 'Language'`;
-        await tx.sql`UPDATE config SET value = ${formData.get('fiscal-year-start-month') || ''} WHERE key = 'Fiscal Year Start Month'`;
-        await tx.commit();
-        state.formState = 'success';
-        await feedbackDelay();
-
-        onboarding.step = 'chart-of-accounts';
-        onboarding.isInitialized = true;
-
-        loadChartOfAccountsTemplates();
-      }
-      catch (error) {
-        console.error('Failed to save configuration', error);
-        await tx.rollback();
-        state.formState = 'failure';
-        state.formErrorMessage = error.message;
-        await feedbackDelay();
-        state.formState = 'ready';
-      }
-    }
-
-    /** @param {SubmitEvent} event */
-    async function submitChartOfAccounts(event) {
-      event.preventDefault();
-      const form = /** @type {HTMLFormElement} */ (event.currentTarget);
-      const formData = new FormData(form);
-
-      // Capture form data before changing state (which triggers re-render and disables fields)
-      chartForm.state = 'submitting';
-
-      const tx = await database.transaction('write');
-      try {
-        await tx.sql`INSERT INTO chart_of_accounts_templates (name) VALUES (${formData.get('template-name')})`;
-        await tx.commit();
-        chartForm.state = 'success';
-        await feedbackDelay();
-        onboarding.step = 'complete';
-        // Navigate to dashboard - main-view will detect completion and redirect if needed
-        router.navigate({ pathname: '/dashboard', replace: true });
-      }
-      catch (error) {
-        console.error('Failed to submit chart of accounts', error);
-        try { await tx.rollback(); } catch (error) { console.error('Failed to rollback transaction', error); }
-        chartForm.state = 'failure';
-        chartForm.errorMessage = error.message;
-        await feedbackDelay();
-        chartForm.state = 'ready';
-      }
-    }
-
-    /** @param {Event} event */
-    function handleLanguageSelectionInBusinessConfig(event) {
-      assertInstanceOf(HTMLButtonElement, event.currentTarget);
-      const selectedLanguage = event.currentTarget.dataset.language;
-      const displayName = event.currentTarget.dataset.displayName;
-      event.currentTarget.form.elements['language'].value = selectedLanguage;
-      event.currentTarget.form.elements['language-display'].value = displayName;
-      for (const li of event.currentTarget.closest('[role="menu"]').children) {
-        assertInstanceOf(HTMLButtonElement, li.firstChild);
-        li.firstChild.setAttribute('aria-checked', selectedLanguage === li.firstChild.dataset.language ? 'true' : 'false');
-      }
-    }
-
-    /** @param {Event} event */
-    function handleLanguageSelectionInWelcome(event) {
-      assertInstanceOf(HTMLInputElement, event.currentTarget);
-      const selectedLanguage = event.currentTarget.value;
-      const displayName = event.currentTarget.nextElementSibling.textContent.trim();
-      onboarding.selectedLanguage = selectedLanguage;
-      onboarding.selectedLanguageDisplay = displayName;
-      device.setLanguage(selectedLanguage);
-    }
-
-    function renderWelcomeStep() {
-      return html`
-        <dialog class="full-screen" aria-labelledby="welcome-title" open>
-          <div class="container" style="max-width: 600px; margin: 0 auto;">
-            <header>
-              <h2 id="welcome-title" class="headline">${t('onboarding', 'welcomeTitle')}</h2>
-            </header>
-            <div class="content" style="text-align: center; padding: 24px;">
-              <p style="margin-bottom: 24px;">${t('onboarding', 'welcomeMessage')}</p>
-              
-              <div style="text-align: left; margin-bottom: 32px;">
-                <h3 style="margin-bottom: 16px;">${t('onboarding', 'featuresTitle')}</h3>
-                <ul style="list-style: none; padding: 0;">
-                  <li style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                    <material-symbols name="receipt_long"></material-symbols>
-                    <span>${t('onboarding', 'featurePOS')}</span>
-                  </li>
-                  <li style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                    <material-symbols name="inventory_2"></material-symbols>
-                    <span>${t('onboarding', 'featureInventory')}</span>
-                  </li>
-                  <li style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                    <material-symbols name="menu_book"></material-symbols>
-                    <span>${t('onboarding', 'featureAccounting')}</span>
-                  </li>
-                  <li style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                    <material-symbols name="analytics"></material-symbols>
-                    <span>${t('onboarding', 'featureReports')}</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div style="text-align: left; margin-bottom: 32px;">
-                <h3 style="margin-bottom: 16px;">${t('onboarding', 'selectLanguageLabel')}</h3>
-                <ul role="radiogroup" style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 12px;">
-                  <li role="presentation">
-                    <label
-                      style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        cursor: pointer;
-                        padding: 12px;
-                        border: 1px solid var(--md-sys-color-outline);
-                        border-radius: var(--md-sys-shape-corner-extra-small);
-                        background-color: ${onboarding.selectedLanguage === 'en' ? 'var(--md-sys-color-surface-container-high)' : 'var(--md-sys-color-surface-container-lowest)'};
-                      ">
-                      <input
-                        type="radio"
-                        name="language"
-                        value="en"
-                        @change=${handleLanguageSelectionInWelcome}
-                        ?checked=${onboarding.selectedLanguage === 'en'}
-                        style="margin: 0;"
-                      />
-                      <span>English</span>
-                    </label>
-                  </li>
-                  <li role="presentation">
-                    <label style="
-                      display: flex;
-                      align-items: center;
-                      gap: 12px;
-                      cursor: pointer;
-                      padding: 12px;
-                      border: 1px solid var(--md-sys-color-outline);
-                      border-radius: var(--md-sys-shape-corner-extra-small);
-                      background-color: ${onboarding.selectedLanguage === 'id' ? 'var(--md-sys-color-surface-container-high)' : 'var(--md-sys-color-surface-container-lowest)'};
-                    ">
-                      <input
-                        type="radio"
-                        name="language"
-                        value="id"
-                        @change=${handleLanguageSelectionInWelcome}
-                        ?checked=${onboarding.selectedLanguage === 'id'}
-                        style="margin: 0;"
-                      />
-                      <span>Bahasa Indonesia</span>
-                    </label>
-                  </li>
-                </ul>
-              </div>
-
-              <button
-                role="button"
-                type="button"
-                class="filled"
-                @click=${goToDatabaseSetup}
-              >${t('onboarding', 'getStartedButton')}</button>
-            </div>
-          </div>
-        </dialog>
-      `;
-    }
-
-    function renderDatabaseSetupStep() {
-      const formState = databaseForm.state;
-      const formDisabled = formState !== 'ready';
-      const selectedProvider = databaseForm.selectedProvider;
-      const submitButtonText = formState === 'ready' ? t('onboarding', 'databaseConfigSubmitLabel')
-        : formState === 'submitting' ? t('onboarding', 'databaseConnectingLabel')
-          : formState === 'success' ? t('onboarding', 'databaseConnectedLabel')
-            : formState === 'failure' ? t('onboarding', 'databaseFailedLabel')
-              : t('onboarding', 'databaseConfigSubmitLabel');
-      return html`
-        <dialog
-          class="full-screen"
-          aria-labelledby="configure-database-title"
-          aria-describedby="configure-database-description"
-          style="max-width: 600px; margin: 0 auto;"
-          open
-        >
-          <form method="dialog" class="container" ?disabled=${formDisabled} @submit=${submitDatabaseConfig}>
-            <header>
-              <h3 id="configure-database-title">${t('onboarding', 'databaseConfigTitle')}</h3>
-              <button role="button" type="submit">${submitButtonText}</button>
-            </header>
-
-            <div class="content">
-              <p id="configure-database-description">${t('onboarding', 'databaseConfigDescription')}</p>
-
-              <ul role="radiogroup" aria-label="${t('onboarding', 'databaseProviderLabel')}" style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 16px; margin-top: 24px;">
-                <!-- Local SQLite Provider -->
-                <li role="presentation" style="border: 1px solid var(--md-sys-color-outline); border-radius: var(--md-sys-shape-corner-small); overflow: hidden;">
-                  <label style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    cursor: pointer;
-                    padding: 16px;
-                    background-color: ${selectedProvider === 'local' ? 'var(--md-sys-color-surface-container-high)' : 'var(--md-sys-color-surface-container-lowest)'};
-                  ">
-                    <input
-                      type="radio"
-                      name="database-provider"
-                      value="local"
-                      @change=${handleDatabaseProviderChange}
-                      ?checked=${selectedProvider === 'local'}
-                      ?disabled=${formDisabled}
-                      style="margin: 0;"
-                    />
-                    <div style="flex: 1;">
-                      <span style="font-weight: 500;">${t('onboarding', 'localDatabaseLabel')}</span>
-                      <p style="margin: 4px 0 0; font-size: 0.875rem; color: var(--md-sys-color-on-surface-variant);">
-                        ${t('onboarding', 'localDatabaseDescription')}
-                      </p>
-                    </div>
-                  </label>
-                  ${selectedProvider === 'local' ? html`
-                    <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
-                      <div class="outlined-text-field">
-                        <div class="container">
-                          <label for="database-name">${t('onboarding', 'localDatabaseNameLabel')}</label>
-                          <input
-                            id="database-name"
-                            name="database-name"
-                            type="text"
-                            autocomplete="off"
-                            required
-                            ?disabled=${formDisabled}
-                            placeholder="${t('onboarding', 'localDatabaseNamePlaceholder')}"
-                          />
-                        </div>
-                        <p class="supporting-text">${t('onboarding', 'localDatabaseNameDescription')}</p>
-                      </div>
-                    </div>
-                  ` : ''}
-                </li>
-                <!-- Remote Turso Provider -->
-                <li role="presentation" style="border: 1px solid var(--md-sys-color-outline); border-radius: var(--md-sys-shape-corner-small); overflow: hidden;">
-                  <label style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    cursor: pointer;
-                    padding: 16px;
-                    background-color: ${selectedProvider === 'turso' ? 'var(--md-sys-color-surface-container-high)' : 'var(--md-sys-color-surface-container-lowest)'};
-                  ">
-                    <input
-                      type="radio"
-                      name="database-provider"
-                      value="turso"
-                      @change=${handleDatabaseProviderChange}
-                      ?checked=${selectedProvider === 'turso'}
-                      ?disabled=${formDisabled}
-                      style="margin: 0;"
-                    />
-                    <div style="flex: 1;">
-                      <span style="font-weight: 500;">${t('onboarding', 'tursoDatabaseLabel')}</span>
-                      <p style="margin: 4px 0 0; font-size: 0.875rem; color: var(--md-sys-color-on-surface-variant);">
-                        ${t('onboarding', 'tursoDatabaseDescription')}
-                      </p>
-                    </div>
-                  </label>
-                  ${selectedProvider === 'turso' ? html`
-                    <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
-                      <div class="outlined-text-field">
-                        <div class="container">
-                          <label for="database-name">${t('onboarding', 'localDatabaseNameLabel')}</label>
-                          <input
-                            id="database-name"
-                            name="database-name"
-                            type="text"
-                            autocomplete="off"
-                            required
-                            ?disabled=${formDisabled}
-                            placeholder="${t('onboarding', 'localDatabaseNamePlaceholder')}"
-                          />
-                        </div>
-                        <p class="supporting-text">${t('onboarding', 'localDatabaseNameDescription')}</p>
-                      </div>
-                      <div class="outlined-text-field">
-                        <div class="container">
-                          <label for="turso-url">${t('onboarding', 'tursoUrlLabel')}</label>
-                          <input
-                            id="turso-url"
-                            name="turso-url"
-                            type="text"
-                            autocomplete="off"
-                            required
-                            ?disabled=${formDisabled}
-                            placeholder="${t('onboarding', 'tursoUrlPlaceholder')}"
-                          />
-                        </div>
-                        <p class="supporting-text">${t('onboarding', 'tursoUrlDescription')}</p>
-                      </div>
-                      <div class="outlined-text-field">
-                        <div class="container">
-                          <label for="turso-auth-token">${t('onboarding', 'tursoAuthTokenLabel')}</label>
-                          <input
-                            id="turso-auth-token"
-                            name="turso-auth-token"
-                            type="password"
-                            autocomplete="off"
-                            ?disabled=${formDisabled}
-                            placeholder="${t('onboarding', 'tursoAuthTokenPlaceholder')}"
-                          />
-                        </div>
-                        <p class="supporting-text">${t('onboarding', 'tursoAuthTokenDescription')}</p>
-                      </div>
-                    </div>
-                  ` : ''}
-                </li>
-              </ul>
-
-              ${databaseForm.errorMessage ? html`
-                <p style="color: var(--md-sys-color-error); margin-top: 16px;">${databaseForm.errorMessage}</p>
-              ` : ''}
-            </div>
-          </form>
-        </dialog>
-      `;
-    }
-
-    function renderBusinessConfigStep() {
-      const formState = state.formState;
-      const formDisabled = formState !== 'ready';
-      return html`
-        <dialog
-          class="full-screen"
-          aria-labelledby="business-config-title"
-          style="max-width: 600px; margin: 0 auto;"
-          open
-        >
-          <form class="container" ?disabled=${formDisabled} @submit=${submitBusinessConfig}>
-            <header>
-              <h2 id="business-config-title" class="headline">${t('onboarding', 'businessConfigTitle')}</h2>
-              <button
-                role="button"
-                class="text"
-                type="submit"
-                ?disabled=${formDisabled}
-              >${t('onboarding', 'businessConfigSubmitLabel')}</button>
-            </header>
-            <div role="status" aria-live="polite" aria-busy="true">
-              ${formState === 'submitting' ? html`<progress aria-label="${t('onboarding', 'businessConfigProgressIndicatorLabel')}"></progress>` : nothing}
-            </div>
-            <div class="content">
-              <div class="outlined-text-field">
-                <div class="container">
-                  <label for="business-name">${t('onboarding', 'businessNameLabel')}</label>
-                  <input id="business-name" name="business-name" type="text" placeholder=" " required ?disabled=${formDisabled} />
-                </div>
-              </div>
-
-              <div class="outlined-text-field">
-                <div class="container">
-                  <label for="business-type">${t('onboarding', 'businessTypeLabel')}</label>
-                  <input id="business-type" name="business-type" type="text" placeholder=" " required value="Small Business" ?disabled=${formDisabled} />
-                </div>
-              </div>
-
-              <div class="outlined-text-field">
-                <div class="container">
-                  <label for="currency-code">${t('onboarding', 'businessCurrencyCodeLabel')}</label>
-                  <input id="currency-code" name="currency-code" type="text" placeholder=" " required value="IDR" ?disabled=${formDisabled} />
-                </div>
-              </div>
-
-              <div class="outlined-text-field">
-                <div class="container">
-                  <label for="currency-decimals">${t('onboarding', 'businessCurrencyDecimalsLabel')}</label>
-                  <input id="currency-decimals" name="currency-decimals" type="number" placeholder=" " required value="0" ?disabled=${formDisabled} />
-                </div>
-              </div>
-
-              <div class="outlined-text-field">
-                <div class="container">
-                  <label for="locale">${t('onboarding', 'businessLocaleLabel')}</label>
-                  <input id="locale" name="locale" type="text" placeholder=" " required value="en-ID" ?disabled=${formDisabled} />
-                </div>
-              </div>
-
-              <div class="outlined-text-field" style="anchor-name: --language-input-anchor;">
-                <div class="container">
-                  <label for="language-input">${t('onboarding', 'businessLanguageLabel')}</label>
-                  <input
-                    id="language-input"
-                    type="button"
-                    name="language-display"
-                    value="${onboarding.selectedLanguageDisplay}"
-                    popovertarget="language-menu"
-                    popovertargetaction="show"
-                    placeholder=" "
-                    ?disabled=${formDisabled}
-                  />
-                  <input type="hidden" name="language" value="${onboarding.selectedLanguage}" />
-                  <label for="language-input" class="trailing-icon">
-                    <material-symbols name="arrow_drop_down"></material-symbols>
-                  </label>
-                </div>
-              </div>
-              <menu role="menu" popover id="language-menu" class="dropdown" style="position-anchor: --language-input-anchor;">
-                <li>
-                  <button
-                    role="menuitemradio"
-                    type="button"
-                    @click=${handleLanguageSelectionInBusinessConfig}
-                    data-language="en"
-                    data-display-name="English"
-                    popovertarget="language-menu"
-                    popovertargetaction="hide"
-                    aria-checked="${onboarding.selectedLanguage === 'en' ? 'true' : 'false'}"
-                  >
-                    ${onboarding.selectedLanguage === 'en' ? html`<material-symbols name="check"></material-symbols>` : ''}
-                    English
-                  </button>
-                </li>
-                <li>
-                  <button
-                    role="menuitemradio"
-                    type="button"
-                    @click=${handleLanguageSelectionInBusinessConfig}
-                    data-language="id"
-                    data-display-name="Bahasa Indonesia"
-                    popovertarget="language-menu"
-                    popovertargetaction="hide"
-                    aria-checked="${onboarding.selectedLanguage === 'id' ? 'true' : 'false'}"
-                  >
-                    ${onboarding.selectedLanguage === 'id' ? html`<material-symbols name="check"></material-symbols>` : ''}
-                    Bahasa Indonesia
-                  </button>
-                </li>
-              </menu>
-
-              <div class="outlined-text-field">
-                <div class="container">
-                  <label for="fiscal-year-start-month">${t('onboarding', 'businessFiscalYearStartMonthLabel')}</label>
-                  <input id="fiscal-year-start-month" name="fiscal-year-start-month" type="number" min="1" max="12" placeholder=" " required value="1" ?disabled=${formDisabled} />
-                </div>
-              </div>
-            </div>
-          </form>
-        </dialog>
-      `;
-    }
-
-    function renderChartOfAccountsStep() {
-      const formState = chartForm.state;
-      const formDisabled = formState !== 'ready';
-
-      if (onboarding.templateNames.length === 0) {
-        return html`
-          <dialog
-            class="full-screen"
-            aria-labelledby="coa-title"
-            style="max-width: 600px; margin: 0 auto;"
-            open
-          >
-            <header>
-              <h2 id="coa-title" class="headline">${t('onboarding', 'loadingIndicatorLabel')}</h2>
-            </header>
-            <div class="content" style="padding-top: 24px;">
-              <p>${t('onboarding', 'loadingTemplatesIndicatorLabel')}</p>
-            </div>
-          </dialog>
-        `;
-      }
-
-      return html`
-        <dialog
-          class="full-screen"
-          aria-labelledby="coa-title"
-          style="max-width: 600px; margin: 0 auto;"
-          open
-        >
-          <form class="container" ?disabled=${formDisabled} @submit=${submitChartOfAccounts}>
-            <header>
-              <h2 id="coa-title" class="headline">${t('onboarding', 'chartOfAccountsSetupTitle')}</h2>
-              <button
-                role="button"
-                type="submit"
-                class="text"
-                ?disabled=${formDisabled}
-              >${t('onboarding', 'chartOfAccountsSetupSubmitLabel')}</button>
-            </header>
-            <div class="content">
-              <ul role="list">
-                ${repeat(onboarding.templateNames, (t) => t, (templateName, index) => html`
-                  <li role="listitem">
-                    <span class="leading">
-                      <input id=${`template-name-radio-${index}`} type="radio" name="template-name" value=${templateName} required ?disabled=${formDisabled} />
-                    </span>
-                    <label for="${`template-name-radio-${index}`}" class="content">
-                      <span class="headline">${templateName}</span>
-                    </label>
-                  </li>
-                `)}
-              </ul>
-            </div>
-          </form>
-        </dialog>
-      `;
-    }
 
     useEffect(host, function renderOnboardingView() {
-      if (onboarding.step === 'welcome') render(renderWelcomeStep());
-      else if (onboarding.step === 'database-setup') render(renderDatabaseSetupStep());
-      else if (onboarding.step === 'business-config') render(renderBusinessConfigStep());
-      else if (onboarding.step === 'chart-of-accounts') render(renderChartOfAccountsStep());
-      else if (onboarding.step === 'complete') render(html`
-        <p>${t('onboarding', 'onboardingComplete')}</p>
-        <p><router-link href="/" replace>${t('onboarding', 'goToDashboard')}</router-link></p>
-      `);
-      else render(html`<p>${t('onboarding', 'unknownState', onboarding.step)}</p>`);
+      const pathname = router.route?.pathname || '/onboarding';
+      const databaseState = database.state;
+
+      // When database is connecting, show loading state to prevent UI flicker
+      if (databaseState === 'connecting') {
+        render(html`
+          <div role="status" aria-live="polite" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+            <span>${t('onboarding', 'loadingIndicatorLabel')}</span>
+          </div>
+        `);
+        return;
+      }
+
+      // Default to welcome if on base onboarding path
+      if (pathname === '/onboarding' || pathname === '/onboarding/') {
+        render(html`<onboarding-welcome-view></onboarding-welcome-view>`);
+        return;
+      }
+
+      // Route to specific step views based on pathname
+      if (pathname.startsWith('/onboarding/welcome')) {
+        render(html`<onboarding-welcome-view></onboarding-welcome-view>`);
+      }
+      else if (pathname.startsWith('/onboarding/database')) {
+        render(html`<onboarding-database-view></onboarding-database-view>`);
+      }
+      else if (pathname.startsWith('/onboarding/business')) {
+        render(html`<onboarding-business-view></onboarding-business-view>`);
+      }
+      else if (pathname.startsWith('/onboarding/chart-of-accounts')) {
+        render(html`<onboarding-chart-view></onboarding-chart-view>`);
+      }
+      else {
+        render(html`
+          <div role="alert">
+            <h1>${t('onboarding', 'unknownStepTitle')}</h1>
+            <p>${t('onboarding', 'unknownStepMessage')}</p>
+            <div>
+              <router-link href="/onboarding">${t('onboarding', 'returnToWelcome')}</router-link>
+            </div>
+          </div>
+        `);
+      }
     });
   }
 }

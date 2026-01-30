@@ -5,7 +5,16 @@ import { useConnectedCallback } from '#web/hooks/use-lifecycle.js';
 import { useWindowEventListener } from '#web/hooks/use-window-event-listener.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 
+
+/**
+ * @typedef {object} PendingResolver
+ * @property {string} label
+ * @property {Promise<void>} promise
+ */
+
 export class ReadyContextElement extends HTMLElement {
+  pendingResolvers = /** @type {Array<PendingResolver>} */ ([]);
+
   constructor() {
     super();
 
@@ -20,17 +29,22 @@ export class ReadyContextElement extends HTMLElement {
     }
     // else console.warn('ReadyContextElement: should be used with Declarative Shadow DOM to show busy state.');
 
+    /** @type {Array<PendingResolver>} */
     let pendingResolvers = [];
+    Object.defineProperty(this, 'pendingResolvers', {
+      get() { return pendingResolvers; },
+    });
 
     /**
      * This busy resolver can only be called after or on connectedCallback.
+     * @param {string} label
      * @returns {function():void}
      */
-    this.createBusyResolver = function createBusyResolver() {
+    this.createBusyResolver = function createBusyResolver(label) {
       /** @type {PromiseWithResolvers<void>} */
       const { promise, resolve } = Promise.withResolvers();
       // Only track resolvers if shadow root is present
-      pendingResolvers.push(promise);
+      pendingResolvers.push({ label, promise });
       return resolve;
     };
 
@@ -41,7 +55,9 @@ export class ReadyContextElement extends HTMLElement {
       while (pendingResolvers.length) {
         const resolves = pendingResolvers;
         pendingResolvers = [];
-        await Promise.allSettled(resolves);
+        await Promise.allSettled(resolves.map(function getPromise(pendingResolver) {
+          return pendingResolver.promise;
+        }));
       }
       if (shadowRoot instanceof ShadowRoot) {
         const dialog = shadowRoot.querySelector('dialog[aria-busy="true"]');
@@ -59,6 +75,7 @@ export class ReadyContextElement extends HTMLElement {
     });
 
     readyPromise.then(function dispatchReadyEvent() {
+      console.debug('ready-context', 'ready-context:ready');
       host.dispatchEvent(new CustomEvent('ready-context:ready', {
         bubbles: true,
         composed: false,
@@ -110,7 +127,7 @@ export function useBusyStateResolver(host) {
   /** busy state is optional behaviour */
   useConnectedCallback(host, function registeringBusyResolver() {
     if (typeof ready.createBusyResolver === 'function') {
-      const resolveBusy = ready.createBusyResolver();
+      const resolveBusy = ready.createBusyResolver(host?.constructor?.name);
       promise.then(resolveBusy);
     } else console.warn('useBusyStateResolver:', 'ReadyContextElement not found from', host.constructor.name);
   });

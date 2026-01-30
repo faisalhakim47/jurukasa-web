@@ -1,21 +1,21 @@
 import { readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { waitForDOMCustomEventDetail } from '#test/playwright/tools/dom.js';
 import { expect } from '@playwright/test';
 /** @import { Page } from '@playwright/test' */
+/** @import { ReadyContextElement } from '#web/contexts/ready-context.js' */
 
 const __filname = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filname);
 
 /** @param {Page} page */
-async function testContextInitiation(page) {
+async function waitForComponents(page) {
   const componentTags = [
     ...await listComponentTags(join(__dirname, '../../../web/components')),
     ...await listComponentTags(join(__dirname, '../../../web/contexts')),
     ...await listComponentTags(join(__dirname, '../../../web/views')),
   ];
-  await page.evaluate(async function initializeTestContext(componentTags) {
+  await page.evaluate(async function evaluateComponentsWaiter(componentTags) {
     await new Promise(function waitComponetsOrTimeout(resolve, reject) {
       let settled = false;
       /** @type {Set<string>} */
@@ -54,16 +54,18 @@ async function testContextInitiation(page) {
 /** @param {Page} page */
 export async function loadEmptyFixture(page) {
   await page.goto('/test/playwright/fixtures/empty.html', { waitUntil: 'load' });
-  await testContextInitiation(page);
+  await page.pause();
+  await waitForComponents(page);
 }
 
 /** @param {Page} page */
 export async function loadDevFixture(page) {
-  await page.goto('/test/playwright/fixtures/dev.html', { waitUntil: 'domcontentloaded' });
-  await Promise.all([
-    testContextInitiation(page),
-    waitForDOMCustomEventDetail(page, 'ready-context', 'ready-context:ready'),
-  ]);
+  await page.goto('/test/playwright/fixtures/dev.html', { waitUntil: 'load' });
+  await page.evaluate(async function waitUntilReady() {
+    /** @type {ReadyContextElement} */
+    const readyContext = document.querySelector('ready-context');
+    await readyContext.ready();
+  });
 }
 
 /** @param {string} dir */

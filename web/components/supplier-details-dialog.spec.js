@@ -44,7 +44,7 @@ async function setupPage(page, tursoDatabaseUrl, supplierId) {
 }
 
 describe('Supplier Details Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Supplier Inventory Management', function () {

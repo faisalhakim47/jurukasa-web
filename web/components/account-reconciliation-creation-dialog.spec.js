@@ -33,7 +33,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Account Reconciliation Creation Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

@@ -215,7 +215,7 @@ async function setupDoubleOverrideScenario() {
 }
 
 describe('useLifecycle', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
 
   test('it shall execute callbacks correctly', async function ({ page }) {
     await loadEmptyFixture(page);

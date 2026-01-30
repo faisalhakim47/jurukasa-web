@@ -30,7 +30,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Purchase Creation View with Supplier Selector Dialog', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 

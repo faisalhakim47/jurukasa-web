@@ -11,7 +11,7 @@ const test = jurukasaTest;
 const { describe } = test;
 
 describe('Database Context', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Connection State', function () {

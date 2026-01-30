@@ -30,15 +30,21 @@ export class MainViewElement extends HTMLElement {
 
 
     useEffect(host, function evaluateOnboardingState() {
-      // console.debug('main-view', 'evaluateOnboardingState', router.route?.pathname, typeof router.route?.pathname === 'string', database.isReady, database.state);
-      if (typeof router.route?.pathname === 'string' && database.isReady && database.state === 'unconfigured') {
-        router.navigate({ pathname: '/onboarding', replace: true });
+      console.debug('main-view', 'evaluateOnboardingState', router.route?.pathname, typeof router.route?.pathname === 'string', database.isReady, database.state);
+      const pathname = router.route?.pathname;
+      if (typeof pathname === 'string' && database.isReady && database.state === 'unconfigured') {
+        // Only redirect to welcome if not already on an onboarding path
+        // This allows navigation to /onboarding/database and other onboarding steps
+        if (!pathname.startsWith('/onboarding')) {
+          router.navigate({ pathname: '/onboarding/welcome', replace: true });
+        }
       }
     });
 
     useEffect(host, function renderMainView() {
       const pathname = router.route?.pathname || '/';
-      // console.debug('main-view', 'renderMainView', pathname, device.isDesktop); 
+
+      console.debug('main-view', 'renderMainView', pathname, device.isDesktop);
 
       if (pathname.startsWith('/onboarding')) {
         render(html`<onboarding-view></onboarding-view>`);

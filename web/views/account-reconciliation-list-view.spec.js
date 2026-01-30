@@ -29,7 +29,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 describe('Account Reconciliation List View', function () {
-  // useConsoleOutput(test);
+  useConsoleOutput(test);
   useStrict(test);
 
   describe('Missing Reconciliation Accounts Warning', function () {
