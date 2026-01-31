@@ -55,7 +55,7 @@ describe('Version Manager View', function () {
     await expect(cacheRow).toBeVisible();
 
     await expect(cacheRow.getByRole('cell', { name: 'default' })).toBeVisible();
-    await expect(cacheRow.getByRole('cell', { name: '2026.1.28' })).toBeVisible();
+    await expect(cacheRow.getByRole('cell', { name: '2026.1.31' })).toBeVisible();
 
     // Verify the Sources column shows Local chip
     await expect(cacheRow.getByText('Local')).toBeVisible();
