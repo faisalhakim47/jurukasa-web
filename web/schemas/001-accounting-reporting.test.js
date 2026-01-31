@@ -747,4 +747,447 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       equal(retainedEarningsBS.amount, 30000, 'Balance Sheet Retained Earnings should be 30000');
     });
   });
+
+  describe('Report Time Period Accuracy', function () {
+    it('shall generate trial balance with only transactions up to report_time', async function () {
+      await setupCompleteChartOfAccounts();
+
+      // Post transactions on different dates
+      // Jan 2: Initial investment
+      const ref1 = await draftJournalEntry(new Date(2024, 0, 2, 0, 0, 0, 0));
+      await addJournalLine(ref1, 11110, 100000, 0);
+      await addJournalLine(ref1, 31000, 0, 100000);
+      await postJournalEntry(ref1, new Date(2024, 0, 2, 0, 0, 0, 0));
+
+      // Jan 15: Purchase inventory
+      const ref2 = await draftJournalEntry(new Date(2024, 0, 15, 0, 0, 0, 0));
+      await addJournalLine(ref2, 11310, 30000, 0);
+      await addJournalLine(ref2, 11110, 0, 30000);
+      await postJournalEntry(ref2, new Date(2024, 0, 15, 0, 0, 0, 0));
+
+      // Feb 10: Sales revenue
+      const ref3 = await draftJournalEntry(new Date(2024, 1, 10, 0, 0, 0, 0));
+      await addJournalLine(ref3, 11110, 50000, 0);
+      await addJournalLine(ref3, 41000, 0, 50000);
+      await postJournalEntry(ref3, new Date(2024, 1, 10, 0, 0, 0, 0));
+
+      // Generate report as of Jan 10 (should only include Jan 2 transaction)
+      const jan10Report = new Date(2024, 0, 10, 0, 0, 0, 0).getTime();
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${jan10Report}, 'Ad Hoc', 'Jan 10 2024 Report', ${testTime})
+      `;
+
+      // Verify Jan 10 report only has initial investment
+      const jan10TrialBalance = (await sql`
+        SELECT * FROM trial_balance_lines WHERE balance_report_id = 1 ORDER BY account_code
+      `).rows;
+
+      const jan10Cash = jan10TrialBalance.find(r => r.account_code === 11110);
+      equal(jan10Cash.debit, 100000, 'Jan 10 report: Cash should be 100000 (only initial investment)');
+      equal(jan10Cash.credit, 0, 'Jan 10 report: Cash credit should be 0');
+
+      const jan10Inventory = jan10TrialBalance.find(r => r.account_code === 11310);
+      ok(!jan10Inventory, 'Jan 10 report: Inventory should not exist (transaction on Jan 15)');
+
+      const jan10Equity = jan10TrialBalance.find(r => r.account_code === 31000);
+      equal(jan10Equity.credit, 100000, 'Jan 10 report: Equity should be 100000');
+
+      // Generate report as of Jan 20 (should include Jan 2 and Jan 15 transactions)
+      const jan20Report = new Date(2024, 0, 20, 0, 0, 0, 0).getTime();
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${jan20Report}, 'Ad Hoc', 'Jan 20 2024 Report', ${testTime})
+      `;
+
+      // Verify Jan 20 report includes inventory purchase
+      const jan20TrialBalance = (await sql`
+        SELECT * FROM trial_balance_lines WHERE balance_report_id = 2 ORDER BY account_code
+      `).rows;
+
+      const jan20Cash = jan20TrialBalance.find(r => r.account_code === 11110);
+      equal(jan20Cash.debit, 70000, 'Jan 20 report: Cash should be 70000 (100000 - 30000)');
+
+      const jan20Inventory = jan20TrialBalance.find(r => r.account_code === 11310);
+      equal(jan20Inventory.debit, 30000, 'Jan 20 report: Inventory should be 30000');
+
+      // Verify Jan 20 report does NOT include Feb 10 revenue
+      const jan20Revenue = jan20TrialBalance.find(r => r.account_code === 41000);
+      ok(!jan20Revenue, 'Jan 20 report: Revenue should not exist (transaction on Feb 10)');
+    });
+
+    it('shall generate balance sheet with only transactions up to report_time', async function () {
+      await setupCompleteChartOfAccounts();
+
+      // Post transactions on different dates
+      // Jan 5: Initial investment
+      const ref1 = await draftJournalEntry(new Date(2024, 0, 5, 0, 0, 0, 0));
+      await addJournalLine(ref1, 11110, 200000, 0);
+      await addJournalLine(ref1, 31000, 0, 200000);
+      await postJournalEntry(ref1, new Date(2024, 0, 5, 0, 0, 0, 0));
+
+      // Feb 1: Purchase equipment (non-current asset)
+      const ref2 = await draftJournalEntry(new Date(2024, 1, 1, 0, 0, 0, 0));
+      await addJournalLine(ref2, 12110, 50000, 0);
+      await addJournalLine(ref2, 11110, 0, 50000);
+      await postJournalEntry(ref2, new Date(2024, 1, 1, 0, 0, 0, 0));
+
+      // Mar 15: Take loan
+      const ref3 = await draftJournalEntry(new Date(2024, 2, 15, 0, 0, 0, 0));
+      await addJournalLine(ref3, 11110, 30000, 0);
+      await addJournalLine(ref3, 21100, 0, 30000);
+      await postJournalEntry(ref3, new Date(2024, 2, 15, 0, 0, 0, 0));
+
+      // Generate report as of Jan 31 (before equipment purchase)
+      const jan31Report = new Date(2024, 0, 31, 0, 0, 0, 0).getTime();
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${jan31Report}, 'Ad Hoc', 'Jan 31 2024 Balance Sheet', ${testTime})
+      `;
+
+      // Verify Jan 31 balance sheet
+      const jan31BalanceSheet = (await sql`
+        SELECT * FROM balance_sheet_lines WHERE balance_report_id = 1 ORDER BY classification, account_code
+      `).rows;
+
+      const jan31Cash = jan31BalanceSheet.find(r => r.account_code === 11110);
+      equal(jan31Cash.amount, 200000, 'Jan 31: Cash should be 200000');
+      equal(jan31Cash.classification, 'Assets', 'Jan 31: Cash should be Assets');
+      equal(jan31Cash.category, 'Current Assets', 'Jan 31: Cash should be Current Assets');
+
+      const jan31Equipment = jan31BalanceSheet.find(r => r.account_code === 12110);
+      ok(!jan31Equipment, 'Jan 31: Equipment should not exist (purchased Feb 1)');
+
+      const jan31Payable = jan31BalanceSheet.find(r => r.account_code === 21100);
+      ok(!jan31Payable, 'Jan 31: Accounts Payable should not exist (loan taken Mar 15)');
+
+      // Generate report as of Feb 28 (after equipment, before loan)
+      const feb28Report = new Date(2024, 1, 28, 0, 0, 0, 0).getTime();
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${feb28Report}, 'Ad Hoc', 'Feb 28 2024 Balance Sheet', ${testTime})
+      `;
+
+      // Verify Feb 28 balance sheet
+      const feb28BalanceSheet = (await sql`
+        SELECT * FROM balance_sheet_lines WHERE balance_report_id = 2 ORDER BY classification, account_code
+      `).rows;
+
+      const feb28Cash = feb28BalanceSheet.find(r => r.account_code === 11110);
+      equal(feb28Cash.amount, 150000, 'Feb 28: Cash should be 150000 (200000 - 50000)');
+
+      const feb28Equipment = feb28BalanceSheet.find(r => r.account_code === 12110);
+      equal(feb28Equipment.amount, 50000, 'Feb 28: Equipment should be 50000');
+      equal(feb28Equipment.classification, 'Assets', 'Feb 28: Equipment should be Assets');
+      equal(feb28Equipment.category, 'Non-Current Assets', 'Feb 28: Equipment should be Non-Current Assets');
+
+      const feb28Payable = feb28BalanceSheet.find(r => r.account_code === 21100);
+      ok(!feb28Payable, 'Feb 28: Accounts Payable should not exist (loan taken Mar 15)');
+
+      // Calculate totals
+      const feb28TotalAssets = feb28BalanceSheet
+        .filter(r => r.classification === 'Assets')
+        .reduce((sum, r) => sum + Number(r.amount), 0);
+      const feb28TotalEquity = feb28BalanceSheet
+        .filter(r => r.classification === 'Equity')
+        .reduce((sum, r) => sum + Number(r.amount), 0);
+
+      equal(feb28TotalAssets, 200000, 'Feb 28: Total Assets should be 200000');
+      equal(feb28TotalEquity, 200000, 'Feb 28: Total Equity should be 200000');
+    });
+
+    it('shall handle exact date boundary correctly', async function () {
+      await setupCompleteChartOfAccounts();
+
+      // Post transaction exactly at report time boundary
+      const ref1 = await draftJournalEntry(new Date(2024, 0, 15, 12, 0, 0, 0)); // Jan 15, noon
+      await addJournalLine(ref1, 11110, 100000, 0);
+      await addJournalLine(ref1, 31000, 0, 100000);
+      await postJournalEntry(ref1, new Date(2024, 0, 15, 12, 0, 0, 0));
+
+      // Generate report at exact same time (should include the transaction)
+      const exactTimeReport = new Date(2024, 0, 15, 12, 0, 0, 0).getTime();
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${exactTimeReport}, 'Ad Hoc', 'Exact Time Report', ${testTime})
+      `;
+
+      // Verify transaction IS included (entry_time <= report_time)
+      const exactTimeTrialBalance = (await sql`
+        SELECT * FROM trial_balance_lines WHERE balance_report_id = 1
+      `).rows;
+
+      const exactTimeCash = exactTimeTrialBalance.find(r => r.account_code === 11110);
+      equal(exactTimeCash.debit, 100000, 'Transaction at exact report_time should be included');
+
+      // Generate report 1 millisecond before transaction time
+      const beforeTimeReport = new Date(2024, 0, 15, 11, 59, 59, 999).getTime();
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${beforeTimeReport}, 'Ad Hoc', 'Before Time Report', ${testTime})
+      `;
+
+      // Verify transaction is NOT included
+      const beforeTimeTrialBalance = (await sql`
+        SELECT * FROM trial_balance_lines WHERE balance_report_id = 2
+      `).rows;
+
+      const beforeTimeCash = beforeTimeTrialBalance.find(r => r.account_code === 11110);
+      ok(!beforeTimeCash, 'Transaction before report_time should not be included');
+    });
+
+    it('shall show empty trial balance when no transactions before report_time', async function () {
+      await setupCompleteChartOfAccounts();
+
+      // Post transactions on Feb 1
+      const ref1 = await draftJournalEntry(new Date(2024, 1, 1, 0, 0, 0, 0));
+      await addJournalLine(ref1, 11110, 100000, 0);
+      await addJournalLine(ref1, 31000, 0, 100000);
+      await postJournalEntry(ref1, new Date(2024, 1, 1, 0, 0, 0, 0));
+
+      // Generate report on Jan 1 (before any transactions)
+      const jan1Report = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${jan1Report}, 'Ad Hoc', 'Jan 1 2024 Report', ${testTime})
+      `;
+
+      // Verify trial balance has no lines (all accounts have zero balance)
+      const jan1TrialBalance = (await sql`
+        SELECT * FROM trial_balance_lines WHERE balance_report_id = 1
+      `).rows;
+
+      equal(jan1TrialBalance.length, 0, 'Trial balance should be empty when no transactions before report_time');
+
+      // Verify balance sheet also has no lines
+      const jan1BalanceSheet = (await sql`
+        SELECT * FROM balance_sheet_lines WHERE balance_report_id = 1
+      `).rows;
+
+      equal(jan1BalanceSheet.length, 0, 'Balance sheet should be empty when no transactions before report_time');
+    });
+
+    it('shall generate sequential reports showing balance progression', async function () {
+      await setupCompleteChartOfAccounts();
+
+      // Post multiple transactions over time
+      // Jan 1: Initial capital
+      const ref1 = await draftJournalEntry(new Date(2024, 0, 1, 0, 0, 0, 0));
+      await addJournalLine(ref1, 11110, 50000, 0);
+      await addJournalLine(ref1, 31000, 0, 50000);
+      await postJournalEntry(ref1, new Date(2024, 0, 1, 0, 0, 0, 0));
+
+      // Feb 1: More investment
+      const ref2 = await draftJournalEntry(new Date(2024, 1, 1, 0, 0, 0, 0));
+      await addJournalLine(ref2, 11110, 30000, 0);
+      await addJournalLine(ref2, 31000, 0, 30000);
+      await postJournalEntry(ref2, new Date(2024, 1, 1, 0, 0, 0, 0));
+
+      // Mar 1: Even more investment
+      const ref3 = await draftJournalEntry(new Date(2024, 2, 1, 0, 0, 0, 0));
+      await addJournalLine(ref3, 11110, 20000, 0);
+      await addJournalLine(ref3, 31000, 0, 20000);
+      await postJournalEntry(ref3, new Date(2024, 2, 1, 0, 0, 0, 0));
+
+      // Generate 4 reports at different points
+      const reportTimes = [
+        new Date(2024, 0, 15, 0, 0, 0, 0).getTime(), // After Jan 1 only
+        new Date(2024, 1, 15, 0, 0, 0, 0).getTime(), // After Jan 1 and Feb 1
+        new Date(2024, 2, 15, 0, 0, 0, 0).getTime(), // After all transactions
+        new Date(2024, 5, 30, 0, 0, 0, 0).getTime(), // Long after all transactions
+      ];
+
+      for (let i = 0; i < reportTimes.length; i++) {
+        await sql`
+          INSERT INTO balance_reports (report_time, report_type, name, create_time)
+          VALUES (${reportTimes[i]}, 'Ad Hoc', ${`Report ${i + 1}`}, ${testTime})
+        `;
+      }
+
+      // Verify progressive balances
+      const expectedCashBalances = [50000, 80000, 100000, 100000];
+      const expectedEquityBalances = [50000, 80000, 100000, 100000];
+
+      for (let i = 0; i < 4; i++) {
+        const reportId = i + 1;
+
+        const trialBalance = (await sql`
+          SELECT * FROM trial_balance_lines WHERE balance_report_id = ${reportId}
+        `).rows;
+
+        const cashLine = trialBalance.find(r => r.account_code === 11110);
+        equal(cashLine.debit, expectedCashBalances[i], `Report ${i + 1}: Cash should be ${expectedCashBalances[i]}`);
+
+        const equityLine = trialBalance.find(r => r.account_code === 31000);
+        equal(equityLine.credit, expectedEquityBalances[i], `Report ${i + 1}: Equity should be ${expectedEquityBalances[i]}`);
+
+        // Verify trial balance always balances
+        const totalDebits = trialBalance.reduce((sum, row) => sum + Number(row.debit), 0);
+        const totalCredits = trialBalance.reduce((sum, row) => sum + Number(row.credit), 0);
+        equal(totalDebits, totalCredits, `Report ${i + 1}: Trial balance should balance`);
+      }
+    });
+
+    it('shall handle reports with mixed transaction types and dates correctly', async function () {
+      await setupCompleteChartOfAccounts();
+
+      // Create complex transaction history
+      // Jan 1: Initial setup - Capital and Loan
+      const ref1 = await draftJournalEntry(new Date(2024, 0, 1, 0, 0, 0, 0));
+      await addJournalLine(ref1, 11110, 100000, 0);
+      await addJournalLine(ref1, 31000, 0, 50000);
+      await addJournalLine(ref1, 21100, 0, 50000);
+      await postJournalEntry(ref1, new Date(2024, 0, 1, 0, 0, 0, 0));
+
+      // Jan 15: Purchase inventory
+      const ref2 = await draftJournalEntry(new Date(2024, 0, 15, 0, 0, 0, 0));
+      await addJournalLine(ref2, 11310, 40000, 0);
+      await addJournalLine(ref2, 11110, 0, 40000);
+      await postJournalEntry(ref2, new Date(2024, 0, 15, 0, 0, 0, 0));
+
+      // Feb 1: Equipment purchase
+      const ref3 = await draftJournalEntry(new Date(2024, 1, 1, 0, 0, 0, 0));
+      await addJournalLine(ref3, 12110, 20000, 0);
+      await addJournalLine(ref3, 11110, 0, 20000);
+      await postJournalEntry(ref3, new Date(2024, 1, 1, 0, 0, 0, 0));
+
+      // Feb 20: Sales
+      const ref4 = await draftJournalEntry(new Date(2024, 1, 20, 0, 0, 0, 0));
+      await addJournalLine(ref4, 11110, 60000, 0);
+      await addJournalLine(ref4, 41000, 0, 60000);
+      await postJournalEntry(ref4, new Date(2024, 1, 20, 0, 0, 0, 0));
+
+      // Feb 20: COGS
+      const ref5 = await draftJournalEntry(new Date(2024, 1, 20, 0, 0, 0, 0));
+      await addJournalLine(ref5, 51000, 25000, 0);
+      await addJournalLine(ref5, 11310, 0, 25000);
+      await postJournalEntry(ref5, new Date(2024, 1, 20, 0, 0, 0, 0));
+
+      // Mar 10: Pay expenses
+      const ref6 = await draftJournalEntry(new Date(2024, 2, 10, 0, 0, 0, 0));
+      await addJournalLine(ref6, 61300, 8000, 0);
+      await addJournalLine(ref6, 61100, 2000, 0);
+      await addJournalLine(ref6, 11110, 0, 10000);
+      await postJournalEntry(ref6, new Date(2024, 2, 10, 0, 0, 0, 0));
+
+      // Generate report as of Feb 15 (mid-month)
+      const feb15Report = new Date(2024, 1, 15, 0, 0, 0, 0).getTime();
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${feb15Report}, 'Ad Hoc', 'Feb 15 2024 Report', ${testTime})
+      `;
+
+      // Verify Feb 15 balances
+      const trialBalance = (await sql`
+        SELECT * FROM trial_balance_lines WHERE balance_report_id = 1 ORDER BY account_code
+      `).rows;
+
+      // Cash: 100000 - 40000 - 20000 = 40000
+      const cashLine = trialBalance.find(r => r.account_code === 11110);
+      equal(cashLine.debit, 40000, 'Feb 15: Cash should be 40000');
+
+      // Inventory: 40000
+      const inventoryLine = trialBalance.find(r => r.account_code === 11310);
+      equal(inventoryLine.debit, 40000, 'Feb 15: Inventory should be 40000');
+
+      // Equipment: 20000
+      const equipmentLine = trialBalance.find(r => r.account_code === 12110);
+      equal(equipmentLine.debit, 20000, 'Feb 15: Equipment should be 20000');
+
+      // AP: 50000
+      const payableLine = trialBalance.find(r => r.account_code === 21100);
+      equal(payableLine.credit, 50000, 'Feb 15: AP should be 50000');
+
+      // Equity: 50000
+      const equityLine = trialBalance.find(r => r.account_code === 31000);
+      equal(equityLine.credit, 50000, 'Feb 15: Equity should be 50000');
+
+      // Revenue should NOT be included (transaction on Feb 20)
+      const revenueLine = trialBalance.find(r => r.account_code === 41000);
+      ok(!revenueLine, 'Feb 15: Revenue should not be included (transaction on Feb 20)');
+
+      // COGS should NOT be included
+      const cogsLine = trialBalance.find(r => r.account_code === 51000);
+      ok(!cogsLine, 'Feb 15: COGS should not be included (transaction on Feb 20)');
+
+      // Expenses should NOT be included
+      const salariesLine = trialBalance.find(r => r.account_code === 61300);
+      ok(!salariesLine, 'Feb 15: Salaries should not be included (transaction on Mar 10)');
+
+      // Verify accounting equation via balance sheet
+      const balanceSheet = (await sql`
+        SELECT * FROM balance_sheet_lines WHERE balance_report_id = 1
+      `).rows;
+
+      const totalAssets = balanceSheet
+        .filter(r => r.classification === 'Assets')
+        .reduce((sum, r) => sum + Number(r.amount), 0);
+      const totalLiabilities = balanceSheet
+        .filter(r => r.classification === 'Liabilities')
+        .reduce((sum, r) => sum + Number(r.amount), 0);
+      const totalEquity = balanceSheet
+        .filter(r => r.classification === 'Equity')
+        .reduce((sum, r) => sum + Number(r.amount), 0);
+
+      equal(totalAssets, 100000, 'Feb 15: Total Assets should be 100000');
+      equal(totalLiabilities, 50000, 'Feb 15: Total Liabilities should be 50000');
+      equal(totalEquity, 50000, 'Feb 15: Total Equity should be 50000');
+      equal(totalAssets, totalLiabilities + totalEquity, 'Feb 15: Accounting equation should balance');
+    });
+
+    it('shall handle negative balances correctly in period-specific reports', async function () {
+      await setupCompleteChartOfAccounts();
+
+      // Create scenario with negative balance on specific date
+      // Jan 1: Start with capital
+      const ref1 = await draftJournalEntry(new Date(2024, 0, 1, 0, 0, 0, 0));
+      await addJournalLine(ref1, 11110, 10000, 0);
+      await addJournalLine(ref1, 31000, 0, 10000);
+      await postJournalEntry(ref1, new Date(2024, 0, 1, 0, 0, 0, 0));
+
+      // Jan 15: Large expense creates negative cash
+      const ref2 = await draftJournalEntry(new Date(2024, 0, 15, 0, 0, 0, 0));
+      await addJournalLine(ref2, 61300, 15000, 0);
+      await addJournalLine(ref2, 11110, 0, 15000);
+      await postJournalEntry(ref2, new Date(2024, 0, 15, 0, 0, 0, 0));
+
+      // Feb 1: More capital injection fixes negative
+      const ref3 = await draftJournalEntry(new Date(2024, 1, 1, 0, 0, 0, 0));
+      await addJournalLine(ref3, 11110, 20000, 0);
+      await addJournalLine(ref3, 31000, 0, 20000);
+      await postJournalEntry(ref3, new Date(2024, 1, 1, 0, 0, 0, 0));
+
+      // Generate report as of Jan 20 (during negative period)
+      const jan20Report = new Date(2024, 0, 20, 0, 0, 0, 0).getTime();
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${jan20Report}, 'Ad Hoc', 'Jan 20 2024 Report', ${testTime})
+      `;
+
+      // Verify negative balance shown as credit for debit-normal account
+      const jan20TrialBalance = (await sql`
+        SELECT * FROM trial_balance_lines WHERE balance_report_id = 1
+      `).rows;
+
+      const jan20Cash = jan20TrialBalance.find(r => r.account_code === 11110);
+      equal(jan20Cash.debit, 0, 'Jan 20: Negative cash should show 0 debit');
+      equal(jan20Cash.credit, 5000, 'Jan 20: Negative cash should show 5000 credit (overdraft)');
+
+      // Generate report as of Feb 15 (after capital injection)
+      const feb15Report = new Date(2024, 1, 15, 0, 0, 0, 0).getTime();
+      await sql`
+        INSERT INTO balance_reports (report_time, report_type, name, create_time)
+        VALUES (${feb15Report}, 'Ad Hoc', 'Feb 15 2024 Report', ${testTime})
+      `;
+
+      // Verify positive balance restored
+      const feb15TrialBalance = (await sql`
+        SELECT * FROM trial_balance_lines WHERE balance_report_id = 2
+      `).rows;
+
+      const feb15Cash = feb15TrialBalance.find(r => r.account_code === 11110);
+      equal(feb15Cash.debit, 15000, 'Feb 15: Cash should be positive 15000');
+      equal(feb15Cash.credit, 0, 'Feb 15: Cash credit should be 0');
+    });
+  });
 });

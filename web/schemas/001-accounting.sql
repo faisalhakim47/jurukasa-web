@@ -910,17 +910,40 @@ BEGIN
     new.id,
     a.account_code,
     CASE 
-      WHEN a.balance >= 0 AND a.normal_balance = 0 THEN a.balance  -- Debit normal, positive balance
-      WHEN a.balance < 0 AND a.normal_balance = 1 THEN ABS(a.balance)  -- Credit normal, negative balance (shown as debit)
+      WHEN period_balance >= 0 AND a.normal_balance = 0 THEN period_balance  -- Debit normal, positive balance
+      WHEN period_balance < 0 AND a.normal_balance = 1 THEN ABS(period_balance)  -- Credit normal, negative balance (shown as debit)
       ELSE 0
     END AS debit,
     CASE
-      WHEN a.balance >= 0 AND a.normal_balance = 1 THEN a.balance  -- Credit normal, positive balance
-      WHEN a.balance < 0 AND a.normal_balance = 0 THEN ABS(a.balance)  -- Debit normal, negative balance (shown as credit)
+      WHEN period_balance >= 0 AND a.normal_balance = 1 THEN period_balance  -- Credit normal, positive balance
+      WHEN period_balance < 0 AND a.normal_balance = 0 THEN ABS(period_balance)  -- Debit normal, negative balance (shown as credit)
       ELSE 0 
     END AS credit
   FROM accounts a
-  WHERE a.is_active = 1 OR a.balance != 0;
+  LEFT JOIN (
+    SELECT
+      jel.account_code,
+      COALESCE(SUM(
+        CASE a2.normal_balance
+          WHEN 0 THEN jel.debit - jel.credit  -- Debit normal balance
+          WHEN 1 THEN jel.credit - jel.debit  -- Credit normal balance
+        END
+      ), 0) AS period_balance
+    FROM journal_entry_lines jel
+    JOIN journal_entries je ON je.ref = jel.journal_entry_ref
+    JOIN accounts a2 ON a2.account_code = jel.account_code
+    WHERE je.post_time IS NOT NULL
+      AND je.entry_time <= new.report_time
+    GROUP BY jel.account_code
+  ) balances ON balances.account_code = a.account_code
+  WHERE (a.is_active = 1 OR period_balance != 0)
+    AND (period_balance != 0 OR EXISTS (
+      SELECT 1 FROM journal_entry_lines jel2
+      JOIN journal_entries je2 ON je2.ref = jel2.journal_entry_ref
+      WHERE jel2.account_code = a.account_code
+        AND je2.post_time IS NOT NULL
+        AND je2.entry_time <= new.report_time
+    ));
 END; -- EOS
 
 -- =================================================================
@@ -988,15 +1011,38 @@ BEGIN
       WHEN at.tag = 'Balance Sheet - Non-Current Liability' THEN 'Non-Current Liabilities'
       WHEN at.tag = 'Balance Sheet - Equity' THEN 'Equity'
     END AS category,
-    a.balance AS amount
+    COALESCE(balances.period_balance, 0) AS amount
   FROM accounts a
   JOIN account_tags at ON at.account_code = a.account_code
-  WHERE (a.is_active = 1 OR a.balance != 0)
+  LEFT JOIN (
+    SELECT
+      jel.account_code,
+      COALESCE(SUM(
+        CASE a2.normal_balance
+          WHEN 0 THEN jel.debit - jel.credit  -- Debit normal balance
+          WHEN 1 THEN jel.credit - jel.debit  -- Credit normal balance
+        END
+      ), 0) AS period_balance
+    FROM journal_entry_lines jel
+    JOIN journal_entries je ON je.ref = jel.journal_entry_ref
+    JOIN accounts a2 ON a2.account_code = jel.account_code
+    WHERE je.post_time IS NOT NULL
+      AND je.entry_time <= new.report_time
+    GROUP BY jel.account_code
+  ) balances ON balances.account_code = a.account_code
+  WHERE (a.is_active = 1 OR balances.period_balance != 0)
     AND at.tag IN (
       'Balance Sheet - Current Asset', 'Balance Sheet - Non-Current Asset',
       'Balance Sheet - Current Liability', 'Balance Sheet - Non-Current Liability',
       'Balance Sheet - Equity'
     )
+    AND (balances.period_balance != 0 OR EXISTS (
+      SELECT 1 FROM journal_entry_lines jel2
+      JOIN journal_entries je2 ON je2.ref = jel2.journal_entry_ref
+      WHERE jel2.account_code = a.account_code
+        AND je2.post_time IS NOT NULL
+        AND je2.entry_time <= new.report_time
+    ))
   ORDER BY a.account_code ASC;
 END; -- EOS
 

@@ -31,7 +31,6 @@ async function setupView(tursoDatabaseUrl) {
 describe('Fiscal Years View - Basic Display', function () {
   useConsoleOutput(test);
   useStrict(test);
-
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
   test('it shall display empty state when no fiscal years exist', async function ({ page }) {
@@ -61,6 +60,25 @@ describe('Fiscal Years View - Basic Display', function () {
     await expect(page.getByRole('button', { name: 'Fiscal Year 2023', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Fiscal Year 2024', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Fiscal Year 2025', exact: true })).toBeVisible();
+  });
+
+  test('it shall display table column headers', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${new Date('2025-01-01').getTime()}, ${new Date('2025-12-31').getTime()}, 'FY 2025')`;
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    const table = page.getByRole('table', { name: 'Fiscal years list' });
+    await expect(table.getByRole('columnheader', { name: 'Name' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'Begin Date' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'End Date' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'Status' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'Closed On' })).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: 'Closing Entry' })).toBeVisible();
   });
 
   test('it shall display fiscal year with Open status when not closed', async function ({ page }) {
@@ -186,8 +204,43 @@ describe('Fiscal Years View - Fiscal Year Details', function () {
 
     await page.getByRole('button', { name: 'Test Fiscal Year', exact: true }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Test Fiscal Year' })).toBeVisible();
-    await expect(page.getByRole('dialog').getByText('Test Fiscal Year')).toBeVisible();
+    const dialog = page.getByRole('dialog', { name: 'Test Fiscal Year' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: 'Test Fiscal Year' })).toBeVisible();
+    await expect(dialog.getByText('Period')).toBeVisible();
+    await expect(dialog.getByText('This fiscal year is open. Close it to view closing statements and income statement.')).toBeVisible();
+  });
+
+  test('it shall display fiscal year details for closed fiscal year', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+        const beginTime = new Date('2024-01-01').getTime();
+        const endTime = new Date('2024-12-31').getTime();
+        const postTime = new Date('2025-01-15').getTime();
+        const entryTime = new Date('2024-06-15').getTime();
+
+        await sql`INSERT INTO journal_entries (entry_time, note, source_type, created_by, post_time) VALUES (${entryTime}, 'Test entry', 'Manual', 'User', ${entryTime})`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 41000, 0, 10000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 51000, 10000, 0)`;
+
+        await sql`INSERT INTO journal_entries (entry_time, note, source_type, created_by, post_time) VALUES (${postTime}, 'Fiscal Year Closing - Closed FY 2024', 'System', 'System', ${postTime})`;
+
+        await sql`INSERT INTO fiscal_years (begin_time, end_time, name, closing_journal_entry_ref) VALUES (${beginTime}, ${endTime}, 'Closed FY 2024', 2)`;
+        await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
+      }),
+    ]);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await page.getByRole('button', { name: 'Closed FY 2024', exact: true }).click();
+
+    const dialog = page.getByRole('dialog', { name: 'Closed FY 2024' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: 'Closed FY 2024' })).toBeVisible();
+    await expect(dialog.getByText('Period')).toBeVisible();
+    await expect(dialog.getByText('Closing Entry')).toBeVisible();
+    await expect(dialog.getByText('#2')).toBeVisible();
   });
 });
 
@@ -288,7 +341,9 @@ describe('Fiscal Years View - Action Buttons', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
+    const refreshButton = page.getByRole('button', { name: 'Refresh' });
+    await expect(refreshButton).toBeVisible();
+    await expect(refreshButton).toHaveAttribute('aria-label', 'Refresh');
   });
 
   test('it shall open creation dialog when create button is clicked', async function ({ page }) {

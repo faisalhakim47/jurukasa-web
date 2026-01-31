@@ -162,10 +162,10 @@ We have two test setups:
 ### Playwright Test Setup
 
 - Test files is located alongside its implementation file with `.spec.js` suffix.
-- Run all tests by command `CONSOLE_OUTPUT=0 npx playwright test` (slow).
-- Run a test by command `CONSOLE_OUTPUT=0 npx playwright test $SPEC_FILE_RELATIVE_PATH` (fast).
-- The `CONSOLE_OUTPUT` flag to enable/disable piping from browser's console output into the test's stdout. Set to '1' to enable.
-- When debugging, read Accessibility Tree file to see the latest state of accessible HTML.
+- Run all tests by command `CONSOLE_OUTPUT=1 npx playwright test` (slow).
+- Run a test by command `CONSOLE_OUTPUT=1 npx playwright test $SPEC_FILE_RELATIVE_PATH` (fast).
+- The `CONSOLE_OUTPUT=1` is optional env var flag to enable piping from browser's console output into the test's stdout. Very useful for test debugging.
+- Each test failure will generate Accessibility Tree file containing the latest state of HTML semantical structure. Very recommended to read it for debugging.
 
 ### Playwright Test Writing Guidelines
 

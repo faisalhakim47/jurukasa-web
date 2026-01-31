@@ -54,7 +54,6 @@ async function waitForComponents(page) {
 /** @param {Page} page */
 export async function loadEmptyFixture(page) {
   await page.goto('/test/playwright/fixtures/empty.html', { waitUntil: 'load' });
-  await page.pause();
   await waitForComponents(page);
 }
 
