@@ -53,30 +53,6 @@ async function setupOnboardingViewWithoutDatabase() {
   `;
 }
 
-/** @param {string} pathname */
-async function setupOnboardingViewWithRoute(pathname) {
-  document.body.innerHTML = `
-    <ready-context>
-      <service-worker-context>
-        <router-context>
-          <database-context>
-            <device-context>
-              <i18n-context>
-                <onboarding-view></onboarding-view>
-              </i18n-context>
-            </device-context>
-          </database-context>
-        </router-context>
-      </service-worker-context>
-    </ready-context>
-  `;
-
-  // Navigate to the specified route
-  /** @type {import('#web/contexts/router-context.js').RouterContextElement} */
-  const router = document.querySelector('router-context');
-  router.navigate({ pathname, replace: true });
-}
-
 describe('Onboarding View', function () {
   useConsoleOutput(test);
   useStrict(test);
@@ -466,6 +442,7 @@ describe('Onboarding View', function () {
       const chartOfAccountsDialog = page.getByRole('dialog', { name: 'Choose Chart of Accounts Template' });
       await expect(chartOfAccountsDialog).toBeVisible();
       await chartOfAccountsDialog.getByRole('radio', { name: 'Retail Business - Indonesia' }).check();
+      await page.pause();
       await chartOfAccountsDialog.getByRole('button', { name: 'Finish' }).click();
 
       await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();

@@ -18,7 +18,7 @@ export async function startTursoLibSQLiteServer(config) {
     }
 
     const tursoDevPort = await findAvailablePort();
-    const tursoDevDir = join(tmpdir(), `jurukasa-test-${tursoDevPort}-${Date.now()}`);
+    const tursoDevDir = join(tmpdir(), `jurukasa-test-${tursoDevPort}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
     await rm(tursoDevDir, { recursive: true, force: true });
     await mkdir(tursoDevDir, { recursive: true });
     const tursoDevPath = join(tursoDevDir, 'database.sqlite');

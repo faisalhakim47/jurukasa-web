@@ -197,7 +197,7 @@ async function hotfixSqlite3OpfsAsyncProxy(url) {
 
 /**
  * For consistency our structure list all resources from package.json, including the html files.
- * For this reason, the html is included in caching process. But, the cache is come from some CDN.
+ * For this reason, the html is included in caching process. But, the cache comes from some CDN.
  * Most CDN would forbid to serve HTML by invalidating Content-Type header. We need to fix this.
  * 
  * @param {string} url
@@ -206,7 +206,8 @@ async function fixCDNToServeHTML(url) {
   if (url.endsWith('.html')) {
     const response = await fetch(url);
     return new Response(response.body, {
-      status: 200,
+      status: response.status,
+      statusText: response.statusText,
       headers: {
         ...Array.from(response.headers.entries())
           .reduce(function compileHeaders(headers, [key, value]) {
@@ -214,6 +215,29 @@ async function fixCDNToServeHTML(url) {
             return headers;
           }, {}),
         'Content-Type': 'text/html; charset=utf-8',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+      },
+    });
+  }
+  else return await fetch(url);
+}
+
+/**
+ * @param {string} url
+ */
+async function fixSQLiteCoopCoep(url) {
+  if (url.endsWith('sqlite3-worker1.mjs')) {
+    const response = await fetch(url);
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: {
+        ...Array.from(response.headers.entries())
+          .reduce(function compileHeaders(headers, [key, value]) {
+            headers[key] = value;
+            return headers;
+          }, {}),
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Cross-Origin-Embedder-Policy': 'require-corp',
       },
@@ -239,6 +263,9 @@ async function addImmutableCacheUrls(cache, urls) {
       }
       else if (url.endsWith('.html')) {
         await cache.put(url, await fixCDNToServeHTML(url));
+      }
+      else if (url.endsWith('sqlite3-worker1.mjs')) {
+        await cache.put(url, await fixSQLiteCoopCoep(url));
       }
       else await cache.add(url).catch(function logCacheAddError(error) {
         console.warn('sw', 'cache', 'add', 'error', url, error.message);

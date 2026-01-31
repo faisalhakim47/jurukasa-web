@@ -59,6 +59,7 @@
 :is([role="listitem"],[role="menuitem"],[role="menuitemradio"])::before {
   z-index: -2;
   background-color: transparent;
+  border-radius: var(--md-sys-shape-corner-small);
 }
 
 /* ::after is the state layer overlay (Hover/Focus/Press) */
@@ -221,6 +222,7 @@
 }
 :is([role="listitem"],[role="menuitem"],[role="menuitemradio"]):hover::after {
   opacity: 0.08; /* 8% Opacity on surface */
+  border-radius: var(--md-sys-shape-corner-small);
 }
 
 /* ## 5.2. Focus State */
