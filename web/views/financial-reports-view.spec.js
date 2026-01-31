@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import { jurukasaTest } from '#test/playwright/test-setup.js';
 import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
-import { useStrict, bypassForbiddenLocator } from '#test/playwright/hooks/use-strict.js';
+import { useStrict } from '#test/playwright/hooks/use-strict.js';
 import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 import { setupDatabase } from '#test/playwright/tools/database.js';
 
@@ -29,34 +29,12 @@ async function setupView(tursoDatabaseUrl) {
   `;
 }
 
-describe('Financial Reports', function () {
+describe('Financial Reports - Refactored View', function () {
   useConsoleOutput(test);
   useStrict(test);
 
   describe('Financial Reports Display', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
-    test('shall display Report Type selector', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByLabel('Report Type', { exact: true })).toBeVisible();
-    });
-
-    test('shall default to Trial Balance report type', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByLabel('Report Type', { exact: true })).toHaveValue('Trial Balance');
-    });
 
     test('shall display empty state when no reports exist', async function ({ page }) {
       await Promise.all([
@@ -70,6 +48,19 @@ describe('Financial Reports', function () {
       await expect(page.getByText('Generate a new balance report to view trial balance and balance sheet.')).toBeVisible();
     });
 
+    test('shall display table of generated reports when reports exist', async function ({ page }) {
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+          await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (1704067200000, 'Ad Hoc', 'Test Report', 1704067200000)`;
+        }),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('table', { name: 'Generated balance reports' })).toBeVisible();
+    });
+
     test('shall display Generate Report button', async function ({ page }) {
       await Promise.all([
         loadEmptyFixture(page),
@@ -78,7 +69,7 @@ describe('Financial Reports', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('button', { name: 'Generate Report' }).first()).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Generate Report' })).toBeVisible();
     });
 
     test('shall display Refresh button', async function ({ page }) {
@@ -89,127 +80,7 @@ describe('Financial Reports', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('button', { name: 'Refresh report' })).toBeVisible();
-    });
-  });
-
-  describe('Report Type Selection', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
-    test('shall show report type menu when clicking selector', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByLabel('Report Type', { exact: true }).click();
-
-      const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
-      await expect(reportTypeMenu).toBeVisible();
-      await expect(reportTypeMenu.getByRole('menuitemradio', { name: 'Trial Balance' })).toBeVisible();
-      await expect(reportTypeMenu.getByRole('menuitemradio', { name: 'Balance Sheet' })).toBeVisible();
-      await expect(reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' })).toBeVisible();
-    });
-
-    test('shall switch to Balance Sheet report type', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      // Wait for the Reports panel to be visible and in viewport
-      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
-      await expect(reportsPanel).toBeInViewport();
-
-      await page.getByLabel('Report Type', { exact: true }).click();
-      const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
-      await expect(reportTypeMenu).toBeVisible();
-      const balanceSheetOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Balance Sheet' });
-      await expect(balanceSheetOption).toBeVisible();
-      await balanceSheetOption.click({ force: true });
-
-      await expect(page.getByLabel('Report Type', { exact: true })).toHaveValue('Balance Sheet');
-    });
-
-    test('shall switch to Income Statement report type', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      // Wait for the Reports panel to be visible and in viewport
-      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
-      await expect(reportsPanel).toBeInViewport();
-
-      await page.getByLabel('Report Type', { exact: true }).click();
-      const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
-      await expect(reportTypeMenu).toBeVisible();
-      const incomeStatementOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' });
-      await expect(incomeStatementOption).toBeVisible();
-      await incomeStatementOption.click({ force: true });
-
-      await expect(page.getByLabel('Report Type', { exact: true })).toHaveValue('Income Statement');
-    });
-
-    test('shall show Fiscal Year selector for Income Statement', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      // Wait for the Reports panel to be visible and in viewport
-      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
-      await expect(reportsPanel).toBeInViewport();
-
-      await page.getByLabel('Report Type', { exact: true }).click();
-      const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
-      await expect(reportTypeMenu).toBeVisible();
-      const incomeStatementOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' });
-      await expect(incomeStatementOption).toBeVisible();
-      await incomeStatementOption.click({ force: true });
-
-      await expect(page.getByLabel('Fiscal Year', { exact: true })).toBeVisible();
-    });
-
-    test('shall show Report Date selector for Trial Balance', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByLabel('Report Date', { exact: true })).toBeVisible();
-    });
-
-    test('shall hide Report Date selector for Income Statement', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      // Wait for the Reports panel to be visible and in viewport
-      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
-      await expect(reportsPanel).toBeInViewport();
-
-      await page.getByLabel('Report Type', { exact: true }).click();
-      const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
-      await expect(reportTypeMenu).toBeVisible();
-      const incomeStatementOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' });
-      await expect(incomeStatementOption).toBeVisible();
-      await incomeStatementOption.click({ force: true });
-
-      await expect(page.getByLabel('Report Date', { exact: true })).not.toBeVisible();
+      await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
     });
   });
 
@@ -224,12 +95,12 @@ describe('Financial Reports', function () {
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await page.getByRole('button', { name: 'Generate Report' }).first().click();
+      await page.getByRole('button', { name: 'Generate Report' }).click();
 
-      await expect(page.getByRole('table', { name: 'Trial Balance' })).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Generate Balance Report' })).toBeVisible();
     });
 
-    test('shall display trial balance table after generating report', async function ({ page }) {
+    test('shall add report to table after generation', async function ({ page }) {
       await Promise.all([
         loadEmptyFixture(page),
         setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
@@ -238,198 +109,114 @@ describe('Financial Reports', function () {
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
       await page.getByRole('button', { name: 'Generate Report' }).first().click();
-      const trialBalanceTable = page.getByRole('table', { name: 'Trial Balance' });
-      await expect(trialBalanceTable).toBeVisible();
 
-      await expect(trialBalanceTable.getByRole('columnheader', { name: 'Code' })).toBeVisible();
-      await expect(trialBalanceTable.getByRole('columnheader', { name: 'Account Name' })).toBeVisible();
-      await expect(trialBalanceTable.getByRole('columnheader', { name: 'Normal' })).toBeVisible();
-      await expect(trialBalanceTable.getByRole('columnheader', { name: 'Debit' })).toBeVisible();
-      await expect(trialBalanceTable.getByRole('columnheader', { name: 'Credit' })).toBeVisible();
-    });
-  });
+      const dateTimeInput = page.getByLabel('Report Date & Time', { exact: true });
+      await dateTimeInput.fill('2025-01-15T00:00');
 
-  describe('Balance Sheet', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+      await page.getByRole('dialog', { name: 'Generate Balance Report' }).getByRole('button', { name: 'Generate Report' }).click();
 
-    test('shall display balance sheet table after selecting Balance Sheet and generating report', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('button', { name: 'Generate Report' }).first().click();
-      await expect(page.getByRole('table', { name: 'Trial Balance' })).toBeVisible();
-
-      await page.getByLabel('Report Type', { exact: true }).click();
-      const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
-      await expect(reportTypeMenu).toBeVisible();
-      await reportTypeMenu.getByRole('menuitemradio', { name: 'Balance Sheet' }).click();
-
-      await expect(page.getByRole('table', { name: 'Balance Sheet' })).toBeVisible();
-    });
-
-    test('shall display balance sheet column headers', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('button', { name: 'Generate Report' }).first().click();
-      await expect(page.getByRole('table', { name: 'Trial Balance' })).toBeVisible();
-
-      await page.getByLabel('Report Type', { exact: true }).click();
-      const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
-      await expect(reportTypeMenu).toBeVisible();
-      await reportTypeMenu.getByRole('menuitemradio', { name: 'Balance Sheet' }).click();
-
-      await expect(page.getByRole('columnheader', { name: 'Code' })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: 'Account Name' })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: 'Amount' })).toBeVisible();
-    });
-
-    test('shall display balance sheet classification sections', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('button', { name: 'Generate Report' }).first().click();
-      await expect(page.getByRole('table', { name: 'Trial Balance' })).toBeVisible();
-
-      await page.getByLabel('Report Type', { exact: true }).click();
-      const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
-      await expect(reportTypeMenu).toBeVisible();
-      await reportTypeMenu.getByRole('menuitemradio', { name: 'Balance Sheet' }).click();
-
-      const balanceSheetTable = page.getByRole('table', { name: 'Balance Sheet' });
-      const emptyStateHeading = page.getByRole('heading', { name: 'No reports generated' });
-
-      await expect(balanceSheetTable.or(emptyStateHeading)).toBeVisible();
-    });
-
-    test('shall show balance equation status', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('button', { name: 'Generate Report' }).first().click();
-      await expect(page.getByRole('table', { name: 'Trial Balance' })).toBeVisible();
-
-      await page.getByLabel('Report Type', { exact: true }).click();
-      const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
-      await expect(reportTypeMenu).toBeVisible();
-      await reportTypeMenu.getByRole('menuitemradio', { name: 'Balance Sheet' }).click();
-
-      await expect(page.getByRole('table', { name: 'Balance Sheet' }).or(page.getByRole('alert'))).toBeVisible();
-
-      const hasBalanceSheet = await page.getByRole('table', { name: 'Balance Sheet' }).isVisible().catch(() => false);
-      if (hasBalanceSheet) {
-        const balanceEquationVisible = await page.getByText('Assets = Liabilities + Equity').isVisible().catch(() => false);
-        const outOfBalanceVisible = await page.getByText('Balance Sheet is out of balance').isVisible().catch(() => false);
-        await expect(balanceEquationVisible || outOfBalanceVisible).toBeTruthy();
-      }
-    });
-  });
-
-  describe('Income Statement', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
-    test('shall display empty state for Income Statement when no fiscal years exist', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      // Wait for the Reports panel to be visible and in viewport
-      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
-      await expect(reportsPanel).toBeInViewport();
-
-      await page.getByLabel('Report Type', { exact: true }).click();
-      const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
-      await expect(reportTypeMenu).toBeVisible();
-      const incomeStatementOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' });
-      await expect(incomeStatementOption).toBeVisible();
-      await incomeStatementOption.click({ force: true });
-
-      await expect(page.getByRole('heading', { name: 'No income statement data' })).toBeVisible();
-      await expect(page.getByText('Create a fiscal year to generate income statements.')).toBeVisible();
-    });
-
-    test('shall hide Generate Report button for Income Statement', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
-      ]);
-
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      // Wait for the Reports panel to be visible and in viewport
-      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
-      await expect(reportsPanel).toBeInViewport();
-
-      await page.getByLabel('Report Type', { exact: true }).click();
-      const reportTypeMenu = page.getByRole('menu', { name: 'Report type menu' });
-      await expect(reportTypeMenu).toBeVisible();
-      const incomeStatementOption = reportTypeMenu.getByRole('menuitemradio', { name: 'Income Statement' });
-      await expect(incomeStatementOption).toBeVisible();
-      await incomeStatementOption.click({ force: true });
-
-      const headerGenerateButton = reportsPanel.getByRole('button', { name: 'Generate Report' });
-      await expect(headerGenerateButton).not.toBeVisible();
+      await expect(page.getByRole('table', { name: 'Generated balance reports' })).toBeVisible();
     });
   });
 
   describe('Report Actions', function () {
     const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-    test('shall refresh report when clicking Refresh button', async function ({ page }) {
+    test('shall display View Trial Balance action for each report', async function ({ page }) {
       await Promise.all([
         loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+          await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (1704067200000, 'Ad Hoc', 'Test Report 1', 1704067200000)`;
+        }),
       ]);
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await page.getByRole('button', { name: 'Generate Report' }).first().click();
-      await expect(page.getByRole('table', { name: 'Trial Balance' })).toBeVisible();
-
-      await page.getByRole('button', { name: 'Refresh report' }).click();
-
-      await expect(page.getByRole('table', { name: 'Trial Balance' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Trial Balance' })).toBeVisible();
     });
 
-    test('shall be able to generate multiple reports', async function ({ page }) {
+    test('shall display View Balance Sheet action for each report', async function ({ page }) {
       await Promise.all([
         loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {}),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+          await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (1704067200000, 'Ad Hoc', 'Test Report 1', 1704067200000)`;
+        }),
       ]);
 
       await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-      await page.getByRole('button', { name: 'Generate Report' }).first().click();
-      await expect(page.getByRole('table', { name: 'Trial Balance' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Balance Sheet' })).toBeVisible();
+    });
 
-      const reportsPanel = page.getByRole('tabpanel', { name: 'Reports' });
-      await reportsPanel.getByRole('button', { name: 'Generate Report' }).first().click();
 
-      await page.getByLabel('Report Date', { exact: true }).click();
-      const reportMenu = page.getByRole('menu', { name: 'Report date menu' });
-      await expect(reportMenu).toBeVisible();
+  });
 
-      const reportItems = reportMenu.getByRole('menuitem');
-      await expect(reportItems).toHaveCount(2);
+  describe('Report Table Columns', function () {
+    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+
+    test('shall display report name column', async function ({ page }) {
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+          await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (1704067200000, 'Ad Hoc', 'Test Report 1', 1704067200000)`;
+        }),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('columnheader', { name: 'Report Name' })).toBeVisible();
+    });
+
+    test('shall display report date column', async function ({ page }) {
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+          await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (1704067200000, 'Ad Hoc', 'Test Report 1', 1704067200000)`;
+        }),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('columnheader', { name: 'Report Date' })).toBeVisible();
+    });
+
+    test('shall display snapshot date column', async function ({ page }) {
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+          await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (1704067200000, 'Ad Hoc', 'Test Report 1', 1704067200000)`;
+        }),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('columnheader', { name: 'Snapshot Date' })).toBeVisible();
+    });
+
+    test('shall display type column', async function ({ page }) {
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+          await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (1704067200000, 'Ad Hoc', 'Test Report 1', 1704067200000)`;
+        }),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('columnheader', { name: 'Type' })).toBeVisible();
+    });
+
+    test('shall display actions column', async function ({ page }) {
+      await Promise.all([
+        loadEmptyFixture(page),
+        setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
+          await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (1704067200000, 'Ad Hoc', 'Test Report 1', 1704067200000)`;
+        }),
+      ]);
+
+      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+      await expect(page.getByRole('columnheader', { name: 'Actions' })).toBeVisible();
     });
   });
 });

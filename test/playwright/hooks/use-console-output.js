@@ -35,11 +35,11 @@ export function useConsoleOutput(test) {
       page.addListener('console', eachLog);
       return page;
     };
-    context.addListener('requestfailed', function eachFailedRequest(request) {
-      stdout.write(`[request:failed] `);
-      stdout.write(`${request.method()} ${request.url()}`);
-      stdout.write(EOL);
-    });
+    // context.addListener('requestfailed', function eachFailedRequest(request) {
+    //   stdout.write(`[request:failed] `);
+    //   stdout.write(`${request.method()} ${request.url()}`);
+    //   stdout.write(EOL);
+    // });
     context.addListener('page', function eachNewPage(page) {
       page.addListener('pageerror', function eachPageError(error) {
         stdout.write(`[page:error] `);

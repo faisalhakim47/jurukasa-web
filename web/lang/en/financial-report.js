@@ -80,6 +80,27 @@ const financialReport = {
   
   // Ad hoc report name
   adHocReportNameFormat: 'Report %s',
+
+  // Balance Report Creation Dialog
+  generateReportDialogTitle: 'Generate Balance Report',
+  reportNameLabel: 'Report Name',
+  reportNameHelperText: 'Optional name to identify this report',
+  reportDateTimeLabel: 'Report Date & Time',
+  reportDateTimeHelperText: 'The date and time to snapshot the account balances',
+  loadingFormLabel: 'Loading form...',
+  generationProgressLabel: 'Generating report...',
+  invalidDateTimeError: 'Invalid date and time specified',
+  errorTitle: 'Error',
+  dismissLabel: 'Dismiss',
+  closeDialogLabel: 'Close dialog',
+
+  // Fiscal Year Details
+  balanceReportsBeforeClosingTitle: 'Balance Reports Before Closing',
+  balanceReportsAfterClosingTitle: 'Balance Reports After Closing',
+  closingEntryDetailsTitle: 'Closing Entry Details',
+  noBalanceReportsBeforeClosing: 'No balance reports generated before closing',
+  noBalanceReportsAfterClosing: 'No balance reports generated after closing',
+  loadingDetailsLabel: 'Loading details...',
 };
 
 /** @typedef {typeof financialReport} FinancialReportTranslation */

@@ -162,8 +162,9 @@ We have two test setups:
 ### Playwright Test Setup
 
 - Test files is located alongside its implementation file with `.spec.js` suffix.
-- Run all tests by command `npx playwright test` (slow).
-- Run a test by command `npx playwright test $SPEC_FILE_RELATIVE_PATH` (fast).
+- Run all tests by command `CONSOLE_OUTPUT=0 npx playwright test` (slow).
+- Run a test by command `CONSOLE_OUTPUT=0 npx playwright test $SPEC_FILE_RELATIVE_PATH` (fast).
+- The `CONSOLE_OUTPUT` flag to enable/disable piping from browser's console output into the test's stdout. Set to '1' to enable.
 - When debugging, read Accessibility Tree file to see the latest state of accessible HTML.
 
 ### Playwright Test Writing Guidelines

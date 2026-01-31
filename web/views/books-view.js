@@ -22,8 +22,12 @@ import '#web/views/journal-entries-view.js';
 import '#web/views/chart-of-accounts-view.js';
 import '#web/views/account-tags-view.js';
 import '#web/views/financial-reports-view.js';
+import '#web/views/trial-balance-view.js';
+import '#web/views/balance-sheet-view.js';
+import '#web/views/income-statement-view.js';
 import '#web/views/fiscal-years-view.js';
 import '#web/views/fixed-assets-view.js';
+import '#web/components/balance-report-creation-dialog.js';
 
 export class BooksViewElement extends HTMLElement {
   constructor() {
@@ -39,6 +43,9 @@ export class BooksViewElement extends HTMLElement {
     const chartOfAccountsTabpanel = useElement(host, HTMLElement);
     const accountTagsTabpanel = useElement(host, HTMLElement);
     const reportsTabpanel = useElement(host, HTMLElement);
+    const trialBalanceView = useElement(host, HTMLElement);
+    const balanceSheetView = useElement(host, HTMLElement);
+    const incomeStatementView = useElement(host, HTMLElement);
     const fiscalYearsTabpanel = useElement(host, HTMLElement);
     const fixedAssetsTabpanel = useElement(host, HTMLElement);
     const notfoundDialog = useElement(host, HTMLDialogElement);
@@ -57,7 +64,12 @@ export class BooksViewElement extends HTMLElement {
       else if (pathname.startsWith('/books/journal-entries')) scrollIntoView(journalEntriesTabpanel.value);
       else if (pathname.startsWith('/books/chart-of-accounts')) scrollIntoView(chartOfAccountsTabpanel.value);
       else if (pathname.startsWith('/books/account-tags')) scrollIntoView(accountTagsTabpanel.value);
-      else if (pathname.startsWith('/books/reports')) scrollIntoView(reportsTabpanel.value);
+      else if (pathname.startsWith('/books/reports')) {
+        if (pathname.startsWith('/books/reports/trial-balance') && trialBalanceView.value) scrollIntoView(trialBalanceView.value);
+        else if (pathname.startsWith('/books/reports/balance-sheet') && balanceSheetView.value) scrollIntoView(balanceSheetView.value);
+        else if (pathname.startsWith('/books/reports/income-statement') && incomeStatementView.value) scrollIntoView(incomeStatementView.value);
+        else scrollIntoView(reportsTabpanel.value);
+      }
       else if (pathname.startsWith('/books/fiscal-years')) scrollIntoView(fiscalYearsTabpanel.value);
       else if (pathname.startsWith('/books/fixed-assets')) scrollIntoView(fixedAssetsTabpanel.value);
       else {
@@ -203,6 +215,33 @@ export class BooksViewElement extends HTMLElement {
               tabindex="${pathname.startsWith('/books/reports') ? '0' : '-1'}"
               ?inert=${pathname.startsWith('/books/reports') === false}
             ></financial-reports-view>
+            <trial-balance-view
+              ${trialBalanceView}
+              id="trial-balance-panel"
+              role="tabpanel"
+              aria-labelledby="reports-tab"
+              aria-hidden="${pathname.startsWith('/books/reports/trial-balance') ? 'false' : 'true'}"
+              tabindex="${pathname.startsWith('/books/reports/trial-balance') ? '0' : '-1'}"
+              ?inert=${pathname.startsWith('/books/reports/trial-balance') === false}
+            ></trial-balance-view>
+            <balance-sheet-view
+              ${balanceSheetView}
+              id="balance-sheet-panel"
+              role="tabpanel"
+              aria-labelledby="reports-tab"
+              aria-hidden="${pathname.startsWith('/books/reports/balance-sheet') ? 'false' : 'true'}"
+              tabindex="${pathname.startsWith('/books/reports/balance-sheet') ? '0' : '-1'}"
+              ?inert=${pathname.startsWith('/books/reports/balance-sheet') === false}
+            ></balance-sheet-view>
+            <income-statement-view
+              ${incomeStatementView}
+              id="income-statement-panel"
+              role="tabpanel"
+              aria-labelledby="fiscal-years-tab"
+              aria-hidden="${pathname.startsWith('/books/reports/income-statement') ? 'false' : 'true'}"
+              tabindex="${pathname.startsWith('/books/reports/income-statement') ? '0' : '-1'}"
+              ?inert=${pathname.startsWith('/books/reports/income-statement') === false}
+            ></income-statement-view>
             <fiscal-years-view
               ${fiscalYearsTabpanel}
               id="fiscal-years-panel"

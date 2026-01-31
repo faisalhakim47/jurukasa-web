@@ -53,6 +53,7 @@ export class RouterContextElement extends HTMLElement {
 
     const route = reactive(/** @type {Route} */({
       pathname: initialRoute?.pathname || window.location.pathname,
+      search: initialRoute?.search ?? window.location.search ?? '',
       database: false
         || initialRoute?.database
         || persistedRoute?.database
@@ -63,6 +64,7 @@ export class RouterContextElement extends HTMLElement {
 
     function syncNavigatorToRouter() {
       route.pathname = window.location.pathname;
+      route.search = window.location.search;
       route.database = window.history.state?.database ?? route.database;
       console.debug('router-context', 'syncNavigatorToRouter', route?.pathname, route?.search, route?.database?.provider);
     };
