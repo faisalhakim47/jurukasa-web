@@ -33,141 +33,69 @@ async function setupView(tursoDatabaseUrl) {
 describe('Reconciliation', function () {
   useConsoleOutput(test);
   useStrict(test);
+  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  describe('Reconciliation Navigation', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('navigate to reconciliation and display Account Reconciliation tab by default', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    test('shall display Reconciliation heading when navigating to reconciliation', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    await page.getByRole('link', { name: 'Reconcile' }).click();
 
-      await page.getByRole('link', { name: 'Reconcile' }).click();
-
-      await expect(page.getByRole('heading', { name: 'Reconciliation', level: 1 })).toBeVisible();
-    });
-
-    test('shall show Account Reconciliation tab as selected by default', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('link', { name: 'Reconcile' }).click();
-
-      await expect(page.getByRole('tab', { name: 'Account Reconciliation' })).toHaveAttribute('aria-selected', 'true');
-    });
-
-    test('shall switch to Cash Count tab when clicked', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('link', { name: 'Reconcile' }).click();
-      await page.getByRole('tab', { name: 'Cash Count' }).click();
-
-      await expect(page.getByRole('tab', { name: 'Cash Count' })).toHaveAttribute('aria-selected', 'true');
-      await expect(page.getByRole('heading', { name: 'Cash Count', level: 2 })).toBeVisible();
-    });
+    await expect(page.getByRole('heading', { name: 'Reconciliation', level: 1 }), 'it shall display Reconciliation heading').toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Account Reconciliation' }), 'it shall display Account Reconciliation tab').toHaveAttribute('aria-selected', 'true');
   });
 
-  describe('Account Reconciliation List', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('switch to Cash Count tab and display cash count list view', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    test('shall display empty state when no reconciliations exist', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    await page.getByRole('link', { name: 'Reconcile' }).click();
+    await page.getByRole('tab', { name: 'Cash Count' }).click();
 
-      await page.getByRole('link', { name: 'Reconcile' }).click();
-
-      const accountReconciliationPanel = page.getByRole('tabpanel', { name: 'Account Reconciliation' });
-      await expect(accountReconciliationPanel.getByRole('heading', { name: 'No Reconciliations Found' })).toBeVisible();
-      await expect(accountReconciliationPanel.getByText('No reconciliation sessions have been created yet.')).toBeVisible();
-    });
-
-    test('shall display Create Reconciliation button in empty state', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('link', { name: 'Reconcile' }).click();
-
-      const accountReconciliationPanel = page.getByRole('tabpanel', { name: 'Account Reconciliation' });
-      // one in header
-      await expect(accountReconciliationPanel.getByRole('button', { name: 'Create Reconciliation' })).toHaveCount(1);
-    });
-
-    test('shall have search field', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('link', { name: 'Reconcile' }).click();
-
-      const accountReconciliationPanel = page.getByRole('tabpanel', { name: 'Account Reconciliation' });
-      await expect(accountReconciliationPanel.getByRole('textbox', { name: 'Search' })).toBeVisible();
-    });
-
-    test('shall have status filter', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('link', { name: 'Reconcile' }).click();
-
-      const accountReconciliationPanel = page.getByRole('tabpanel', { name: 'Account Reconciliation' });
-      await expect(accountReconciliationPanel.getByRole('button', { name: 'All' })).toBeVisible();
-    });
-
-    test('shall show TODO message when clicking Create Reconciliation', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('link', { name: 'Reconcile' }).click();
-
-      const accountReconciliationPanel = page.getByRole('tabpanel', { name: 'Account Reconciliation' });
-      
-      page.on('dialog', async function (dialog) {
-        expect(dialog.message()).toContain('TODO');
-        await dialog.accept();
-      });
-      
-      await accountReconciliationPanel.getByRole('button', { name: 'Create Reconciliation' }).first().click();
-    });
+    await expect(page.getByRole('tab', { name: 'Cash Count' }), 'it shall select Cash Count tab').toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('heading', { name: 'Cash Count', level: 2 }), 'it shall display Cash Count heading').toBeVisible();
+    await expect(page.getByRole('heading', { name: 'No Cash Counts Found', level: 2 }), 'it shall display empty state for cash counts').toBeVisible();
   });
 
-  describe('Cash Count Tab', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('display empty state with search and status filter when no reconciliations exist', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    test('shall display cash count list view', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    await page.getByRole('link', { name: 'Reconcile' }).click();
 
-      await page.getByRole('link', { name: 'Reconcile' }).click();
-      await page.getByRole('tab', { name: 'Cash Count' }).click();
+    const accountReconciliationPanel = page.getByRole('tabpanel', { name: 'Account Reconciliation' });
+    await expect(accountReconciliationPanel.getByRole('heading', { name: 'No Reconciliations Found' }), 'it shall display "No Reconciliations Found" heading').toBeVisible();
+    await expect(accountReconciliationPanel.getByText('No reconciliation sessions have been created yet.'), 'it shall display empty state message').toBeVisible();
+    await expect(accountReconciliationPanel.getByRole('button', { name: 'Create Reconciliation' }), 'it shall display Create Reconciliation buttons (toolbar + empty state)').toHaveCount(2);
+    await expect(accountReconciliationPanel.getByRole('textbox', { name: 'Search' }), 'it shall display search field').toBeVisible();
+    await expect(accountReconciliationPanel.getByRole('button', { name: 'All' }), 'it shall display status filter').toBeVisible();
+  });
 
-      // Should show cash count list view with empty state (no cash counts yet)
-      await expect(page.getByRole('heading', { name: 'No Cash Counts Found', level: 2 })).toBeVisible();
+  test('show TODO message when clicking Create Reconciliation button', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await page.getByRole('link', { name: 'Reconcile' }).click();
+
+    const accountReconciliationPanel = page.getByRole('tabpanel', { name: 'Account Reconciliation' });
+    
+    page.on('dialog', async function (dialog) {
+      expect(dialog.message(), 'it shall display TODO message in dialog').toContain('TODO');
+      await dialog.accept();
     });
+    
+    await accountReconciliationPanel.getByRole('button', { name: 'Create Reconciliation' }).first().click();
   });
 });

@@ -32,181 +32,63 @@ async function setupDashboardView(tursoDatabaseUrl) {
 describe('Dashboard View', function () {
   useConsoleOutput(test);
   useStrict(test);
+  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  describe('Dashboard Page Display', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('view dashboard page with header and loading state', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
-    test('shall display page header', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    });
-
-    test('shall display loading state initially', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      // Dashboard should eventually load successfully
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    });
+    await expect(page.getByRole('heading', { name: 'Dashboard' }), 'it shall display Dashboard page heading').toBeVisible();
   });
 
-  describe('Dashboard Metric Cards', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('view financial metric cards', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
-    test('shall display Net Revenue metric card', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Net Revenue' })).toBeVisible();
-    });
-
-    test('shall display Cash Balance metric card', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Cash Balance' })).toBeVisible();
-    });
-
-    test('shall display Bank Balance metric card', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Bank Balance' })).toBeVisible();
-    });
-
-    test('shall display Accounts Payable metric card', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Accounts Payable' })).toBeVisible();
-    });
-
-    test('shall display metric values with currency format', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      // Check that financial metrics region is present
-      await expect(page.getByRole('region', { name: 'Financial Metrics' })).toBeVisible();
-    });
+    await expect(page.getByRole('heading', { name: 'Net Revenue' }), 'it shall display Net Revenue metric card').toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Cash Balance' }), 'it shall display Cash Balance metric card').toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Bank Balance' }), 'it shall display Bank Balance metric card').toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Accounts Payable' }), 'it shall display Accounts Payable metric card').toBeVisible();
+    await expect(page.getByRole('region', { name: 'Financial Metrics' }), 'it shall display Financial Metrics region').toBeVisible();
   });
 
-  describe('Dashboard Fiscal Year Card', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('view fiscal year card with empty state', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
-    test('shall display Fiscal Year card', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Fiscal Year' })).toBeVisible();
-    });
-
-    test('shall display no active fiscal year message when not configured', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByText('No active fiscal year')).toBeVisible();
-    });
+    await expect(page.getByRole('heading', { name: 'Fiscal Year' }), 'it shall display Fiscal Year card heading').toBeVisible();
+    await expect(page.getByText('No active fiscal year'), 'it shall display no active fiscal year message').toBeVisible();
   });
 
-  describe('Dashboard Stock Alerts Card', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('view stock alerts card with well stocked state', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
-    test('shall display Stock Alerts card', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Stock Alerts' })).toBeVisible();
-    });
-
-    test('shall display well stocked message when no low stock items', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByText('All items are well stocked')).toBeVisible();
-    });
+    await expect(page.getByRole('heading', { name: 'Stock Alerts' }), 'it shall display Stock Alerts card heading').toBeVisible();
+    await expect(page.getByText('All items are well stocked'), 'it shall display well stocked message').toBeVisible();
   });
 
-  describe('Dashboard Recent Sales Card', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('view recent sales card with empty state', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
 
-    test('shall display Recent Sales card', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Recent Sales' })).toBeVisible();
-    });
-
-    test('shall display no sales message when no sales recorded', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByText('No sales recorded yet')).toBeVisible();
-    });
-
-    test('shall display New Sale button in empty state', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('button', { name: 'New Sale' })).toBeVisible();
-    });
-  });
-
-  describe('Dashboard Error Handling', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
-    test('shall display error state when retry button is available', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupDashboardView, tursoLibSQLiteServer().url);
-
-      // Dashboard should load without error in normal case
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    });
+    await expect(page.getByRole('heading', { name: 'Recent Sales' }), 'it shall display Recent Sales card heading').toBeVisible();
+    await expect(page.getByText('No sales recorded yet'), 'it shall display no sales recorded message').toBeVisible();
+    await expect(page.getByRole('button', { name: 'New Sale' }), 'it shall display New Sale button in empty state').toBeVisible();
   });
 });

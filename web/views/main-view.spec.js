@@ -35,28 +35,14 @@ describe('Main View', function () {
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  describe('Device Detection', function () {
-    test('shall render desktop-view for desktop devices', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupMainView, tursoLibSQLiteServer().url);
+  test('renders desktop layout with navigation and dashboard on initial load', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupMainView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('navigation', { name: 'Main Navigation' })).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    });
-  });
-
-  describe('Initial Routing', function () {
-    test('shall redirect to dashboard from root path', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupMainView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    });
+    await expect(page.getByRole('navigation', { name: 'Main Navigation' }), 'it shall display main navigation for desktop devices').toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard' }), 'it shall display dashboard heading on initial load').toBeVisible();
   });
 });

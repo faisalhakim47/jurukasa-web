@@ -43,24 +43,17 @@ async function getReportId(url) {
 describe('Trial Balance View', function () {
   useConsoleOutput(test);
   useStrict(test);
-
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('shall display error state when report does not exist', async function ({ page }) {
+  test('displays error state with refresh option for non-existent report', async function ({ page }) {
     await loadEmptyFixture(page);
     await page.evaluate(setupView, { url: tursoLibSQLiteServer().url, id: 1 });
 
-    await expect(page.getByRole('heading', { name: 'Unable to load reports' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Unable to load reports' }), 'it shall display error heading when report does not exist').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Refresh' }), 'it shall display refresh button for error recovery').toBeVisible();
   });
 
-  test('shall display refresh button', async function ({ page }) {
-    await loadEmptyFixture(page);
-    await page.evaluate(setupView, { url: tursoLibSQLiteServer().url, id: 1 });
-
-    await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
-  });
-
-  test('shall display trial balance table with valid report', async function ({ page }) {
+  test('displays trial balance table with account data and totals', async function ({ page }) {
     await loadEmptyFixture(page);
     await setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
       await sql`INSERT INTO accounts (account_code, name, normal_balance, balance, is_active, is_posting_account, create_time, update_time) VALUES (11001, 'Cash', 0, 0, 1, 1, 1704067200000, 1704067200000)`;
@@ -76,47 +69,13 @@ describe('Trial Balance View', function () {
 
     await page.evaluate(setupView, { url: tursoLibSQLiteServer().url, id: reportId });
 
-    await expect(page.getByRole('table', { name: 'Trial Balance' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Code' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Account Name' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Normal' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Debit' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Credit' })).toBeVisible();
-  });
-
-  test('shall display account codes in table', async function ({ page }) {
-    await loadEmptyFixture(page);
-    await setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-      await sql`INSERT INTO accounts (account_code, name, normal_balance, balance, is_active, is_posting_account, create_time, update_time) VALUES (11001, 'Cash', 0, 0, 1, 1, 1704067200000, 1704067200000)`;
-      await sql`INSERT INTO accounts (account_code, name, normal_balance, balance, is_active, is_posting_account, create_time, update_time) VALUES (31001, 'Sales Revenue', 1, 0, 1, 1, 1704067200000, 1704067200000)`;
-      await sql`INSERT INTO account_tags (account_code, tag) VALUES (11001, 'Balance Sheet - Current Asset')`;
-      await sql`INSERT INTO journal_entries (ref, entry_time, note, post_time, source_type, created_by) VALUES (1, 1704067200000, 'Test journal entry', 1704067200000, 'Manual', 'User')`;
-      await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit, description) VALUES (1, 1, 11001, 100000, 0, 'Cash debit')`;
-      await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit, description) VALUES (1, 2, 31001, 0, 100000, 'Sales revenue credit')`;
-      await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (1704067200000, 'Ad Hoc', 'Test Report', 1704067200000)`;
-    });
-    const reportId = await getReportId(tursoLibSQLiteServer().url);
-
-    await page.evaluate(setupView, { url: tursoLibSQLiteServer().url, id: reportId });
-
-    await expect(page.getByText('11001')).toBeVisible();
-  });
-
-  test('shall display total row', async function ({ page }) {
-    await loadEmptyFixture(page);
-    await setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-      await sql`INSERT INTO accounts (account_code, name, normal_balance, balance, is_active, is_posting_account, create_time, update_time) VALUES (11001, 'Cash', 0, 0, 1, 1, 1704067200000, 1704067200000)`;
-      await sql`INSERT INTO accounts (account_code, name, normal_balance, balance, is_active, is_posting_account, create_time, update_time) VALUES (31001, 'Sales Revenue', 1, 0, 1, 1, 1704067200000, 1704067200000)`;
-      await sql`INSERT INTO account_tags (account_code, tag) VALUES (11001, 'Balance Sheet - Current Asset')`;
-      await sql`INSERT INTO journal_entries (ref, entry_time, note, post_time, source_type, created_by) VALUES (1, 1704067200000, 'Test journal entry', 1704067200000, 'Manual', 'User')`;
-      await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit, description) VALUES (1, 1, 11001, 100000, 0, 'Cash debit')`;
-      await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit, description) VALUES (1, 2, 31001, 0, 100000, 'Sales revenue credit')`;
-      await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (1704067200000, 'Ad Hoc', 'Test Report', 1704067200000)`;
-    });
-    const reportId = await getReportId(tursoLibSQLiteServer().url);
-
-    await page.evaluate(setupView, { url: tursoLibSQLiteServer().url, id: reportId });
-
-    await expect(page.getByRole('row').filter({ hasText: 'Total' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Trial Balance' }), 'it shall display trial balance table').toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Code' }), 'it shall display code column header').toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Account Name' }), 'it shall display account name column header').toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Normal' }), 'it shall display normal balance column header').toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Debit' }), 'it shall display debit column header').toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Credit' }), 'it shall display credit column header').toBeVisible();
+    await expect(page.getByText('11001'), 'it shall display account code in table').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Total' }), 'it shall display total row').toBeVisible();
   });
 });

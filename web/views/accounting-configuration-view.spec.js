@@ -27,28 +27,67 @@ async function setupView(tursoDatabaseUrl) {
   `;
 }
 
-describe('Accounting Configuration View', function () {
+async function setupErrorScenario(tursoDatabaseUrl) {
+  document.body.innerHTML = `
+    <ready-context>
+      <router-context>
+        <database-context provider="turso" name="My Business" turso-url="${tursoDatabaseUrl}">
+          <device-context>
+            <i18n-context></i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </ready-context>
+  `;
+
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  /** @type {DatabaseContextElement} */
+  const database = document.querySelector('database-context');
+  await database.sql`DROP TABLE config`;
+
+  const i18nContext = document.querySelector('i18n-context');
+  i18nContext.innerHTML = '<accounting-configuration-view></accounting-configuration-view>';
+}
+
+async function setupSaveErrorScenario(tursoDatabaseUrl) {
+  document.body.innerHTML = `
+    <ready-context>
+      <router-context>
+        <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
+          <device-context>
+            <i18n-context>
+              <accounting-configuration-view></accounting-configuration-view>
+            </i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </ready-context>
+  `;
+}
+
+describe('Accounting Configuration', function () {
   useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('it shall display accounting configuration form', async function ({ page }) {
+  test('displays configuration form with all fields', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
-    await expect(page.getByLabel('Business Name')).toBeVisible();
-    await expect(page.getByLabel('Business Type')).toBeVisible();
-    await expect(page.getByLabel('Currency Code')).toBeVisible();
-    await expect(page.getByLabel('Currency Decimals')).toBeVisible();
-    await expect(page.getByLabel('Fiscal Year Start Month')).toBeVisible();
-    await expect(page.getByLabel('Language')).toBeVisible();
-    await expect(page.getByLabel('Locale')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Save Changes' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
+    await expect(page.getByLabel('Business Name'), 'it shall display Business Name field').toBeVisible();
+    await expect(page.getByLabel('Business Type'), 'it shall display Business Type field').toBeVisible();
+    await expect(page.getByLabel('Currency Code'), 'it shall display Currency Code field').toBeVisible();
+    await expect(page.getByLabel('Currency Decimals'), 'it shall display Currency Decimals field').toBeVisible();
+    await expect(page.getByLabel('Fiscal Year Start Month'), 'it shall display Fiscal Year Start Month field').toBeVisible();
+    await expect(page.getByLabel('Language'), 'it shall display Language field').toBeVisible();
+    await expect(page.getByLabel('Locale'), 'it shall display Locale field').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save Changes' }), 'it shall display Save Changes button').toBeVisible();
   });
 
-  test('it shall load existing configuration from database', async function ({ page }) {
+  test('loads existing configuration from database', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -64,23 +103,22 @@ describe('Accounting Configuration View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
-
-    await expect(page.getByLabel('Business Name')).toHaveValue('Test Business');
-    await expect(page.getByLabel('Business Type')).toHaveValue('Small Business');
-    await expect(page.getByLabel('Currency Code')).toHaveValue('USD');
-    await expect(page.getByLabel('Currency Decimals')).toHaveValue('2');
-    await expect(page.getByLabel('Fiscal Year Start Month')).toHaveValue('1');
-    await expect(page.getByLabel('Language')).toHaveValue('English');
-    await expect(page.getByLabel('Locale')).toHaveValue('en-US');
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
+    await expect(page.getByLabel('Business Name'), 'it shall load Business Name value').toHaveValue('Test Business');
+    await expect(page.getByLabel('Business Type'), 'it shall load Business Type value').toHaveValue('Small Business');
+    await expect(page.getByLabel('Currency Code'), 'it shall load Currency Code value').toHaveValue('USD');
+    await expect(page.getByLabel('Currency Decimals'), 'it shall load Currency Decimals value').toHaveValue('2');
+    await expect(page.getByLabel('Fiscal Year Start Month'), 'it shall load Fiscal Year Start Month value').toHaveValue('1');
+    await expect(page.getByLabel('Language'), 'it shall load Language value').toHaveValue('English');
+    await expect(page.getByLabel('Locale'), 'it shall load Locale value').toHaveValue('en-US');
   });
 
-  test('it shall save configuration changes', async function ({ page }) {
+  test('saves configuration changes to database', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
 
     await page.getByLabel('Business Name').fill('My New Business');
     await page.getByLabel('Currency Code').fill('IDR');
@@ -90,8 +128,8 @@ describe('Accounting Configuration View', function () {
 
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Settings Saved' })).toBeVisible();
-    await expect(page.getByText('Configuration has been updated successfully.')).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Settings Saved' }), 'it shall display success dialog').toBeVisible();
+    await expect(page.getByText('Configuration has been updated successfully.'), 'it shall display success message').toBeVisible();
 
     const configs = await page.evaluate(async function fetchConfigs() {
       /** @type {DatabaseContextElement} */
@@ -104,29 +142,29 @@ describe('Accounting Configuration View', function () {
       return Object.fromEntries(result.rows.map(row => [row.key, row.value]));
     });
 
-    expect(configs['Business Name']).toBe('My New Business');
-    expect(configs['Currency Code']).toBe('IDR');
-    expect(configs['Currency Decimals']).toBe('0');
-    expect(configs['Fiscal Year Start Month']).toBe('7');
-    expect(configs['Locale']).toBe('id-ID');
+    expect(configs['Business Name'], 'Business Name shall be saved').toBe('My New Business');
+    expect(configs['Currency Code'], 'Currency Code shall be saved').toBe('IDR');
+    expect(configs['Currency Decimals'], 'Currency Decimals shall be saved').toBe('0');
+    expect(configs['Fiscal Year Start Month'], 'Fiscal Year Start Month shall be saved').toBe('7');
+    expect(configs['Locale'], 'Locale shall be saved').toBe('id-ID');
   });
 
-  test('it shall allow selecting business type from dropdown', async function ({ page }) {
+  test('allows selecting business type from dropdown', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
 
     await page.getByLabel('Business Type').click();
-    await expect(page.getByRole('menu')).toBeVisible();
+    await expect(page.getByRole('menu'), 'it shall open business type dropdown').toBeVisible();
     await page.getByRole('menuitem', { name: 'Medium Enterprise' }).click();
 
-    await expect(page.getByLabel('Business Type')).toHaveValue('Medium Enterprise');
+    await expect(page.getByLabel('Business Type'), 'it shall update Business Type value').toHaveValue('Medium Enterprise');
 
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Settings Saved' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Settings Saved' }), 'it shall display success dialog').toBeVisible();
 
     const businessType = await page.evaluate(async function fetchBusinessType() {
       /** @type {DatabaseContextElement} */
@@ -135,41 +173,41 @@ describe('Accounting Configuration View', function () {
       return String(result.rows[0]?.value || '');
     });
 
-    expect(businessType).toBe('Medium Enterprise');
+    expect(businessType, 'Business Type shall be persisted').toBe('Medium Enterprise');
   });
 
-  test('it shall allow selecting all business types', async function ({ page }) {
+  test('allows selecting all business types', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
 
     const businessTypes = ['Small Business', 'Medium Enterprise', 'Corporation', 'Non-Profit'];
 
     for (const businessType of businessTypes) {
       await page.getByLabel('Business Type').click();
       await page.getByRole('menuitem', { name: businessType }).click();
-      await expect(page.getByLabel('Business Type')).toHaveValue(businessType);
+      await expect(page.getByLabel('Business Type'), `it shall allow selecting ${businessType}`).toHaveValue(businessType);
     }
   });
 
-  test('it shall allow selecting language from dropdown', async function ({ page }) {
+  test('allows selecting language from dropdown', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
 
     await page.getByLabel('Language').click();
-    await expect(page.getByRole('menu')).toBeVisible();
+    await expect(page.getByRole('menu'), 'it shall open language dropdown').toBeVisible();
     await page.getByRole('menuitem', { name: 'Bahasa Indonesia' }).click();
 
-    await expect(page.getByLabel('Language')).toHaveValue('Bahasa Indonesia');
+    await expect(page.getByLabel('Language'), 'it shall update Language value').toHaveValue('Bahasa Indonesia');
 
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Settings Saved' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Settings Saved' }), 'it shall display success dialog').toBeVisible();
 
     const language = await page.evaluate(async function fetchLanguage() {
       /** @type {DatabaseContextElement} */
@@ -178,10 +216,10 @@ describe('Accounting Configuration View', function () {
       return String(result.rows[0]?.value || '');
     });
 
-    expect(language).toBe('id');
+    expect(language, 'Language shall be persisted').toBe('id');
   });
 
-  test('it shall reset form when reset button is clicked', async function ({ page }) {
+  test('resets form to original values when reset button is clicked', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -192,22 +230,22 @@ describe('Accounting Configuration View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
-    await expect(page.getByLabel('Business Name')).toHaveValue('Original Business');
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
+    await expect(page.getByLabel('Business Name'), 'it shall show original Business Name').toHaveValue('Original Business');
 
     await page.getByLabel('Business Name').fill('Modified Business');
     await page.getByLabel('Currency Code').fill('JPY');
 
-    await expect(page.getByLabel('Business Name')).toHaveValue('Modified Business');
-    await expect(page.getByLabel('Currency Code')).toHaveValue('JPY');
+    await expect(page.getByLabel('Business Name'), 'it shall show modified Business Name').toHaveValue('Modified Business');
+    await expect(page.getByLabel('Currency Code'), 'it shall show modified Currency Code').toHaveValue('JPY');
 
     await page.getByRole('button', { name: 'Reset' }).click();
 
-    await expect(page.getByLabel('Business Name')).toHaveValue('Original Business');
-    await expect(page.getByLabel('Currency Code')).toHaveValue('EUR');
+    await expect(page.getByLabel('Business Name'), 'it shall reset Business Name to original').toHaveValue('Original Business');
+    await expect(page.getByLabel('Currency Code'), 'it shall reset Currency Code to original').toHaveValue('EUR');
   });
 
-  test('it shall refresh configuration when refresh button is clicked', async function ({ page }) {
+  test('refreshes configuration when refresh button is clicked', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -217,8 +255,8 @@ describe('Accounting Configuration View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
-    await expect(page.getByLabel('Business Name')).toHaveValue('Initial Business');
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
+    await expect(page.getByLabel('Business Name'), 'it shall show initial Business Name').toHaveValue('Initial Business');
 
     await page.evaluate(async function updateBusinessName() {
       /** @type {DatabaseContextElement} */
@@ -228,63 +266,24 @@ describe('Accounting Configuration View', function () {
 
     await page.getByRole('button', { name: 'Refresh' }).click();
 
-    await expect(page.getByLabel('Business Name')).toHaveValue('Updated Business');
+    await expect(page.getByLabel('Business Name'), 'it shall show updated Business Name after refresh').toHaveValue('Updated Business');
   });
 
-  test('it shall display error when configuration fails to load', async function ({ page }) {
+  test('displays error when configuration fails to load', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function setupErrorScenario(tursoDatabaseUrl) {
-      // Set up contexts first (without the view)
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context provider="turso" name="My Business" turso-url="${tursoDatabaseUrl}">
-              <device-context>
-                <i18n-context></i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
+    await page.evaluate(setupErrorScenario, tursoLibSQLiteServer().url);
 
-      // Wait for database to be ready
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Drop the config table
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`DROP TABLE config`;
-
-      // Now add the view
-      const i18nContext = document.querySelector('i18n-context');
-      i18nContext.innerHTML = '<accounting-configuration-view></accounting-configuration-view>';
-    }, tursoLibSQLiteServer().url);
-
-    await expect(page.getByRole('heading', { name: 'Unable to load data' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Unable to load data' }), 'it shall display error heading').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Retry' }), 'it shall display Retry button').toBeVisible();
   });
 
-  test('it shall display error dialog when save fails', async function ({ page }) {
+  test('displays error dialog when save fails', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function setupSaveErrorScenario(tursoDatabaseUrl) {
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
-              <device-context>
-                <i18n-context>
-                  <accounting-configuration-view></accounting-configuration-view>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupSaveErrorScenario, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
 
     await page.getByLabel('Business Name').fill('Test');
 
@@ -296,39 +295,39 @@ describe('Accounting Configuration View', function () {
 
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
-    await expect(page.getByRole('alertdialog')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Error Occurred' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Dismiss' })).toBeVisible();
+    await expect(page.getByRole('alertdialog'), 'it shall display error alert dialog').toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Error Occurred' }), 'it shall display error heading').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Dismiss' }), 'it shall display Dismiss button').toBeVisible();
   });
 
-  test('it shall validate currency decimals range', async function ({ page }) {
+  test('validates currency decimals range', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
 
-    await expect(page.getByLabel('Currency Decimals')).toHaveAttribute('min', '0');
-    await expect(page.getByLabel('Currency Decimals')).toHaveAttribute('max', '4');
+    await expect(page.getByLabel('Currency Decimals'), 'it shall have min attribute of 0').toHaveAttribute('min', '0');
+    await expect(page.getByLabel('Currency Decimals'), 'it shall have max attribute of 4').toHaveAttribute('max', '4');
   });
 
-  test('it shall validate fiscal year start month range', async function ({ page }) {
+  test('validates fiscal year start month range', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
 
-    await expect(page.getByLabel('Fiscal Year Start Month')).toHaveAttribute('min', '1');
-    await expect(page.getByLabel('Fiscal Year Start Month')).toHaveAttribute('max', '12');
+    await expect(page.getByLabel('Fiscal Year Start Month'), 'it shall have min attribute of 1').toHaveAttribute('min', '1');
+    await expect(page.getByLabel('Fiscal Year Start Month'), 'it shall have max attribute of 12').toHaveAttribute('max', '12');
   });
 
-  test('it shall persist configuration across all fields', async function ({ page }) {
+  test('persists all configuration fields across save', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display configuration heading').toBeVisible();
 
     await page.getByLabel('Business Name').fill('Complete Test Business');
 
@@ -346,7 +345,7 @@ describe('Accounting Configuration View', function () {
 
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Settings Saved' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Settings Saved' }), 'it shall display success dialog').toBeVisible();
 
     const configs = await page.evaluate(async function fetchAllConfigs() {
       /** @type {DatabaseContextElement} */
@@ -359,12 +358,12 @@ describe('Accounting Configuration View', function () {
       return Object.fromEntries(result.rows.map(row => [row.key, row.value]));
     });
 
-    expect(configs['Business Name']).toBe('Complete Test Business');
-    expect(configs['Business Type']).toBe('Corporation');
-    expect(configs['Currency Code']).toBe('GBP');
-    expect(configs['Currency Decimals']).toBe('2');
-    expect(configs['Fiscal Year Start Month']).toBe('4');
-    expect(configs['Language']).toBe('en');
-    expect(configs['Locale']).toBe('en-GB');
+    expect(configs['Business Name'], 'Business Name shall be persisted').toBe('Complete Test Business');
+    expect(configs['Business Type'], 'Business Type shall be persisted').toBe('Corporation');
+    expect(configs['Currency Code'], 'Currency Code shall be persisted').toBe('GBP');
+    expect(configs['Currency Decimals'], 'Currency Decimals shall be persisted').toBe('2');
+    expect(configs['Fiscal Year Start Month'], 'Fiscal Year Start Month shall be persisted').toBe('4');
+    expect(configs['Language'], 'Language shall be persisted').toBe('en');
+    expect(configs['Locale'], 'Locale shall be persisted').toBe('en-GB');
   });
 });

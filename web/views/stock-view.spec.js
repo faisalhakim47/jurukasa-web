@@ -37,112 +37,42 @@ describe('Stock View', function () {
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  describe('Stock View Navigation', function () {
-    test('shall display inventories tab by default', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
+  test('shall display stock view with navigation tabs and default inventories panel', async function ({ page }) {
+    await loadEmptyFixture(page);
+    await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('tab', { name: 'Inventories' })).toBeVisible();
-    });
-
-    test('shall display barcodes tab', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('tab', { name: 'Barcodes' })).toBeVisible();
-    });
-
-    test('shall display stock takings tab', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('tab', { name: 'Stock Takings' })).toBeVisible();
-    });
-
-    test('shall navigate to inventories panel when inventories tab is clicked', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('tab', { name: 'Inventories' }).click();
-
-      await expect(page.getByRole('tabpanel', { name: 'Inventories' })).toBeVisible();
-    });
-
-    test('shall navigate to barcodes panel when barcodes tab is clicked', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('tab', { name: 'Barcodes' }).click();
-
-      await expect(page.getByRole('tabpanel', { name: 'Barcodes' })).toBeVisible();
-    });
-
-    test('shall navigate to stock takings panel when stock takings tab is clicked', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('tab', { name: 'Stock Takings' }).click();
-
-      await expect(page.getByRole('tabpanel', { name: 'Stock Takings' })).toBeVisible();
-    });
+    await expect(page.getByRole('heading', { level: 1 }), 'it shall display page header').toBeVisible();
+    await expect(page.getByRole('tablist'), 'it shall display tab navigation').toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Inventories' }), 'it shall display inventories tab').toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Barcodes' }), 'it shall display barcodes tab').toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Stock Takings' }), 'it shall display stock takings tab').toBeVisible();
+    await expect(page.getByRole('tabpanel', { name: 'Inventories' }), 'it shall display inventories panel by default').toBeVisible();
   });
 
-  describe('Stock View Page Display', function () {
-    test('shall display page header', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
+  test('shall navigate to barcodes panel when barcodes tab is clicked', async function ({ page }) {
+    await loadEmptyFixture(page);
+    await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
 
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    });
+    await page.getByRole('tab', { name: 'Barcodes' }).click();
 
-    test('shall display tab navigation', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('tablist')).toBeVisible();
-    });
+    await expect(page.getByRole('tabpanel', { name: 'Barcodes' }), 'it shall display barcodes panel').toBeVisible();
   });
 
-  describe('Stock View Tab Panels', function () {
-    test('shall render inventories-view component in inventories panel', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
+  test('shall navigate to stock takings panel when stock takings tab is clicked', async function ({ page }) {
+    await loadEmptyFixture(page);
+    await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
 
-      await page.getByRole('tab', { name: 'Inventories' }).click();
+    await page.getByRole('tab', { name: 'Stock Takings' }).click();
 
-      const inventoriesPanel = page.getByRole('tabpanel', { name: 'Inventories' });
-      await expect(inventoriesPanel).toBeVisible();
-    });
-
-    test('shall render barcodes-view component in barcodes panel', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('tab', { name: 'Barcodes' }).click();
-
-      const barcodesPanel = page.getByRole('tabpanel', { name: 'Barcodes' });
-      await expect(barcodesPanel).toBeVisible();
-    });
-
-    test('shall render stock-takings-view component in stock takings panel', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('tab', { name: 'Stock Takings' }).click();
-
-      const stockTakingsPanel = page.getByRole('tabpanel', { name: 'Stock Takings' });
-      await expect(stockTakingsPanel).toBeVisible();
-    });
+    await expect(page.getByRole('tabpanel', { name: 'Stock Takings' }), 'it shall display stock takings panel').toBeVisible();
   });
 
-  describe('Stock View Error Handling', function () {
-    test('shall display not found dialog for invalid routes', async function ({ page }) {
-      await loadEmptyFixture(page);
-      await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
+  test('shall display not found dialog for invalid stock routes', async function ({ page }) {
+    await loadEmptyFixture(page);
+    await page.evaluate(setupStockView, tursoLibSQLiteServer().url);
 
-      await page.evaluate(navigateToInvalidStockRoute);
+    await page.evaluate(navigateToInvalidStockRoute);
 
-      await expect(page.getByRole('dialog')).toBeVisible();
-    });
+    await expect(page.getByRole('dialog'), 'it shall display not found dialog for invalid routes').toBeVisible();
   });
 });

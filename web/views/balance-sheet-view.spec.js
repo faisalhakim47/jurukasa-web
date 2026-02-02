@@ -32,20 +32,13 @@ async function setupView(tursoDatabaseUrl) {
 describe('Balance Sheet View', function () {
   useConsoleOutput(test);
   useStrict(test);
-
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('shall display error state when report does not exist', async function ({ page }) {
+  test('displays error state with refresh option for non-existent report', async function ({ page }) {
     await loadEmptyFixture(page);
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'Unable to load reports' })).toBeVisible();
-  });
-
-  test('shall display refresh button', async function ({ page }) {
-    await loadEmptyFixture(page);
-    await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-    await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Unable to load reports' }), 'it shall display error heading when report does not exist').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Refresh' }), 'it shall display refresh button for error recovery').toBeVisible();
   });
 });

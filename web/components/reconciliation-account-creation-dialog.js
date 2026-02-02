@@ -290,7 +290,7 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
                 role="button"
                 type="submit"
                 name="action"
-                ?disabled=${state.formState !== 'idle' || !state.accountType}
+                ?disabled=${state.formState !== 'idle' || !state.accountType || state.codeValidation !== null || state.nameValidation !== null}
               >${t('account', 'createDialogSubmitLabel')}</button>
             </header>
 

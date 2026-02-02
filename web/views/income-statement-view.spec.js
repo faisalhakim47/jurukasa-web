@@ -32,37 +32,13 @@ async function setupView(tursoDatabaseUrl) {
 describe('Income Statement View', function () {
   useConsoleOutput(test);
   useStrict(test);
-
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('shall display error state when fiscal year does not exist', async function ({ page }) {
-    await loadEmptyFixture(page);
-    await page.evaluate(function setupViewImpl(tursoDatabaseUrl) {
-      window.history.replaceState({}, '', '/books/reports/income-statement?beginTime=1704067200000');
-      document.body.innerHTML = `
-        <ready-context>
-          <time-context>
-            <router-context>
-              <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
-                <device-context>
-                  <i18n-context>
-                    <income-statement-view></income-statement-view>
-                  </i18n-context>
-                </device-context>
-              </database-context>
-            </router-context>
-          </time-context>
-        </ready-context>
-      `;
-    }, tursoLibSQLiteServer().url);
-
-    await expect(page.getByRole('heading', { name: 'Unable to load income statement' })).toBeVisible();
-  });
-
-  test('shall display refresh button', async function ({ page }) {
+  test('displays error state with refresh option for non-existent fiscal year', async function ({ page }) {
     await loadEmptyFixture(page);
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Unable to load income statement' }), 'it shall display error heading when fiscal year does not exist').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Refresh' }), 'it shall display refresh button for error recovery').toBeVisible();
   });
 });

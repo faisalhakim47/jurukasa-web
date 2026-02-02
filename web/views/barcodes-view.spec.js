@@ -27,22 +27,21 @@ async function setupView(tursoDatabaseUrl) {
   `;
 }
 
-describe('Barcodes View', function () {
+describe('Barcodes', function () {
   useConsoleOutput(test);
   useStrict(test);
-
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('it shall display empty state when no barcodes exist', async function ({ page }) {
+  test('displays empty state when no barcodes exist', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByText('No barcodes assigned yet')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Assign Barcode' }).first()).toBeVisible();
+    await expect(page.getByText('No barcodes assigned yet'), 'it shall display empty state message').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Assign Barcode' }).first(), 'it shall display Assign Barcode button').toBeVisible();
   });
 
-  test('it shall display list of barcodes', async function ({ page }) {
+  test('displays list of barcodes with product information', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -55,14 +54,14 @@ describe('Barcodes View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: '1234567890' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Product A' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: '9876543210' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Product B' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Barcodes list' }), 'it shall display barcodes table').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: '1234567890' }), 'it shall display first barcode').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Product A' }), 'it shall display first product name').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: '9876543210' }), 'it shall display second barcode').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Product B' }), 'it shall display second product name').toBeVisible();
   });
 
-  test('it shall search barcodes by code', async function ({ page }) {
+  test('searches barcodes by code and product name', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -74,58 +73,19 @@ describe('Barcodes View', function () {
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
-    await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Barcodes list' }), 'it shall display barcodes table').toBeVisible();
 
     await page.getByLabel('Search', { exact: true }).fill('1234');
-
-    await expect(page.getByRole('row').filter({ hasText: '1234567890' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: '9876543210' })).toBeHidden();
-  });
-
-  test('it shall search barcodes by product name', async function ({ page }) {
-    await Promise.all([
-      loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Laptop Dell', 10000, 'pcs', 11310, 0, 0)`;
-        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Mouse Wireless', 20000, 'pcs', 11310, 0, 0)`;
-        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
-        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('9876543210', 2)`;
-      }),
-    ]);
-
-    await page.evaluate(setupView, tursoLibSQLiteServer().url);
-    await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
-
-    await page.getByLabel('Search', { exact: true }).fill('laptop');
-
-    await expect(page.getByRole('row').filter({ hasText: 'Laptop Dell' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Mouse Wireless' })).toBeHidden();
-  });
-
-  test('it shall clear search', async function ({ page }) {
-    await Promise.all([
-      loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product A', 10000, 'pcs', 11310, 0, 0)`;
-        await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES ('Product B', 20000, 'pcs', 11310, 0, 0)`;
-        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('1234567890', 1)`;
-        await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES ('9876543210', 2)`;
-      }),
-    ]);
-
-    await page.evaluate(setupView, tursoLibSQLiteServer().url);
-    await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
-
-    await page.getByLabel('Search', { exact: true }).fill('9875');
-    await expect(page.getByRole('row').filter({ hasText: '9876543210' })).toBeHidden();
+    await expect(page.getByRole('row').filter({ hasText: '1234567890' }), 'it shall show matching barcode by code').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: '9876543210' }), 'it shall hide non-matching barcode').toBeHidden();
 
     await page.getByLabel('Clear search').click();
-    await expect(page.getByLabel('Search', { exact: true })).toHaveValue('');
-    await expect(page.getByRole('row').filter({ hasText: '1234567890' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: '9876543210' })).toBeVisible();
+    await expect(page.getByLabel('Search', { exact: true }), 'it shall clear search field').toHaveValue('');
+    await expect(page.getByRole('row').filter({ hasText: '1234567890' }), 'it shall show all barcodes after clear').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: '9876543210' }), 'it shall show all barcodes after clear').toBeVisible();
   });
 
-  test('it shall display empty state when search has no results', async function ({ page }) {
+  test('displays empty state when search has no results', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -135,18 +95,17 @@ describe('Barcodes View', function () {
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
-    await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Barcodes list' }), 'it shall display barcodes table').toBeVisible();
 
     await page.getByLabel('Search', { exact: true }).fill('Nonexistent Product');
 
-    await expect(page.getByText('No barcodes match your search')).toBeVisible();
+    await expect(page.getByText('No barcodes match your search'), 'it shall display no results message').toBeVisible();
   });
 
-  test('it shall paginate barcodes list', async function ({ page }) {
+  test('paginates barcodes list with disabled button states', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Insert 25 barcodes (page size is 20)
         for (let index = 1; index <= 25; index++) {
           await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES (${`Product ${index}`}, 10000, 'pcs', 11310, 0, 0)`;
           await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES (${String(index).padStart(10, '0')}, ${index})`;
@@ -156,56 +115,37 @@ describe('Barcodes View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByText('1-20 of 25')).toBeVisible();
-    await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Product 1', exact: true }) })).toBeVisible();
-    await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Product 25', exact: true }) })).not.toBeVisible();
+    await expect(page.getByText('1-20 of 25'), 'it shall show first page pagination info').toBeVisible();
+    await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Product 1', exact: true }) }), 'it shall show first product on first page').toBeVisible();
+    await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Product 25', exact: true }) }), 'it shall not show last product on first page').not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Previous page' }), 'it shall disable Previous page button on first page').toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Next page' }), 'it shall enable Next page button').toBeEnabled();
 
     await page.getByRole('button', { name: 'Next page' }).click();
 
-    await expect(page.getByText('21-25 of 25')).toBeVisible();
-    await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Product 21', exact: true }) })).toBeVisible();
-    await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Product 1', exact: true }) })).not.toBeVisible();
+    await expect(page.getByText('21-25 of 25'), 'it shall show second page pagination info').toBeVisible();
+    await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Product 21', exact: true }) }), 'it shall show first product on second page').toBeVisible();
+    await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Product 1', exact: true }) }), 'it shall not show first product on second page').not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Previous page' }), 'it shall enable Previous page button').toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Next page' }), 'it shall disable Next page button on last page').toBeDisabled();
 
     await page.getByRole('button', { name: 'Previous page' }).click();
 
-    await expect(page.getByText('1-20 of 25')).toBeVisible();
-    await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Product 1', exact: true }) })).toBeVisible();
+    await expect(page.getByText('1-20 of 25'), 'it shall return to first page').toBeVisible();
+    await expect(page.getByRole('row').filter({ has: page.getByRole('cell', { name: 'Product 1', exact: true }) }), 'it shall show first product again').toBeVisible();
   });
 
-  test('it shall disable pagination buttons appropriately', async function ({ page }) {
-    await Promise.all([
-      loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Insert 25 barcodes (page size is 20)
-        for (let index = 1; index <= 25; index++) {
-          await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES (${`Product ${index}`}, 10000, 'pcs', 11310, 0, 0)`;
-          await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES (${String(index).padStart(10, '0')}, ${index})`;
-        }
-      }),
-    ]);
-
-    await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-    await expect(page.getByRole('button', { name: 'Previous page' })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Next page' })).toBeEnabled();
-
-    await page.getByRole('button', { name: 'Next page' }).click();
-
-    await expect(page.getByRole('button', { name: 'Previous page' })).toBeEnabled();
-    await expect(page.getByRole('button', { name: 'Next page' })).toBeDisabled();
-  });
-
-  test('it shall open barcode assignment dialog', async function ({ page }) {
+  test('opens barcode assignment dialog', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await page.getByRole('button', { name: 'Assign Barcode' }).first().click();
 
-    await expect(page.getByRole('dialog', { name: 'Assign Barcode' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Assign Barcode' }), 'it shall open assignment dialog').toBeVisible();
   });
 
-  test('it shall unassign barcode with confirmation', async function ({ page }) {
+  test('unassigns barcode with confirmation dialog', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -219,18 +159,18 @@ describe('Barcodes View', function () {
     await page.getByRole('button', { name: 'Unassign barcode 1234567890' }).click();
 
     const unassignBarcodeDialog = page.getByRole('dialog', { name: 'Unassign Barcode' });
-    await expect(unassignBarcodeDialog).toBeVisible();
-    await expect(unassignBarcodeDialog.getByText('Are you sure you want to unassign barcode')).toBeVisible();
-    await expect(unassignBarcodeDialog.getByText('1234567890')).toBeVisible();
-    await expect(unassignBarcodeDialog.getByText('Product A')).toBeVisible();
+    await expect(unassignBarcodeDialog, 'it shall open unassign confirmation dialog').toBeVisible();
+    await expect(unassignBarcodeDialog.getByText('Are you sure you want to unassign barcode'), 'it shall display confirmation message').toBeVisible();
+    await expect(unassignBarcodeDialog.getByText('1234567890'), 'it shall display barcode code').toBeVisible();
+    await expect(unassignBarcodeDialog.getByText('Product A'), 'it shall display product name').toBeVisible();
 
     await unassignBarcodeDialog.getByRole('button', { name: 'Unassign' }).click();
 
-    await expect(unassignBarcodeDialog).not.toBeVisible();
-    await expect(page.getByText('No barcodes assigned yet')).toBeVisible();
+    await expect(unassignBarcodeDialog, 'it shall close unassign dialog').not.toBeVisible();
+    await expect(page.getByText('No barcodes assigned yet'), 'it shall show empty state after unassign').toBeVisible();
   });
 
-  test('it shall cancel unassign barcode', async function ({ page }) {
+  test('cancels unassign barcode action', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -242,15 +182,15 @@ describe('Barcodes View', function () {
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     await page.getByRole('button', { name: 'Unassign barcode 1234567890' }).click();
-    await expect(page.getByRole('dialog', { name: 'Unassign Barcode' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Unassign Barcode' }), 'it shall open unassign dialog').toBeVisible();
 
     await page.getByRole('dialog', { name: 'Unassign Barcode' }).getByRole('button', { name: 'Cancel' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Unassign Barcode' })).not.toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: '1234567890' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Unassign Barcode' }), 'it shall close unassign dialog').not.toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: '1234567890' }), 'it shall still show barcode after cancel').toBeVisible();
   });
 
-  test('it shall reload barcodes after assignment', async function ({ page }) {
+  test('assigns barcode and reloads list', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -260,7 +200,7 @@ describe('Barcodes View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByText('No barcodes assigned yet')).toBeVisible();
+    await expect(page.getByText('No barcodes assigned yet'), 'it shall show empty state initially').toBeVisible();
 
     await page.getByRole('button', { name: 'Assign Barcode' }).first().click();
     await page.getByRole('textbox', { name: 'Barcode' }).fill('1234567890');
@@ -268,11 +208,11 @@ describe('Barcodes View', function () {
     await page.getByRole('menuitemradio').filter({ hasText: 'Product A' }).click();
     await page.getByRole('dialog', { name: 'Assign Barcode' }).getByRole('button', { name: 'Assign' }).click();
 
-    await expect(page.getByRole('row').filter({ hasText: '1234567890' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Product A' })).toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: '1234567890' }), 'it shall show new barcode in list').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Product A' }), 'it shall show product in list').toBeVisible();
   });
 
-  test('it shall display error dialog on unassign failure', async function ({ page }) {
+  test('displays error dialog on unassign failure', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -285,7 +225,6 @@ describe('Barcodes View', function () {
     await page.evaluate(async function simulateFaultyClient(tursoDatabaseUrl) {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
-      // Simulate error by corrupting database state
       const originalTransaction = database.transaction.bind(database);
       database.transaction = async function faultyTransaction() {
         const tx = await originalTransaction('write');
@@ -307,19 +246,18 @@ describe('Barcodes View', function () {
     await page.getByRole('button', { name: 'Unassign barcode 1234567890' }).click();
     await page.getByRole('dialog', { name: 'Unassign Barcode' }).getByRole('button', { name: 'Unassign' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Error' })).toBeVisible();
-    await expect(page.getByText('Simulated database error')).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Error' }), 'it shall display error dialog').toBeVisible();
+    await expect(page.getByText('Simulated database error'), 'it shall display error message').toBeVisible();
 
     await page.getByRole('dialog', { name: 'Error' }).getByRole('button', { name: 'Dismiss' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Error' })).not.toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Error' }), 'it shall close error dialog').not.toBeVisible();
   });
 
-  test('it shall reset to first page on new search', async function ({ page }) {
+  test('resets to first page on new search', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Insert 25 barcodes (page size is 20)
         for (let index = 1; index <= 25; index++) {
           await sql`INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code, cost, stock) VALUES (${`Product ${index}`}, 10000, 'pcs', 11310, 0, 0)`;
           await sql`INSERT INTO inventory_barcodes (code, inventory_id) VALUES (${String(index).padStart(10, '0')}, ${index})`;
@@ -328,13 +266,13 @@ describe('Barcodes View', function () {
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
-    await expect(page.getByRole('table', { name: 'Barcodes list' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Barcodes list' }), 'it shall display barcodes table').toBeVisible();
 
     await page.getByRole('button', { name: 'Next page' }).click();
-    await expect(page.getByText('21-25 of 25')).toBeVisible();
+    await expect(page.getByText('21-25 of 25'), 'it shall be on second page').toBeVisible();
 
     await page.getByLabel('Search', { exact: true }).fill('Product 1');
 
-    await expect(page.getByText('1-11 of 11')).toBeVisible();
+    await expect(page.getByText('1-11 of 11'), 'it shall reset to first page on search').toBeVisible();
   });
 });

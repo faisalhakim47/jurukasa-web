@@ -58,6 +58,6 @@ describe('useMounted', function () {
 
     const eventTriggersSequence = await page.evaluate(setupUseMountLifecycleScenario);
 
-    expect(eventTriggersSequence).toEqual(['rendered', 'mounted']);
+    expect(eventTriggersSequence, 'it shall trigger rendered event before mounted event').toEqual(['rendered', 'mounted']);
   });
 });

@@ -217,10 +217,10 @@ async function setupDoubleOverrideScenario() {
 describe('useLifecycle', function () {
   useConsoleOutput(test);
 
-  test('it shall execute callbacks correctly', async function ({ page }) {
+  test('it shall execute lifecycle callbacks in correct order', async function ({ page }) {
     await loadEmptyFixture(page);
     const events = await page.evaluate(setupUseLifecycleScenario);
-    expect(events).toEqual([
+    expect(events, 'it shall execute callbacks in correct order: original-connected, lifecycle-connected, attribute-changed, then disconnected').toEqual([
       'original-connected',
       'lifecycle-connected',
       'original-attribute-changed:test-attr:null:value1',
@@ -230,11 +230,10 @@ describe('useLifecycle', function () {
     ]);
   });
 
-  test('it shall support multiple hooks', async function ({ page }) {
+  test('it shall support multiple connected callbacks', async function ({ page }) {
     await loadEmptyFixture(page);
     const events = await page.evaluate(setupMultipleHooksScenario);
-    // Order of hooks execution depends on Set iteration order, which is insertion order.
-    expect(events).toEqual([
+    expect(events, 'it shall execute all connected hooks in insertion order and their disconnect callbacks').toEqual([
       'hook1-connected',
       'hook2-connected',
       'hook3-connected',
@@ -243,10 +242,10 @@ describe('useLifecycle', function () {
     ]);
   });
 
-  test('it shall support multiple attribute changed hooks', async function ({ page }) {
+  test('it shall support multiple attribute changed callbacks', async function ({ page }) {
     await loadEmptyFixture(page);
     const events = await page.evaluate(setupMultipleAttributeHooksScenario);
-    expect(events).toEqual([
+    expect(events, 'it shall execute all attribute changed hooks with correct values').toEqual([
       'hook1:val',
       'hook2:val'
     ]);
@@ -255,12 +254,12 @@ describe('useLifecycle', function () {
   test('it shall continue execution even if a callback throws error', async function ({ page }) {
     await loadEmptyFixture(page);
     const events = await page.evaluate(setupErrorHandlingScenario);
-    expect(events).toEqual(['hook-success']);
+    expect(events, 'it shall execute subsequent hooks even when previous hook throws error').toEqual(['hook-success']);
   });
 
   test('it shall throw error when overriding callbacks twice', async function ({ page }) {
     await loadEmptyFixture(page);
     const result = await page.evaluate(setupDoubleOverrideScenario);
-    expect(result).toContain('The web component is already overridden');
+    expect(result, 'it shall throw error indicating component is already overridden').toContain('The web component is already overridden');
   });
 });

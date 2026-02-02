@@ -5,8 +5,6 @@ import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 import { setupDatabase } from '#test/playwright/tools/database.js';
 import { useStrict } from '#test/playwright/hooks/use-strict.js';
 
-/** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
-
 const test = jurukasaTest;
 const { describe } = test;
 
@@ -31,19 +29,17 @@ describe('Suppliers View', function () {
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('it shall display empty state when no suppliers exist', async function ({ page }) {
+  test('displays empty state with add supplier option when no suppliers exist', async function ({ page }) {
     await loadEmptyFixture(page);
-
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for loading to complete
-    await expect(page.getByRole('table', { name: 'Suppliers list' })).not.toBeVisible();
-    await expect(page.getByText('No Suppliers Found')).toBeVisible();
-    await expect(page.getByText('Start by adding your first supplier')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Add Supplier' }).first()).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Suppliers list' }), 'it shall hide suppliers table when empty').not.toBeVisible();
+    await expect(page.getByText('No Suppliers Found'), 'it shall display empty state heading').toBeVisible();
+    await expect(page.getByText('Start by adding your first supplier'), 'it shall display empty state description').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add Supplier' }).first(), 'it shall display add supplier button in empty state').toBeVisible();
   });
 
-  test('it shall display suppliers list when suppliers exist', async function ({ page }) {
+  test('displays suppliers list with names and phone numbers when suppliers exist', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -55,21 +51,17 @@ describe('Suppliers View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for suppliers table to load
-    await expect(page.getByRole('table', { name: 'Suppliers list' })).toBeVisible();
-    
-    // Verify suppliers are displayed
-    await expect(page.getByRole('button', { name: 'Supplier A', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Supplier B', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Supplier C', exact: true })).toBeVisible();
-    
-    // Verify phone numbers are displayed
+    await expect(page.getByRole('table', { name: 'Suppliers list' }), 'it shall display suppliers table').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Supplier A', exact: true }), 'it shall display Supplier A button').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Supplier B', exact: true }), 'it shall display Supplier B button').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Supplier C', exact: true }), 'it shall display Supplier C button').toBeVisible();
+
     const tableContent = page.getByRole('table', { name: 'Suppliers list' });
-    await expect(tableContent.getByText('081234567890')).toBeVisible();
-    await expect(tableContent.getByText('082345678901')).toBeVisible();
+    await expect(tableContent.getByText('081234567890'), 'it shall display Supplier A phone number').toBeVisible();
+    await expect(tableContent.getByText('082345678901'), 'it shall display Supplier B phone number').toBeVisible();
   });
 
-  test('it shall filter suppliers by search query', async function ({ page }) {
+  test('filters suppliers by search query and clears to restore full list', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -81,32 +73,26 @@ describe('Suppliers View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for initial load
-    await expect(page.getByRole('table', { name: 'Suppliers list' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'ABC Supplier', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'XYZ Trading', exact: true })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Suppliers list' }), 'it shall display suppliers table').toBeVisible();
+    await expect(page.getByRole('button', { name: 'ABC Supplier', exact: true }), 'it shall display ABC Supplier initially').toBeVisible();
+    await expect(page.getByRole('button', { name: 'XYZ Trading', exact: true }), 'it shall display XYZ Trading initially').toBeVisible();
 
-    // Search for "ABC"
     await page.getByLabel('Search').fill('ABC');
 
-    // Verify only ABC suppliers are visible
-    await expect(page.getByRole('button', { name: 'ABC Supplier', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'ABC Corporation', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'XYZ Trading', exact: true })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'ABC Supplier', exact: true }), 'it shall keep ABC Supplier visible after filter').toBeVisible();
+    await expect(page.getByRole('button', { name: 'ABC Corporation', exact: true }), 'it shall display ABC Corporation after filter').toBeVisible();
+    await expect(page.getByRole('button', { name: 'XYZ Trading', exact: true }), 'it shall hide XYZ Trading after ABC filter').not.toBeVisible();
 
-    // Clear search
     await page.getByLabel('Search').clear();
 
-    // Verify all suppliers are visible again
-    await expect(page.getByRole('button', { name: 'ABC Supplier', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'XYZ Trading', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'ABC Supplier', exact: true }), 'it shall restore ABC Supplier after clear').toBeVisible();
+    await expect(page.getByRole('button', { name: 'XYZ Trading', exact: true }), 'it shall restore XYZ Trading after clear').toBeVisible();
   });
 
-  test('it shall display pagination controls when suppliers exceed page size', async function ({ page }) {
+  test('paginates through supplier list when items exceed page size', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Create 25 test suppliers (page size is 20)
         for (let index = 1; index <= 25; index++) {
           await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (${index}, ${`Supplier ${String(index).padStart(2, '0')}`}, NULL)`;
         }
@@ -115,63 +101,40 @@ describe('Suppliers View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for table to load
-    await expect(page.getByRole('table', { name: 'Suppliers list' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Suppliers list' }), 'it shall display suppliers table').toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Pagination' }), 'it shall display pagination controls').toBeVisible();
+    await expect(page.getByText('Showing 1–20 of 25'), 'it shall display first page range indicator').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Supplier 01', exact: true }), 'it shall display Supplier 01 on first page').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Supplier 20', exact: true }), 'it shall display Supplier 20 on first page').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Supplier 25', exact: true }), 'it shall hide Supplier 25 on first page').not.toBeVisible();
 
-    // Verify pagination controls are visible
-    await expect(page.getByRole('navigation', { name: 'Pagination' })).toBeVisible();
-    await expect(page.getByText('Showing 1–20 of 25')).toBeVisible();
-    
-    // Verify first page suppliers are visible
-    await expect(page.getByRole('button', { name: 'Supplier 01', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Supplier 20', exact: true })).toBeVisible();
-    
-    // Supplier 25 should not be visible on first page
-    await expect(page.getByRole('button', { name: 'Supplier 25', exact: true })).not.toBeVisible();
-
-    // Navigate to next page
     await page.getByRole('button', { name: 'Next page' }).click();
 
-    // Verify second page content
-    await expect(page.getByText('Showing 21–25 of 25')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Supplier 21', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Supplier 25', exact: true })).toBeVisible();
-    
-    // Supplier 01 should not be visible on second page
-    await expect(page.getByRole('button', { name: 'Supplier 01', exact: true })).not.toBeVisible();
+    await expect(page.getByText('Showing 21–25 of 25'), 'it shall display second page range indicator').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Supplier 21', exact: true }), 'it shall display Supplier 21 on second page').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Supplier 25', exact: true }), 'it shall display Supplier 25 on second page').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Supplier 01', exact: true }), 'it shall hide Supplier 01 on second page').not.toBeVisible();
   });
 
-  test('it shall open supplier creation dialog when add button is clicked', async function ({ page }) {
+  test('opens supplier creation dialog when add button is clicked', async function ({ page }) {
     await loadEmptyFixture(page);
-
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for view to load
-    await expect(page.getByText('No Suppliers Found')).toBeVisible();
-
-    // Click add supplier button
+    await expect(page.getByText('No Suppliers Found'), 'it shall display empty state initially').toBeVisible();
     await page.getByRole('button', { name: 'Add Supplier' }).first().click();
 
-    // Verify creation dialog opened
-    await expect(page.getByRole('dialog', { name: 'Add Supplier' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Add Supplier' }), 'it shall display add supplier dialog').toBeVisible();
   });
 
-  test('it shall display supplier inventory and purchase counts', async function ({ page }) {
+  test('displays supplier inventory and purchase counts in list', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Create test supplier
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', NULL)`;
-        
-        // Create test inventories (11310 is POS - Inventory account from migrations)
         await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
         await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
-        
-        // Link supplier to inventories
         await sql`INSERT INTO supplier_inventories (supplier_id, inventory_id) VALUES (1, 1)`;
         await sql`INSERT INTO supplier_inventories (supplier_id, inventory_id) VALUES (1, 2)`;
-        
-        // Create test purchases
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (1, 1, 0)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (2, 1, 1000)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (3, 1, 2000)`;
@@ -180,43 +143,27 @@ describe('Suppliers View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for table to load
-    await expect(page.getByRole('table', { name: 'Suppliers list' })).toBeVisible();
-    
-    // Find the supplier row
+    await expect(page.getByRole('table', { name: 'Suppliers list' }), 'it shall display suppliers table').toBeVisible();
+
     const supplierRow = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Test Supplier' }) });
-    
-    // Verify inventory count badge shows 2
-    await expect(supplierRow.locator('span').filter({ hasText: /^2$/ }).first()).toBeVisible();
-    
-    // Verify purchase count badge shows 3
-    await expect(supplierRow.locator('span').filter({ hasText: /^3$/ }).last()).toBeVisible();
+    await expect(supplierRow.locator('span').filter({ hasText: /^2$/ }).first(), 'it shall display inventory count badge as 2').toBeVisible();
+    await expect(supplierRow.locator('span').filter({ hasText: /^3$/ }).last(), 'it shall display purchase count badge as 3').toBeVisible();
   });
 
-  test('it shall reload suppliers list after creating new supplier', async function ({ page }) {
+  test('creates new supplier and refreshes list to show the added supplier', async function ({ page }) {
     await loadEmptyFixture(page);
-
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Wait for empty state
-    await expect(page.getByText('No Suppliers Found')).toBeVisible();
-
-    // Open creation dialog
+    await expect(page.getByText('No Suppliers Found'), 'it shall display empty state initially').toBeVisible();
     await page.getByRole('button', { name: 'Add Supplier' }).first().click();
-    await expect(page.getByRole('dialog', { name: 'Add Supplier' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Add Supplier' }), 'it shall display add supplier dialog').toBeVisible();
 
-    // Fill in supplier details
     await page.getByLabel('Supplier Name').fill('New Supplier');
     await page.getByLabel('Phone Number').fill('081234567890');
-    
-    // Submit form
     await page.getByRole('dialog', { name: 'Add Supplier' }).getByRole('button', { name: 'Add' }).click();
 
-    // Dialog should close
-    await expect(page.getByRole('dialog', { name: 'Add Supplier' })).not.toBeVisible();
-
-    // Verify new supplier appears in the list
-    await expect(page.getByRole('table', { name: 'Suppliers list' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'New Supplier', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Add Supplier' }), 'it shall close dialog after submission').not.toBeVisible();
+    await expect(page.getByRole('table', { name: 'Suppliers list' }), 'it shall display suppliers table after creation').toBeVisible();
+    await expect(page.getByRole('button', { name: 'New Supplier', exact: true }), 'it shall display newly created supplier in list').toBeVisible();
   });
 });

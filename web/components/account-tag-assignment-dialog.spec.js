@@ -37,12 +37,33 @@ async function setupView([tursoDatabaseUrl, tag]) {
   `;
 }
 
+async function simulateDatabaseError() {
+  /** @type {DatabaseContextElement} */
+  const database = document.querySelector('database-context');
+  const originalTransaction = database.transaction.bind(database);
+  database.transaction = async function faultyTransaction() {
+    const tx = await originalTransaction('write');
+    const originalSql = tx.sql.bind(tx);
+    /**
+     * @param {TemplateStringsArray} strings
+     * @param  {...unknown} values
+     */
+    tx.sql = function faultySql(strings, ...values) {
+      if (strings[0].includes('INSERT INTO account_tags')) {
+        throw new Error('Simulated database error');
+      }
+      return originalSql(strings, ...values);
+    };
+    return tx;
+  };
+}
+
 describe('Account Tag Assignment Dialog', function () {
   useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('shall display dialog title with tag name and category', async function ({ page }) {
+  test('displays dialog title with tag name and category', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) { }),
@@ -51,12 +72,12 @@ describe('Account Tag Assignment Dialog', function () {
 
     await page.getByRole('button', { name: 'Open Dialog' }).click();
     const dialog = page.getByRole('dialog', { name: 'Manage Tag Asset' });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('heading', { name: 'Manage Tag Asset' })).toBeVisible();
-    await expect(dialog.getByText('Account Types')).toBeVisible();
+    await expect(dialog, 'it shall display dialog').toBeVisible();
+    await expect(dialog.getByRole('heading', { name: 'Manage Tag Asset' }), 'it shall display dialog heading').toBeVisible();
+    await expect(dialog.getByText('Account Types'), 'it shall display Account Types label').toBeVisible();
   });
 
-  test('shall display list of accounts', async function ({ page }) {
+  test('displays list of accounts in dialog', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -70,12 +91,12 @@ describe('Account Tag Assignment Dialog', function () {
     const dialog = page.getByRole('dialog', { name: 'Manage Tag Asset' });
 
     const table = dialog.getByRole('table', { name: 'Accounts list' });
-    await expect(table).toBeVisible();
-    await expect(table.getByRole('row', { name: 'Cash' })).toBeVisible();
-    await expect(table.getByRole('row', { name: 'Bank 10002' })).toBeVisible();
+    await expect(table, 'it shall display accounts table').toBeVisible();
+    await expect(table.getByRole('row', { name: 'Cash' }), 'it shall display Cash account row').toBeVisible();
+    await expect(table.getByRole('row', { name: 'Bank 10002' }), 'it shall display Bank account row').toBeVisible();
   });
 
-  test('shall filter accounts by search query', async function ({ page }) {
+  test('filters accounts by search query', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -89,15 +110,15 @@ describe('Account Tag Assignment Dialog', function () {
 
     await dialog.getByLabel('Search accounts').fill('Cash');
     const table = dialog.getByRole('table', { name: 'Accounts list' });
-    await expect(table.getByText('Cash')).toBeVisible();
-    await expect(table.getByText('Liability')).not.toBeVisible();
+    await expect(table.getByText('Cash'), 'it shall show matching account by name').toBeVisible();
+    await expect(table.getByText('Liability'), 'it shall hide non-matching account').not.toBeVisible();
 
     await dialog.getByLabel('Search accounts').fill('20001');
-    await expect(table.getByText('Liability')).toBeVisible();
-    await expect(table.getByText('Cash')).not.toBeVisible();
+    await expect(table.getByText('Liability'), 'it shall show matching account by code').toBeVisible();
+    await expect(table.getByText('Cash'), 'it shall hide non-matching account').not.toBeVisible();
   });
 
-  test('shall show empty state when no accounts match search', async function ({ page }) {
+  test('shows empty state when no accounts match search', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -109,10 +130,10 @@ describe('Account Tag Assignment Dialog', function () {
     const dialog = page.getByRole('dialog', { name: 'Manage Tag Asset' });
 
     await dialog.getByLabel('Search accounts').fill('XYZ');
-    await expect(dialog.getByText('No accounts match your search')).toBeVisible();
+    await expect(dialog.getByText('No accounts match your search'), 'it shall display empty search message').toBeVisible();
   });
 
-  test('shall assign tag to account', async function ({ page }) {
+  test('assigns tag to account and dispatches event', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -125,7 +146,7 @@ describe('Account Tag Assignment Dialog', function () {
     const table = dialog.getByRole('table', { name: 'Accounts list' });
     const checkbox = table.getByRole('row', { name: 'Cash' }).getByRole('checkbox');
 
-    await expect(checkbox).not.toBeChecked();
+    await expect(checkbox, 'it shall not be checked initially').not.toBeChecked();
 
     const [event] = await Promise.all([
       page.evaluate(async function waitForEvent() {
@@ -139,12 +160,12 @@ describe('Account Tag Assignment Dialog', function () {
       checkbox.click()
     ]);
 
-    expect(event).toEqual({ tag: 'Asset', accountCode: 10001, action: 'assign' });
-    await expect(checkbox).toBeChecked();
-    await expect(dialog.getByText('1 account assigned')).toBeVisible();
+    expect(event, 'it shall dispatch correct event detail').toEqual({ tag: 'Asset', accountCode: 10001, action: 'assign' });
+    await expect(checkbox, 'it shall be checked after assignment').toBeChecked();
+    await expect(dialog.getByText('1 account assigned'), 'it shall show assignment count').toBeVisible();
   });
 
-  test('shall remove tag from account', async function ({ page }) {
+  test('removes tag from account and dispatches event', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -158,7 +179,7 @@ describe('Account Tag Assignment Dialog', function () {
     const table = dialog.getByRole('table', { name: 'Accounts list' });
     const checkbox = table.getByRole('row', { name: 'Cash' }).getByRole('checkbox');
 
-    await expect(checkbox).toBeChecked();
+    await expect(checkbox, 'it shall be checked initially').toBeChecked();
 
     const [event] = await Promise.all([
       page.evaluate(async function waitForEvent() {
@@ -172,11 +193,11 @@ describe('Account Tag Assignment Dialog', function () {
       checkbox.click()
     ]);
 
-    expect(event).toEqual({ tag: 'Asset', accountCode: 10001, action: 'remove' });
-    await expect(checkbox).not.toBeChecked();
+    expect(event, 'it shall dispatch correct event detail').toEqual({ tag: 'Asset', accountCode: 10001, action: 'remove' });
+    await expect(checkbox, 'it shall not be checked after removal').not.toBeChecked();
   });
 
-  test('shall handle unique tags', async function ({ page }) {
+  test('handles unique tags with single account restriction', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -195,17 +216,17 @@ describe('Account Tag Assignment Dialog', function () {
     const cb1 = table.getByRole('row', { name: 'Acc 1' }).getByRole('checkbox');
     const cb2 = table.getByRole('row', { name: 'Acc 2' }).getByRole('checkbox');
 
-    await expect(dialog.getByText('(unique tag - only one account allowed)')).toBeVisible();
-    await expect(cb1).toBeChecked();
-    await expect(cb2).not.toBeChecked();
+    await expect(dialog.getByText('(unique tag - only one account allowed)'), 'it shall display unique tag indicator').toBeVisible();
+    await expect(cb1, 'it shall have first account checked').toBeChecked();
+    await expect(cb2, 'it shall have second account unchecked').not.toBeChecked();
 
     await cb2.click();
 
-    await expect(cb1).not.toBeChecked();
-    await expect(cb2).toBeChecked();
+    await expect(cb1, 'it shall uncheck first account after selecting second').not.toBeChecked();
+    await expect(cb2, 'it shall check second account').toBeChecked();
   });
 
-  test('shall display error dialog on database error', async function ({ page }) {
+  test('displays error dialog on database error and reverts checkbox', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -216,40 +237,20 @@ describe('Account Tag Assignment Dialog', function () {
     await page.getByRole('button', { name: 'Open Dialog' }).click();
     const dialog = page.getByRole('dialog', { name: 'Manage Tag Asset' });
 
-    // Simulate error
-    await page.evaluate(async function simulateDatabaseError() {
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      const originalTransaction = database.transaction.bind(database);
-      database.transaction = async function faultyTransaction() {
-        const tx = await originalTransaction('write');
-        const originalSql = tx.sql.bind(tx);
-        /**
-         * @param {TemplateStringsArray} strings
-         * @param  {...unknown} values
-         */
-        tx.sql = function faultySql(strings, ...values) {
-          if (strings[0].includes('INSERT INTO account_tags')) {
-            throw new Error('Simulated database error');
-          }
-          return originalSql(strings, ...values);
-        };
-        return tx;
-      };
-    });
+    await page.evaluate(simulateDatabaseError);
 
     const table = dialog.getByRole('table', { name: 'Accounts list' });
     const checkbox = table.getByRole('row', { name: 'Cash' }).getByRole('checkbox');
     await checkbox.click();
 
     const errorDialog = page.getByRole('alertdialog');
-    await expect(errorDialog).toBeVisible();
-    await expect(errorDialog).toContainText('Simulated database error');
+    await expect(errorDialog, 'it shall display error dialog').toBeVisible();
+    await expect(errorDialog, 'it shall show error message').toContainText('Simulated database error');
 
     await errorDialog.getByRole('button', { name: 'Dismiss' }).click();
-    await expect(errorDialog).not.toBeVisible();
+    await expect(errorDialog, 'it shall close error dialog').not.toBeVisible();
 
     const checkboxAfterError = dialog.getByRole('table', { name: 'Accounts list' }).getByRole('row', { name: 'Cash' }).getByRole('checkbox');
-    await expect(checkboxAfterError).not.toBeChecked();
+    await expect(checkboxAfterError, 'it shall revert checkbox to unchecked state').not.toBeChecked();
   });
 });

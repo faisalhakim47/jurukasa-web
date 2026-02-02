@@ -1,8 +1,8 @@
 import { writeFile } from 'node:fs/promises';
-import { test } from '@playwright/test';
-import { TerminalReporter } from 'playwright/lib/reporters/base';
-import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { test as playwrightTest } from '@playwright/test';
+import { TerminalReporter } from 'playwright/lib/reporters/base';
 import { formatAXTree } from '#test/playwright/tools/playwright.js';
 /** @import { TestCase, TestResult } from '@playwright/test/reporter' */
 /** @import { Protocol } from '../../node_modules/playwright-core/types/protocol.d.ts' */
@@ -39,7 +39,7 @@ TerminalReporter.prototype.onTestEnd = function overriddenOnTestEnd(test, result
   }
 };
 
-export const jurukasaTest = test.extend({
+export const jurukasaTest = playwrightTest.extend({
   async page({ context, page }, use, testInfo) {
     await use(page);
     if (testInfo.status === 'failed' || testInfo.status === 'timedOut') {

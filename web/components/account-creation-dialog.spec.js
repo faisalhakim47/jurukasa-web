@@ -35,13 +35,42 @@ async function setupView(tursoDatabaseUrl) {
   `;
 }
 
+async function setupDuplicateAccountTest(tursoDatabaseUrl) {
+  document.body.innerHTML = `
+    <ready-context>
+      <router-context>
+        <database-context provider="turso" name="My Business" turso-url="${tursoDatabaseUrl}">
+          <device-context>
+            <i18n-context>
+              <button
+                type="button"
+                commandfor="account-creation-dialog"
+                command="--open"
+              >Create Account</button>
+              <account-creation-dialog
+                id="account-creation-dialog"
+              ></account-creation-dialog>
+            </i18n-context>
+          </device-context>
+        </database-context>
+      </router-context>
+    </ready-context>
+  `;
+
+  /** @type {DatabaseContextElement} */
+  const database = document.querySelector('database-context');
+  await database.sql`
+    INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time)
+    VALUES (11111, 'Existing Account', 0, 0, 0)
+  `;
+}
+
 describe('Account Creation Dialog', function () {
   useConsoleOutput(test);
   useStrict(test);
-
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('it shall create a new account', async function ({ page }) {
+  test('creates new account with all fields and persists to database', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
@@ -49,7 +78,7 @@ describe('Account Creation Dialog', function () {
     await page.getByRole('button', { name: 'Create Account' }).click();
 
     const dialog = page.getByRole('dialog', { name: 'Create New Account' });
-    await expect(dialog).toBeVisible();
+    await expect(dialog, 'it shall open creation dialog').toBeVisible();
 
     await dialog.getByLabel('Account Code').fill('12345');
     await dialog.getByLabel('Account Name').fill('Test Account');
@@ -65,7 +94,7 @@ describe('Account Creation Dialog', function () {
       dialog.getByRole('button', { name: 'Create Account' }).click(),
     ]);
 
-    expect(accountCreatedEvent.accountCode).toBe(12345);
+    expect(accountCreatedEvent.accountCode, 'it shall dispatch correct account code in event').toBe(12345);
 
     const account = await page.evaluate(async function getAccountFromDatabase() {
       /** @type {DatabaseContextElement} */
@@ -79,54 +108,23 @@ describe('Account Creation Dialog', function () {
       return result.rows[0];
     });
 
-    expect(account.account_code).toBe('12345');
-    expect(account.name).toBe('Test Account');
-    expect(account.normal_balance).toBe('0');
-    expect(account.tag).toBe('Asset');
+    expect(account.account_code, 'Account code shall be persisted').toBe('12345');
+    expect(account.name, 'Account name shall be persisted').toBe('Test Account');
+    expect(account.normal_balance, 'Normal balance shall be persisted').toBe('0');
+    expect(account.tag, 'Account tag shall be persisted').toBe('Asset');
   });
 
-  test('it shall validate duplicate account code', async function ({ page }) {
+  test('validates duplicate account code with browser validation', async function ({ page }) {
     await loadEmptyFixture(page);
 
-    await page.evaluate(async function setupDuplicateAccountTest(tursoDatabaseUrl) {
-      document.body.innerHTML = `
-        <ready-context>
-          <router-context>
-            <database-context provider="turso" name="My Business" turso-url="${tursoDatabaseUrl}">
-              <device-context>
-                <i18n-context>
-                  <button
-                    type="button"
-                    commandfor="account-creation-dialog"
-                    command="--open"
-                  >Create Account</button>
-                  <account-creation-dialog
-                    id="account-creation-dialog"
-                  ></account-creation-dialog>
-                </i18n-context>
-              </device-context>
-            </database-context>
-          </router-context>
-        </ready-context>
-      `;
-
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      await database.sql`
-        INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time)
-        VALUES (11111, 'Existing Account', 0, 0, 0)
-      `;
-    }, tursoLibSQLiteServer().url);
+    await page.evaluate(setupDuplicateAccountTest, tursoLibSQLiteServer().url);
 
     await page.getByRole('button', { name: 'Create Account' }).click();
 
-    // Fill duplicate code
     await page.getByLabel('Account Code').fill('11111');
     await page.getByLabel('Account Code').blur();
 
-    // Note: Browser validation message handling in Playwright can be tricky.
-    // We can check if the input is invalid.
-    await expect(page.getByLabel('Account Code')).toHaveJSProperty('validity.valid', false);
-    await expect(page.getByLabel('Account Code')).toHaveJSProperty('validationMessage', 'Account code already exists.');
+    await expect(page.getByLabel('Account Code'), 'it shall mark input as invalid').toHaveJSProperty('validity.valid', false);
+    await expect(page.getByLabel('Account Code'), 'it shall show validation message').toHaveJSProperty('validationMessage', 'Account code already exists.');
   });
 });

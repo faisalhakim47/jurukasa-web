@@ -26,22 +26,28 @@ async function setupView(tursoDatabaseUrl) {
   `;
 }
 
+function insertNewPurchase() {
+  /** @type {DatabaseContextElement} */
+  const database = document.querySelector('database-context');
+  return database.sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (2, 1, 2000000, 2000000)`;
+}
+
 describe('Purchases View', function () {
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('it shall display empty state when no purchases exist', async function ({ page }) {
+  test('display empty state when no purchases exist', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Purchases list' })).not.toBeVisible();
-    await expect(page.getByText('No Purchases Found')).toBeVisible();
-    await expect(page.getByText('Start by recording your first purchase to track inventory costs')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'New Purchase' }).first()).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Purchases list' }), 'it shall not display purchases table when no purchases exist').not.toBeVisible();
+    await expect(page.getByText('No Purchases Found'), 'it shall display "No Purchases Found" message').toBeVisible();
+    await expect(page.getByText('Start by recording your first purchase to track inventory costs'), 'it shall display empty state helper text').toBeVisible();
+    await expect(page.getByRole('button', { name: 'New Purchase' }).first(), 'it shall display "New Purchase" button').toBeVisible();
   });
 
-  test('it shall display purchases list when purchases exist', async function ({ page }) {
+  test('display purchases list with supplier and status information', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -61,18 +67,18 @@ describe('Purchases View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Purchases list' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#2' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Purchases list' }), 'it shall display purchases table').toBeVisible();
+    await expect(page.getByRole('button', { name: '#1' }), 'it shall display purchase #1 button').toBeVisible();
+    await expect(page.getByRole('button', { name: '#2' }), 'it shall display purchase #2 button').toBeVisible();
     
     const tableContent = page.getByRole('table', { name: 'Purchases list' });
-    await expect(tableContent.getByText('Supplier A')).toBeVisible();
-    await expect(tableContent.getByText('Supplier B')).toBeVisible();
-    await expect(tableContent.getByText('Posted')).toBeVisible();
-    await expect(tableContent.getByText('Draft')).toBeVisible();
+    await expect(tableContent.getByText('Supplier A'), 'it shall display Supplier A in table').toBeVisible();
+    await expect(tableContent.getByText('Supplier B'), 'it shall display Supplier B in table').toBeVisible();
+    await expect(tableContent.getByText('Posted'), 'it shall display Posted status').toBeVisible();
+    await expect(tableContent.getByText('Draft'), 'it shall display Draft status').toBeVisible();
   });
 
-  test('it shall filter purchases by status', async function ({ page }) {
+  test('filter purchases by status and display correct results', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -85,27 +91,27 @@ describe('Purchases View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Purchases list' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#2' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#3' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Purchases list' }), 'it shall display purchases table').toBeVisible();
+    await expect(page.getByRole('button', { name: '#1' }), 'it shall display purchase #1 button initially').toBeVisible();
+    await expect(page.getByRole('button', { name: '#2' }), 'it shall display purchase #2 button initially').toBeVisible();
+    await expect(page.getByRole('button', { name: '#3' }), 'it shall display purchase #3 button initially').toBeVisible();
 
     await page.getByLabel('Status').click();
     await page.getByRole('menuitem', { name: 'Posted' }).click();
 
-    await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#2' })).not.toBeVisible();
-    await expect(page.getByRole('button', { name: '#3' })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: '#1' }), 'it shall display only posted purchase #1 after filtering by Posted status').toBeVisible();
+    await expect(page.getByRole('button', { name: '#2' }), 'it shall not display draft purchase #2 after filtering by Posted status').not.toBeVisible();
+    await expect(page.getByRole('button', { name: '#3' }), 'it shall not display draft purchase #3 after filtering by Posted status').not.toBeVisible();
 
     await page.getByLabel('Status').click();
     await page.getByRole('menuitem', { name: 'Draft' }).click();
 
-    await expect(page.getByRole('button', { name: '#1' })).not.toBeVisible();
-    await expect(page.getByRole('button', { name: '#2' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#3' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#1' }), 'it shall not display posted purchase #1 after filtering by Draft status').not.toBeVisible();
+    await expect(page.getByRole('button', { name: '#2' }), 'it shall display draft purchase #2 after filtering by Draft status').toBeVisible();
+    await expect(page.getByRole('button', { name: '#3' }), 'it shall display draft purchase #3 after filtering by Draft status').toBeVisible();
   });
 
-  test('it shall filter purchases by supplier search', async function ({ page }) {
+  test('filter purchases by supplier search query', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -118,19 +124,19 @@ describe('Purchases View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Purchases list' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Purchases list' }), 'it shall display purchases table').toBeVisible();
     
     const tableContent = page.getByRole('table', { name: 'Purchases list' });
-    await expect(tableContent.getByText('ABC Supplier')).toBeVisible();
-    await expect(tableContent.getByText('XYZ Trading')).toBeVisible();
+    await expect(tableContent.getByText('ABC Supplier'), 'it shall display ABC Supplier initially').toBeVisible();
+    await expect(tableContent.getByText('XYZ Trading'), 'it shall display XYZ Trading initially').toBeVisible();
 
     await page.getByLabel('Search').fill('ABC');
 
-    await expect(tableContent.getByText('ABC Supplier')).toBeVisible();
-    await expect(tableContent.getByText('XYZ Trading')).not.toBeVisible();
+    await expect(tableContent.getByText('ABC Supplier'), 'it shall display ABC Supplier after search').toBeVisible();
+    await expect(tableContent.getByText('XYZ Trading'), 'it shall not display XYZ Trading after ABC search').not.toBeVisible();
   });
 
-  test('it shall display pagination controls when purchases exceed page size', async function ({ page }) {
+  test('navigate through paginated purchases list', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -143,22 +149,22 @@ describe('Purchases View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Purchases list' })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Pagination' })).toBeVisible();
-    await expect(page.getByText('Showing 1–20 of 25')).toBeVisible();
-    await expect(page.getByRole('button', { name: '#25' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#6' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#5' })).not.toBeVisible();
+    await expect(page.getByRole('table', { name: 'Purchases list' }), 'it shall display purchases table').toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Pagination' }), 'it shall display pagination navigation').toBeVisible();
+    await expect(page.getByText('Showing 1–20 of 25'), 'it shall display correct pagination info on first page').toBeVisible();
+    await expect(page.getByRole('button', { name: '#25' }), 'it shall display purchase #25 button on first page').toBeVisible();
+    await expect(page.getByRole('button', { name: '#6' }), 'it shall display purchase #6 button on first page').toBeVisible();
+    await expect(page.getByRole('button', { name: '#5' }), 'it shall not display purchase #5 button on first page').not.toBeVisible();
 
     await page.getByRole('button', { name: 'Next page' }).click();
 
-    await expect(page.getByText('Showing 21–25 of 25')).toBeVisible();
-    await expect(page.getByRole('button', { name: '#5' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#25' })).not.toBeVisible();
+    await expect(page.getByText('Showing 21–25 of 25'), 'it shall display correct pagination info on second page').toBeVisible();
+    await expect(page.getByRole('button', { name: '#5' }), 'it shall display purchase #5 button on second page').toBeVisible();
+    await expect(page.getByRole('button', { name: '#1' }), 'it shall display purchase #1 button on second page').toBeVisible();
+    await expect(page.getByRole('button', { name: '#25' }), 'it shall not display purchase #25 button on second page').not.toBeVisible();
   });
 
-  test('it shall display item count and total amount for each purchase', async function ({ page }) {
+  test('display item count and total amount for each purchase', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -174,14 +180,14 @@ describe('Purchases View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Purchases list' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Purchases list' }), 'it shall display purchases table').toBeVisible();
     
     const purchaseRow = page.getByRole('row').filter({ has: page.getByRole('button', { name: '#1' }) });
-    await expect(purchaseRow.locator('span').filter({ hasText: /^2$/ })).toBeVisible();
-    await expect(purchaseRow.getByText(/150/)).toBeVisible();
+    await expect(purchaseRow.locator('span').filter({ hasText: /^2$/ }), 'it shall display item count of 2 for purchase').toBeVisible();
+    await expect(purchaseRow.getByText(/150/), 'it shall display total amount of 150 for purchase').toBeVisible();
   });
 
-  test('it shall open purchase details dialog when purchase ID is clicked', async function ({ page }) {
+  test('open purchase details dialog when purchase ID is clicked', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -192,16 +198,14 @@ describe('Purchases View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Purchases list' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Purchases list' }), 'it shall display purchases table').toBeVisible();
 
     await page.getByRole('button', { name: '#1' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Purchase Details' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Purchase #1' }), 'it shall display Purchase Details dialog').toBeVisible();
   });
 
-
-
-  test('it shall refresh purchases list when refresh button is clicked', async function ({ page }) {
+  test('refresh purchases list when refresh button is clicked', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -212,19 +216,13 @@ describe('Purchases View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Purchases list' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '#1' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Purchases list' }), 'it shall display purchases table').toBeVisible();
+    await expect(page.getByRole('button', { name: '#1' }), 'it shall display purchase #1 button initially').toBeVisible();
 
     await page.evaluate(insertNewPurchase);
 
     await page.getByRole('button', { name: 'Refresh' }).click();
 
-    await expect(page.getByRole('button', { name: '#2' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '#2' }), 'it shall display newly added purchase #2 after refresh').toBeVisible();
   });
-
-  function insertNewPurchase() {
-    /** @type {DatabaseContextElement} */
-    const database = document.querySelector('database-context');
-    return database.sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (2, 1, 2000000, 2000000)`;
-  }
 });

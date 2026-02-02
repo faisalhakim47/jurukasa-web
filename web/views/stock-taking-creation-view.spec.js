@@ -28,290 +28,259 @@ async function setupView(tursoDatabaseUrl) {
   `;
 }
 
+function mockDateTo2025_01_16() {
+  const mockNow = new Date('2025-01-16T00:00:00Z').getTime();
+  // eslint-disable-next-line no-global-assign
+  Date = class extends Date {
+    static now() {
+      return mockNow;
+    }
+  };
+}
+
+async function setupThreeInventories(sql) {
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (3, 'Product C', 15000, 'unit', 11310)`;
+}
+
+async function setupInventoriesWithStock(sql) {
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock) VALUES (1, 'Product A', 10000, 'piece', 11310, 100)`;
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock) VALUES (2, 'Product B', 20000, 'piece', 11310, 50)`;
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock) VALUES (3, 'Product C', 15000, 'unit', 11310, 75)`;
+}
+
+async function setupRecentAuditInventory(sql) {
+  const recentTime = new Date('2025-01-15T00:00:00Z').getTime();
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, latest_stock_taking_time) VALUES (1, 'Product A', 10000, 'piece', 11310, ${recentTime})`;
+}
+
+async function setupOverdueAuditInventory(sql) {
+  const overdueTime = new Date('2024-12-01T00:00:00Z').getTime();
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, latest_stock_taking_time) VALUES (1, 'Product A', 10000, 'piece', 11310, ${overdueTime})`;
+}
+
+async function setupPaginationInventories(sql) {
+  for (let index = 1; index <= 25; index++) {
+    await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (${index}, ${'Product ' + index}, 10000, 'piece', 11310)`;
+  }
+}
+
+async function setupInventoriesWithCost(sql) {
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (3, 'Product C', 15000, 'unit', 11310)`;
+  await sql`UPDATE accounts SET balance = 22500 WHERE account_code = 11310`;
+  await sql`UPDATE inventories SET cost = 5000, stock = 1 WHERE id = 1`;
+  await sql`UPDATE inventories SET cost = 10000, stock = 1 WHERE id = 2`;
+  await sql`UPDATE inventories SET cost = 7500, stock = 1 WHERE id = 3`;
+}
+
+async function setupInventoryWithAuditDate(sql) {
+  const timestamp = new Date('2025-01-01T10:00:00Z').getTime();
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, latest_stock_taking_time) VALUES (1, 'Product A', 10000, 'piece', 11310, ${timestamp})`;
+}
+
+function insertNewInventory() {
+  /** @type {import('#web/contexts/database-context.js').DatabaseContextElement} */
+  const database = document.querySelector('database-context');
+
+  return database.sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (4, 'Product D', 25000, 'piece', 11310)`;
+}
+
 describe('Stock Taking Creation View', function () {
   useConsoleOutput(test);
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('it shall display page header and description', async function ({ page }) {
+  test('user views stock taking creation page with header and inventory list', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Create inventories (11310 is POS - Inventory account from migrations)
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (3, 'Product C', 15000, 'unit', 11310)`;
-      }),
+      setupDatabase(tursoLibSQLiteServer(), setupThreeInventories),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('heading', { name: 'New Stock Taking' })).toBeVisible();
-
-    await expect(page.getByText('Select an inventory item to perform stock taking')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'New Stock Taking' }), 'it shall display page heading').toBeVisible();
+    await expect(page.getByText('Select an inventory item to perform stock taking'), 'it shall display page description').toBeVisible();
+    await expect(page.getByRole('table'), 'it shall display inventories table').toBeVisible();
+    await expect(page.getByText('Product A'), 'it shall display Product A in list').toBeVisible();
+    await expect(page.getByText('Product B'), 'it shall display Product B in list').toBeVisible();
+    await expect(page.getByText('Product C'), 'it shall display Product C in list').toBeVisible();
   });
 
-  test('it shall display empty state when no inventories exist', async function ({ page }) {
+  test('user views empty state when no inventories exist', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByText('No inventories found')).toBeVisible();
+    await expect(page.getByText('No inventories found'), 'it shall display empty state message').toBeVisible();
   });
 
-  test('it shall display inventories list', async function ({ page }) {
+  test('user views stock quantities and audit buttons for each inventory', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (3, 'Product C', 15000, 'unit', 11310)`;
-      }),
-    ]);
-
-    await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-    await expect(page.getByRole('table')).toBeVisible();
-
-    await expect(page.getByText('Product A')).toBeVisible();
-    await expect(page.getByText('Product B')).toBeVisible();
-    await expect(page.getByText('Product C')).toBeVisible();
-  });
-
-  test('it shall display stock quantities for each inventory', async function ({ page }) {
-    await Promise.all([
-      loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock) VALUES (1, 'Product A', 10000, 'piece', 11310, 100)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock) VALUES (2, 'Product B', 20000, 'piece', 11310, 50)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock) VALUES (3, 'Product C', 15000, 'unit', 11310, 75)`;
-      }),
+      setupDatabase(tursoLibSQLiteServer(), setupInventoriesWithStock),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     const inventoriesTable = page.getByRole('table');
 
-    await expect(inventoriesTable.getByText('100')).toBeVisible();
-    await expect(inventoriesTable.getByText('50')).toBeVisible();
-    await expect(inventoriesTable.getByText('75')).toBeVisible();
-  });
-
-  test('it shall display audit button for each inventory', async function ({ page }) {
-    await Promise.all([
-      loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (3, 'Product C', 15000, 'unit', 11310)`;
-      }),
-    ]);
-
-    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    await expect(inventoriesTable.getByText('100'), 'it shall display stock quantity 100').toBeVisible();
+    await expect(inventoriesTable.getByText('50'), 'it shall display stock quantity 50').toBeVisible();
+    await expect(inventoriesTable.getByText('75'), 'it shall display stock quantity 75').toBeVisible();
 
     const auditButtons = page.getByRole('button', { name: 'Audit' });
-    await expect(auditButtons.first()).toBeVisible();
-
-    // Should have 3 audit buttons (one for each product)
-    await expect(auditButtons).toHaveCount(3);
+    await expect(auditButtons.first(), 'it shall display audit button').toBeVisible();
+    await expect(auditButtons, 'it shall display three audit buttons').toHaveCount(3);
   });
 
-  test('it shall display audit status for inventories never audited', async function ({ page }) {
+  test('user views audit status indicators for inventories', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (3, 'Product C', 15000, 'unit', 11310)`;
-      }),
+      setupDatabase(tursoLibSQLiteServer(), setupThreeInventories),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    // Verify "Never" audit status is displayed for items without latest_stock_taking_time
-    await expect(page.getByText('Never').first()).toBeVisible();
+    await expect(page.getByText('Never').first(), 'it shall display Never audit status for unaudited items').toBeVisible();
   });
 
-  test('it shall display audit status for recently audited inventories', async function ({ page }) {
+  test('user views Recent audit status for recently audited inventory', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        const recentTime = Date.now() - (3 * 24 * 60 * 60 * 1000); // 3 days ago
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, latest_stock_taking_time) VALUES (1, 'Product A', 10000, 'piece', 11310, ${recentTime})`;
-      }),
+      setupDatabase(tursoLibSQLiteServer(), setupRecentAuditInventory),
+    ]);
+
+    // Mock Date.now() to return a fixed time (2025-01-16) so the audit from 2025-01-15 is "Recent"
+    await page.evaluate(mockDateTo2025_01_16);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await expect(page.getByText('Recent'), 'it shall display Recent audit status').toBeVisible();
+  });
+
+  test('user views Overdue audit status for inventory not audited recently', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), setupOverdueAuditInventory),
+    ]);
+
+    // Mock Date.now() to return a fixed time (2025-01-16) so the audit from 2024-12-01 is "Overdue" (>30 days)
+    await page.evaluate(mockDateTo2025_01_16);
+
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
+
+    await expect(page.getByText('Overdue'), 'it shall display Overdue audit status').toBeVisible();
+  });
+
+  test('user filters inventory list by search query', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer(), setupThreeInventories),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByText('Recent')).toBeVisible();
-  });
-
-  test('it shall display audit status for overdue inventories', async function ({ page }) {
-    await Promise.all([
-      loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        const overdueTime = Date.now() - (40 * 24 * 60 * 60 * 1000); // 40 days ago
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, latest_stock_taking_time) VALUES (1, 'Product A', 10000, 'piece', 11310, ${overdueTime})`;
-      }),
-    ]);
-
-    await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-    await expect(page.getByText('Overdue')).toBeVisible();
-  });
-
-  test('it shall filter inventories by search query', async function ({ page }) {
-    await Promise.all([
-      loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (3, 'Product C', 15000, 'unit', 11310)`;
-      }),
-    ]);
-
-    await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-    await expect(page.getByText('Product A')).toBeVisible();
-    await expect(page.getByText('Product B')).toBeVisible();
-    await expect(page.getByText('Product C')).toBeVisible();
+    await expect(page.getByText('Product A'), 'it shall display Product A initially').toBeVisible();
+    await expect(page.getByText('Product B'), 'it shall display Product B initially').toBeVisible();
+    await expect(page.getByText('Product C'), 'it shall display Product C initially').toBeVisible();
 
     await page.getByLabel('Search').fill('Product A');
 
-    await expect(page.getByText('Product A')).toBeVisible();
-    await expect(page.getByText('Product B')).not.toBeVisible();
-    await expect(page.getByText('Product C')).not.toBeVisible();
+    await expect(page.getByText('Product A'), 'it shall display Product A after search').toBeVisible();
+    await expect(page.getByText('Product B'), 'it shall not display Product B after search').not.toBeVisible();
+    await expect(page.getByText('Product C'), 'it shall not display Product C after search').not.toBeVisible();
   });
 
-  test('it shall display pagination controls when inventories exceed page size', async function ({ page }) {
-    // This test is skipped until pagination is fixed in the application
+  test('user navigates paginated inventory list', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Create 25 test inventories (page size is 20)
-        for (let index = 1; index <= 25; index++) {
-          await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (${index}, ${'Product ' + index}, 10000, 'piece', 11310)`;
-        }
-      }),
+      setupDatabase(tursoLibSQLiteServer(), setupPaginationInventories),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table')).toBeVisible();
+    await expect(page.getByRole('table'), 'it shall display inventories table').toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Pagination' }), 'it shall display pagination controls').toBeVisible();
+    await expect(page.getByText('Showing 1–20 of 25'), 'it shall display first page range').toBeVisible();
 
-    await expect(page.getByRole('navigation', { name: 'Pagination' })).toBeVisible();
-    await expect(page.getByText('Showing 1–20 of 25')).toBeVisible();
-
-    // Products are sorted alphabetically, so Product 1, 10-19, 2, 20-24 appear on page 1
-    await expect(page.getByText('Product 1', { exact: true })).toBeVisible();
-    await expect(page.getByText('Product 2', { exact: true })).toBeVisible();
-    await expect(page.getByText('Product 4', { exact: true })).toBeVisible();
-    // Product 5 should not be visible on first page (it's on page 2 due to alphabetical order)
-    await expect(page.getByText('Product 5', { exact: true })).not.toBeVisible();
+    await expect(page.getByText('Product 1', { exact: true }), 'it shall display Product 1 on first page').toBeVisible();
+    await expect(page.getByText('Product 2', { exact: true }), 'it shall display Product 2 on first page').toBeVisible();
+    await expect(page.getByText('Product 4', { exact: true }), 'it shall display Product 4 on first page').toBeVisible();
+    await expect(page.getByText('Product 5', { exact: true }), 'it shall not display Product 5 on first page').not.toBeVisible();
 
     await page.getByRole('button', { name: 'Next page' }).click();
 
-    await expect(page.getByText('Showing 21–25 of 25')).toBeVisible();
-    // Products 5-9 appear on page 2 due to alphabetical sorting (25, 3-9)
-    await expect(page.getByText('Product 5', { exact: true })).toBeVisible();
-    await expect(page.getByText('Product 9', { exact: true })).toBeVisible();
-
-    await expect(page.getByText('Product 1', { exact: true })).not.toBeVisible();
+    await expect(page.getByText('Showing 21–25 of 25'), 'it shall display second page range').toBeVisible();
+    await expect(page.getByText('Product 5', { exact: true }), 'it shall display Product 5 on second page').toBeVisible();
+    await expect(page.getByText('Product 9', { exact: true }), 'it shall display Product 9 on second page').toBeVisible();
+    await expect(page.getByText('Product 1', { exact: true }), 'it shall not display Product 1 on second page').not.toBeVisible();
   });
 
-  test('it shall allow navigating to first page', async function ({ page }) {
+  test('user navigates to first page from later page', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Create 25 test inventories
-        for (let i = 1; i <= 25; i++) {
-          await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (${i}, ${'Product ' + i}, 10000, 'piece', 11310)`;
-        }
-      }),
+      setupDatabase(tursoLibSQLiteServer(), setupPaginationInventories),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table')).toBeVisible();
+    await expect(page.getByRole('table'), 'it shall display inventories table').toBeVisible();
 
     await page.getByRole('button', { name: 'Next page' }).click();
-    await expect(page.getByText('Showing 21–25 of 25')).toBeVisible();
+    await expect(page.getByText('Showing 21–25 of 25'), 'it shall display second page range').toBeVisible();
 
     await page.getByRole('button', { name: 'First page' }).click();
 
-    await expect(page.getByText('Showing 1–20 of 25')).toBeVisible();
-    await expect(page.getByText('Product 1', { exact: true })).toBeVisible();
+    await expect(page.getByText('Showing 1–20 of 25'), 'it shall display first page range after navigation').toBeVisible();
+    await expect(page.getByText('Product 1', { exact: true }), 'it shall display Product 1 on first page').toBeVisible();
   });
 
-  test('it shall refresh inventories list when refresh button is clicked', async function ({ page }) {
+  test('user refreshes inventory list to see new entries', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (3, 'Product C', 15000, 'unit', 11310)`;
-      }),
+      setupDatabase(tursoLibSQLiteServer(), setupThreeInventories),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table')).toBeVisible();
-    await expect(page.getByText('Product A')).toBeVisible();
+    await expect(page.getByRole('table'), 'it shall display inventories table').toBeVisible();
+    await expect(page.getByText('Product A'), 'it shall display Product A initially').toBeVisible();
 
     await page.evaluate(insertNewInventory);
 
     await page.getByRole('button', { name: 'Refresh' }).click();
 
-    await expect(page.getByText('Product D')).toBeVisible();
+    await expect(page.getByText('Product D'), 'it shall display newly added Product D after refresh').toBeVisible();
   });
 
-  function insertNewInventory() {
-    /** @type {import('#web/contexts/database-context.js').DatabaseContextElement} */
-    const database = document.querySelector('database-context');
-
-    return database.sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (4, 'Product D', 25000, 'piece', 11310)`;
-  }
-
-  test('it shall display cost information for each inventory', async function ({ page }) {
+  test('user views cost information for each inventory', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        // Insert inventories without cost first, then update the balance and add cost
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (3, 'Product C', 15000, 'unit', 11310)`;
-        // Update account balance and inventory costs together
-        await sql`UPDATE accounts SET balance = 22500 WHERE account_code = 11310`;
-        await sql`UPDATE inventories SET cost = 5000, stock = 1 WHERE id = 1`;
-        await sql`UPDATE inventories SET cost = 10000, stock = 1 WHERE id = 2`;
-        await sql`UPDATE inventories SET cost = 7500, stock = 1 WHERE id = 3`;
-      }),
+      setupDatabase(tursoLibSQLiteServer(), setupInventoriesWithCost),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
     const inventoriesTable = page.getByRole('table');
 
-    await expect(inventoriesTable.getByText('IDR 5,000', { exact: true })).toBeVisible();
-    await expect(inventoriesTable.getByText('IDR 10,000', { exact: true })).toBeVisible();
+    await expect(inventoriesTable.getByText('IDR 5,000', { exact: true }), 'it shall display cost IDR 5,000 for Product A').toBeVisible();
+    await expect(inventoriesTable.getByText('IDR 10,000', { exact: true }), 'it shall display cost IDR 10,000 for Product B').toBeVisible();
   });
 
-  test('it shall display last audit date when available', async function ({ page }) {
+  test('user views last audit date for inventoried items', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        const timestamp = new Date('2025-01-01T10:00:00Z').getTime();
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, latest_stock_taking_time) VALUES (1, 'Product A', 10000, 'piece', 11310, ${timestamp})`;
-      }),
+      setupDatabase(tursoLibSQLiteServer(), setupInventoryWithAuditDate),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table')).toBeVisible();
+    await expect(page.getByRole('table'), 'it shall display inventories table').toBeVisible();
 
-    // Check for date text that includes the year 2025 or the specific date
-    // The date format could be locale-specific, so we check for a visible date element
     const table = page.getByRole('table');
-    await expect(table.getByText('2025', { exact: false }).first()).toBeVisible();
+    await expect(table.getByText('2025', { exact: false }).first(), 'it shall display audit year 2025').toBeVisible();
   });
 });

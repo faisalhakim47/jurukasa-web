@@ -25,7 +25,7 @@ describe('Service Worker Context', function () {
   useConsoleOutput(test);
   useStrict(test);
 
-  test('service worker strategy overview', async function ({ context }) {
+  test('it shall manage service worker lifecycle across multiple pages', async function ({ context }) {
     const firstPage = await context.newPage();
 
     const cdp = await context.newCDPSession(firstPage);
@@ -46,16 +46,10 @@ describe('Service Worker Context', function () {
     }
     cdp.addListener('ServiceWorker.workerVersionUpdated', watchOverServiceWorker);
 
-    // cdp.addListener('ServiceWorker.workerVersionUpdated', async function debugLog(event) {
-    //   for (const version of event.versions) {
-    //     console.debug('workerVersionUpdated', version.versionId, version.runningStatus, version.status, version.registrationId);
-    //   }
-    // });
-
     await loadEmptyFixture(firstPage);
     await firstPage.evaluate(setupView);
 
-    expect(swVersion.controlledClients.length, { message: 'service worker shall not handle the client who initiate it.' }).toBe(0);
+    expect(swVersion.controlledClients.length, 'service worker shall not handle the client who initiate it').toBe(0);
 
     await Promise.all([
       new Promise(function waitForServiceWorkerStop(resolve, reject) {
@@ -73,7 +67,7 @@ describe('Service Worker Context', function () {
         cdp.addListener('ServiceWorker.workerVersionUpdated', versionUpdateListener);
         const timeout = setTimeout(function versionWaiterTimeout() {
           cdp.removeListener('ServiceWorker.workerVersionUpdated', versionUpdateListener);
-          reject(new Error('Service Worker stop command timeout.'));
+          reject(new Error('Service Worker stop command timeout'));
         }, 5000);
       }),
       cdp.send('ServiceWorker.stopWorker', swVersion),

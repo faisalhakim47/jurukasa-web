@@ -32,7 +32,7 @@ describe('Discounts View', function () {
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('it shall display discounts list', async function ({ page }) {
+  test('shall display discounts list with existing discounts', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -42,43 +42,31 @@ describe('Discounts View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Weekend Promo' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Discounts list' }), 'it shall display discounts table').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Weekend Promo' }), 'it shall display existing discount in list').toBeVisible();
   });
 
-  test('it shall display empty state when no discounts exist', async function ({ page }) {
+  test('shall display empty state when no discounts exist', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByText('No discounts found')).toBeVisible();
-    // one that always visible, one in the empty state
-    await expect(page.getByRole('button', { name: 'Create Discount' })).toHaveCount(2);
+    await expect(page.getByText('No discounts found'), 'it shall display empty state message').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Create Discount' }), 'it shall display create discount buttons in empty state and header').toHaveCount(2);
   });
 
-  test('it shall open discount creation dialog', async function ({ page }) {
+  test('shall create global discount through creation dialog', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByText('No discounts found')).toBeVisible();
+    await expect(page.getByText('No discounts found'), 'it shall show empty state initially').toBeVisible();
     await page.getByRole('button', { name: 'Create Discount' }).first().click();
 
-    await expect(page.getByRole('dialog', { name: 'Create Discount' })).toBeVisible();
-    await expect(page.getByLabel('Discount Name')).toBeVisible();
-    await expect(page.getByLabel('Every N Items')).toBeVisible();
-    await expect(page.getByLabel('Discount Amount')).toBeVisible();
-  });
-
-  test('it shall create global discount', async function ({ page }) {
-    await loadEmptyFixture(page);
-
-    await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-    await expect(page.getByText('No discounts found')).toBeVisible();
-    await page.getByRole('button', { name: 'Create Discount' }).first().click();
-
-    await expect(page.getByRole('dialog', { name: 'Create Discount' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Create Discount' }), 'it shall open discount creation dialog').toBeVisible();
+    await expect(page.getByLabel('Discount Name'), 'it shall display discount name field').toBeVisible();
+    await expect(page.getByLabel('Every N Items'), 'it shall display quantity field').toBeVisible();
+    await expect(page.getByLabel('Discount Amount'), 'it shall display amount field').toBeVisible();
 
     await page.getByLabel('Discount Name').fill('Test Global Discount');
     await page.getByLabel('Every N Items').fill('2');
@@ -86,12 +74,12 @@ describe('Discounts View', function () {
 
     await page.getByRole('dialog', { name: 'Create Discount' }).getByRole('button', { name: 'Create' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Create Discount' })).not.toBeVisible();
-    await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Test Global Discount' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Create Discount' }), 'it shall close creation dialog after submit').not.toBeVisible();
+    await expect(page.getByRole('table', { name: 'Discounts list' }), 'it shall display discounts table after creation').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Test Global Discount' }), 'it shall display newly created global discount').toBeVisible();
   });
 
-  test('it shall create inventory-specific discount', async function ({ page }) {
+  test('shall create inventory-specific discount through creation dialog', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -101,15 +89,15 @@ describe('Discounts View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByText('No discounts found')).toBeVisible();
+    await expect(page.getByText('No discounts found'), 'it shall show empty state initially').toBeVisible();
     await page.getByRole('button', { name: 'Create Discount' }).first().click();
 
-    await expect(page.getByRole('dialog', { name: 'Create Discount' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Create Discount' }), 'it shall open discount creation dialog').toBeVisible();
 
     await page.getByLabel('Discount Name').fill('Buy 3 Get 500 Off');
     await page.getByLabel('Inventory-specific Discount').click();
 
-    await expect(page.getByLabel('Search Inventory')).toBeVisible();
+    await expect(page.getByLabel('Search Inventory'), 'it shall display inventory search field').toBeVisible();
     await page.getByRole('option', { name: 'Test Product' }).click();
 
     await page.getByLabel('Every N Items').fill('3');
@@ -117,13 +105,13 @@ describe('Discounts View', function () {
 
     await page.getByRole('dialog', { name: 'Create Discount' }).getByRole('button', { name: 'Create' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Create Discount' })).not.toBeVisible();
-    await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Buy 3 Get 500 Off' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Test Product' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Create Discount' }), 'it shall close creation dialog after submit').not.toBeVisible();
+    await expect(page.getByRole('table', { name: 'Discounts list' }), 'it shall display discounts table after creation').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Buy 3 Get 500 Off' }), 'it shall display newly created inventory-specific discount').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Test Product' }), 'it shall display associated inventory name').toBeVisible();
   });
 
-  test('it shall open discount details dialog when clicking on a discount', async function ({ page }) {
+  test('shall open discount details dialog when clicking on a discount', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -133,17 +121,17 @@ describe('Discounts View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Discounts list' }), 'it shall display discounts table').toBeVisible();
 
     await page.getByRole('row').getByRole('button', { name: 'My Promo' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'My Promo' })).toBeVisible();
-    await expect(page.getByRole('dialog', { name: 'My Promo' }).getByRole('heading', { name: 'Discount Rules' })).toBeVisible();
-    await expect(page.getByRole('dialog', { name: 'My Promo' }).getByRole('status', { name: 'Every N Items value' })).toHaveText('2 item(s)');
-    await expect(page.getByRole('dialog', { name: 'My Promo' }).getByRole('status', { name: 'Discount Amount value' })).toHaveText('IDR 5,000');
+    await expect(page.getByRole('dialog', { name: 'My Promo' }), 'it shall open discount details dialog').toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'My Promo' }).getByRole('heading', { name: 'Discount Rules' }), 'it shall display discount rules heading').toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'My Promo' }).getByRole('status', { name: 'Every N Items value' }), 'it shall display correct quantity value').toHaveText('2 item(s)');
+    await expect(page.getByRole('dialog', { name: 'My Promo' }).getByRole('status', { name: 'Discount Amount value' }), 'it shall display correct amount value').toHaveText('IDR 5,000');
   });
 
-  test('it shall filter discounts by type', async function ({ page }) {
+  test('shall filter discounts by type', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -155,24 +143,24 @@ describe('Discounts View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Global Discount' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Snack Promo' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Discounts list' }), 'it shall display discounts table').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Global Discount' }), 'it shall display global discount initially').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Snack Promo' }), 'it shall display inventory-specific discount initially').toBeVisible();
 
     await page.getByRole('button', { name: 'All' }).click();
     await page.getByRole('menuitem', { name: 'Global' }).click();
 
-    await expect(page.getByRole('row').filter({ hasText: 'Global Discount' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Snack Promo' })).not.toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Global Discount' }), 'it shall display global discount when filtered to global').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Snack Promo' }), 'it shall hide inventory-specific discount when filtered to global').not.toBeVisible();
 
     await page.getByRole('button', { name: 'Global', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Inventory-specific' }).click();
 
-    await expect(page.getByRole('row').filter({ hasText: 'Global Discount' })).not.toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Snack Promo' })).toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Global Discount' }), 'it shall hide global discount when filtered to inventory-specific').not.toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Snack Promo' }), 'it shall display inventory-specific discount when filtered to inventory-specific').toBeVisible();
   });
 
-  test('it shall search discounts by name', async function ({ page }) {
+  test('shall search discounts by name', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -183,17 +171,17 @@ describe('Discounts View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'Weekend Sale' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'New Year Promo' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Discounts list' }), 'it shall display discounts table').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Weekend Sale' }), 'it shall display Weekend Sale discount initially').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'New Year Promo' }), 'it shall display New Year Promo discount initially').toBeVisible();
 
     await page.getByLabel('Search').fill('Weekend');
 
-    await expect(page.getByRole('row').filter({ hasText: 'Weekend Sale' })).toBeVisible();
-    await expect(page.getByRole('row').filter({ hasText: 'New Year Promo' })).not.toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Weekend Sale' }), 'it shall display matching discount after search').toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'New Year Promo' }), 'it shall hide non-matching discount after search').not.toBeVisible();
   });
 
-  test('it shall delete discount from details dialog', async function ({ page }) {
+  test('shall delete discount from details dialog', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
@@ -203,18 +191,18 @@ describe('Discounts View', function () {
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await expect(page.getByRole('table', { name: 'Discounts list' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Discounts list' }), 'it shall display discounts table').toBeVisible();
     await page.getByRole('row').getByRole('button', { name: 'Delete Me' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Delete Me' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Delete Me' }), 'it shall open discount details dialog').toBeVisible();
 
     await page.getByRole('dialog', { name: 'Delete Me' }).getByRole('button', { name: 'Delete' }).click();
 
-    await expect(page.getByRole('alertdialog', { name: 'Delete Discount' })).toBeVisible();
+    await expect(page.getByRole('alertdialog', { name: 'Delete Discount' }), 'it shall display delete confirmation dialog').toBeVisible();
     await page.getByRole('alertdialog', { name: 'Delete Discount' }).getByRole('button', { name: 'Delete' }).click();
 
-    await expect(page.getByRole('alertdialog', { name: 'Delete Discount' })).not.toBeVisible();
-    await expect(page.getByRole('dialog', { name: 'Delete Me' })).not.toBeVisible();
-    await expect(page.getByText('No discounts found')).toBeVisible();
+    await expect(page.getByRole('alertdialog', { name: 'Delete Discount' }), 'it shall close confirmation dialog after deletion').not.toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Delete Me' }), 'it shall close details dialog after deletion').not.toBeVisible();
+    await expect(page.getByText('No discounts found'), 'it shall display empty state after deleting all discounts').toBeVisible();
   });
 });

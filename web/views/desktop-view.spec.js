@@ -5,6 +5,7 @@ import { useStrict } from '#test/playwright/hooks/use-strict.js';
 import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
 import { setupDatabase } from '#test/playwright/tools/database.js';
 import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
+
 const test = jurukasaTest;
 const { describe } = test;
 
@@ -32,244 +33,93 @@ async function setupView(tursoDatabaseUrl) {
 describe('Desktop View', function () {
   useConsoleOutput(test);
   useStrict(test);
+  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  describe('Navigation Rail', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('view navigation rail with all navigation links', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    test('shall display main navigation', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('navigation', { name: 'Main Navigation' })).toBeVisible();
-    });
-
-    test('shall display Dashboard navigation link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      const nav = page.getByRole('navigation', { name: 'Main Navigation' });
-      await expect(nav.getByRole('link', { name: 'Dash' }).first()).toBeVisible();
-    });
-
-    test('shall display Books navigation link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      const nav = page.getByRole('navigation', { name: 'Main Navigation' });
-      await expect(nav.getByRole('link', { name: 'Books' }).first()).toBeVisible();
-    });
-
-    test('shall display Stock navigation link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      const nav = page.getByRole('navigation', { name: 'Main Navigation' });
-      await expect(nav.getByRole('link', { name: 'Stock' }).first()).toBeVisible();
-    });
-
-    test('shall display Procure navigation link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      const nav = page.getByRole('navigation', { name: 'Main Navigation' });
-      await expect(nav.getByRole('link', { name: 'Procure' }).first()).toBeVisible();
-    });
-
-    test('shall display Sale navigation link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      const nav = page.getByRole('navigation', { name: 'Main Navigation' });
-      await expect(nav.getByRole('link', { name: 'Sale' }).first()).toBeVisible();
-    });
-
-    test('shall display Settings navigation link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      const nav = page.getByRole('navigation', { name: 'Main Navigation' });
-      await expect(nav.getByRole('link', { name: 'Settings' }).first()).toBeVisible();
-    });
+    const nav = page.getByRole('navigation', { name: 'Main Navigation' });
+    await expect(nav, 'it shall display main navigation rail').toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Dash' }).first(), 'it shall display Dashboard navigation link').toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Books' }).first(), 'it shall display Books navigation link').toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Stock' }).first(), 'it shall display Stock navigation link').toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Procure' }).first(), 'it shall display Procure navigation link').toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Sale' }).first(), 'it shall display Sale navigation link').toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Settings' }).first(), 'it shall display Settings navigation link').toBeVisible();
   });
 
-  describe('Navigation Behavior', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('navigate through all main sections', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    test('shall navigate to Books when clicking Books link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    const nav = page.getByRole('navigation', { name: 'Main Navigation' });
 
-      await page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Books' }).first().click();
+    await nav.getByRole('link', { name: 'Books' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Accounting' }), 'it shall navigate to Accounting page').toBeVisible();
 
-      await expect(page.getByRole('heading', { name: 'Accounting' })).toBeVisible();
-    });
+    await nav.getByRole('link', { name: 'Stock' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Stock' }), 'it shall navigate to Stock page').toBeVisible();
 
-    test('shall navigate to Stock when clicking Stock link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    await nav.getByRole('link', { name: 'Procure' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Procurement' }), 'it shall navigate to Procurement page').toBeVisible();
 
-      await page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Stock' }).first().click();
+    await nav.getByRole('link', { name: 'Sale' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Sales' }), 'it shall navigate to Sales page').toBeVisible();
 
-      await expect(page.getByRole('heading', { name: 'Stock' })).toBeVisible();
-    });
+    await nav.getByRole('link', { name: 'Settings' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Settings' }), 'it shall navigate to Settings page').toBeVisible();
 
-    test('shall navigate to Procure when clicking Procure link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Procure' }).first().click();
-
-      await expect(page.getByRole('heading', { name: 'Procurement' })).toBeVisible();
-    });
-
-    test('shall navigate to Sale when clicking Sale link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Sale' }).first().click();
-
-      await expect(page.getByRole('heading', { name: 'Sales' })).toBeVisible();
-    });
-
-    test('shall navigate to Settings when clicking Settings link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Settings' }).first().click();
-
-      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-    });
-
-    test('shall navigate back to Dashboard when clicking Dashboard link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Settings' }).first().click();
-      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-
-      await page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Dash' }).first().click();
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    });
+    await nav.getByRole('link', { name: 'Dash' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Dashboard' }), 'it shall navigate back to Dashboard page').toBeVisible();
   });
 
-  describe('Active Navigation Indicator', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('verify active navigation indicator on different pages', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    test('shall mark Dashboard link as active when on dashboard', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
+    const nav = page.getByRole('navigation', { name: 'Main Navigation' });
+    const dashboardLink = nav.getByRole('link', { name: 'Dash' }).first();
+    await expect(dashboardLink, 'it shall mark Dashboard link as active on dashboard').toHaveAttribute('aria-current', 'page');
 
-      const dashboardLink = page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Dash' }).first();
-      await expect(dashboardLink).toHaveAttribute('aria-current', 'page');
-    });
+    await nav.getByRole('link', { name: 'Books' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Accounting' }), 'it shall display Accounting heading').toBeVisible();
+    const booksLink = nav.getByRole('link', { name: 'Books' }).first();
+    await expect(booksLink, 'it shall mark Books link as active on books page').toHaveClass(/active/);
 
-    test('shall mark Books link as active when on books page', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Books' }).first().click();
-      await expect(page.getByRole('heading', { name: 'Accounting' })).toBeVisible();
-
-      const booksLink = page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Books' }).first();
-      await expect(booksLink).toHaveClass(/active/);
-    });
-
-    test('shall mark Settings link as active when on settings page', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Settings' }).first().click();
-      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-
-      const settingsLink = page.getByRole('navigation', { name: 'Main Navigation' }).getByRole('link', { name: 'Settings' }).first();
-      await expect(settingsLink).toHaveClass(/active/);
-    });
+    await nav.getByRole('link', { name: 'Settings' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Settings' }), 'it shall display Settings heading').toBeVisible();
+    const settingsLink = nav.getByRole('link', { name: 'Settings' }).first();
+    await expect(settingsLink, 'it shall mark Settings link as active on settings page').toHaveClass(/active/);
   });
 
-  describe('Layout Structure', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('view layout structure with navigation and content area', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    test('shall display navigation rail on the side', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      const nav = page.getByRole('navigation', { name: 'Main Navigation' });
-      await expect(nav).toBeVisible();
-    });
-
-    test('shall display main content area', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    });
+    await expect(page.getByRole('navigation', { name: 'Main Navigation' }), 'it shall display navigation rail on the side').toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard' }), 'it shall display main content area with Dashboard').toBeVisible();
   });
 
-  describe('Initial Route Handling', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('redirect from root to dashboard', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    test('shall redirect from root to dashboard', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    });
+    await expect(page.getByRole('heading', { name: 'Dashboard' }), 'it shall redirect to Dashboard from root').toBeVisible();
   });
 });

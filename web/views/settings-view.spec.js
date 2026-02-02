@@ -30,302 +30,112 @@ async function setupSettingsView(tursoDatabaseUrl) {
 
 describe('Settings View', function () {
   useStrict(test);
+  const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  describe('Settings Navigation', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('navigate to Settings and view page structure', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
-    test('shall display Settings link in navigation', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-    });
-
-    test('shall navigate to Settings when clicking Settings link', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-    });
+    await expect(page.getByRole('heading', { name: 'Settings' }), 'it shall display Settings page heading').toBeVisible();
+    await expect(page.getByText('Configure accounting and POS settings.'), 'it shall display Settings page description').toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Accounting Config' }), 'it shall display Accounting Config tab').toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Payment Methods' }), 'it shall display Payment Methods tab').toBeVisible();
   });
 
-  describe('Settings Page Display', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('view Accounting Configuration tab with form elements', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
-    test('shall display page header', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-      await expect(page.getByText('Configure accounting and POS settings.')).toBeVisible();
-    });
-
-    test('shall display Accounting Config tab', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('tab', { name: 'Accounting Config' })).toBeVisible();
-    });
-
-    test('shall display Payment Methods tab', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('tab', { name: 'Payment Methods' })).toBeVisible();
-    });
-
-    test('shall redirect to Accounting Config by default', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      const accountingPanel = page.getByRole('tabpanel', { name: 'Accounting Config' });
-      await expect(accountingPanel).toHaveAttribute('aria-hidden', 'false');
-    });
+    const accountingPanel = page.getByRole('tabpanel', { name: 'Accounting Config' });
+    await expect(accountingPanel, 'it shall display Accounting Config tab panel by default').toHaveAttribute('aria-hidden', 'false');
+    await expect(page.getByRole('heading', { name: 'Accounting Configuration' }), 'it shall display Accounting Configuration title').toBeVisible();
+    await expect(accountingPanel.getByLabel('Business Name'), 'it shall display Business Name input').toBeVisible();
+    await expect(accountingPanel.getByLabel('Currency Code'), 'it shall display Currency Code input').toBeVisible();
+    await expect(accountingPanel.getByLabel('Currency Decimals'), 'it shall display Currency Decimals input').toBeVisible();
+    await expect(accountingPanel.getByLabel('Locale'), 'it shall display Locale input').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save Changes' }), 'it shall display Save Changes button').toBeVisible();
+    await expect(accountingPanel.getByRole('button', { name: 'Reset' }), 'it shall display Reset button').toBeVisible();
+    await expect(accountingPanel.getByRole('button', { name: 'Refresh' }), 'it shall display Refresh button').toBeVisible();
   });
 
-  describe('Accounting Configuration Tab', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('update accounting configuration and save changes', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
-    test('shall display Accounting Configuration title', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
+    const businessNameInput = page.getByLabel('Business Name');
+    await businessNameInput.clear();
+    await businessNameInput.fill('Updated Business Name');
 
-      await expect(page.getByRole('heading', { name: 'Accounting Configuration' })).toBeVisible();
-    });
+    const localeInput = page.getByLabel('Locale');
+    await localeInput.clear();
+    await localeInput.fill('en-US');
 
-    test('shall display configuration form', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
+    await page.getByRole('button', { name: 'Save Changes' }).click();
 
-      const accountingPanel = page.getByRole('tabpanel', { name: 'Accounting Config' });
-
-      await expect(accountingPanel.getByLabel('Business Name')).toBeVisible();
-      await expect(accountingPanel.getByLabel('Currency Code')).toBeVisible();
-      await expect(accountingPanel.getByLabel('Currency Decimals')).toBeVisible();
-      await expect(accountingPanel.getByLabel('Locale')).toBeVisible();
-    });
-
-    test('shall display Save Changes button', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('button', { name: 'Save Changes' })).toBeVisible();
-    });
-
-    test('shall display Reset button', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      const accountingPanel = page.getByRole('tabpanel', { name: 'Accounting Config' });
-      await expect(accountingPanel.getByRole('button', { name: 'Reset' })).toBeVisible();
-    });
-
-    test('shall display Refresh button', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      const accountingPanel = page.getByRole('tabpanel', { name: 'Accounting Config' });
-      await expect(accountingPanel.getByRole('button', { name: 'Refresh' })).toBeVisible();
-    });
+    await expect(page.getByRole('dialog', { name: 'Settings Saved' }), 'it shall display success dialog after saving settings').toBeVisible();
   });
 
-  describe('Accounting Configuration Form Submission', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('switch to Payment Methods tab and view empty state', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
-    test('shall update Business Name successfully', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
+    await page.getByRole('tab', { name: 'Payment Methods' }).click();
 
-      const businessNameInput = page.getByLabel('Business Name');
-      await businessNameInput.clear();
-      await businessNameInput.fill('Updated Business Name');
-
-      await page.getByRole('button', { name: 'Save Changes' }).click();
-
-      await expect(page.getByRole('dialog', { name: 'Settings Saved' })).toBeVisible();
-    });
-
-    test('shall update Locale successfully', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      const localeInput = page.getByLabel('Locale');
-      await localeInput.clear();
-      await localeInput.fill('en-US');
-
-      await page.getByRole('button', { name: 'Save Changes' }).click();
-
-      await expect(page.getByRole('dialog', { name: 'Settings Saved' })).toBeVisible();
-    });
+    const paymentsPanel = page.getByRole('tabpanel', { name: 'Payment Methods' });
+    await expect(paymentsPanel, 'it shall display Payment Methods tab panel as active').toHaveAttribute('aria-hidden', 'false');
+    await expect(page.getByRole('heading', { name: 'Payment Methods', exact: true }), 'it shall display Payment Methods title').toBeVisible();
+    await expect(page.getByRole('heading', { name: 'No payment methods configured' }), 'it shall display empty state heading').toBeVisible();
+    await expect(page.getByText('Add payment methods to enable different payment options in the POS system.'), 'it shall display empty state description').toBeVisible();
+    await expect(paymentsPanel.getByRole('button', { name: 'Add Payment Method' }).first(), 'it shall display Add Payment Method button').toBeVisible();
+    await expect(paymentsPanel.getByRole('button', { name: 'Refresh' }), 'it shall display Refresh button in Payment Methods tab').toBeVisible();
   });
 
-  describe('Payment Methods Tab', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('open payment method creation dialog', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
-    test('shall switch to Payment Methods tab when clicked', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
+    await page.getByRole('tab', { name: 'Payment Methods' }).click();
 
-      await page.getByRole('tab', { name: 'Payment Methods' }).click();
+    const paymentsPanel = page.getByRole('tabpanel', { name: 'Payment Methods' });
+    await paymentsPanel.getByRole('button', { name: 'Add Payment Method' }).first().click();
 
-      const paymentsPanel = page.getByRole('tabpanel', { name: 'Payment Methods' });
-      await expect(paymentsPanel).toHaveAttribute('aria-hidden', 'false');
-    });
-
-    test('shall display Payment Methods title', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('tab', { name: 'Payment Methods' }).click();
-
-      await expect(page.getByRole('heading', { name: 'Payment Methods', exact: true })).toBeVisible();
-    });
-
-    test('shall display empty state when no payment methods exist', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('tab', { name: 'Payment Methods' }).click();
-
-      await expect(page.getByRole('heading', { name: 'No payment methods configured' })).toBeVisible();
-      await expect(page.getByText('Add payment methods to enable different payment options in the POS system.')).toBeVisible();
-    });
-
-    test('shall display Add Payment Method button in empty state', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('tab', { name: 'Payment Methods' }).click();
-
-      const paymentsPanel = page.getByRole('tabpanel', { name: 'Payment Methods' });
-      await expect(paymentsPanel.getByRole('button', { name: 'Add Payment Method' }).first()).toBeVisible();
-    });
-
-    test('shall display Refresh button', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('tab', { name: 'Payment Methods' }).click();
-
-      const paymentsPanel = page.getByRole('tabpanel', { name: 'Payment Methods' });
-      await expect(paymentsPanel.getByRole('button', { name: 'Refresh' })).toBeVisible();
-    });
+    const dialog = page.getByRole('dialog', { name: 'Create Payment Method' });
+    await expect(dialog, 'it shall display Create Payment Method dialog').toBeVisible();
+    await expect(dialog.getByLabel('Payment Method Name'), 'it shall display Payment Method Name input').toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Select Account' }), 'it shall display Select Account button').toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Create' }), 'it shall display Create button').toBeVisible();
   });
 
-  describe('Payment Method Creation', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
+  test('switch between Accounting Config and Payment Methods tabs', async function ({ page }) {
+    await Promise.all([
+      loadEmptyFixture(page),
+      setupDatabase(tursoLibSQLiteServer()),
+    ]);
+    await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
 
-    test('shall open payment method creation dialog', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
+    await expect(page.getByRole('tabpanel', { name: 'Accounting Config' }), 'it shall display Accounting Config panel initially').toBeVisible();
 
-      await page.getByRole('tab', { name: 'Payment Methods' }).click();
+    await page.getByRole('tab', { name: 'Payment Methods' }).click();
+    await expect(page.getByRole('tabpanel', { name: 'Payment Methods' }), 'it shall display Payment Methods panel after clicking tab').toBeVisible();
+    await expect(page.getByRole('tabpanel', { name: 'Accounting Config' }), 'it shall hide Accounting Config panel when Payment Methods is active').not.toBeVisible();
 
-      const paymentsPanel = page.getByRole('tabpanel', { name: 'Payment Methods' });
-      await expect(paymentsPanel.getByRole('heading', { name: 'No payment methods configured' })).toBeVisible();
-      await paymentsPanel.getByRole('button', { name: 'Add Payment Method' }).first().click();
-
-      await expect(page.getByRole('dialog', { name: 'Create Payment Method' })).toBeVisible();
-    });
-
-    test('shall display payment method creation form fields', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await page.getByRole('tab', { name: 'Payment Methods' }).click();
-
-      const paymentsPanel = page.getByRole('tabpanel', { name: 'Payment Methods' });
-      await expect(paymentsPanel.getByRole('heading', { name: 'No payment methods configured' })).toBeVisible();
-      await paymentsPanel.getByRole('button', { name: 'Add Payment Method' }).first().click();
-
-      const dialog = page.getByRole('dialog', { name: 'Create Payment Method' });
-      await expect(dialog.getByLabel('Payment Method Name')).toBeVisible();
-      await expect(dialog.getByRole('button', { name: 'Select Account' })).toBeVisible();
-      await expect(dialog.getByRole('button', { name: 'Create' })).toBeVisible();
-    });
-  });
-
-  describe('Settings Tab Navigation', function () {
-    const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
-
-    test('shall maintain tab state when switching between tabs', async function ({ page }) {
-      await Promise.all([
-        loadEmptyFixture(page),
-        setupDatabase(tursoLibSQLiteServer()),
-      ]);
-      await page.evaluate(setupSettingsView, tursoLibSQLiteServer().url);
-
-      await expect(page.getByRole('tabpanel', { name: 'Accounting Config' })).toBeVisible();
-
-      await page.getByRole('tab', { name: 'Payment Methods' }).click();
-
-      await expect(page.getByRole('tabpanel', { name: 'Payment Methods' })).toBeVisible();
-      await expect(page.getByRole('tabpanel', { name: 'Accounting Config' })).not.toBeVisible();
-
-      await page.getByRole('tab', { name: 'Accounting Config' }).click();
-
-      await expect(page.getByRole('tabpanel', { name: 'Accounting Config' })).toBeVisible();
-      await expect(page.getByRole('tabpanel', { name: 'Payment Methods' })).not.toBeVisible();
-    });
+    await page.getByRole('tab', { name: 'Accounting Config' }).click();
+    await expect(page.getByRole('tabpanel', { name: 'Accounting Config' }), 'it shall display Accounting Config panel after switching back').toBeVisible();
+    await expect(page.getByRole('tabpanel', { name: 'Payment Methods' }), 'it shall hide Payment Methods panel when Accounting Config is active').not.toBeVisible();
   });
 });
