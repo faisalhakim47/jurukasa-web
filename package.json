@@ -1,6 +1,6 @@
 {
   "name": "jurukasa-web",
-  "version": "2026.1.31",
+  "version": "2026.2.3",
   "description": "Accounting and Point-of-Sales for small businesses",
   "author": {
     "email": "faisalhakim47@gmail.com",
@@ -45,6 +45,7 @@
     "web/context.js",
     "web/database.js",
     "web/global.d.ts",
+    "web/invoker-commands-api.js",
     "web/material-symbols-list.txt",
     "web/strict-rules.js",
     "web/styles.js",

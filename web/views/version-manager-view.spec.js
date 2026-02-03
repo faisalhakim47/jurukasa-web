@@ -50,7 +50,7 @@ describe('Version Manager View', function () {
     await expect(appVersionsTable.getByRole('columnheader', { name: 'Sources' }), 'it shall display sources column header').toBeVisible();
     await expect(appVersionsTable.getByRole('columnheader', { name: 'Actions' }), 'it shall display actions column header').toBeVisible();
 
-    await expect(appVersionsTable.getByRole('cell', { name: '2026.1.31', exact: true }), 'it shall display version number in table').toBeVisible();
+    await expect(appVersionsTable.getByRole('cell', { name: '2026.2.3', exact: true }), 'it shall display version number in table').toBeVisible();
     await expect(appVersionsTable.getByText('NPM').first(), 'it shall display NPM source chip').toBeVisible();
   });
 
