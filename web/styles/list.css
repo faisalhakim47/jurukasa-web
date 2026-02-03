@@ -13,10 +13,10 @@
 [role="list"] {
   display: flex;
   flex-direction: column;
+  gap: 4px;
   padding: 0;
   margin: 0;
   list-style: none;
-  background-color: var(--md-sys-color-surface);
   color: var(--md-sys-color-on-surface);
   width: 100%;
 }
@@ -53,13 +53,13 @@
   height: 100%;
   pointer-events: none;
   transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+  border-radius: var(--md-sys-shape-corner-small);
 }
 
 /* ::before is the main background/container fill */
 :is([role="listitem"],[role="menuitem"],[role="menuitemradio"])::before {
   z-index: -2;
-  background-color: transparent;
-  border-radius: var(--md-sys-shape-corner-small);
+  background-color: var(--md-sys-color-surface);
 }
 
 /* ::after is the state layer overlay (Hover/Focus/Press) */
@@ -194,7 +194,6 @@
   height: 24px;
 }
 
-
 /* =================================================================
    # 4. Dividers
    ================================================================= */
@@ -202,12 +201,8 @@
 /* Anatomy: (7) Divider */
 /* Applied to the list item itself to create a separator between items */
 
-:is([role="listitem"],[role="menuitem"],[role="menuitemradio"]).divider-inset {
+:is([role="listitem"],[role="menuitem"],[role="menuitemradio"])>hr {
   border-bottom: 1px solid var(--md-sys-color-outline-variant);
-}
-/* Ensure the last item doesn't have a divider if preferred, or use :not(:last-child) */
-:is([role="listitem"],[role="menuitem"],[role="menuitemradio"]).divider-inset:last-child {
-  border-bottom: none;
 }
 
 
@@ -222,7 +217,6 @@
 }
 :is([role="listitem"],[role="menuitem"],[role="menuitemradio"]):hover::after {
   opacity: 0.08; /* 8% Opacity on surface */
-  border-radius: var(--md-sys-shape-corner-small);
 }
 
 /* ## 5.2. Focus State */

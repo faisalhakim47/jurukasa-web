@@ -5,6 +5,7 @@ import { repeat } from 'lit-html/directives/repeat.js';
 import { defineWebComponent } from '#web/component.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
+import { RouterContextElement } from '#web/contexts/router-context.js';
 import { useBusyStateUntil } from '#web/contexts/ready-context.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
@@ -14,6 +15,9 @@ import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 
 import '#web/components/material-symbols.js';
+import '#web/views/trial-balance-view.js';
+import '#web/views/balance-sheet-view.js';
+import '#web/views/income-statement-view.js';
 
 /**
  * @typedef {object} BalanceReportRow
@@ -31,6 +35,7 @@ export class FinancialReportsViewElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const router = useContext(host, RouterContextElement);
     const t = useTranslator(host);
 
     const render = useRender(host);
@@ -184,7 +189,8 @@ export class FinancialReportsViewElement extends HTMLElement {
           </td>
           <td class="center">
             <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
-              <router-link
+              <a
+                is="router-link"
                 role="button"
                 class="text extra-small"
                 href="/books/reports/trial-balance?reportId=${report.id}"
@@ -192,8 +198,9 @@ export class FinancialReportsViewElement extends HTMLElement {
                 aria-label="${t('financialReport', 'reportTypeTrialBalance')}"
               >
                 ${t('financialReport', 'reportTypeTrialBalance')}
-              </router-link>
-              <router-link
+              </a>
+              <a
+                is="router-link"
                 role="button"
                 class="text extra-small"
                 href="/books/reports/balance-sheet?reportId=${report.id}"
@@ -201,7 +208,7 @@ export class FinancialReportsViewElement extends HTMLElement {
                 aria-label="${t('financialReport', 'reportTypeBalanceSheet')}"
               >
                 ${t('financialReport', 'reportTypeBalanceSheet')}
-              </router-link>
+              </a>
             </div>
           </td>
         </tr>
@@ -235,8 +242,8 @@ export class FinancialReportsViewElement extends HTMLElement {
       `;
     }
 
-    useEffect(host, function renderFinancialReportsView() {
-      render(html`
+    function renderReportsList() {
+      return html`
         <div style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 16px 24px; height: 100%;">
           <header style="--md-sys-density: -4; display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; flex-direction: row; gap: 12px; align-items: center;">
@@ -270,7 +277,23 @@ export class FinancialReportsViewElement extends HTMLElement {
           id="balance-report-creation-dialog"
           @balance-report-created=${handleBalanceReportCreated}
         ></balance-report-creation-dialog>
-      `);
+      `;
+    }
+
+    useEffect(host, function renderFinancialReportsView() {
+      const pathname = router.route.pathname;
+      if (pathname.startsWith('/books/reports/trial-balance')) {
+        render(html`<trial-balance-view></trial-balance-view>`);
+      }
+      else if (pathname.startsWith('/books/reports/balance-sheet')) {
+        render(html`<balance-sheet-view></balance-sheet-view>`);
+      }
+      else if (pathname.startsWith('/books/reports/income-statement')) {
+        render(html`<income-statement-view></income-statement-view>`);
+      }
+      else {
+        render(renderReportsList());
+      }
     });
   }
 }

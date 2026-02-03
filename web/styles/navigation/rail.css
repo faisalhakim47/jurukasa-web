@@ -7,19 +7,19 @@
  *
  * HTML STRUCTURE:
  * <nav aria-label="Main Navigation">
- *   <router-link href="/" aria-current="page">
+ *   <a is="a[is="router-link"]" href="/" aria-current="page">
  *     <material-symbols name="dashboard"></material-symbols>
  *     <span>Dashboard</span>
- *   </router-link>
- *   <router-link href="/pos">
+ *   </a>
+ *   <a is="a[is="router-link"]" href="/pos">
  *     <material-symbols name="point_of_sale"></material-symbols>
  *     <span>POS</span>
- *   </router-link>
+ *   </a>
  *   <hr />
- *   <router-link href="/settings">
+ *   <a is="a[is="router-link"]" href="/settings">
  *     <material-symbols name="settings"></material-symbols>
  *     <span>Settings</span>
- *   </router-link>
+ *   </a>
  * </nav>
  */
 
@@ -43,7 +43,7 @@ nav[aria-label="Main Navigation"] {
    # 2. Navigation Destinations (Links)
    ================================================================= */
 
-nav[aria-label="Main Navigation"]>router-link {
+nav[aria-label="Main Navigation"]>a[is="router-link"] {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -69,7 +69,7 @@ nav[aria-label="Main Navigation"]>router-link {
    # 3. Icon Container (Indicator Background)
    ================================================================= */
 
-nav[aria-label="Main Navigation"]>router-link>material-symbols {
+nav[aria-label="Main Navigation"]>a[is="router-link"]>material-symbols {
   position: relative;
   display: flex;
   align-items: center;
@@ -85,7 +85,7 @@ nav[aria-label="Main Navigation"]>router-link>material-symbols {
   transition-timing-function: var(--md-sys-motion-easing-emphasized);
 }
 
-nav[aria-label="Main Navigation"]>router-link>material-symbols>svg {
+nav[aria-label="Main Navigation"]>a[is="router-link"]>material-symbols>svg {
   width: 24px;
   height: 24px;
 }
@@ -94,16 +94,17 @@ nav[aria-label="Main Navigation"]>router-link>material-symbols>svg {
    # 4. Label
    ================================================================= */
 
-nav[aria-label="Main Navigation"]>router-link>span {
+nav[aria-label="Main Navigation"]>a[is="router-link"]>span {
+  display: block;
+  overflow: hidden;
+  max-width: 72px;
   font-family: var(--md-sys-typescale-label-medium-font);
   font-weight: var(--md-sys-typescale-label-medium-weight);
   font-size: var(--md-sys-typescale-label-medium-size);
   line-height: var(--md-sys-typescale-label-medium-line-height);
   text-align: center;
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 72px;
   color: inherit;
 }
 
@@ -112,22 +113,22 @@ nav[aria-label="Main Navigation"]>router-link>span {
    ================================================================= */
 
 /* ## 5.1. Hover State */
-nav[aria-label="Main Navigation"]>router-link:hover>material-symbols {
+nav[aria-label="Main Navigation"]>a[is="router-link"]:hover>material-symbols {
   background-color: color-mix(in srgb, var(--md-sys-color-on-surface) var(--md-sys-state-hover-state-layer-opacity), transparent);
 }
 
 /* ## 5.2. Focus State */
-nav[aria-label="Main Navigation"]>router-link:focus-visible {
+nav[aria-label="Main Navigation"]>a[is="router-link"]:focus-visible {
   outline: 2px solid var(--md-sys-color-primary);
   outline-offset: 2px;
 }
 
-nav[aria-label="Main Navigation"]>router-link:focus-visible>material-symbols {
+nav[aria-label="Main Navigation"]>a[is="router-link"]:focus-visible>material-symbols {
   background-color: color-mix(in srgb, var(--md-sys-color-on-surface) var(--md-sys-state-focus-state-layer-opacity), transparent);
 }
 
 /* ## 5.3. Pressed State */
-nav[aria-label="Main Navigation"]>router-link:active>material-symbols {
+nav[aria-label="Main Navigation"]>a[is="router-link"]:active>material-symbols {
   background-color: color-mix(in srgb, var(--md-sys-color-on-surface) var(--md-sys-state-pressed-state-layer-opacity), transparent);
 }
 
@@ -135,17 +136,17 @@ nav[aria-label="Main Navigation"]>router-link:active>material-symbols {
    # 6. Active/Selected State (aria-current="page")
    ================================================================= */
 
-nav[aria-label="Main Navigation"]>router-link:is(.active, [aria-current="page"]) {
+nav[aria-label="Main Navigation"]>a[is="router-link"]:is(.active, [aria-current="page"]) {
   color: var(--md-sys-color-on-surface);
 }
 
-nav[aria-label="Main Navigation"]>router-link:is(.active, [aria-current="page"])>material-symbols {
+nav[aria-label="Main Navigation"]>a[is="router-link"]:is(.active, [aria-current="page"])>material-symbols {
   background-color: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
 }
 
 /* Active state hover */
-nav[aria-label="Main Navigation"]>router-link:is(.active, [aria-current="page"]):hover>material-symbols {
+nav[aria-label="Main Navigation"]>a[is="router-link"]:is(.active, [aria-current="page"]):hover>material-symbols {
   background-color: color-mix(
     in srgb,
     var(--md-sys-color-secondary-container) 100%,
@@ -154,7 +155,7 @@ nav[aria-label="Main Navigation"]>router-link:is(.active, [aria-current="page"])
 }
 
 /* Active label weight */
-nav[aria-label="Main Navigation"]>router-link:is(.active, [aria-current="page"])>span {
+nav[aria-label="Main Navigation"]>a[is="router-link"]:is(.active, [aria-current="page"])>span {
   font-weight: 600;
 }
 

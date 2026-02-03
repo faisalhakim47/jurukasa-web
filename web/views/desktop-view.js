@@ -1,6 +1,5 @@
 import { html } from 'lit-html';
 import { defineWebComponent } from '#web/component.js';
-import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { RouterContextElement } from '#web/contexts/router-context.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
@@ -72,36 +71,36 @@ export class DesktopViewElement extends HTMLElement {
         <div style="display: flex; flex-direction: row; height: 100vh; width: 100vw;">
           <aside>
             <nav aria-label="${t('common', 'mainNavigationAriaLabel')}">
-              <router-link href="/dashboard" aria-current=${currentPath === '/' ? 'page' : 'false'}>
+              <a is="router-link" href="/dashboard" aria-current=${currentPath === '/' ? 'page' : 'false'}>
                 <material-symbols name="dashboard"></material-symbols>
                 <span>${t('common', 'dashboardNavLabel')}</span>
-              </router-link>
-              <router-link href="/books" aria-current=${currentPath.startsWith('/books') ? 'page' : 'false'}>
+              </a>
+              <a is="router-link" href="/books" aria-current=${currentPath.startsWith('/books') ? 'page' : 'false'}>
                 <material-symbols name="menu_book"></material-symbols>
                 <span>${t('common', 'booksNavLabel')}</span>
-              </router-link>
-              <router-link href="/stock" aria-current=${currentPath.startsWith('/stock') ? 'page' : 'false'}>
+              </a>
+              <a is="router-link" href="/stock" aria-current=${currentPath.startsWith('/stock') ? 'page' : 'false'}>
                 <material-symbols name="inventory_2"></material-symbols>
                 <span>${t('common', 'stockNavLabel')}</span>
-              </router-link>
-              <router-link href="/procurement" aria-current=${currentPath.startsWith('/procurement') ? 'page' : 'false'}>
+              </a>
+              <a is="router-link" href="/procurement" aria-current=${currentPath.startsWith('/procurement') ? 'page' : 'false'}>
                 <material-symbols name="shopping_cart"></material-symbols>
                 <span>${t('common', 'procureNavLabel')}</span>
-              </router-link>
-              <router-link href="/sale" aria-current=${currentPath.startsWith('/sale') ? 'page' : 'false'}>
+              </a>
+              <a is="router-link" href="/sale" aria-current=${currentPath.startsWith('/sale') ? 'page' : 'false'}>
                 <material-symbols name="receipt_long"></material-symbols>
                 <span>${t('common', 'saleNavLabel')}</span>
-              </router-link>
-              <router-link href="/reconciliation" aria-current=${currentPath.startsWith('/reconciliation') ? 'page' : 'false'}>
+              </a>
+              <a is="router-link" href="/reconciliation" aria-current=${currentPath.startsWith('/reconciliation') ? 'page' : 'false'}>
                 <material-symbols name="rule"></material-symbols>
                 <span>${t('common', 'reconciliationNavLabel')}</span>
-              </router-link>
+              </a>
               <div style="flex-grow: 1;"></div>
               <hr />
-              <router-link href="/settings" aria-current=${currentPath === '/settings' ? 'page' : 'false'}>
+              <a is="router-link" href="/settings" aria-current=${currentPath === '/settings' ? 'page' : 'false'}>
                 <material-symbols name="settings"></material-symbols>
                 <span>${t('common', 'settingsNavLabel')}</span>
-              </router-link>
+              </a>
             </nav>
           </aside>
           <div style="flex-grow: 1; overflow: auto;">

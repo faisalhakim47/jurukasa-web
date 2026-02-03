@@ -22,6 +22,7 @@ async function setupUnconfiguredView() {
   `;
 }
 
+/** @param {string} tursoDatabaseUrl */
 async function setupTursoView(tursoDatabaseUrl) {
   document.body.innerHTML = `
     <ready-context>

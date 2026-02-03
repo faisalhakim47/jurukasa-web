@@ -22,9 +22,6 @@ import '#web/views/journal-entries-view.js';
 import '#web/views/chart-of-accounts-view.js';
 import '#web/views/account-tags-view.js';
 import '#web/views/financial-reports-view.js';
-import '#web/views/trial-balance-view.js';
-import '#web/views/balance-sheet-view.js';
-import '#web/views/income-statement-view.js';
 import '#web/views/fiscal-years-view.js';
 import '#web/views/fixed-assets-view.js';
 import '#web/components/balance-report-creation-dialog.js';
@@ -43,9 +40,6 @@ export class BooksViewElement extends HTMLElement {
     const chartOfAccountsTabpanel = useElement(host, HTMLElement);
     const accountTagsTabpanel = useElement(host, HTMLElement);
     const reportsTabpanel = useElement(host, HTMLElement);
-    const trialBalanceView = useElement(host, HTMLElement);
-    const balanceSheetView = useElement(host, HTMLElement);
-    const incomeStatementView = useElement(host, HTMLElement);
     const fiscalYearsTabpanel = useElement(host, HTMLElement);
     const fixedAssetsTabpanel = useElement(host, HTMLElement);
     const notfoundDialog = useElement(host, HTMLDialogElement);
@@ -64,12 +58,7 @@ export class BooksViewElement extends HTMLElement {
       else if (pathname.startsWith('/books/journal-entries')) scrollIntoView(journalEntriesTabpanel.value);
       else if (pathname.startsWith('/books/chart-of-accounts')) scrollIntoView(chartOfAccountsTabpanel.value);
       else if (pathname.startsWith('/books/account-tags')) scrollIntoView(accountTagsTabpanel.value);
-      else if (pathname.startsWith('/books/reports')) {
-        if (pathname.startsWith('/books/reports/trial-balance') && trialBalanceView.value) scrollIntoView(trialBalanceView.value);
-        else if (pathname.startsWith('/books/reports/balance-sheet') && balanceSheetView.value) scrollIntoView(balanceSheetView.value);
-        else if (pathname.startsWith('/books/reports/income-statement') && incomeStatementView.value) scrollIntoView(incomeStatementView.value);
-        else scrollIntoView(reportsTabpanel.value);
-      }
+      else if (pathname.startsWith('/books/reports')) scrollIntoView(reportsTabpanel.value);
       else if (pathname.startsWith('/books/fiscal-years')) scrollIntoView(fiscalYearsTabpanel.value);
       else if (pathname.startsWith('/books/fixed-assets')) scrollIntoView(fixedAssetsTabpanel.value);
       else {
@@ -94,11 +83,13 @@ export class BooksViewElement extends HTMLElement {
     function handleTabpanelContainerScrollEnd(event) {
       const container = event.currentTarget;
       assertInstanceOf(HTMLElement, container);
+
       requestAnimationFrame(function makeSureScrollEndedByAnimationFrame() {
         requestIdleCallback(function makeSureScrollEndedByIdle() {
           const scrollLeft = container.scrollLeft;
           const containerWidth = container.clientWidth;
           const tabIndex = Math.round(scrollLeft / containerWidth);
+          console.debug('books-view', 'handleTabpanelContainerScrollEnd', tabIndex, scrollLeft, containerWidth);
           if (tabIndex === 0) router.navigate({ pathname: '/books/journal-entries', replace: true });
           else if (tabIndex === 1) router.navigate({ pathname: '/books/chart-of-accounts', replace: true });
           else if (tabIndex === 2) router.navigate({ pathname: '/books/account-tags', replace: true });
@@ -125,42 +116,42 @@ export class BooksViewElement extends HTMLElement {
             aria-label="${t('common', 'booksSectionsAriaLabel')}"
             style="position: sticky; top: 0; z-index: 1; width: 100%; flex-shrink: 0;"
           >
-            <router-link role="tab" id="journal-entries-tab" aria-controls="journal-entries-panel" href="/books/journal-entries" replace>
+            <a is="router-link" role="tab" id="journal-entries-tab" aria-controls="journal-entries-panel" href="/books/journal-entries" data-replace>
               <span class="content">
                 <material-symbols name="receipt_long" size="24"></material-symbols>
                 ${t('common', 'journalEntriesTabLabel')}
               </span>
-            </router-link>
-            <router-link role="tab" id="chart-of-accounts-tab" aria-controls="chart-of-accounts-panel" href="/books/chart-of-accounts" replace>
+            </a>
+            <a is="router-link" role="tab" id="chart-of-accounts-tab" aria-controls="chart-of-accounts-panel" href="/books/chart-of-accounts" data-replace>
               <span class="content">
                 <material-symbols name="account_tree" size="24"></material-symbols>
                 ${t('common', 'chartOfAccountsTabLabel')}
               </span>
-            </router-link>
-            <router-link role="tab" id="account-tags-tab" aria-controls="account-tags-panel" href="/books/account-tags" replace>
+            </a>
+            <a is="router-link" role="tab" id="account-tags-tab" aria-controls="account-tags-panel" href="/books/account-tags" data-replace>
               <span class="content">
                 <material-symbols name="label" size="24"></material-symbols>
                 ${t('common', 'accountTagsTabLabel')}
               </span>
-            </router-link>
-            <router-link role="tab" id="reports-tab" aria-controls="reports-panel" href="/books/reports" replace>
+            </a>
+            <a is="router-link" role="tab" id="reports-tab" aria-controls="reports-panel" href="/books/reports" data-replace>
               <span class="content">
                 <material-symbols name="assignment" size="24"></material-symbols>
                 ${t('common', 'reportsTabLabel')}
               </span>
-            </router-link>
-            <router-link role="tab" id="fiscal-years-tab" aria-controls="fiscal-years-panel" href="/books/fiscal-years" replace>
+            </a>
+            <a is="router-link" role="tab" id="fiscal-years-tab" aria-controls="fiscal-years-panel" href="/books/fiscal-years" data-replace>
               <span class="content">
                 <material-symbols name="calendar_month" size="24"></material-symbols>
                 ${t('common', 'fiscalYearsTabLabel')}
               </span>
-            </router-link>
-            <router-link role="tab" id="fixed-assets-tab" aria-controls="fixed-assets-panel" href="/books/fixed-assets" replace>
+            </a>
+            <a is="router-link" role="tab" id="fixed-assets-tab" aria-controls="fixed-assets-panel" href="/books/fixed-assets" data-replace>
               <span class="content">
                 <material-symbols name="real_estate_agent" size="24"></material-symbols>
                 ${t('common', 'fixedAssetsTabLabel')}
               </span>
-            </router-link>
+            </a>
           </nav>
           <main
             @scrollend=${handleTabpanelContainerScrollEnd}
@@ -215,33 +206,6 @@ export class BooksViewElement extends HTMLElement {
               tabindex="${pathname.startsWith('/books/reports') ? '0' : '-1'}"
               ?inert=${pathname.startsWith('/books/reports') === false}
             ></financial-reports-view>
-            <trial-balance-view
-              ${trialBalanceView}
-              id="trial-balance-panel"
-              role="tabpanel"
-              aria-labelledby="reports-tab"
-              aria-hidden="${pathname.startsWith('/books/reports/trial-balance') ? 'false' : 'true'}"
-              tabindex="${pathname.startsWith('/books/reports/trial-balance') ? '0' : '-1'}"
-              ?inert=${pathname.startsWith('/books/reports/trial-balance') === false}
-            ></trial-balance-view>
-            <balance-sheet-view
-              ${balanceSheetView}
-              id="balance-sheet-panel"
-              role="tabpanel"
-              aria-labelledby="reports-tab"
-              aria-hidden="${pathname.startsWith('/books/reports/balance-sheet') ? 'false' : 'true'}"
-              tabindex="${pathname.startsWith('/books/reports/balance-sheet') ? '0' : '-1'}"
-              ?inert=${pathname.startsWith('/books/reports/balance-sheet') === false}
-            ></balance-sheet-view>
-            <income-statement-view
-              ${incomeStatementView}
-              id="income-statement-panel"
-              role="tabpanel"
-              aria-labelledby="fiscal-years-tab"
-              aria-hidden="${pathname.startsWith('/books/reports/income-statement') ? 'false' : 'true'}"
-              tabindex="${pathname.startsWith('/books/reports/income-statement') ? '0' : '-1'}"
-              ?inert=${pathname.startsWith('/books/reports/income-statement') === false}
-            ></income-statement-view>
             <fiscal-years-view
               ${fiscalYearsTabpanel}
               id="fiscal-years-panel"
@@ -271,10 +235,11 @@ export class BooksViewElement extends HTMLElement {
               <p>${t('common', 'pageNotFoundMessage')}</p>
             </section>
             <menu>
-              <router-link
+              <a
+                is="router-link"
                 href="/books/journal-entries"
-                replace
-              >${t('common', 'goToJournalEntriesButtonLabel')}</router-link>
+                data-replace
+              >${t('common', 'goToJournalEntriesButtonLabel')}</a>
             </menu>
           </div>
         </dialog>

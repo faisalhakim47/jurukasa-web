@@ -229,28 +229,28 @@ article.card [data-status="warning"] {
    ================================================================= */
 
 article.card[tabindex="0"],
-article.card:has(> router-link:only-child) {
+article.card:has(>a[is="router-link"]:only-child) {
   cursor: pointer;
 }
 
 article.card[tabindex="0"]:hover,
-article.card:has(> router-link:only-child):hover {
+article.card:has(>a[is="router-link"]:only-child):hover {
   background-color: var(--md-sys-color-surface-container);
 }
 
 article.card[tabindex="0"]:focus-visible,
-article.card:has(> router-link:only-child):focus-visible {
+article.card:has(>a[is="router-link"]:only-child):focus-visible {
   outline: 2px solid var(--md-sys-color-primary);
   outline-offset: 2px;
 }
 
 article.card[tabindex="0"]:active,
-article.card:has(> router-link:only-child):active {
+article.card:has(>a[is="router-link"]:only-child):active {
   background-color: var(--md-sys-color-surface-container-high);
 }
 
 /* Link wrapper inside card */
-article.card>router-link:only-child {
+article.card>a[is="router-link"]:only-child {
   display: flex;
   flex-direction: column;
   flex: 1;

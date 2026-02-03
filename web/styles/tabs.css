@@ -55,7 +55,6 @@
   flex-shrink: 0;
   width: 100%;
   min-width: 0;
-  height: fit-content;
   scroll-snap-align: start;
   scroll-snap-stop: always;
   overflow-y: auto;
@@ -82,7 +81,7 @@
   flex: 1; /* Default: Fixed tabs stretch to fill space */
   min-width: 90px; /* Spec: Minimum width for fixed tabs */
   padding: 0 16px; /* Spec: Horizontal padding */
-  
+
   /* Dimensions - Default Inline Height */
   height: 48px;
 
@@ -92,6 +91,7 @@
   font-size: var(--md-sys-typescale-title-small-size);
   line-height: var(--md-sys-typescale-title-small-line-height);
   white-space: nowrap;
+  text-decoration: none;
   
   /* Color - Default / Inactive */
   color: var(--md-sys-color-on-surface-variant);

@@ -83,18 +83,18 @@ export class ReconciliationViewElement extends HTMLElement {
             aria-label="${t('reconciliation', 'reconciliationSectionsAriaLabel')}"
             style="position: sticky; top: 0; z-index: 1; width: 100%; flex-shrink: 0;"
           >
-            <router-link role="tab" id="account-reconciliation-tab" aria-controls="account-reconciliation-panel" href="/reconciliation/account-reconciliation" replace>
+            <a is="router-link" role="tab" id="account-reconciliation-tab" aria-controls="account-reconciliation-panel" href="/reconciliation/account-reconciliation" data-replace>
               <span class="content">
                 <material-symbols name="rule" size="24"></material-symbols>
                 ${t('reconciliation', 'accountReconciliationTabLabel')}
               </span>
-            </router-link>
-            <router-link role="tab" id="cash-count-tab" aria-controls="cash-count-panel" href="/reconciliation/cash-count" replace>
+            </a>
+            <a is="router-link" role="tab" id="cash-count-tab" aria-controls="cash-count-panel" href="/reconciliation/cash-count" data-replace>
               <span class="content">
                 <material-symbols name="payments" size="24"></material-symbols>
                 ${t('reconciliation', 'cashCountTabLabel')}
               </span>
-            </router-link>
+            </a>
           </nav>
           <main
             @scrollend=${handleTabpanelContainerScrollEnd}

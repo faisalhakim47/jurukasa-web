@@ -301,14 +301,15 @@ export class PurchasesViewElement extends HTMLElement {
               : t('purchase', 'startRecordingFirstPurchaseMessage')}
           </p>
           ${!state.searchQuery && state.statusFilter === 'All' ? html`
-            <router-link
+            <a
+              is="router-link"
               role="button"
               class="tonal"
               href="/procurement/purchase-creation"
             >
               <material-symbols name="add"></material-symbols>
               ${t('purchase', 'newPurchaseButtonLabel')}
-            </router-link>
+            </a>
           ` : nothing}
         </div>
       `;
@@ -476,14 +477,15 @@ export class PurchasesViewElement extends HTMLElement {
                 <material-symbols name="refresh"></material-symbols>
                 ${t('purchase', 'refreshButtonLabel')}
               </button>
-              <router-link
+              <a
+                is="router-link"
                 role="button"
                 class="text"
                 href="/procurement/purchase-creation"
               >
                 <material-symbols name="add"></material-symbols>
                 ${t('purchase', 'newPurchaseButtonLabel')}
-              </router-link>
+              </a>
             </div>
           </div>
 

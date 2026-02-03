@@ -95,30 +95,30 @@ export class SettingsViewElement extends HTMLElement {
           aria-label="${t('settings', 'settingsSectionsAriaLabel')}"
           style="position: sticky; top: 0; z-index: 1; max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;"
         >
-          <router-link role="tab" aria-controls="accounting-panel" href="/settings/accounting" replace>
+          <a is="router-link" role="tab" aria-controls="accounting-panel" href="/settings/accounting" data-replace>
             <span class="content">
               <material-symbols name="settings" size="24"></material-symbols>
               ${t('settings', 'accountingConfigTabLabel')}
             </span>
-          </router-link>
-          <router-link role="tab" aria-controls="payments-panel" href="/settings/payments" replace>
+          </a>
+          <a is="router-link" role="tab" aria-controls="payments-panel" href="/settings/payments" data-replace>
             <span class="content">
               <material-symbols name="payments" size="24"></material-symbols>
               ${t('settings', 'paymentMethodsTabLabel')}
             </span>
-          </router-link>
-          <router-link role="tab" aria-controls="database-panel" href="/settings/database" replace>
+          </a>
+          <a is="router-link" role="tab" aria-controls="database-panel" href="/settings/database" data-replace>
             <span class="content">
               <material-symbols name="database" size="24"></material-symbols>
               ${t('settings', 'databaseTabLabel')}
             </span>
-          </router-link>
-          <router-link role="tab" aria-controls="versions-panel" href="/settings/versions" replace>
+          </a>
+          <a is="router-link" role="tab" aria-controls="versions-panel" href="/settings/versions" data-replace>
             <span class="content">
               <material-symbols name="update" size="24"></material-symbols>
               ${t('settings', 'versionsTabLabel')}
             </span>
-          </router-link>
+          </a>
         </nav>
         <main class="tabpanellist" style="max-width: 1280px;" @scrollend=${handleTabpanelContainerScrollEnd}>
           <accounting-configuration-view
@@ -167,10 +167,11 @@ export class SettingsViewElement extends HTMLElement {
               <p>${t('settings', 'pageNotFoundMessage')}</p>
             </section>
             <menu>
-              <router-link
+              <a
+                is="router-link"
                 href="/settings/accounting"
-                replace
-              >${t('settings', 'goToAccountingConfigButtonLabel')}</router-link>
+                data-replace
+              >${t('settings', 'goToAccountingConfigButtonLabel')}</a>
             </menu>
           </div>
         </dialog>

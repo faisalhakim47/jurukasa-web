@@ -90,12 +90,12 @@ export class MaterialSymbolsElement extends HTMLElement {
       const svgResponse = svgTemplateMap.has(iconUrl)
         ? svgTemplateMap.get(iconUrl)
         : (async function fetchSvg() {
-          if (appEnv === 'development') {
-            await Promise.resolve();
-            const template = document.createElement('template');
-            template.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>${icon.label || icon.name}</title><path fill="currentColor" d="M12 2L2 7v6c0 5 3.8 9.7 9 11 5.2-1.3 9-6 9-11V7l-10-5z"></path></svg>`;
-            return template;
-          }
+          // if (appEnv === 'development') {
+          //   await Promise.resolve();
+          //   const template = document.createElement('template');
+          //   template.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>${icon.label || icon.name}</title><path fill="currentColor" d="M12 2L2 7v6c0 5 3.8 9.7 9 11 5.2-1.3 9-6 9-11V7l-10-5z"></path></svg>`;
+          //   return template;
+          // }
           const svgResponse = fetch(iconUrl)
             .then(function (response) {
               if (response.ok) return response.text();

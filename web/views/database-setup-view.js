@@ -11,6 +11,9 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
+import { useConnectedCallback } from '#web/hooks/use-lifecycle.js';
+import { useMounted } from '#web/hooks/use-mounted.js';
+import { useElement } from '#web/hooks/use-element.js';
 import { webStyleSheets } from '#web/styles.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
@@ -45,13 +48,6 @@ export class DatabaseSetupViewElement extends HTMLElement {
     const setup = reactive({
       step: /** @type {'database-setup'|'business-config'|'chart-of-accounts'|'complete'} */ ('database-setup'),
       templateNames: /** @type {string[]} */ ([]),
-      selectedLanguage: 'en',
-      selectedLanguageDisplay: 'English',
-    });
-
-    useEffect(host, function initialSetup() {
-      setup.selectedLanguage = device.language || 'en';
-      setup.selectedLanguageDisplay = device.language === 'id' ? 'Bahasa Indonesia' : 'English';
     });
 
     const databaseForm = reactive({
@@ -60,14 +56,98 @@ export class DatabaseSetupViewElement extends HTMLElement {
       selectedProvider: /** @type {DatabaseProvider} */ ('local'),
     });
 
-    const state = reactive({
-      formState: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
-      formErrorMessage: /** @type {string} */ (undefined),
+    const businessForm = reactive({
+      state: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
+      errorMessage: /** @type {string} */ (undefined),
+      selectedLanguage: 'en',
+      selectedLanguageDisplay: 'English',
+      configData: /** @type {Record<string, string>|null} */ (null),
     });
 
     const chartForm = reactive({
       state: /** @type {'ready'|'submitting'|'failure'|'success'} */ ('ready'),
       errorMessage: /** @type {string} */ (undefined),
+    });
+
+    const businessFormElementRef = useElement(host, HTMLFormElement);
+
+    useConnectedCallback(host, function initiateDefaultLanguage() {
+      businessForm.selectedLanguage = device?.language || 'en';
+      businessForm.selectedLanguageDisplay = device?.language === 'id' ? 'Bahasa Indonesia' : 'English';
+    });
+
+    // Watch for database state changes and update step accordingly
+    useEffect(host, function watchDatabaseState() {
+      // If database becomes connected and we're on database-setup step, move to business-config
+      if (database.state === 'connected' && setup.step === 'database-setup') {
+        setup.step = 'business-config';
+      }
+    });
+
+    // Load existing config from database after initial render when connected
+    useMounted(host, async function loadConfigFromDatabase() {
+      if (database.state !== 'connected') return;
+      if (setup.step !== 'business-config') return;
+
+      try {
+        console.debug('database-setup-view', 'fetchConfigData', 'fetching...');
+        const result = await database.sql`
+          SELECT key, value FROM config WHERE key IN (
+            'Business Name', 'Business Type', 'Currency Code', 'Currency Decimals',
+            'Locale', 'Language', 'Fiscal Year Start Month'
+          )
+        `;
+        console.debug('database-setup-view', 'fetchConfigData', 'result', JSON.stringify(result.rows));
+        businessForm.configData = Object.fromEntries(result.rows.map(row => [row.key, row.value]));
+        console.debug('database-setup-view', 'fetchConfigData', 'configData', JSON.stringify(businessForm.configData));
+
+        // Set input values directly since form.reset() only works with initial HTML attributes
+        // Only update if input is empty or database has a value - preserves browser-restored values during back navigation
+        queueMicrotask(function setInputValues() {
+          const formEl = businessFormElementRef.value;
+          if (!formEl) return;
+          const businessNameInput = formEl.elements['business-name'];
+          const businessNameValue = businessForm.configData?.['Business Name'];
+          if (businessNameInput && (businessNameValue || !businessNameInput.value)) {
+            businessNameInput.value = businessNameValue || '';
+          }
+          const businessTypeInput = formEl.elements['business-type'];
+          const businessTypeValue = businessForm.configData?.['Business Type'];
+          if (businessTypeInput && (businessTypeValue || !businessTypeInput.value)) {
+            businessTypeInput.value = businessTypeValue || 'Small Business';
+          }
+          const currencyCodeInput = formEl.elements['currency-code'];
+          const currencyCodeValue = businessForm.configData?.['Currency Code'];
+          if (currencyCodeInput && (currencyCodeValue || !currencyCodeInput.value)) {
+            currencyCodeInput.value = currencyCodeValue || 'IDR';
+          }
+          const currencyDecimalsInput = formEl.elements['currency-decimals'];
+          const currencyDecimalsValue = businessForm.configData?.['Currency Decimals'];
+          if (currencyDecimalsInput && (currencyDecimalsValue || !currencyDecimalsInput.value)) {
+            currencyDecimalsInput.value = currencyDecimalsValue || '0';
+          }
+          const localeInput = formEl.elements['locale'];
+          const localeValue = businessForm.configData?.['Locale'];
+          if (localeInput && (localeValue || !localeInput.value)) {
+            localeInput.value = localeValue || 'en-ID';
+          }
+          const fiscalYearInput = formEl.elements['fiscal-year-start-month'];
+          const fiscalYearValue = businessForm.configData?.['Fiscal Year Start Month'];
+          if (fiscalYearInput && (fiscalYearValue || !fiscalYearInput.value)) {
+            fiscalYearInput.value = fiscalYearValue || '1';
+          }
+        });
+
+        // Update language selection from config if available
+        const configLanguage = businessForm.configData['Language'];
+        if (configLanguage) {
+          businessForm.selectedLanguage = configLanguage;
+          businessForm.selectedLanguageDisplay = configLanguage === 'id' ? 'Bahasa Indonesia' : 'English';
+        }
+      }
+      catch (error) {
+        console.error('Failed to load business config', error);
+      }
     });
 
     function loadChartOfAccountsTemplates() {
@@ -121,13 +201,6 @@ export class DatabaseSetupViewElement extends HTMLElement {
             name: formEl.elements['database-name'].value,
           });
           await database.connect(config);
-          databaseForm.state = 'success';
-          await feedbackDelay();
-          router.navigate({
-            pathname: '/database-setup',
-            database: config,
-            replace: true,
-          });
         }
         else if (provider === 'turso') {
           const config = /** @type {TursoDatabaseConfig} */ ({
@@ -137,16 +210,10 @@ export class DatabaseSetupViewElement extends HTMLElement {
             authToken: formEl.elements['turso-auth-token'].value,
           });
           await database.connect(config);
-          databaseForm.state = 'success';
-          await feedbackDelay();
-          router.navigate({
-            pathname: '/database-setup',
-            database: config,
-            replace: true,
-          });
         }
 
-        // After database connection, proceed to business config
+        databaseForm.state = 'success';
+        await feedbackDelay();
         setup.step = 'business-config';
       }
       catch (error) {
@@ -161,12 +228,11 @@ export class DatabaseSetupViewElement extends HTMLElement {
     async function submitBusinessConfig(event) {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
-      const form = event.currentTarget;
-      const formData = new FormData(form);
+      const formEl = event.currentTarget;
+      const formData = new FormData(formEl);
 
-      // Capture form data before changing state (which triggers re-render and disables fields)
-      state.formState = 'submitting';
-      state.formErrorMessage = undefined;
+      businessForm.state = 'submitting';
+      businessForm.errorMessage = undefined;
 
       const tx = await database.transaction('write');
       try {
@@ -178,20 +244,19 @@ export class DatabaseSetupViewElement extends HTMLElement {
         await tx.sql`UPDATE config SET value = ${formData.get('language') || ''} WHERE key = 'Language'`;
         await tx.sql`UPDATE config SET value = ${formData.get('fiscal-year-start-month') || ''} WHERE key = 'Fiscal Year Start Month'`;
         await tx.commit();
-        state.formState = 'success';
+        businessForm.state = 'success';
         await feedbackDelay();
 
         setup.step = 'chart-of-accounts';
-
         loadChartOfAccountsTemplates();
       }
       catch (error) {
         console.error('Failed to save configuration', error);
         await tx.rollback();
-        state.formState = 'failure';
-        state.formErrorMessage = error.message;
+        businessForm.state = 'failure';
+        businessForm.errorMessage = error.message;
         await feedbackDelay();
-        state.formState = 'ready';
+        businessForm.state = 'ready';
       }
     }
 
@@ -201,7 +266,6 @@ export class DatabaseSetupViewElement extends HTMLElement {
       const form = /** @type {HTMLFormElement} */ (event.currentTarget);
       const formData = new FormData(form);
 
-      // Capture form data before changing state (which triggers re-render and disables fields)
       chartForm.state = 'submitting';
 
       const tx = await database.transaction('write');
@@ -229,15 +293,15 @@ export class DatabaseSetupViewElement extends HTMLElement {
     }
 
     /** @param {Event} event */
-    function handleLanguageSelectionInBusinessConfig(event) {
+    function handleLanguageSelection(event) {
       assertInstanceOf(HTMLButtonElement, event.currentTarget);
       const selectedLanguage = event.currentTarget.dataset.language;
       const displayName = event.currentTarget.dataset.displayName;
       event.currentTarget.form.elements['language'].value = selectedLanguage;
       event.currentTarget.form.elements['language-display'].value = displayName;
       for (const li of event.currentTarget.closest('[role="menu"]').children) {
-        assertInstanceOf(HTMLButtonElement, li.firstChild);
-        li.firstChild.setAttribute('aria-checked', selectedLanguage === li.firstChild.dataset.language ? 'true' : 'false');
+        assertInstanceOf(HTMLButtonElement, li.firstElementChild);
+        li.firstElementChild.setAttribute('aria-checked', selectedLanguage === li.firstElementChild.dataset.language ? 'true' : 'false');
       }
     }
 
@@ -409,7 +473,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
     }
 
     function renderBusinessConfigStep() {
-      const formState = state.formState;
+      const formState = businessForm.state;
       const formDisabled = formState !== 'ready';
       return html`
         <dialog
@@ -418,7 +482,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
           style="max-width: 600px; margin: 0 auto;"
           open
         >
-          <form class="container" ?disabled=${formDisabled} @submit=${submitBusinessConfig}>
+          <form class="container" ?disabled=${formDisabled} @submit=${submitBusinessConfig} ${businessFormElementRef}>
             <header>
               <button
                 role="button"
@@ -427,41 +491,49 @@ export class DatabaseSetupViewElement extends HTMLElement {
                 @click=${handleCancelSetup}
               >${t('settings', 'databaseSetupBackButtonLabel')}</button>
               <h2 id="business-config-title" class="headline">${t('onboarding', 'businessConfigTitle')}</h2>
-              <button role="button" class="text" type="submit">${t('onboarding', 'businessConfigSubmitLabel')}</button>
+              <button
+                role="button"
+                class="text"
+                type="submit"
+                ?disabled=${formDisabled}
+              >${t('onboarding', 'businessConfigSubmitLabel')}</button>
             </header>
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${formState === 'submitting' ? html`<progress aria-label="${t('onboarding', 'businessConfigProgressIndicatorLabel')}"></progress>` : ''}
+            </div>
             <div class="content">
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="business-name">${t('onboarding', 'businessNameLabel')}</label>
-                  <input id="business-name" name="business-name" type="text" placeholder=" " required ?disabled=${formDisabled} />
+                  <input id="business-name" name="business-name" type="text" placeholder=" " required ?disabled=${formDisabled} value=${businessForm.configData?.['Business Name'] || ''} />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="business-type">${t('onboarding', 'businessTypeLabel')}</label>
-                  <input id="business-type" name="business-type" type="text" placeholder=" " required value="Small Business" ?disabled=${formDisabled} />
+                  <input id="business-type" name="business-type" type="text" placeholder=" " required value=${businessForm.configData?.['Business Type'] || 'Small Business'} ?disabled=${formDisabled} />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="currency-code">${t('onboarding', 'businessCurrencyCodeLabel')}</label>
-                  <input id="currency-code" name="currency-code" type="text" placeholder=" " required value="IDR" ?disabled=${formDisabled} />
+                  <input id="currency-code" name="currency-code" type="text" placeholder=" " required value=${businessForm.configData?.['Currency Code'] || 'IDR'} ?disabled=${formDisabled} />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="currency-decimals">${t('onboarding', 'businessCurrencyDecimalsLabel')}</label>
-                  <input id="currency-decimals" name="currency-decimals" type="number" placeholder=" " required value="0" ?disabled=${formDisabled} />
+                  <input id="currency-decimals" name="currency-decimals" type="number" placeholder=" " required value=${businessForm.configData?.['Currency Decimals'] || '0'} ?disabled=${formDisabled} />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="locale">${t('onboarding', 'businessLocaleLabel')}</label>
-                  <input id="locale" name="locale" type="text" placeholder=" " required value="en-ID" ?disabled=${formDisabled} />
+                  <input id="locale" name="locale" type="text" placeholder=" " required value=${businessForm.configData?.['Locale'] || 'en-ID'} ?disabled=${formDisabled} />
                 </div>
               </div>
 
@@ -472,13 +544,13 @@ export class DatabaseSetupViewElement extends HTMLElement {
                     id="language-input"
                     type="button"
                     name="language-display"
-                    value="${setup.selectedLanguageDisplay}"
+                    value="${businessForm.selectedLanguageDisplay}"
                     popovertarget="language-menu"
                     popovertargetaction="show"
                     placeholder=" "
                     ?disabled=${formDisabled}
                   />
-                  <input type="hidden" name="language" value="${setup.selectedLanguage}" />
+                  <input type="hidden" name="language" value="${businessForm.selectedLanguage}" />
                   <label for="language-input" class="trailing-icon">
                     <material-symbols name="arrow_drop_down"></material-symbols>
                   </label>
@@ -489,14 +561,14 @@ export class DatabaseSetupViewElement extends HTMLElement {
                   <button
                     role="menuitemradio"
                     type="button"
-                    @click=${handleLanguageSelectionInBusinessConfig}
+                    @click=${handleLanguageSelection}
                     data-language="en"
                     data-display-name="English"
                     popovertarget="language-menu"
                     popovertargetaction="hide"
-                    aria-checked="${setup.selectedLanguage === 'en' ? 'true' : 'false'}"
+                    aria-checked="${businessForm.selectedLanguage === 'en' ? 'true' : 'false'}"
                   >
-                    ${setup.selectedLanguage === 'en' ? html`<material-symbols name="check"></material-symbols>` : ''}
+                    ${businessForm.selectedLanguage === 'en' ? html`<material-symbols name="check"></material-symbols>` : ''}
                     English
                   </button>
                 </li>
@@ -504,14 +576,14 @@ export class DatabaseSetupViewElement extends HTMLElement {
                   <button
                     role="menuitemradio"
                     type="button"
-                    @click=${handleLanguageSelectionInBusinessConfig}
+                    @click=${handleLanguageSelection}
                     data-language="id"
                     data-display-name="Bahasa Indonesia"
                     popovertarget="language-menu"
                     popovertargetaction="hide"
-                    aria-checked="${setup.selectedLanguage === 'id' ? 'true' : 'false'}"
+                    aria-checked="${businessForm.selectedLanguage === 'id' ? 'true' : 'false'}"
                   >
-                    ${setup.selectedLanguage === 'id' ? html`<material-symbols name="check"></material-symbols>` : ''}
+                    ${businessForm.selectedLanguage === 'id' ? html`<material-symbols name="check"></material-symbols>` : ''}
                     Bahasa Indonesia
                   </button>
                 </li>
@@ -520,9 +592,13 @@ export class DatabaseSetupViewElement extends HTMLElement {
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="fiscal-year-start-month">${t('onboarding', 'businessFiscalYearStartMonthLabel')}</label>
-                  <input id="fiscal-year-start-month" name="fiscal-year-start-month" type="number" min="1" max="12" placeholder=" " required value="1" ?disabled=${formDisabled} />
+                  <input id="fiscal-year-start-month" name="fiscal-year-start-month" type="number" min="1" max="12" placeholder=" " required value=${businessForm.configData?.['Fiscal Year Start Month'] || '1'} ?disabled=${formDisabled} />
                 </div>
               </div>
+
+              ${businessForm.errorMessage ? html`
+                <p style="color: var(--md-sys-color-error); margin-top: 16px;">${businessForm.errorMessage}</p>
+              ` : ''}
             </div>
           </form>
         </dialog>
@@ -587,6 +663,9 @@ export class DatabaseSetupViewElement extends HTMLElement {
                   </li>
                 `)}
               </ul>
+              ${chartForm.errorMessage ? html`
+                <p style="color: var(--md-sys-color-error); margin-top: 16px;">${chartForm.errorMessage}</p>
+              ` : ''}
             </div>
           </form>
         </dialog>
@@ -598,7 +677,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
       else if (setup.step === 'business-config') render(renderBusinessConfigStep());
       else if (setup.step === 'chart-of-accounts') render(renderChartOfAccountsStep());
       else if (setup.step === 'complete') render(html`<p>${t('onboarding', 'loadingIndicatorLabel')}</p>`);
-      else render(html`<p>${t('onboarding', 'unknownState', setup.step)}</p>`);
+      else render(html`<p>${t('onboarding', 'unknownStepMessage', setup.step)}</p>`);
     });
   }
 }

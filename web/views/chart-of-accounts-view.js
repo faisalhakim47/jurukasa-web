@@ -392,101 +392,6 @@ export class ChartOfAccountsViewElement extends HTMLElement {
       `;
     }
 
-    function renderFilterControls() {
-      return html`
-        <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; flex-wrap: wrap;">
-          <!-- Search Field -->
-          <div class="outlined-text-field" style="--md-sys-density: -4; width: 180px; min-width: 160px;">
-            <div class="container">
-              <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="account-search-input">${t('account', 'searchLabel')}</label>
-              <input
-                ${readValue(state, 'searchQuery')}
-                id="account-search-input"
-                type="text"
-                placeholder=" "
-                autocomplete="off"
-                @input=${handleSearchInput}
-              />
-            </div>
-          </div>
-
-          <!-- Type Filter -->
-          <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 160px; anchor-name: --type-menu-anchor;">
-            <div class="container">
-              <label for="type-filter-input">${t('account', 'typeFilterLabel')}</label>
-              <input
-                id="type-filter-input"
-                type="button"
-                value="${state.typeFilter}"
-                aria-label="${t('account', 'typeFilterLabel')}"
-                popovertarget="type-filter-menu"
-                popovertargetaction="show"
-                placeholder=" "
-              />
-              <label for="type-filter-input" class="trailing-icon">
-                <material-symbols name="arrow_drop_down"></material-symbols>
-              </label>
-            </div>
-          </div>
-          <menu role="menu" popover id="type-filter-menu" aria-label="${t('account', 'accountTypeFilterAriaLabel')}" class="dropdown" style="position-anchor: --type-menu-anchor;">
-            ${accountTypes.map((accountType) => html`
-              <li>
-                <button
-                  role="menuitem"
-                  data-account-type="${accountType}"
-                  @click=${handleTypeFilterChange}
-                  popovertarget="type-filter-menu"
-                  popovertargetaction="hide"
-                  aria-selected=${accountType === state.typeFilter ? 'true' : 'false'}
-                >
-                  ${accountType === state.typeFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
-                  ${accountType}
-                </button>
-              </li>
-            `)}
-          </menu>
-
-          <!-- Status Filter -->
-          <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 160px; anchor-name: --status-menu-anchor;">
-            <div class="container">
-              <label for="status-filter-input">${t('account', 'statusFilterLabel')}</label>
-              <input
-                id="status-filter-input"
-                type="button"
-                value="${state.statusFilter}"
-                aria-label="${t('account', 'statusFilterLabel')}"
-                popovertarget="status-filter-menu"
-                popovertargetaction="show"
-                placeholder=" "
-              />
-              <label for="status-filter-input" class="trailing-icon" aria-hidden="true">
-                <material-symbols name="arrow_drop_down"></material-symbols>
-              </label>
-            </div>
-          </div>
-          <menu role="menu" popover id="status-filter-menu" class="dropdown" style="position-anchor: --status-menu-anchor;">
-            ${statusTypes.map((statusType) => html`
-              <li>
-                <button
-                  role="menuitemradio"
-                  aria-checked="${state.statusFilter === statusType ? 'true' : 'false'}"
-                  type="button"
-                  popovertarget="status-filter-menu"
-                  popovertargetaction="hide"
-                  data-status-type="${statusType}"
-                  @click=${handleStatusFilterChange}
-                >
-                  ${state.statusFilter === statusType ? html`<material-symbols name="check"></material-symbols>` : nothing}
-                  ${statusType}
-                </button>
-              </li>
-            `)}
-          </menu>
-        </div>
-      `;
-    }
-
     function renderEmptyState() {
       return html`
         <div
@@ -559,13 +464,13 @@ export class ChartOfAccountsViewElement extends HTMLElement {
             <button
               role="button"
               type="button"
-              class="text"
+              class="text extra-small"
+              style="--md-sys-density: -4;"
               aria-label="${hasChildren ? (isExpanded ? t('account', 'collapseAccountAriaLabel', account.name) : t('account', 'expandAccountAriaLabel', account.name)) : t('account', 'accountAriaLabel', account.name)}"
               @click=${hasChildren ? toggleExpanded : nothing}
               data-account-code="${account.account_code}"
               data-has-children="${hasChildren ? 'true' : 'false'}"
               ${hasChildren ? '' : 'disabled'}
-              style="padding: 0; min-width: unset; height: unset;"
             >
               <span style="display: flex; align-items: center; gap: 8px; height: 100%;">
                 ${hasChildren ? html`
@@ -641,9 +546,9 @@ export class ChartOfAccountsViewElement extends HTMLElement {
       if (state.accountTree.length === 0) return renderEmptyState();
       return html`
         <table role="treegrid" aria-label="${t('account', 'chartOfAccountsTreeAriaLabel')}" style="--md-sys-density: -3;">
-          <thead>
+          <thead class="sticky">
             <tr>
-              <th scope="col" style="width: 200px;">${t('account', 'tableHeaderCode')}</th>
+              <th scope="col" style="width: 250px;">${t('account', 'tableHeaderCode')}</th>
               <th scope="col">${t('account', 'tableHeaderName')}</th>
               <th scope="col" class="center" style="width: 100px;">${t('account', 'tableHeaderType')}</th>
               <th scope="col" class="center" style="width: 80px;">${t('account', 'tableHeaderNormal')}</th>
@@ -661,10 +566,94 @@ export class ChartOfAccountsViewElement extends HTMLElement {
 
     useEffect(host, function renderChartOfAccountsView() {
       render(html`
-        <div class="scrollable" style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%; overflow-y: scroll;">
-          <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
-            ${renderFilterControls()}
-            <div>
+        <div style="display: flex; flex-direction: column; height: 100%; gap: 16px; padding-top: 16px; box-sizing: border-box;">
+          <header style="display: flex; flex-direction: row; justify-content: space-between; padding-inline: 24px; box-sizing: border-box;">
+            <div style="display: flex; flex-direction: row; gap: 12px;">
+              <div class="outlined-text-field" style="--md-sys-density: -4; width: 180px; min-width: 160px;">
+                <div class="container">
+                  <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
+                  <label for="account-search-input">${t('account', 'searchLabel')}</label>
+                  <input
+                    ${readValue(state, 'searchQuery')}
+                    id="account-search-input"
+                    type="text"
+                    placeholder=" "
+                    autocomplete="off"
+                    @input=${handleSearchInput}
+                  />
+                </div>
+              </div>
+              <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 160px; anchor-name: --type-menu-anchor;">
+                <div class="container">
+                  <label for="type-filter-input">${t('account', 'typeFilterLabel')}</label>
+                  <input
+                    id="type-filter-input"
+                    type="button"
+                    value="${state.typeFilter}"
+                    aria-label="${t('account', 'typeFilterLabel')}"
+                    popovertarget="type-filter-menu"
+                    popovertargetaction="show"
+                    placeholder=" "
+                  />
+                  <label for="type-filter-input" class="trailing-icon">
+                    <material-symbols name="arrow_drop_down"></material-symbols>
+                  </label>
+                </div>
+              </div>
+              <menu role="menu" popover id="type-filter-menu" aria-label="${t('account', 'accountTypeFilterAriaLabel')}" class="dropdown" style="position-anchor: --type-menu-anchor;">
+                ${accountTypes.map((accountType) => html`
+                  <li>
+                    <button
+                      role="menuitem"
+                      data-account-type="${accountType}"
+                      @click=${handleTypeFilterChange}
+                      popovertarget="type-filter-menu"
+                      popovertargetaction="hide"
+                      aria-selected=${accountType === state.typeFilter ? 'true' : 'false'}
+                    >
+                      ${accountType === state.typeFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
+                      ${accountType}
+                    </button>
+                  </li>
+                `)}
+              </menu>
+              <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 160px; anchor-name: --status-menu-anchor;">
+                <div class="container">
+                  <label for="status-filter-input">${t('account', 'statusFilterLabel')}</label>
+                  <input
+                    id="status-filter-input"
+                    type="button"
+                    value="${state.statusFilter}"
+                    aria-label="${t('account', 'statusFilterLabel')}"
+                    popovertarget="status-filter-menu"
+                    popovertargetaction="show"
+                    placeholder=" "
+                  />
+                  <label for="status-filter-input" class="trailing-icon" aria-hidden="true">
+                    <material-symbols name="arrow_drop_down"></material-symbols>
+                  </label>
+                </div>
+              </div>
+              <menu role="menu" popover id="status-filter-menu" class="dropdown" style="position-anchor: --status-menu-anchor;">
+                ${statusTypes.map((statusType) => html`
+                  <li>
+                    <button
+                      role="menuitemradio"
+                      aria-checked="${state.statusFilter === statusType ? 'true' : 'false'}"
+                      type="button"
+                      popovertarget="status-filter-menu"
+                      popovertargetaction="hide"
+                      data-status-type="${statusType}"
+                      @click=${handleStatusFilterChange}
+                    >
+                      ${state.statusFilter === statusType ? html`<material-symbols name="check"></material-symbols>` : nothing}
+                      ${statusType}
+                    </button>
+                  </li>
+                `)}
+              </menu>
+            </div>
+            <div style="display: flex; flex-direction: row; gap: 12px;">
               <button role="button" class="text" @click=${expandAll} aria-label="${t('account', 'expandAllAriaLabel')}" title="${t('account', 'expandAllTitle')}">
                 <material-symbols name="unfold_more"></material-symbols>
                 ${t('account', 'expandAllButtonLabel')}
@@ -682,10 +671,12 @@ export class ChartOfAccountsViewElement extends HTMLElement {
                 ${t('account', 'createAccountButtonLabel')}
               </button>
             </div>
+          </header>
+          <div class="scrollable" style="flex: 1; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding-inline: 24px;">
+            ${state.isLoading ? renderLoadingIndicator() : nothing}
+            ${state.error instanceof Error ? renderErrorNotice(state.error) : nothing}
+            ${state.isLoading === false && state.error === null ? renderAccountsTable() : nothing}
           </div>
-          ${state.isLoading ? renderLoadingIndicator() : nothing}
-          ${state.error instanceof Error ? renderErrorNotice(state.error) : nothing}
-          ${state.isLoading === false && state.error === null ? renderAccountsTable() : nothing}
         </div>
 
         <account-creation-dialog

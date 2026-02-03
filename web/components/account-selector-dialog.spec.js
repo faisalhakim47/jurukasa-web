@@ -29,7 +29,7 @@ describe('Account Selector Dialog', function () {
                     type="button"
                     commandfor="account-selector-dialog"
                     command="--open"
-                  >Select Account</button>
+                  >Open Account Selector</button>
                   <account-selector-dialog
                     id="account-selector-dialog"
                   ></account-selector-dialog>
@@ -41,9 +41,12 @@ describe('Account Selector Dialog', function () {
       `;
     }, tursoLibSQLiteServer().url);
 
-    await page.getByRole('button', { name: 'Select Account' }).click();
+    await page.getByRole('button', { name: 'Open Account Selector' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Select Account' }).getByText('No accounts available')).toBeVisible();
+    const accountSelectorDialog = page.getByRole('dialog', { name: 'Select Account' });
+    await expect(accountSelectorDialog.getByText('No accounts available'), 'it shall display no accounts message').toBeVisible();
+    await accountSelectorDialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(accountSelectorDialog, 'it shall close dialog when Close is clicked').not.toBeVisible();
 
     await page.evaluate(async function insertChartOfAccountTemplate() {
       /** @type {DatabaseContextElement} */
@@ -51,7 +54,9 @@ describe('Account Selector Dialog', function () {
       await database.sql`INSERT INTO chart_of_accounts_templates (name) VALUES ('Retail Business - Indonesia')`;
     });
 
-    await page.getByRole('dialog', { name: 'Select Account' }).getByLabel('Search accounts').fill('Modal Pemilik');
+    await page.getByRole('button', { name: 'Open Account Selector' }).click();
+    await expect(accountSelectorDialog, 'it shall display account selector dialog').toBeVisible();
+    await accountSelectorDialog.getByLabel('Search accounts').fill('Modal Pemilik');
 
     const [selectedAccount] = await Promise.all([
       page.evaluate(async function waitForAccountSelectEvent() {

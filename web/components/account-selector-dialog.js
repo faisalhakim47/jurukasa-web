@@ -201,18 +201,17 @@ export class AccountSelectorDialogElement extends HTMLElement {
     function renderAccountList() {
       const filteredAccounts = state.accounts;
       if (filteredAccounts.length === 0) return html`
-        <section aria-live="polite" style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+        <section aria-live="polite" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 16px;">
           <material-symbols name="search_off" size="48"></material-symbols>
           <p>${state.searchQuery ? t('account', 'noAccountsMatchSearchMessage') : t('account', 'noAccountsAvailableMessage')}</p>
         </section>
       `;
       else return html`
-        <menu role="list" aria-label="${t('account', 'availableAccountsAriaLabel')}" style="max-height: 320px; overflow-y: auto;">
+        <menu role="list" aria-label="${t('account', 'availableAccountsAriaLabel')}" style="flex: 1; overflow-y: auto;">
           ${repeat(filteredAccounts, account => account.account_code, account => html`
             <li
               role="menuitemradio"
               aria-checked="false"
-              class="divider-inset"
               tabindex="0"
               data-value=${account.account_code}
               data-name=${account.name}
@@ -237,38 +236,46 @@ export class AccountSelectorDialogElement extends HTMLElement {
 
     useEffect(host, function renderDialog() {
       render(html`
+        <style>
+          dialog {
+            min-height: calc(100vh - 24px);
+          }
+        </style>
+
         <dialog
           ${dialog.element}
           id="account-selector-dialog"
           aria-labelledby="account-selector-dialog-title"
         >
-          <form class="container" style="max-width: min(320px, 90vw);">
+          <form class="container">
             <header>
               <hgroup>
                 <h2 id="account-selector-dialog-title">${t('account', 'selectDialogTitle')}</h2>
               </hgroup>
             </header>
-
-            <div class="content">
-              <div class="outlined-text-field" style="--md-sys-density: -4;">
-                <div class="container">
-                  <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-                  <label for="account-search">${t('account', 'searchAccountsLabel')}</label>
-                  <input
-                    ${searchInputElement}
-                    ${readValue(state, 'searchQuery')}
-                    id="account-search"
-                    type="text"
-                    placeholder=" "
-                    autocomplete="off"
-                  />
+            <div class="content" style="display: contents;">
+              <div style="display: flex; flex-direction: column; gap: 8px; padding-block: 8px; box-sizing: border-box; height: inherit; overflow-y: auto;">
+                <div class="outlined-text-field" style="--md-sys-density: -4;">
+                  <div class="container">
+                    <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
+                    <label for="account-search">${t('account', 'searchAccountsLabel')}</label>
+                    <input
+                      ${searchInputElement}
+                      ${readValue(state, 'searchQuery')}
+                      id="account-search"
+                      type="text"
+                      placeholder=" "
+                      autocomplete="off"
+                    />
+                  </div>
+                </div>
+                <div class="scrollable" style="flex: 1;">
+                  ${state.error instanceof Error ? renderErrorNotice() : nothing}
+                  ${state.isLoading ? renderLoadingIndicator() : nothing}
+                  ${!state.isLoading ? renderAccountList() : nothing}
                 </div>
               </div>
-              ${state.isLoading ? renderLoadingIndicator() : nothing}
-              ${state.error instanceof Error ? renderErrorNotice() : nothing}
-              ${!state.isLoading ? renderAccountList() : nothing}
             </div>
-
             <menu>
               <li>
                 <button

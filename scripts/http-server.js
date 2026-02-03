@@ -24,6 +24,7 @@ const mimeType = {
   '.html': 'text/html',
   '.css': 'text/css',
   '.js': 'text/javascript',
+  '.mjs': 'text/javascript',
   '.json': 'application/json',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -37,9 +38,10 @@ const mimeType = {
 };
 
 /** @param {string} filePath */
-function getMimeType(filePath) {
+function getContentType(filePath) {
   const ext = filePath.slice(filePath.lastIndexOf('.'));
-  return mimeType[ext] || 'application/octet-stream';
+  const mime = mimeType[ext] || 'application/octet-stream';
+  return mime === 'text/html' ? 'text/html; charset=utf-8' : mime;
 };
 
 function getDefaultHeaders() {
@@ -56,11 +58,12 @@ function responseNotFound(response) {
 }
 
 const server = createServer(async function requestHandler(request, response) {
-  const url = new URL(request.url || '', 'http://localhost:8000');
-  const file = url.pathname === '/' ? appIndex : url.pathname;
+  const url = new URL(request.url || '/', 'http://localhost:8000');
+  const pathname = url.pathname;
+  const file = !pathname.includes('.') ? appIndex : pathname;
   const filePath = join(webRoot, file);
   try {
-    if (url.pathname === '/.well-known/appspecific/com.chrome.devtools.json') {
+    if (pathname === '/.well-known/appspecific/com.chrome.devtools.json') {
       response.writeHead(200, {
         'Content-Type': 'application/json',
         ...getDefaultHeaders(),
@@ -77,7 +80,7 @@ const server = createServer(async function requestHandler(request, response) {
     const stats = await stat(filePath);
     if (stats.isFile()) {
       response.writeHead(200, {
-        'Content-Type': getMimeType(filePath),
+        'Content-Type': getContentType(filePath),
         ...getDefaultHeaders(),
       });
       const stream = createReadStream(filePath);
@@ -87,7 +90,7 @@ const server = createServer(async function requestHandler(request, response) {
       });
     }
     else {
-      const isPossibleFile = url.pathname.includes('.');
+      const isPossibleFile = pathname.includes('.');
       if (isPossibleFile) responseNotFound(response);
       else {
         response.writeHead(200, {

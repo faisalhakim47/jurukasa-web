@@ -346,7 +346,11 @@ export class BalanceSheetViewElement extends HTMLElement {
                       color: ${isBalanced ? '#2E7D32' : '#C62828'};
                     "
                   >
-                    <material-symbols name="${isBalanced ? 'check_circle' : 'error'}" size="20"></material-symbols>
+                    ${isBalanced ? html`
+                      <material-symbols name="check_circle" size="20"></material-symbols>
+                    ` : html`
+                      <material-symbols name="error" size="20"></material-symbols>
+                    `}
                     ${isBalanced ? t('financialReport', 'balanceSheetBalancedMessage') : t('financialReport', 'balanceSheetOutOfBalanceMessage', i18n.displayCurrency(Math.abs(totalAssets - totalLiabilities - totalEquity)))}
                   </span>
                 </td>

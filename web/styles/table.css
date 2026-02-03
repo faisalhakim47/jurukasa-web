@@ -17,14 +17,11 @@ table {
 }
 
 /* Header */
-thead {
-  background-color: var(--md-sys-color-surface-container);
-}
-
 th {
   box-sizing: border-box;
   padding: max(4px, 12px + calc(var(--md-sys-density, 0) * 4px)) 16px;
   height: max(36px, calc(52px + (var(--md-sys-density, 0) * 4px))); /* essentially min-height for table cell */
+  background-color: var(--md-sys-color-surface-container);
   text-align: left;
   font-family: var(--md-sys-typescale-label-large-font);
   font-weight: var(--md-sys-typescale-label-large-weight);
@@ -34,6 +31,11 @@ th {
   white-space: nowrap;
   /* Ensure headers stay on top of content when scrolling */
   z-index: 1;
+}
+
+thead.sticky>tr>th {
+  position: sticky;
+  top: 0;
 }
 
 /* Body */

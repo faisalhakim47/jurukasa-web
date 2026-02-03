@@ -1,6 +1,7 @@
 import { reactive } from '@vue/reactivity';
 import { defineWebComponent } from '#web/component.js';
 import { useBusyStateResolver } from '#web/contexts/ready-context.js';
+import { useAttribute } from '#web/hooks/use-attribute.js';
 import { provideContext } from '#web/hooks/use-context.js';
 import { useConnectedCallback } from '#web/hooks/use-lifecycle.js';
 import { useWatch } from '#web/hooks/use-watch.js';
@@ -25,16 +26,20 @@ export class ServiceWorkerContextElement extends HTMLElement {
       messageId: 0,
     });
 
+    const disabled = useAttribute(host, 'disabled');
     const resolveReady = useBusyStateResolver(host);
 
     useConnectedCallback(host, function registerServiceWorker() {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' })
-        .then(function registered(registration) {
-          state.registration = registration;
-        })
-        .catch(function registrationFailed(error) {
-          state.registrationError = error;
-        });
+      if (disabled.value === null) {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .then(function registered(registration) {
+            state.registration = registration;
+          })
+          .catch(function registrationFailed(error) {
+            state.registrationError = error;
+          });
+      }
+      else resolveReady();
     });
 
     useWatch(host, state, 'registration', function handleRegistrationError(registration) {
@@ -136,7 +141,9 @@ export class ServiceWorkerContextElement extends HTMLElement {
     this.sendMessage = sendMessage;
 
     async function hotfixSqlite3OpfsAsyncProxy() {
-      await sendMessage({ command: 'hotfix-sqlite3-opfs-async-proxy' }, 5 * 1000);
+      if (typeof disabled.value === null) {
+        await sendMessage({ command: 'hotfix-sqlite3-opfs-async-proxy' }, 5 * 1000);
+      }
     }
     this.hotfixSqlite3OpfsAsyncProxy = hotfixSqlite3OpfsAsyncProxy;
   }

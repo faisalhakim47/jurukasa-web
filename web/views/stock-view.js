@@ -92,24 +92,24 @@ export class StockViewElement extends HTMLElement {
             aria-label="${t('stock', 'stockSectionsAriaLabel')}"
             style="position: sticky; top: 0; z-index: 1; max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;"
           >
-            <router-link role="tab" id="inventories-tab" aria-controls="inventories-panel" href="/stock/inventories" replace>
+            <a is="router-link" role="tab" id="inventories-tab" aria-controls="inventories-panel" href="/stock/inventories" data-replace>
               <span class="content">
                 <material-symbols name="inventory_2" size="24"></material-symbols>
                 ${t('stock', 'inventoriesTabLabel')}
               </span>
-            </router-link>
-            <router-link role="tab" id="barcodes-tab" aria-controls="barcodes-panel" href="/stock/barcodes" replace>
+            </a>
+            <a is="router-link" role="tab" id="barcodes-tab" aria-controls="barcodes-panel" href="/stock/barcodes" data-replace>
               <span class="content">
                 <material-symbols name="barcode" size="24"></material-symbols>
                 ${t('stock', 'barcodesTabLabel')}
               </span>
-            </router-link>
-            <router-link role="tab" id="stock-takings-tab" aria-controls="stock-takings-panel" href="/stock/stock-takings" replace>
+            </a>
+            <a is="router-link" role="tab" id="stock-takings-tab" aria-controls="stock-takings-panel" href="/stock/stock-takings" data-replace>
               <span class="content">
                 <material-symbols name="fact_check" size="24"></material-symbols>
                 ${t('stock', 'stockTakingsTabLabel')}
               </span>
-            </router-link>
+            </a>
           </nav>
           <main
             @scrollend=${handleTabpanelContainerScrollEnd}
@@ -166,10 +166,11 @@ export class StockViewElement extends HTMLElement {
               <p>${t('stock', 'pageNotFoundMessage')}</p>
             </section>
             <menu>
-              <router-link
+              <a
+                is="router-link"
                 href="/stock/inventories"
-                replace
-              >${t('stock', 'goToInventoriesButtonLabel')}</router-link>
+                data-replace
+              >${t('stock', 'goToInventoriesButtonLabel')}</a>
             </menu>
           </div>
         </dialog>

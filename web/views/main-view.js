@@ -28,7 +28,6 @@ export class MainViewElement extends HTMLElement {
     const t = useTranslator(host);
     const render = useRender(host);
 
-
     useEffect(host, function evaluateOnboardingState() {
       console.debug('main-view', 'evaluateOnboardingState', router.route?.pathname, typeof router.route?.pathname === 'string', database.isReady, database.state);
       const pathname = router.route?.pathname;

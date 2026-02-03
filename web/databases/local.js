@@ -11,7 +11,6 @@ import { removeIndentation } from '#web/tools/string.js';
 export async function createLocalDatabaseClient(config) {
   // @ts-ignore the code structure of sqlite wasm client is very convoluted, hard to structure and type properly, so screw it
   const { sqlite3Worker1Promiser } = await import('@sqlite.org/sqlite-wasm');
-  console.debug('createLocalDatabaseClient', sqlite3Worker1Promiser.toString());
   const promiser = await sqlite3Worker1Promiser({
   });
   /** @type {PromiseWithResolvers<string>} */

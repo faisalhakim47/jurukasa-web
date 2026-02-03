@@ -307,14 +307,15 @@ export class SalesViewElement extends HTMLElement {
               : t('sale', 'startCreatingFirstSaleMessage')}
           </p>
           ${!state.searchQuery && state.statusFilter === 'All' ? html`
-            <router-link
+            <a
+              is="router-link"
               role="button"
               class="tonal"
               href="/sale/point-of-sales"
             >
               <material-symbols name="point_of_sale"></material-symbols>
               ${t('sale', 'goToPointOfSaleButtonLabel')}
-            </router-link>
+            </a>
           ` : nothing}
         </div>
       `;
@@ -475,14 +476,15 @@ export class SalesViewElement extends HTMLElement {
                 <material-symbols name="refresh"></material-symbols>
                 ${t('sale', 'refreshButtonLabel')}
               </button>
-              <router-link
+              <a
+                is="router-link"
                 role="button"
                 class="text"
                 href="/sale/point-of-sales"
               >
                 <material-symbols name="point_of_sale"></material-symbols>
                 ${t('sale', 'pointOfSaleButtonLabel')}
-              </router-link>
+              </a>
             </div>
           </div>
 

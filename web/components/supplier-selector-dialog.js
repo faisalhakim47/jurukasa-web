@@ -168,7 +168,6 @@ export class SupplierSelectorDialogElement extends HTMLElement {
             <li
               role="menuitemradio"
               aria-checked="false"
-              class="divider-inset"
               tabindex="0"
               data-value=${supplier.id}
               data-name=${supplier.name}

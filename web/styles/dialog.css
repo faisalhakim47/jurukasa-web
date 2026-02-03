@@ -15,7 +15,9 @@ dialog {
   position: fixed;
   inset: 0;
   margin: auto;
-  
+
+  flex-direction: column;
+
   /* Size & Shape (Basic Dialog Default). We have our own opinion about the width. */
   /* min-width: 280px; */
   /* max-width: 560px; */
@@ -52,8 +54,15 @@ dialog {
 }
 
 dialog[open] {
+  display: flex;
   opacity: 1;
   transform: scale(1);
+  visibility: visible;
+}
+
+dialog:not([open]) {
+  display: hidden;
+  visibility: hidden;
 }
 
 /* Scrim (Backdrop) - Label 7 */
@@ -74,6 +83,7 @@ dialog::backdrop {
 
 /* Ensure the form takes up the full space if used */
 dialog>.container {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -118,6 +128,7 @@ dialog>.container>header>hgroup>:is(h1, h2, h3, h4, h5, h6) {
 
 /* Supporting text (Label 4) */
 dialog>.container>.content {
+  flex: 1;
   margin-top: 0;
   font-family: var(--md-sys-typescale-font);
   font-weight: var(--md-sys-typescale-body-medium-weight);
@@ -183,6 +194,7 @@ dialog.full-screen[open] {
 
 dialog.full-screen>.container {
   background-color: var(--md-sys-color-surface);
+  width: 100%;
 }
 
 /* ## 3.1. Full Screen Header */

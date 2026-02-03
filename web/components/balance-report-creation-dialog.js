@@ -46,6 +46,7 @@ export class BalanceReportCreationDialogElement extends HTMLElement {
       isLoading: true,
     });
 
+    /** @param {number} timestamp */
     function formatDateTimeInput(timestamp) {
       const now = new Date(timestamp);
       return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -135,15 +136,6 @@ export class BalanceReportCreationDialogElement extends HTMLElement {
           <form class="container" @submit=${handleSubmit}>
             <header>
               <h2 id="balance-report-creation-dialog-title">${t('financialReport', 'generateReportDialogTitle')}</h2>
-              <button
-                role="button"
-                type="button"
-                class="text"
-                aria-label="${t('financialReport', 'closeDialogLabel')}"
-                commandfor="balance-report-creation-dialog"
-                command="close"
-              ><material-symbols name="close"></material-symbols></button>
-              <button role="button" type="submit" name="action" ?disabled=${defaultDateTime.isLoading}>${t('financialReport', 'generateReportActionLabel')}</button>
             </header>
 
             <div role="status" aria-live="polite" aria-busy="true">
@@ -195,6 +187,26 @@ export class BalanceReportCreationDialogElement extends HTMLElement {
                 </div>
               `}
             </div>
+
+            <menu>
+              <button
+                type="button"
+                role="button"
+                class="text"
+                ?disabled=${state.formState !== 'idle'}
+                commandfor="balance-report-creation-dialog"
+                command="close"
+              >${t('financialReport', 'closeDialogLabel')}</button>
+              <button
+                type="submit"
+                role="button"
+                class="filled"
+                ?disabled=${defaultDateTime.isLoading || state.formState !== 'idle'}
+              >
+                <material-symbols name="save"></material-symbols>
+                ${t('financialReport', 'generateReportActionLabel')}
+              </button>
+            </menu>
           </form>
         </dialog>
 

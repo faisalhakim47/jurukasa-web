@@ -384,10 +384,10 @@ export class DashboardViewElement extends HTMLElement {
             </ul>
           </section>
           <footer>
-            <router-link role="button" href="/stock" class="button text">
+            <a is="router-link" role="button" href="/stock" class="button text">
               ${t('dashboard', 'viewAllStockButtonLabel')}
               <material-symbols name="arrow_forward"></material-symbols>
-            </router-link>
+            </a>
           </footer>
         </article>
       `;
@@ -411,10 +411,10 @@ export class DashboardViewElement extends HTMLElement {
               </div>
             </section>
             <footer>
-              <router-link role="button" href="/sale/point-of-sales" class="button tonal">
+              <a is="router-link" role="button" href="/sale/point-of-sales" class="button tonal">
                 <material-symbols name="add"></material-symbols>
                 ${t('dashboard', 'newSaleButtonLabel')}
-              </router-link>
+              </a>
             </footer>
           </article>
         `;
@@ -458,10 +458,10 @@ export class DashboardViewElement extends HTMLElement {
             </ul>
           </section>
           <footer>
-            <router-link role="button" href="/sale" class="button text">
+            <a is="router-link" role="button" href="/sale" class="button text">
               ${t('dashboard', 'viewAllSalesButtonLabel')}
               <material-symbols name="arrow_forward"></material-symbols>
-            </router-link>
+            </a>
           </footer>
         </article>
       `;

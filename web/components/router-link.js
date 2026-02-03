@@ -1,12 +1,13 @@
-import { reactive } from '@vue/reactivity';
 import { defineWebComponent } from '#web/component.js';
 import { RouterContextElement } from '#web/contexts/router-context.js';
+import { useAttribute } from '#web/hooks/use-attribute.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
-import { useAttributeChangedCallback } from '#web/hooks/use-lifecycle.js';
+import { assertInstanceOf } from '#web/tools/assertion.js';
 import { conditionalAttr, conditionalClass } from '#web/tools/dom.js';
+import { webStyleSheets } from '#web/styles.js';
 
-export class RouterLinkElement extends HTMLElement {
+export class RouterLinkElement extends HTMLAnchorElement {
   static get observedAttributes() {
     return ['href', 'replace', 'data-active-class'];
   }
@@ -16,49 +17,47 @@ export class RouterLinkElement extends HTMLElement {
 
     const host = this;
     host.tabIndex = 0;
-    host.role = host.role || 'link';
 
     const router = useContext(host, RouterContextElement);
 
-    const props = reactive({
-      href: host.getAttribute('href'),
-      replace: host.hasAttribute('replace'),
-      dataActiveClass: host.getAttribute('data-active-class') || 'active',
-    });
+    const href = useAttribute(host, 'href');
+    const replace = useAttribute(host, 'data-replace');
+    const activeClass = useAttribute(host, 'data-active-class', 'active');
 
-    useAttributeChangedCallback(host, function (name, oldValue, newValue) {
-      if (name === 'href') props.href = newValue;
-      if (name === 'replace') props.replace = this.hasAttribute('replace');
-      if (name === 'data-active-class') props.dataActiveClass = newValue || 'active';
-    });
+    function navigateToHref() {
+      if (href.value) {
+        const url = new URL(href.value, window.location.origin);
+        router.navigate({
+          pathname: url.pathname,
+          search: url.search,
+          replace: replace.value !== null,
+        });
+      }
+    }
 
     useEffect(host, function syncState() {
       const pathname = router.route.pathname;
-      conditionalClass(host, pathname.startsWith(props.href), props.dataActiveClass);
-      if (host.role === 'link') conditionalAttr(host, pathname === props.href, 'aria-current', 'page');
-      else if (host.role === 'tab') host.setAttribute('aria-selected', pathname === props.href ? 'true' : 'false');
-      else if (host.role === 'button') {/* no-op */}
-      else throw new Error(`Unsupported role="${host.role}" on <router-link>`);
+      conditionalClass(host, pathname.startsWith(href.value), activeClass.value);
+      conditionalAttr(host, pathname === href.value, 'aria-current', 'page');
+      if (host.role === 'tab') host.setAttribute('aria-selected', pathname === href.value ? 'true' : 'false');
+      else host.removeAttribute('aria-selected');
     });
 
-    this.addEventListener('click', function triggerNavigationByClick(event) {
+    host.addEventListener('click', function triggerNavigationByClick(event) {
+      assertInstanceOf(MouseEvent, event);
+      assertInstanceOf(HTMLAnchorElement, event.currentTarget);
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
-      if (props.href) router.navigate({
-        pathname: props.href,
-        replace: props.replace,
-      });
+      navigateToHref();
     });
 
-    this.addEventListener('keydown', function triggerNavigationByKey(event) {
+    host.addEventListener('keydown', function triggerNavigationByKey(event) {
       if (event.key === 'Enter') {
-        if (props.href) router.navigate({
-          pathname: props.href,
-          replace: props.replace,
-        });
+        event.preventDefault();
+        navigateToHref();
       }
     });
   }
 }
 
-defineWebComponent('router-link', RouterLinkElement);
+defineWebComponent('router-link', RouterLinkElement, { extends: 'a' });

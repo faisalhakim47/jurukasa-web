@@ -15,8 +15,8 @@
   "main": "web/app.js",
   "browser": "web/app.js",
   "scripts": {
-    "start": "node scripts/http-server.js test/playwright/fixtures/dev.html",
-    "test": "npm run test:db && npm run test:db",
+    "start": "node scripts/http-server.js index.local.html",
+    "test": "npm run test:db && npm run test:e2e",
     "test:e2e": "playwright test",
     "test:db": "node --test **/*.test.js",
     "build": "./scripts/build.sh"

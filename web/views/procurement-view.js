@@ -89,18 +89,18 @@ export class ProcurementViewElement extends HTMLElement {
             aria-label=${t('common', 'procurementSectionsAriaLabel')}
             style="position: sticky; top: 0; z-index: 1; max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;"
           >
-            <router-link role="tab" id="purchases-tab" aria-controls="purchases-panel" href="/procurement/purchases" replace>
+            <a is="router-link" role="tab" id="purchases-tab" aria-controls="purchases-panel" href="/procurement/purchases" data-replace>
               <span class="content">
                 <material-symbols name="shopping_cart" size="24"></material-symbols>
                 ${t('common', 'purchasesTabLabel')}
               </span>
-            </router-link>
-            <router-link role="tab" id="suppliers-tab" aria-controls="suppliers-panel" href="/procurement/suppliers" replace>
+            </a>
+            <a is="router-link" role="tab" id="suppliers-tab" aria-controls="suppliers-panel" href="/procurement/suppliers" data-replace>
               <span class="content">
                 <material-symbols name="local_shipping" size="24"></material-symbols>
                 ${t('common', 'suppliersTabLabel')}
               </span>
-            </router-link>
+            </a>
           </nav>
           <main
             @scrollend=${handleTabpanelContainerScrollEnd}
@@ -148,10 +148,11 @@ export class ProcurementViewElement extends HTMLElement {
               <p>${t('common', 'pageNotFoundMessage')}</p>
             </section>
             <menu>
-              <router-link
+              <a
+                is="router-link"
                 href="/procurement/purchases"
-                replace
-              >${t('common', 'goToPurchasesButtonLabel')}</router-link>
+                data-replace
+              >${t('common', 'goToPurchasesButtonLabel')}</a>
             </menu>
           </div>
         </dialog>

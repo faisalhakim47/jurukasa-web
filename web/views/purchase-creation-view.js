@@ -502,7 +502,6 @@ export class PurchaseCreationViewElement extends HTMLElement {
                 ${repeat(state.inventories, (inventory) => inventory.id, (inventory) => html`
                   <div
                     role="listitem"
-                    class="divider-inset"
                     tabindex="0"
                     data-inventory-id="${inventory.id}"
                     @click=${handleAddInventoryToPurchase}

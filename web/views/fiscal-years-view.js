@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit-html';
+import { when } from 'lit-html/directives/when.js';
 import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
@@ -19,7 +20,6 @@ import '#web/components/material-symbols.js';
 import '#web/components/fiscal-year-creation-dialog.js';
 import '#web/components/fiscal-year-closing-dialog.js';
 import '#web/components/fiscal-year-reversal-dialog.js';
-import { when } from 'lit-html/directives/when.js';
 
 /**
  * @typedef {object} FiscalYearRow
@@ -637,6 +637,11 @@ export class FiscalYearsViewElement extends HTMLElement {
       `;
     }
 
+    /**
+     * @param {typeof state.detailsState.balanceReportsBeforeClosing} reports
+     * @param {string} title
+     * @param {string} emptyMessage
+     */
     function renderBalanceReportsSection(reports, title, emptyMessage) {
       if (reports.length === 0) {
         return html`
@@ -677,7 +682,8 @@ export class FiscalYearsViewElement extends HTMLElement {
                 </td>
                 <td class="center">
                   <div style="display: flex; gap: 4px; justify-content: center;">
-                    <router-link
+                    <a
+                      is="router-link"
                       role="button"
                       class="text extra-small"
                       href="/books/reports/trial-balance?reportId=${report.id}"
@@ -685,8 +691,9 @@ export class FiscalYearsViewElement extends HTMLElement {
                       aria-label="${t('financialReport', 'reportTypeTrialBalance')}"
                     >
                       TB
-                    </router-link>
-                    <router-link
+                    </a>
+                    <a
+                      is="router-link"
                       role="button"
                       class="text extra-small"
                       href="/books/reports/balance-sheet?reportId=${report.id}"
@@ -694,7 +701,7 @@ export class FiscalYearsViewElement extends HTMLElement {
                       aria-label="${t('financialReport', 'reportTypeBalanceSheet')}"
                     >
                       BS
-                    </router-link>
+                    </a>
                   </div>
                 </td>
               </tr>

@@ -38,7 +38,7 @@ JuruKasa is point-of-sales (POS) web application with following features:
 
 - The CSS is written in semantically meaningful way, using HTML5 elements and attributes.
 - The general term to describe our naming methodology is "Semantic CSS".
-- The CSS is relly heavily on structural elements. For example `nav>router-link>material-symbols` instead of `.main-nav-icon`.
+- The CSS is relly heavily on structural elements. For example `nav>a[is="router-link"]>material-symbols` instead of `.main-nav-icon`.
 - Use any accessibility attributes to indicate roles, UI states, properties, etc.
 - Use very minimum classes, only for variant modifiers. Select semantical HTML tags first.
 - Selector priority:

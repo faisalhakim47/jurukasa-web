@@ -105,23 +105,6 @@ async function idbGet(objectStore, query) {
 }
 
 /**
- * @param {IDBObjectStore} objectStore
- * @returns {Promise<Array<unknown>>}
- */
-async function idbGetAll(objectStore) {
-  const objectRequest = objectStore.getAll();
-  return new Promise(function getAllPromise(resolve, reject) {
-    objectRequest.addEventListener('success', function getAllSuccess(event) {
-      if ('result' in event.target) resolve(/** @type {Array<unknown>} */(event.target.result));
-      else throw reject(new Error('IndexedDB getAll result not found', { cause: event }));
-    });
-    objectRequest.addEventListener('error', function getAllError(event) {
-      reject(new Error('IndexedDB getAll error', { cause: event }));
-    });
-  });
-}
-
-/**
  * this promised app directory function must not throw error
  */
 async function getAppConfig() {
@@ -196,54 +179,12 @@ async function hotfixSqlite3OpfsAsyncProxy(url) {
 }
 
 /**
- * For consistency our structure list all resources from package.json, including the html files.
- * For this reason, the html is included in caching process. But, the cache comes from some CDN.
- * Most CDN would forbid to serve HTML by invalidating Content-Type header. We need to fix this.
- * 
- * @param {string} url
+ * @param {Headers} headers
+ * @returns {void}
  */
-async function fixCDNToServeHTML(url) {
-  if (url.endsWith('.html')) {
-    const response = await fetch(url);
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: {
-        ...Array.from(response.headers.entries())
-          .reduce(function compileHeaders(headers, [key, value]) {
-            headers[key] = value;
-            return headers;
-          }, {}),
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cross-Origin-Embedder-Policy': 'require-corp',
-      },
-    });
-  }
-  else return await fetch(url);
-}
-
-/**
- * @param {string} url
- */
-async function fixSQLiteCoopCoep(url) {
-  if (url.endsWith('sqlite3-worker1.mjs')) {
-    const response = await fetch(url);
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: {
-        ...Array.from(response.headers.entries())
-          .reduce(function compileHeaders(headers, [key, value]) {
-            headers[key] = value;
-            return headers;
-          }, {}),
-        'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cross-Origin-Embedder-Policy': 'require-corp',
-      },
-    });
-  }
-  else return await fetch(url);
+function applyCoopCoepHeaders(headers) {
+  headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+  headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
 }
 
 /**
@@ -253,20 +194,10 @@ async function fixSQLiteCoopCoep(url) {
 async function addImmutableCacheUrls(cache, urls) {
   await Promise.all(urls.map(async function addImmutableCacheUrl(url) {
     const response = await cache.match(url);
-    if (response instanceof Response) {
-      console.debug('sw', 'cache', 'immutable', url);
-      /** no-op */
-    }
+    if (response instanceof Response) { console.debug('sw', 'cache', 'immutable', url); }
     else {
-      if (url.endsWith('dist/sqlite3-opfs-async-proxy.js')) {
-        await cache.put(url, await hotfixSqlite3OpfsAsyncProxy(url));
-      }
-      else if (url.endsWith('.html')) {
-        await cache.put(url, await fixCDNToServeHTML(url));
-      }
-      else if (url.endsWith('sqlite3-worker1.mjs')) {
-        await cache.put(url, await fixSQLiteCoopCoep(url));
-      }
+      if (false) { /** no-op */ }
+      else if (url.endsWith('dist/sqlite3-opfs-async-proxy.js')) await cache.put(url, await hotfixSqlite3OpfsAsyncProxy(url));
       else await cache.add(url).catch(function logCacheAddError(error) {
         console.warn('sw', 'cache', 'add', 'error', url, error.message);
         throw error;
@@ -290,70 +221,43 @@ sw.addEventListener('activate', function handleActivate() {
 });
 
 sw.addEventListener('fetch', function handleFetch(event) {
-  event.respondWith((async function theCachingStrategy() {
+  event.respondWith((async function TheCachingStrategy() {
+    console.debug('sw', 'TheCachingStrategy', event.request.url);
+
+    const url = new URL(event.request.url);
     const { appPrefix, appIndex } = await promisedAppConfig;
-    console.debug('sw', 'theCachingStrategy', event.request.url);
-    if (typeof appPrefix === 'string') {
-      const cache = await caches.open(`jurukasa-web:${appPrefix}`);
-      const response = await cache.match(event.request);
-      if (response instanceof Response) {
-        console.debug('sw', 'cache', 'hit', event.request.url);
-        return response;
-      }
-      else {
-        const url = new URL(event.request.url);
-        if (url.origin === self.location.origin) {
-          /** we enforce that all assets files must have file extension and app routes must not have file extension */
-          if (url.pathname.includes('.')) {
-            console.debug('sw', 'cache', 'miss', 'assets', url.pathname);
-            return await fetch(event.request);
-          }
-          else {
-            console.debug('sw', 'cache', 'miss', 'index', appPrefix, appIndex);
-            const appIndexUrl = `${appPrefix}/${appIndex}`;
-            const cachedIndexResponse = await cache.match(appIndexUrl);
-            if (cachedIndexResponse instanceof Response) console.debug('sw', 'cache', 'hit', 'index', appIndexUrl);
-            else console.debug('sw', 'cache', 'miss', 'index', appIndexUrl);
-            const indexResponse = cachedIndexResponse instanceof Response
-              ? cachedIndexResponse
-              : await fetch(appIndexUrl).catch(function logFetchError(error) {
-                console.debug('sw', 'fetch', 'error', appIndexUrl, error.message);
-                throw error;
-              });
-            console.debug('sw', 'cache', 'miss', 'index', 'loaded', appIndexUrl);
-            const fixedIndexResponse = new Response(indexResponse.body, {
-              status: 200,
-              headers: {
-                ...Array.from(indexResponse.headers.entries())
-                  .reduce(function compileHeaders(headers, [key, value]) {
-                    headers[key] = value;
-                    return headers;
-                  }, {}),
-                'Content-Type': 'text/html; charset=utf-8',
-                'Cross-Origin-Opener-Policy': 'same-origin',
-                'Cross-Origin-Embedder-Policy': 'require-corp',
-              },
-            });
-            return fixedIndexResponse;
-          }
-        }
-        /** this could be: unmanaged request or sqlite api request */
-        else {
-          console.debug('sw', 'cache', 'miss', 'assets', event.request.url);
-          if (event.request.url.endsWith('dist/sqlite3-opfs-async-proxy.js')) {
-            return await hotfixSqlite3OpfsAsyncProxy(event.request.url);
-          }
-          else if (event.request.url.endsWith('.html')) {
-            return await fixCDNToServeHTML(event.request.url);
-          }
-          else return await fetch(event.request);
-        }
-      }
+
+    const cache = typeof appPrefix === 'string'
+      ? await caches.open(`jurukasa-web:${appPrefix}`)
+      : undefined;
+    const cachedResponse = await cache?.match(event.request);
+
+    const isAppIndex = url.origin === self.location.origin && !url.pathname.includes('.');
+
+    let response = /** @type {Response} */ (undefined);
+    if (cachedResponse instanceof Response) response = cachedResponse;
+    /** We enforce that all assets files must have file extension and app routes must not have file extension. All other path should be handled as html */
+    else if (isAppIndex) {
+      const appIndexUrl = `${appPrefix}/${appIndex}`;
+      const cachedIndexResponse = await cache.match(appIndexUrl);
+      response = cachedIndexResponse instanceof Response
+        ? cachedIndexResponse
+        : await fetch(appIndexUrl).catch(function logFetchError(error) {
+          console.error('sw', 'fetch', 'error', appIndexUrl, error.message);
+          throw error;
+        });
     }
-    else {
-      console.debug('sw', 'non-cache', event.request.url);
-      return await fetch(event.request);
-    }
+    else response = await fetch(event.request);
+
+    const headers = new Headers(response.headers);
+    if (isAppIndex || url.pathname.endsWith('.html')) headers.set('Content-Type', 'text/html; charset=utf-8');
+    headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+    headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
+
+    return new Response(response.body, {
+      ...response,
+      headers,
+    });
   })());
 });
 

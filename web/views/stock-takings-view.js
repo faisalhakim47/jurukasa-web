@@ -282,14 +282,15 @@ export class StockTakingsViewElement extends HTMLElement {
               : t('stock', 'performStockTakingMessage')}
           </p>
           ${state.varianceFilter === 'All' ? html`
-            <router-link
+            <a
+              is="router-link"
               role="button"
               class="tonal"
               href="/stock/stock-taking-creation"
             >
               <material-symbols name="add"></material-symbols>
               ${t('stock', 'newStockTakingButtonLabel')}
-            </router-link>
+            </a>
           ` : nothing}
         </div>
       `;
@@ -464,10 +465,10 @@ export class StockTakingsViewElement extends HTMLElement {
                 <material-symbols name="refresh"></material-symbols>
                 ${t('stock', 'refreshButtonLabel')}
               </button>
-              <router-link role="button" class="tonal" href="/stock/stock-taking-creation">
+              <a is="router-link" role="button" class="tonal" href="/stock/stock-taking-creation">
                 <material-symbols name="add"></material-symbols>
                 ${t('stock', 'newStockTakingButtonLabel')}
-              </router-link>
+              </a>
             </div>
           </div>
 

@@ -9,7 +9,7 @@
   height: 4px;
 }
 
-[role="status"] > progress {
+[role="status"]>progress {
   display: block;
   width: 100%;
   height: 4px;

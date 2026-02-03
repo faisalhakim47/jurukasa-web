@@ -1,4 +1,3 @@
-${isBalanced ? 'check_circle' : 'error'}
 account_balance
 account_balance_wallet
 account_tree

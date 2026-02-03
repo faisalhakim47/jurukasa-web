@@ -814,7 +814,6 @@ export class POSViewElement extends HTMLElement {
                   return html`
                     <div
                       role="listitem"
-                      class="divider-inset"
                       tabindex="0"
                       data-inventory-id="${inventory.id}"
                       @click=${handleAddInventoryToSale}

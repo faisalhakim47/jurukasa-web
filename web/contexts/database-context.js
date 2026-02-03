@@ -131,6 +131,7 @@ export class DatabaseContextElement extends HTMLElement {
         connection.client = client;
       }
       catch (error) {
+        console.error('database-context', 'connect', error);
         removeDatabaseByName(config.name);
         connection.state = 'unconfigured';
         connection.error = error;
@@ -158,7 +159,7 @@ export class DatabaseContextElement extends HTMLElement {
     const tursoAuthTokenAttr = useAttribute(host, 'turso-auth-token');
 
     useEffect(host, function evaluateExistingState() {
-      console.debug('database-context', 'evaluateExistingState', connection.state, JSON.stringify(router.route));
+      console.debug('database-context', 'evaluateExistingState', connection.state, router.route?.pathname, router.route?.search, router.route?.database?.provider);
       if (connection.state === 'init' && router.route) {
         let config = /** @type {DatabaseConfig} */ (undefined);
 
@@ -200,9 +201,12 @@ function addDatabase(newDatabase) {
   const existingDatabase = databases.find(function byName(existingDatabase) {
     return existingDatabase.name === newDatabase.name;
   });
-  if (existingDatabase) throw new Error('Database name already in use');
-  databases.push(newDatabase);
-  localStorage.setItem('databases', JSON.stringify(databases));
+  if (existingDatabase?.provider === 'local') { /** duplicate name is fine for local */ }
+  else {
+    if (existingDatabase) throw new Error('Database name already in use');
+    databases.push(newDatabase);
+    localStorage.setItem('databases', JSON.stringify(databases));
+  }
 }
 
 /** @param {string} name */

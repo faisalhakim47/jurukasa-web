@@ -74,7 +74,7 @@ describe('Books View', function () {
     await expect(journalEntriesPanel.getByRole('button', { name: 'Refresh' }), 'it shall have refresh button in header').toBeVisible();
   });
 
-  test('switch between Journal Entries, Chart of Accounts, and Reports tabs', async function ({ page }) {
+  test('switch between tabs', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData() {}),
@@ -85,18 +85,28 @@ describe('Books View', function () {
     await expect(page.getByRole('tab', { name: 'Journal Entries' }), 'it shall have Journal Entries tab').toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('tab', { name: 'Chart of Accounts' }), 'it shall have Chart of Accounts tab unselected initially').toHaveAttribute('aria-selected', 'false');
     await expect(page.getByRole('tab', { name: 'Reports' }), 'it shall have Reports tab unselected initially').toHaveAttribute('aria-selected', 'false');
+    await expect(page.getByRole('tab', { name: 'Fiscal Years' }), 'it shall have Fiscal Years tab unselected initially').toHaveAttribute('aria-selected', 'false');
+    await expect(page.getByRole('tab', { name: 'Fixed Assets' }), 'it shall have Fixed Assets tab unselected initially').toHaveAttribute('aria-selected', 'false');
 
     await page.getByRole('tab', { name: 'Chart of Accounts' }).click();
-
     await expect(page.getByRole('tab', { name: 'Chart of Accounts' }), 'it shall select Chart of Accounts tab when clicked').toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('tab', { name: 'Journal Entries' }), 'it shall deselect Journal Entries tab when Chart of Accounts is selected').toHaveAttribute('aria-selected', 'false');
     await expect(page.getByRole('treegrid', { name: 'Chart of Accounts' }), 'it shall display Chart of Accounts treegrid when tab is selected').toBeVisible();
 
     await page.getByRole('tab', { name: 'Reports' }).click();
-
     await expect(page.getByRole('tab', { name: 'Reports' }), 'it shall select Reports tab when clicked').toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('tab', { name: 'Journal Entries' }), 'it shall deselect Journal Entries tab when Reports is selected').toHaveAttribute('aria-selected', 'false');
     await expect(page.getByRole('button', { name: 'Generate Report' }), 'it shall display Generate Report button in Reports tab').toHaveCount(1);
+
+    await page.getByRole('tab', { name: 'Fiscal Years' }).click();
+    await expect(page.getByRole('tab', { name: 'Fiscal Years' }), 'it shall select Fiscal Years tab when clicked').toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tab', { name: 'Journal Entries' }), 'it shall deselect Journal Entries tab when Fiscal Years is selected').toHaveAttribute('aria-selected', 'false');
+    await expect(page.getByRole('heading', { name: 'Fiscal Year ' }), 'it shall display Fiscal Year heading in Fiscal Years tab').toBeVisible();
+
+    await page.getByRole('tab', { name: 'Fixed Assets' }).click();
+    await expect(page.getByRole('tab', { name: 'Fixed Assets' }), 'it shall select Fixed Assets tab when clicked').toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tab', { name: 'Journal Entries' }), 'it shall deselect Journal Entries tab when Fixed Assets is selected').toHaveAttribute('aria-selected', 'false');
+    await expect(page.getByRole('heading', { name: 'Fixed Assets' }), 'it shall display Fixed Assets heading in Fixed Assets tab').toBeVisible();
   });
 
   test('view Chart of Accounts with template accounts and column headers', async function ({ page }) {

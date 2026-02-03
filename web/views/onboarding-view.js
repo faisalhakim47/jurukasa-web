@@ -169,7 +169,7 @@ export class OnboardingViewElement extends HTMLElement {
             <h1>${t('onboarding', 'unknownStepTitle')}</h1>
             <p>${t('onboarding', 'unknownStepMessage')}</p>
             <div>
-              <router-link href="/onboarding">${t('onboarding', 'returnToWelcome')}</router-link>
+              <a is="router-link" href="/onboarding">${t('onboarding', 'returnToWelcome')}</a>
             </div>
           </div>
         `);

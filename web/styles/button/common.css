@@ -27,6 +27,7 @@
   transition-duration: var(--md-sys-motion-duration-short2);
   transition-timing-function: var(--md-sys-motion-easing-emphasized);
   text-decoration: none;
+  white-space: nowrap;
 }
 [role="button"]::before,
 [role="button"]::after {

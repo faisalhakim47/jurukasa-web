@@ -85,18 +85,18 @@ export class SaleViewElement extends HTMLElement {
             aria-label="${t('sale', 'saleSectionsAriaLabel')}"
             style="position: sticky; top: 0; z-index: 1; max-width: 1280px; margin: 0 auto; width: 100%; flex-shrink: 0;"
           >
-            <router-link role="tab" id="sales-tab" aria-controls="sales-panel" href="/sale/sales" replace>
+            <a is="router-link" role="tab" id="sales-tab" aria-controls="sales-panel" href="/sale/sales" data-replace>
               <span class="content">
                 <material-symbols name="receipt_long" size="24"></material-symbols>
                 ${t('sale', 'salesTabLabel')}
               </span>
-            </router-link>
-            <router-link role="tab" id="discounts-tab" aria-controls="discounts-panel" href="/sale/discounts" replace>
+            </a>
+            <a is="router-link" role="tab" id="discounts-tab" aria-controls="discounts-panel" href="/sale/discounts" data-replace>
               <span class="content">
                 <material-symbols name="percent" size="24"></material-symbols>
                 ${t('sale', 'discountsTabLabel')}
               </span>
-            </router-link>
+            </a>
           </nav>
           <main
             @scrollend=${handleTabpanelContainerScrollEnd}
@@ -144,10 +144,11 @@ export class SaleViewElement extends HTMLElement {
               <p>${t('sale', 'pageNotFoundMessage')}</p>
             </section>
             <menu>
-              <router-link
+              <a
+                is="router-link"
                 href="/sale/sales"
-                replace
-              >${t('sale', 'goToSalesButtonLabel')}</router-link>
+                data-replace
+              >${t('sale', 'goToSalesButtonLabel')}</a>
             </menu>
           </div>
         </dialog>
