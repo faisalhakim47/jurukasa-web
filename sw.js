@@ -239,7 +239,7 @@ sw.addEventListener('fetch', function handleFetch(event) {
     /** We enforce that all assets files must have file extension and app routes must not have file extension. All other path should be handled as html */
     else if (isAppIndex) {
       const appIndexUrl = `${appPrefix}/${appIndex}`;
-      const cachedIndexResponse = await cache.match(appIndexUrl);
+      const cachedIndexResponse = await cache?.match(appIndexUrl);
       response = cachedIndexResponse instanceof Response
         ? cachedIndexResponse
         : await fetch(appIndexUrl).catch(function logFetchError(error) {
