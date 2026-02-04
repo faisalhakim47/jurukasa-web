@@ -44,7 +44,7 @@ function getContentType(filePath) {
   return mime === 'text/html' ? 'text/html; charset=utf-8' : mime;
 };
 
-function getDefaultHeaders() {
+function defaultHeaders() {
   return {
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Embedder-Policy': 'require-corp',
@@ -66,7 +66,7 @@ const server = createServer(async function requestHandler(request, response) {
     if (pathname === '/.well-known/appspecific/com.chrome.devtools.json') {
       response.writeHead(200, {
         'Content-Type': 'application/json',
-        ...getDefaultHeaders(),
+        ...defaultHeaders(),
       });
       response.write(JSON.stringify({
         workspace: {
@@ -78,14 +78,22 @@ const server = createServer(async function requestHandler(request, response) {
       return;
     }
     const stats = await stat(filePath);
+    console.debug(request.method, pathname, stats.isFile());
+    request.addListener('error', function onRequestError(err) {
+      console.debug(request.method, pathname, 'onRequestError', err);
+    });
     if (stats.isFile()) {
       response.writeHead(200, {
         'Content-Type': getContentType(filePath),
-        ...getDefaultHeaders(),
+        ...defaultHeaders(),
+      });
+      response.addListener('error', function onResponseError(err) {
+        console.debug(request.method, pathname, 'onResponseError', err);
       });
       const stream = createReadStream(filePath);
       stream.pipe(response);
-      stream.on('error', function onStreamError() {
+      stream.on('error', function onStreamError(err) {
+        console.debug(request.method, pathname, 'onStreamError', err);
         responseNotFound(response);
       });
     }
@@ -95,7 +103,7 @@ const server = createServer(async function requestHandler(request, response) {
       else {
         response.writeHead(200, {
           'Content-Type': 'text/html; charset=utf-8',
-          ...getDefaultHeaders(),
+          ...defaultHeaders(),
         });
         const stream = createReadStream(join(webRoot, appIndex));
         stream.pipe(response);

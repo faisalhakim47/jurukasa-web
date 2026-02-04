@@ -24,8 +24,9 @@ import { computed } from '@vue/reactivity';
 export function useExposed(host, computeFnOrRef) {
   const placeholder = Symbol('ComputedPlaceholder');
   useConnectedCallback(host, function initExposed() {
-    for (const key in host) {
+    for (const key of Object.getOwnPropertyNames(host)) {
       if (host[key] === placeholder) {
+        console.debug('useExposed', host.constructor.name, key);
         const ref = typeof computeFnOrRef === 'function'
           ? computed(computeFnOrRef)
           : computeFnOrRef;

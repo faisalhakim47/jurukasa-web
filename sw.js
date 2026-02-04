@@ -232,7 +232,7 @@ sw.addEventListener('fetch', function handleFetch(event) {
       : undefined;
     const cachedResponse = await cache?.match(event.request);
 
-    const isAppIndex = url.origin === self.location.origin && !url.pathname.includes('.');
+    const isAppIndex = url.origin === sw.location.origin && !url.pathname.includes('.');
 
     let response = /** @type {Response} */ (undefined);
     if (cachedResponse instanceof Response) response = cachedResponse;
@@ -254,10 +254,7 @@ sw.addEventListener('fetch', function handleFetch(event) {
     headers.set('Cross-Origin-Opener-Policy', 'same-origin');
     headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
 
-    return new Response(response.body, {
-      ...response,
-      headers,
-    });
+    return new Response(response.body, { ...response, headers });
   })());
 });
 

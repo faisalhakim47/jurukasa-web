@@ -33,7 +33,7 @@ export async function createTursoDatabaseClient(config) {
       return {
         rows: result.rows,
         rowsAffected: result.rowsAffected,
-        lastInsertRowid: Number(result.lastInsertRowid),
+        lastInsertRowId: Number(result.lastInsertRowId),
       };
     },
     async transaction(mode) {

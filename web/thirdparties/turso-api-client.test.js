@@ -28,17 +28,17 @@ describe('Turso API Client', function () {
     `);
 
     equal(createTableResult.rowsAffected, 0, 'CREATE TABLE shall affect 0 rows');
-    equal(createTableResult.lastInsertRowid, null, 'CREATE TABLE shall have no last insert rowid');
+    equal(createTableResult.lastInsertRowId, null, 'CREATE TABLE shall have no last insert rowid');
 
     const insertResult = await execute(config, `INSERT INTO users (name) VALUES ('Alice');`);
 
     equal(insertResult.rowsAffected, 1, 'INSERT shall affect 1 row');
-    equal(insertResult.lastInsertRowid, '1', 'INSERT shall return last insert rowid');
+    equal(insertResult.lastInsertRowId, '1', 'INSERT shall return last insert rowid');
 
     const updateResult = await execute(config, `UPDATE users SET name = 'Bob' WHERE id = 1;`);
 
     equal(updateResult.rowsAffected, 1, 'UPDATE shall affect 1 row');
-    equal(updateResult.lastInsertRowid, null, 'UPDATE shall have no last insert rowid');
+    equal(updateResult.lastInsertRowId, null, 'UPDATE shall have no last insert rowid');
   });
 
   it('shall execute multiple queries', async function () {

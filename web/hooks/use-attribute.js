@@ -14,7 +14,7 @@ export function useAttribute(host, observedAttributeName, defaultValue = null) {
       ? host.getAttribute(observedAttributeName).trim()
       : defaultValue,
   );
-  useAttributeChangedCallback(host, function (name, oldValue, newValue) {
+  useAttributeChangedCallback(host, function watchAttributeChanges(name, oldValue, newValue) {
     if (name === observedAttributeName) attribute.value = typeof newValue === 'string'
       ? newValue.trim()
       : defaultValue;

@@ -101,7 +101,7 @@ async function pipeline(config, type, sql, rawArgs, close) {
             }, {});
           }),
           rowsAffected: resultOfExecute.response.result?.affected_row_count,
-          lastInsertRowid: resultOfExecute.response.result?.last_insert_rowid,
+          lastInsertRowId: resultOfExecute.response.result?.last_insert_rowid,
         };
         // console.debug('turso-api-client', type, 'result', config.baton, `\n  ${sql.slice(0, 500).replace(/\n/g, '\n  ')} ${sql.length > 500 ? '...' : ''}`, interpretedArgs);
         return result;
@@ -111,7 +111,7 @@ async function pipeline(config, type, sql, rawArgs, close) {
           baton: body.baton,
           rows: [],
           rowsAffected: undefined,
-          lastInsertRowid: undefined,
+          lastInsertRowId: undefined,
         };
         console.debug('turso-api-client', type, 'result', config.baton, sql.slice(0, 500));
         return result;

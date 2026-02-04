@@ -159,7 +159,7 @@ export class DatabaseContextElement extends HTMLElement {
     const tursoAuthTokenAttr = useAttribute(host, 'turso-auth-token');
 
     useEffect(host, function evaluateExistingState() {
-      console.debug('database-context', 'evaluateExistingState', connection.state, router.route?.pathname, router.route?.search, router.route?.database?.provider);
+      console.debug('database-context', 'evaluateExistingState', connection.state, router.route?.pathname, { provider: router.route?.database?.provider });
       if (connection.state === 'init' && router.route) {
         let config = /** @type {DatabaseConfig} */ (undefined);
 

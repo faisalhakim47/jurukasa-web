@@ -1,6 +1,6 @@
 import { defineWebComponent } from '#web/component.js';
 import { provideContext, useContext, useOptionalContext } from '#web/hooks/use-context.js';
-import { useEffect, stopEffect } from '#web/hooks/use-effect.js';
+import { useEffect, StopEffectFlag } from '#web/hooks/use-effect.js';
 import { useConnectedCallback } from '#web/hooks/use-lifecycle.js';
 import { useWindowEventListener } from '#web/hooks/use-window-event-listener.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
@@ -143,7 +143,7 @@ export function useBusyStateUntil(host, isReady) {
   useEffect(host, function readyEffect() {
     if (isReady()) {
       ready();
-      return stopEffect;
+      return StopEffectFlag;
     }
   });
 }

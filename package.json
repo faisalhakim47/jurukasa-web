@@ -26,18 +26,18 @@
     "#test/*": "./test/*"
   },
   "dependencies": {
-    "@fontsource-variable/source-sans-3": "^5.2.9",
-    "@material-symbols/svg-400": "^0.40.2",
-    "@sqlite.org/sqlite-wasm": "3.51.2-build5",
-    "@vue/reactivity": "^3.5.27",
-    "lit-html": "^3.3.2"
+    "@fontsource-variable/source-sans-3": "5.2.9",
+    "@material-symbols/svg-400": "0.40.2",
+    "@sqlite.org/sqlite-wasm": "3.51.2-build6",
+    "@vue/reactivity": "3.5.27",
+    "lit-html": "3.3.2"
   },
   "devDependencies": {
-    "@libsql/client": "^0.17.0",
-    "@playwright/test": "^1.58.0",
-    "@types/node": "^25.1.0",
-    "@types/web": "^0.0.324",
-    "playwright": "^1.58.0"
+    "@libsql/client": "0.17.0",
+    "@playwright/test": "1.58.1",
+    "@types/node": "25.2.0",
+    "@types/web": "0.0.326",
+    "playwright": "1.58.1"
   },
   "files": [
     "web/app.js",
@@ -97,6 +97,9 @@
     "web/tools/string.js",
     "web/tools/timing.js",
     "web/thirdparties/turso-api-client.js",
+    "web/thirdparties/npm/@sqlite.org/sqlite-wasm@3.51.2-build6/dist/sqlite3-opfs-async-proxy.js",
+    "web/thirdparties/npm/@sqlite.org/sqlite-wasm@3.51.2-build6/dist/sqlite3-worker1.mjs",
+    "web/thirdparties/npm/@sqlite.org/sqlite-wasm@3.51.2-build6/dist/sqlite3.wasm",
     "web/styles/app-bar.css",
     "web/styles/cards.css",
     "web/styles/chip.css",

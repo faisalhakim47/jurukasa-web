@@ -1,4 +1,5 @@
 import { unknownToSQLArgs } from '#web/database.js';
+import { createSqlite3Worker1Client } from '#web/thirdparties/sqlite3-worker1-client.js';
 import { assertTemplateStringsArray } from '#web/tools/assertion.js';
 import { removeIndentation } from '#web/tools/string.js';
 /** @import { DatabaseClient, SQLFunction } from '#web/database.js' */
@@ -9,18 +10,17 @@ import { removeIndentation } from '#web/tools/string.js';
  * @returns {Promise<DatabaseClient>}
  */
 export async function createLocalDatabaseClient(config) {
-  // @ts-ignore the code structure of sqlite wasm client is very convoluted, hard to structure and type properly, so screw it
-  const { sqlite3Worker1Promiser } = await import('@sqlite.org/sqlite-wasm');
-  const promiser = await sqlite3Worker1Promiser({
-  });
+  const client = createSqlite3Worker1Client();
+
   /** @type {PromiseWithResolvers<string>} */
   const { promise: promisedDbId, resolve: resolveDbId } = Promise.withResolvers();
   async function connect() {
     console.debug('database', 'local', 'connect');
+    await client.ready;
     const filename = config.name.replace(/[^a-zA-Z0-9]+/g, '_');
-    const response = await promiser('open', { filename: `file:jurukasa-${filename}.sqlite?vfs=opfs` });
-    console.debug('database', 'local', 'connected', response.dbId);
-    resolveDbId(response.dbId);
+    const openResult = await client.open({ filename: `jurukasa-${filename}.sqlite`, vfs: 'opfs' });
+    console.debug('database', 'local', 'connected', openResult.dbId);
+    resolveDbId(openResult.dbId);
     // sql`PRAGMA journal_mode = WAL`;
     // sql`PRAGMA synchronous = FULL`;
     await sql`PRAGMA foreign_keys = ON;`;
@@ -28,6 +28,7 @@ export async function createLocalDatabaseClient(config) {
     // sql`PRAGMA cache_size = -32000`;
     // sql`PRAGMA mmap_size = 67108864`;
   }
+
   /** @type {SQLFunction} */
   async function sql(query, ...params) {
     assertTemplateStringsArray(query);
@@ -36,19 +37,17 @@ export async function createLocalDatabaseClient(config) {
     console.debug('database', 'local', 'sql', `\n  ` + sqlQuery.slice(0, 500).replace(/\n/g, '\n  '), sqlQuery.length > 500 ? '...' : '');
     try {
       const dbId = await promisedDbId;
-      const response = await promiser('exec', {
-        dbId,
+      const execResult = await client.exec(dbId, {
         sql: sqlQuery,
         bind: sqlArgs,
         rowMode: 'object',
         returnValue: 'resultRows',
         countChanges: true,
       });
-      if (response?.type === 'error') throw new Error(response?.result?.message ?? `Unknown database error occurred: ${JSON.stringify(response)}`);
-      else return {
-        rows: response?.result?.resultRows ?? [],
-        rowsAffected: response?.result?.changeCount ?? 0,
-        lastInsertRowid: response?.result?.lastInsertRowid ?? 0,
+      return {
+        rows: execResult?.resultRows ?? [],
+        rowsAffected: execResult?.changeCount ?? 0,
+        lastInsertRowId: execResult?.lastInsertRowId ?? 0,
       };
     }
     catch (error) {
@@ -61,7 +60,7 @@ export async function createLocalDatabaseClient(config) {
   async function executeMultiple(queries) {
     await sql(
       /**
-       * @type {any} I don't like it, but a bit of "any" work-around is fine in this case.
+       * @type {any} Mandatory "any" work-around.
        *  We can't expose `execute` interface for risk to be used outside database internal.
        *  I consider this database context as internal implementation detail, so the reason why the "any" cast necessary is very clear.
        */

@@ -1,8 +1,8 @@
 /**
  * @typedef {object} SQLResult
- * @property {Array<{[column: string]: unknown}>} rows
+ * @property {Array<Record<string, unknown>>} rows
  * @property {number} rowsAffected
- * @property {number} lastInsertRowid
+ * @property {number} lastInsertRowId
  */
 
 /**

@@ -15,5 +15,9 @@
     "web/**/*.js",
     "web/global.d.ts",
     "sw.js"
+  ],
+  "exclude": [
+    "web/thirdparties/npm/**/*.js",
+    "web/thirdparties/npm/**/*.mjs"
   ]
 }
