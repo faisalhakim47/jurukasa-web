@@ -179,15 +179,6 @@ async function hotfixSqlite3OpfsAsyncProxy(url) {
 }
 
 /**
- * @param {Headers} headers
- * @returns {void}
- */
-function applyCoopCoepHeaders(headers) {
-  headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-  headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
-}
-
-/**
  * @param {Cache} cache
  * @param {Array<string>} urls
  */

@@ -61,12 +61,13 @@
  */
 
 export function createSqlite3Worker1Client() {
+  const { promise: ready, resolve: resolveReady, reject: rejectReady } = Promise.withResolvers();
+
   const sqlite3WorkerUrl = new URL('./npm/@sqlite.org/sqlite-wasm@3.51.2-build6/dist/sqlite3-worker1.mjs', import.meta.url);
   const worker1 = new Worker(sqlite3WorkerUrl, { type: 'module', name: 'sqlite3-worker1' });
-
-  const { promise: ready, resolve: resolveReady, reject: rejectReady } = Promise.withResolvers();
   /** @param {MessageEvent} event */
   function handleWorker1Ready(event) {
+    console.debug('handleWorker1Ready', event.data?.type === 'sqlite3-api' && event.data?.result === 'worker1-ready', event.data?.type, event.data?.result);
     if (event.data?.type === 'sqlite3-api' && event.data?.result === 'worker1-ready') {
       clearTimeout(readyTimeout);
       worker1.removeEventListener('message', handleWorker1Ready);
@@ -77,7 +78,7 @@ export function createSqlite3Worker1Client() {
   const readyTimeout = setTimeout(function readyTimeout() {
     worker1.removeEventListener('message', handleWorker1Ready);
     rejectReady(new Error('Worker1 ready timeout'));
-  }, 5000);
+  }, 3000);
 
   let messageIdInc = 0;
 
