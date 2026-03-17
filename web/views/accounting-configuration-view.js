@@ -42,6 +42,7 @@ export class AccountingConfigurationViewElement extends HTMLElement {
       configError: /** @type {Error | null} */ (null),
       configFormState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
       configFormError: /** @type {Error | null} */ (null),
+      successDialogOpen: false,
     });
 
     useBusyStateUntil(host, function firstLoad() {
@@ -109,17 +110,8 @@ export class AccountingConfigurationViewElement extends HTMLElement {
         await tx.commit();
 
         state.configFormState = 'success';
-
-        if (successDialog.value instanceof HTMLDialogElement) {
-          successDialog.value.showModal();
-        }
-
+        state.successDialogOpen = true;
         await feedbackDelay();
-
-        if (successDialog.value instanceof HTMLDialogElement) {
-          successDialog.value.close();
-        }
-
         state.configFormState = 'idle';
       }
       catch (error) {
@@ -137,6 +129,21 @@ export class AccountingConfigurationViewElement extends HTMLElement {
       state.configFormError = null;
       state.configFormState = 'idle';
     }
+
+    function handleDismissSuccessDialog() {
+      state.successDialogOpen = false;
+    }
+
+    function handleSuccessDialogClose() {
+      state.successDialogOpen = false;
+    }
+
+    useEffect(host, function syncSuccessDialogState() {
+      if (successDialog.value instanceof HTMLDialogElement) {
+        if (state.successDialogOpen && !successDialog.value.open) successDialog.value.showModal();
+        else if (!state.successDialogOpen && successDialog.value.open) successDialog.value.close();
+      }
+    });
 
     useEffect(host, function syncErrorAlertDialogState() {
       if (errorAlertDialog.value instanceof HTMLDialogElement) {
@@ -487,7 +494,7 @@ export class AccountingConfigurationViewElement extends HTMLElement {
           ${renderAccountingConfigPanel()}
         </div>
 
-        <dialog ${successDialog} id="success-dialog" aria-labelledby="success-dialog-title">
+        <dialog ${successDialog} id="success-dialog" aria-labelledby="success-dialog-title" @close=${handleSuccessDialogClose}>
           <div class="container">
             <material-symbols name="check_circle" style="color: var(--md-sys-color-primary);"></material-symbols>
             <header>
@@ -496,6 +503,16 @@ export class AccountingConfigurationViewElement extends HTMLElement {
             <div class="content">
               <p>${t('settings', 'settingsSavedMessage')}</p>
             </div>
+            <menu>
+              <li>
+                <button
+                  role="button"
+                  type="button"
+                  class="filled"
+                  @click=${handleDismissSuccessDialog}
+                >${t('settings', 'dismissButtonLabel')}</button>
+              </li>
+            </menu>
           </div>
         </dialog>
 

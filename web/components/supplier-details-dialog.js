@@ -26,9 +26,9 @@ import '#web/components/material-symbols.js';
 
 /**
  * @typedef {object} SupplierInventoryRow
+ * @property {number} record_time
  * @property {number} inventory_id
  * @property {string} inventory_name
- * @property {number} quantity_conversion
  * @property {string | null} supplier_name
  */
 
@@ -81,7 +81,6 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       isLoadingInventories: false,
       selectedInventoryId: /** @type {number | null} */ (null),
       selectedInventory: /** @type {InventoryOption | null} */ (null),
-      newQuantityConversion: /** @type {number | null} */ (1),
       newSupplierName: '',
       pendingDeleteInventory: /** @type {SupplierInventoryRow | null} */ (null),
     });
@@ -115,21 +114,27 @@ export class SupplierDetailsDialogElement extends HTMLElement {
           // Load supplier inventories
           const inventoriesResult = await database.sql`
             SELECT
+              si.record_time,
               si.inventory_id,
               i.name as inventory_name,
-              si.quantity_conversion,
               si.name as supplier_name
             FROM supplier_inventories si
             JOIN inventories i ON i.id = si.inventory_id
             WHERE si.supplier_id = ${supplierId}
+              AND si.record_time = (
+                SELECT MAX(latest.record_time)
+                FROM supplier_inventories latest
+                WHERE latest.supplier_id = si.supplier_id
+                  AND latest.inventory_id = si.inventory_id
+              )
             ORDER BY i.name ASC
           `;
 
           state.supplierInventories = inventoriesResult.rows.map(function rowToSupplierInventory(row) {
             return /** @type {SupplierInventoryRow} */ ({
+              record_time: Number(row.record_time),
               inventory_id: Number(row.inventory_id),
               inventory_name: String(row.inventory_name),
-              quantity_conversion: Number(row.quantity_conversion),
               supplier_name: row.supplier_name ? String(row.supplier_name) : null,
             });
           });
@@ -191,7 +196,6 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       state.isEditingInventory = null;
       state.selectedInventoryId = null;
       state.selectedInventory = null;
-      state.newQuantityConversion = 1;
       state.newSupplierName = '';
       state.inventorySearchQuery = '';
       loadAvailableInventories();
@@ -202,7 +206,6 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       state.isEditingInventory = null;
       state.selectedInventoryId = null;
       state.selectedInventory = null;
-      state.newQuantityConversion = 1;
       state.newSupplierName = '';
       state.inventorySearchQuery = '';
     }
@@ -214,19 +217,13 @@ export class SupplierDetailsDialogElement extends HTMLElement {
     }
 
     /** @param {Event} event */
-    function handleQuantityConversionInput(event) {
-      assertInstanceOf(HTMLInputElement, event.currentTarget);
-      state.newQuantityConversion = parseInt(event.currentTarget.value, 10) || null;
-    }
-
-    /** @param {Event} event */
     function handleSupplierNameInput(event) {
       assertInstanceOf(HTMLInputElement, event.currentTarget);
       state.newSupplierName = event.currentTarget.value;
     }
 
     async function addSupplierInventory() {
-      if (!state.supplier || !state.selectedInventory || !state.newQuantityConversion) return;
+      if (!state.supplier || !state.selectedInventory) return;
 
       const tx = await database.transaction('write');
 
@@ -235,15 +232,14 @@ export class SupplierDetailsDialogElement extends HTMLElement {
 
         const supplierId = state.supplier.id;
         const inventoryId = state.selectedInventory.id;
-        const quantityConversion = state.newQuantityConversion;
         const supplierName = state.newSupplierName.trim() || null;
+        const recordTime = Date.now();
 
-        // Check if this exact combination already exists
+        // Keep one active informational link per supplier/inventory pair.
         const existingCheck = await tx.sql`
           SELECT 1 FROM supplier_inventories
           WHERE supplier_id = ${supplierId}
             AND inventory_id = ${inventoryId}
-            AND quantity_conversion = ${quantityConversion}
           LIMIT 1;
         `;
 
@@ -252,8 +248,8 @@ export class SupplierDetailsDialogElement extends HTMLElement {
         }
 
         await tx.sql`
-          INSERT INTO supplier_inventories (supplier_id, inventory_id, quantity_conversion, name)
-          VALUES (${supplierId}, ${inventoryId}, ${quantityConversion}, ${supplierName});
+          INSERT INTO supplier_inventories (record_time, supplier_id, inventory_id, name)
+          VALUES (${recordTime}, ${supplierId}, ${inventoryId}, ${supplierName});
         `;
 
         await tx.commit();
@@ -280,61 +276,24 @@ export class SupplierDetailsDialogElement extends HTMLElement {
     function startEditingInventory(si) {
       state.isEditingInventory = si;
       state.isAddingInventory = false;
-      state.newQuantityConversion = si.quantity_conversion;
       state.newSupplierName = si.supplier_name || '';
     }
 
     async function updateSupplierInventory() {
-      if (!state.supplier || !state.isEditingInventory || !state.newQuantityConversion) return;
+      if (!state.supplier || !state.isEditingInventory) return;
 
       const tx = await database.transaction('write');
 
       try {
         state.formIsSaving = true;
 
-        const supplierId = state.supplier.id;
-        const inventoryId = state.isEditingInventory.inventory_id;
-        const oldQuantityConversion = state.isEditingInventory.quantity_conversion;
-        const newQuantityConversion = state.newQuantityConversion;
         const supplierName = state.newSupplierName.trim() || null;
 
-        // If quantity_conversion is changing, we need to delete and re-insert (part of PK)
-        if (oldQuantityConversion !== newQuantityConversion) {
-          // Check if new combination already exists
-          const existingCheck = await tx.sql`
-            SELECT 1 FROM supplier_inventories
-            WHERE supplier_id = ${supplierId}
-              AND inventory_id = ${inventoryId}
-              AND quantity_conversion = ${newQuantityConversion}
-            LIMIT 1;
-          `;
-
-          if (existingCheck.rows.length > 0) {
-            throw new Error('This inventory mapping with the same quantity conversion already exists for this supplier.');
-          }
-
-          await tx.sql`
-            DELETE FROM supplier_inventories
-            WHERE supplier_id = ${supplierId}
-              AND inventory_id = ${inventoryId}
-              AND quantity_conversion = ${oldQuantityConversion};
-          `;
-
-          await tx.sql`
-            INSERT INTO supplier_inventories (supplier_id, inventory_id, quantity_conversion, name)
-            VALUES (${supplierId}, ${inventoryId}, ${newQuantityConversion}, ${supplierName});
-          `;
-        }
-        else {
-          // Just update the supplier name
-          await tx.sql`
-            UPDATE supplier_inventories
-            SET name = ${supplierName}
-            WHERE supplier_id = ${supplierId}
-              AND inventory_id = ${inventoryId}
-              AND quantity_conversion = ${oldQuantityConversion};
-          `;
-        }
+        await tx.sql`
+          UPDATE supplier_inventories
+          SET name = ${supplierName}
+          WHERE record_time = ${state.isEditingInventory.record_time};
+        `;
 
         await tx.commit();
 
@@ -373,15 +332,9 @@ export class SupplierDetailsDialogElement extends HTMLElement {
       try {
         state.formIsSaving = true;
 
-        const supplierId = state.supplier.id;
-        const inventoryId = state.pendingDeleteInventory.inventory_id;
-        const quantityConversion = state.pendingDeleteInventory.quantity_conversion;
-
         await tx.sql`
           DELETE FROM supplier_inventories
-          WHERE supplier_id = ${supplierId}
-            AND inventory_id = ${inventoryId}
-            AND quantity_conversion = ${quantityConversion};
+          WHERE record_time = ${state.pendingDeleteInventory.record_time};
         `;
 
         await tx.commit();
@@ -412,11 +365,10 @@ export class SupplierDetailsDialogElement extends HTMLElement {
     /** @param {Event} event */
     function handleStartEditingInventory(event) {
       const target = /** @type {HTMLElement} */ (event.currentTarget);
-      const inventoryId = Number(target.dataset.inventoryId);
-      const quantityConversion = Number(target.dataset.quantityConversion);
+      const recordTime = Number(target.dataset.recordTime);
       
       const si = state.supplierInventories.find(
-        (item) => item.inventory_id === inventoryId && item.quantity_conversion === quantityConversion
+        (item) => item.record_time === recordTime
       );
       
       if (si) {
@@ -427,11 +379,10 @@ export class SupplierDetailsDialogElement extends HTMLElement {
     /** @param {Event} event */
     function handleConfirmDeleteSupplierInventory(event) {
       const target = /** @type {HTMLElement} */ (event.currentTarget);
-      const inventoryId = Number(target.dataset.inventoryId);
-      const quantityConversion = Number(target.dataset.quantityConversion);
+      const recordTime = Number(target.dataset.recordTime);
 
       const si = state.supplierInventories.find(
-        (item) => item.inventory_id === inventoryId && item.quantity_conversion === quantityConversion
+        (item) => item.record_time === recordTime
       );
 
       if (si) {
@@ -662,7 +613,6 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                   <tr>
                     <th scope="col">${t('supplier', 'tableHeaderInventory')}</th>
                     <th scope="col">${t('supplier', 'tableHeaderSupplierName')}</th>
-                    <th scope="col" class="numeric" style="width: 100px;">${t('supplier', 'tableHeaderConversion')}</th>
                     <th scope="col" style="width: 80px;"></th>
                   </tr>
                 </thead>
@@ -671,13 +621,11 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                     <tr>
                       <td>${si.inventory_name}</td>
                       <td style="color: var(--md-sys-color-on-surface-variant);">${si.supplier_name || t('supplier', 'noSupplierNamePlaceholder')}</td>
-                      <td class="numeric">${t('supplier', 'conversionUnitLabel', si.quantity_conversion)}</td>
                       <td class="center">
                         <button
                           role="button"
                           class="text"
-                          data-inventory-id="${si.inventory_id}"
-                          data-quantity-conversion="${si.quantity_conversion}"
+                          data-record-time="${si.record_time}"
                           @click=${handleStartEditingInventory}
                           aria-label="${t('supplier', 'editMappingAriaLabel', si.inventory_name)}"
                           ?disabled=${state.isAddingInventory || state.isEditingInventory !== null}
@@ -687,8 +635,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                         <button
                           role="button"
                           class="text"
-                          data-inventory-id="${si.inventory_id}"
-                          data-quantity-conversion="${si.quantity_conversion}"
+                          data-record-time="${si.record_time}"
                           @click=${handleConfirmDeleteSupplierInventory}
                           aria-label="${t('supplier', 'removeMappingAriaLabel', si.inventory_name)}"
                           ?disabled=${state.isAddingInventory || state.isEditingInventory !== null}
@@ -794,36 +741,18 @@ export class SupplierDetailsDialogElement extends HTMLElement {
               </div>
             </div>
 
-            <!-- Conversion and Supplier Name Inputs -->
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
-              <div class="outlined-text-field" style="--md-sys-density: -4;">
-                <div class="container">
-                  <label for="add-conversion-input">${t('supplier', 'conversionLabel')}</label>
-                  <input
-                    id="add-conversion-input"
-                    type="number"
-                    inputmode="numeric"
-                    min="1"
-                    placeholder=" "
-                    ${readValue(state, 'newQuantityConversion')}
-                    @input=${handleQuantityConversionInput}
-                  />
-                </div>
-                <div class="supporting-text">${t('supplier', 'conversionSupportingText')}</div>
+            <div class="outlined-text-field" style="--md-sys-density: -4;">
+              <div class="container">
+                <label for="add-supplier-name-input">${t('supplier', 'supplierNameOptionalLabel')}</label>
+                <input
+                  id="add-supplier-name-input"
+                  type="text"
+                  placeholder=" "
+                  ${readValue(state, 'newSupplierName')}
+                  @input=${handleSupplierNameInput}
+                />
               </div>
-              <div class="outlined-text-field" style="--md-sys-density: -4;">
-                <div class="container">
-                  <label for="add-supplier-name-input">${t('supplier', 'supplierNameOptionalLabel')}</label>
-                  <input
-                    id="add-supplier-name-input"
-                    type="text"
-                    placeholder=" "
-                    ${readValue(state, 'newSupplierName')}
-                    @input=${handleSupplierNameInput}
-                  />
-                </div>
-                <div class="supporting-text">${t('supplier', 'supplierNameCatalogSupportingText')}</div>
-              </div>
+              <div class="supporting-text">${t('supplier', 'supplierNameCatalogSupportingText')}</div>
             </div>
 
             <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
@@ -832,7 +761,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
                 type="button"
                 class="tonal"
                 @click=${addSupplierInventory}
-                ?disabled=${!state.selectedInventory || !state.newQuantityConversion || state.formIsSaving}
+                ?disabled=${!state.selectedInventory || state.formIsSaving}
               >
                 <material-symbols name="add"></material-symbols>
                 ${t('supplier', 'addMappingSubmitButtonLabel')}
@@ -860,36 +789,18 @@ export class SupplierDetailsDialogElement extends HTMLElement {
             <p class="body-medium" style="margin: 0; font-weight: 500;">${state.isEditingInventory.inventory_name}</p>
           </div>
 
-          <!-- Conversion and Supplier Name Inputs -->
-          <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
-            <div class="outlined-text-field" style="--md-sys-density: -4;">
-              <div class="container">
-                <label for="edit-conversion-input">${t('supplier', 'conversionLabel')}</label>
-                <input
-                  id="edit-conversion-input"
-                  type="number"
-                  inputmode="numeric"
-                  min="1"
-                  placeholder=" "
-                  ${readValue(state, 'newQuantityConversion')}
-                  @input=${handleQuantityConversionInput}
-                />
-              </div>
-              <div class="supporting-text">${t('supplier', 'conversionSupportingText')}</div>
+          <div class="outlined-text-field" style="--md-sys-density: -4;">
+            <div class="container">
+              <label for="edit-supplier-name-input">${t('supplier', 'supplierNameOptionalLabel')}</label>
+              <input
+                id="edit-supplier-name-input"
+                type="text"
+                placeholder=" "
+                ${readValue(state, 'newSupplierName')}
+                @input=${handleSupplierNameInput}
+              />
             </div>
-            <div class="outlined-text-field" style="--md-sys-density: -4;">
-              <div class="container">
-                <label for="edit-supplier-name-input">${t('supplier', 'supplierNameOptionalLabel')}</label>
-                <input
-                  id="edit-supplier-name-input"
-                  type="text"
-                  placeholder=" "
-                  ${readValue(state, 'newSupplierName')}
-                  @input=${handleSupplierNameInput}
-                />
-              </div>
-              <div class="supporting-text">${t('supplier', 'supplierNameCatalogSupportingText')}</div>
-            </div>
+            <div class="supporting-text">${t('supplier', 'supplierNameCatalogSupportingText')}</div>
           </div>
 
           <div style="display: flex; justify-content: flex-end; margin-top: 12px; gap: 8px;">
@@ -899,7 +810,7 @@ export class SupplierDetailsDialogElement extends HTMLElement {
               type="button"
               class="tonal"
               @click=${updateSupplierInventory}
-              ?disabled=${!state.newQuantityConversion || state.formIsSaving}
+              ?disabled=${state.formIsSaving}
             >
               <material-symbols name="check"></material-symbols>
               ${t('supplier', 'saveChangesInventoryButtonLabel')}

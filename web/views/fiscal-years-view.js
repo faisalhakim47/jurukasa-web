@@ -20,6 +20,7 @@ import '#web/components/material-symbols.js';
 import '#web/components/fiscal-year-creation-dialog.js';
 import '#web/components/fiscal-year-closing-dialog.js';
 import '#web/components/fiscal-year-reversal-dialog.js';
+import { assertInstanceOf } from '#web/tools/assertion.js';
 
 /**
  * @typedef {object} FiscalYearRow
@@ -83,6 +84,19 @@ export class FiscalYearsViewElement extends HTMLElement {
         balanceReportsAfterClosing: /** @type {BalanceReportRow[]} */ ([]),
       },
     });
+
+    function showFiscalYearDetailsDialog(event) {
+      assertInstanceOf(MouseEvent, event);
+      assertInstanceOf(HTMLButtonElement, event.currentTarget);
+      const beginTime = parseInt(event.currentTarget.dataset.beginTime, 10);
+      if (Number.isNaN(beginTime)) return;
+      state.selectedFiscalYearForDetails = state.fiscalYears.find(function byBeginTime(fiscalYear) {
+        return fiscalYear.begin_time === beginTime;
+      });
+      if (state.selectedFiscalYearForDetails) {
+        fiscalYearDetailsDialog.value?.showModal();
+      }
+    }
 
     useBusyStateUntil(host, function firstLoad() {
       return state.isLoading === false;
@@ -387,7 +401,7 @@ export class FiscalYearsViewElement extends HTMLElement {
               class="text extra-small"
               style="--md-sys-density: -4;"
               data-begin-time="${fiscalYear.begin_time}"
-              @click=${() => { state.selectedFiscalYearForDetails = fiscalYear; fiscalYearDetailsDialog.value?.showModal(); }}
+              @click=${showFiscalYearDetailsDialog}
             >${displayName}</button>
           </td>
           <td style="white-space: nowrap;">${i18n.date.format(fiscalYear.begin_time)}</td>

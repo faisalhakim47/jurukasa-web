@@ -52,8 +52,8 @@ async function insertInventoryTestData() {
     VALUES (1, 'Test Product', 10000, 'piece', 11100)
   `;
   await database.sql`
-    INSERT INTO supplier_inventories (supplier_id, inventory_id, quantity_conversion, name)
-    VALUES (1, 1, 12, 'Supplier Product Name')
+    INSERT INTO supplier_inventories (record_time, supplier_id, inventory_id, name)
+    VALUES (1000, 1, 1, 'Supplier Product Name')
   `;
 }
 
@@ -79,8 +79,8 @@ async function insertTestDataForMapping() {
   `;
 
   await database.sql`
-    INSERT INTO supplier_inventories (supplier_id, inventory_id, quantity_conversion, name)
-    VALUES (1, 1, 12, 'Existing Mapping')
+    INSERT INTO supplier_inventories (record_time, supplier_id, inventory_id, name)
+    VALUES (1000, 1, 1, 'Existing Label')
   `;
 }
 
@@ -111,7 +111,7 @@ describe('Supplier Details Dialog', function () {
     await expect(page.getByRole('table', { name: 'Linked Inventories' }), 'it shall display linked inventories table').toBeVisible();
     await expect(page.getByRole('cell', { name: 'Test Product', exact: true }), 'it shall display product name').toBeVisible();
     await expect(page.getByRole('cell', { name: 'Supplier Product Name' }), 'it shall display supplier product name').toBeVisible();
-    await expect(page.getByRole('cell', { name: '12x' }), 'it shall display quantity conversion').toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit inventory link for Test Product' }), 'it shall display edit action').toBeVisible();
   });
 
   test('adds new supplier inventory mapping with duplicate validation', async function ({ page }) {
@@ -122,9 +122,9 @@ describe('Supplier Details Dialog', function () {
     await page.getByRole('button', { name: 'Open Supplier Details' }).click();
     await expect(page.getByRole('dialog', { name: 'Test Supplier' }), 'it shall open supplier details dialog').toBeVisible();
 
-    await page.getByRole('button', { name: 'Add Mapping' }).click();
+    await page.getByRole('button', { name: 'Link Inventory' }).click();
 
-    await expect(page.getByRole('heading', { name: 'Add Inventory Mapping' }), 'it shall open add mapping dialog').toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Link Inventory' }), 'it shall open add mapping dialog').toBeVisible();
 
     await page.getByLabel('Search Inventory').fill('Test');
 
@@ -132,14 +132,9 @@ describe('Supplier Details Dialog', function () {
 
     await page.getByRole('option', { name: 'Test Product Unit: piece' }).click();
 
-    await expect(page.getByLabel('Conversion'), 'it shall display Conversion field').toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: 'Link Inventory' }).last().click();
 
-    await page.getByLabel('Conversion').clear();
-    await page.getByLabel('Conversion').fill('12');
-
-    await page.getByRole('button', { name: 'Add Mapping' }).last().click();
-
-    await expect(page.getByText('This inventory mapping with the same quantity conversion already exists for this supplier.'), 'it shall display duplicate error message').toBeVisible();
+    await expect(page.getByText('This inventory is already linked to this supplier.'), 'it shall display duplicate error message').toBeVisible();
     await expect(page.getByRole('alertdialog', { name: 'Error' }), 'it shall display error alert dialog').toBeVisible();
 
     await page.evaluate(dismissErrorDialog);

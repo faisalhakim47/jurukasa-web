@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 export default defineConfig({
   testMatch: '**/*.spec.js',
   fullyParallel: true,
-  workers: 4,
+  workers: 2,
   retries: 0,
   reporter: 'dot',
   expect: { timeout: 4000 },

@@ -37,16 +37,13 @@ async function setupSettingView(tursoDatabaseUrl) {
   `;
 }
 
-/**
- * @param {string} tursoDatabaseUrl
- */
-async function setupDatabaseSetupView(tursoDatabaseUrl) {
+async function setupDatabaseSetupView() {
   window.history.replaceState({}, '', '/database-setup');
   document.body.innerHTML = `
     <ready-context>
       <time-context>
         <router-context>
-          <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
+          <database-context>
             <device-context>
               <i18n-context>
                 <database-setup-view></database-setup-view>
@@ -111,7 +108,7 @@ describe('Database Management Feature', function () {
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer()),
     ]);
-    await page.evaluate(setupDatabaseSetupView, tursoLibSQLiteServer().url);
+    await page.evaluate(setupDatabaseSetupView);
 
     await expect(page.getByRole('heading', { name: 'Database Setup' }), 'it shall display Database Setup title').toBeVisible();
     await expect(page.getByRole('button', { name: 'Cancel' }), 'it shall display Cancel button').toBeVisible();

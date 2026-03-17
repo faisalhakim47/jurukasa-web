@@ -113,7 +113,7 @@ async function pipeline(config, type, sql, rawArgs, close) {
           rowsAffected: undefined,
           lastInsertRowId: undefined,
         };
-        console.debug('turso-api-client', type, 'result', config.baton, sql.slice(0, 500));
+        // console.debug('turso-api-client', type, 'result', config.baton, sql.slice(0, 500));
         return result;
       }
       else throw new Error(`Turso SQL execution failed: unsupported operation type ${type}`)

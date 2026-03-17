@@ -59,9 +59,9 @@ describe('Purchases View', function () {
         await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11111)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (1, 1, 1000000, 1000000)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (2, 2, 2000000, NULL)`;
-        await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_quantity, quantity, price) VALUES (1, 1, 1, 10, 10, 100000)`;
-        await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_quantity, quantity, price) VALUES (1, 2, 2, 5, 5, 100000)`;
-        await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_quantity, quantity, price) VALUES (2, 1, 1, 3, 3, 30000)`;
+        await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (1, 1, 1, 'Product A Box', 10, 'box', 10, 100000)`;
+        await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (1, 2, 2, 'Product B Pack', 5, 'pack', 5, 100000)`;
+        await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (2, 1, 1, 'Product A Box', 3, 'box', 3, 30000)`;
       }),
     ]);
 
@@ -173,8 +173,8 @@ describe('Purchases View', function () {
         await sql`INSERT INTO account_tags (account_code, tag) VALUES (11112, 'POS - Inventory')`;
         await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11112)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (1, 1, 1000000, 1000000)`;
-        await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_quantity, quantity, price) VALUES (1, 1, 1, 10, 10, 100000)`;
-        await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_quantity, quantity, price) VALUES (1, 2, 1, 5, 5, 50000)`;
+        await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (1, 1, 1, 'Product A Box', 10, 'box', 10, 100000)`;
+        await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (1, 2, 1, 'Product A Pack', 5, 'pack', 5, 50000)`;
       }),
     ]);
 

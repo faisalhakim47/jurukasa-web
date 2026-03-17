@@ -45,18 +45,16 @@ export default /** @type {Partial<SupplierTranslation>} */ ({
 
   // Supplier Details - Linked Inventories
   linkedInventoriesSectionTitle: 'Inventaris Tertaut',
-  addMappingButtonLabel: 'Tambah Pemetaan',
-  noInventoriesLinkedMessage: 'Belum ada inventaris yang tertaut dengan pemasok ini. Klik "Tambah Pemetaan" untuk menautkan inventaris atau buat pesanan pembelian untuk menautkan otomatis.',
+  addMappingButtonLabel: 'Tautkan Inventaris',
+  noInventoriesLinkedMessage: 'Belum ada inventaris yang tertaut dengan pemasok ini. Tautkan inventaris untuk menyimpan label opsional dari sisi pemasok bagi struk dan autocomplete.',
   tableHeaderInventory: 'Inventaris',
-  tableHeaderSupplierName: 'Nama Pemasok',
-  tableHeaderConversion: 'Konversi',
-  editMappingAriaLabel: 'Ubah pemetaan untuk %s',
-  removeMappingAriaLabel: 'Hapus pemetaan untuk %s',
-  conversionUnitLabel: '%dx',
+  tableHeaderSupplierName: 'Label Pemasok',
+  editMappingAriaLabel: 'Ubah tautan inventaris untuk %s',
+  removeMappingAriaLabel: 'Hapus tautan inventaris untuk %s',
   noSupplierNamePlaceholder: '—',
 
   // Supplier Details - Add Inventory Mapping
-  addInventoryMappingTitle: 'Tambah Pemetaan Inventaris',
+  addInventoryMappingTitle: 'Tautkan Inventaris',
   cancelButtonAriaLabel: 'Batal',
   searchInventoryLabel: 'Cari Inventaris',
   loadingInventoriesMessage: 'Memuat...',
@@ -64,22 +62,20 @@ export default /** @type {Partial<SupplierTranslation>} */ ({
   availableInventoriesAriaLabel: 'Inventaris tersedia',
   inventoryUnitLabel: 'Satuan: %s',
   changeInventoryAriaLabel: 'Ubah inventaris',
-  conversionLabel: 'Konversi',
-  conversionSupportingText: 'Satuan internal per satuan pemasok',
-  supplierNameOptionalLabel: 'Nama Pemasok (Opsional)',
-  supplierNameCatalogSupportingText: 'Nama seperti yang ditampilkan dalam katalog pemasok',
-  addMappingSubmitButtonLabel: 'Tambah Pemetaan',
+  supplierNameOptionalLabel: 'Label Pemasok (Opsional)',
+  supplierNameCatalogSupportingText: 'Nama seperti yang tampil pada struk atau katalog pemasok',
+  addMappingSubmitButtonLabel: 'Tautkan Inventaris',
 
   // Supplier Details - Edit Inventory Mapping
-  editInventoryMappingTitle: 'Ubah Pemetaan Inventaris',
+  editInventoryMappingTitle: 'Ubah Tautan Inventaris',
   saveChangesInventoryButtonLabel: 'Simpan Perubahan',
-  inventoryMappingExistsError: 'Pemetaan inventaris dengan konversi kuantitas yang sama sudah ada untuk pemasok ini.',
-  autoLinkInventoryNote: 'Ini tidak akan menghapus inventaris itu sendiri, hanya tautan ke pemasok ini.',
+  inventoryMappingExistsError: 'Inventaris ini sudah tertaut dengan pemasok ini.',
+  autoLinkInventoryNote: 'Ini hanya memperbarui metadata tautan pemasok, bukan inventarisnya.',
 
   // Supplier Details - Delete Inventory Mapping Confirmation
-  removeInventoryMappingTitle: 'Hapus Pemetaan Inventaris',
-  removeInventoryMappingMessage: 'Apakah Anda yakin ingin menghapus pemetaan untuk %s?',
-  removeInventoryMappingNote: 'Ini tidak akan menghapus inventaris itu sendiri, hanya tautan ke pemasok ini.',
+  removeInventoryMappingTitle: 'Hapus Tautan Inventaris',
+  removeInventoryMappingMessage: 'Apakah Anda yakin ingin menghapus tautan inventaris untuk %s?',
+  removeInventoryMappingNote: 'Ini tidak akan menghapus inventaris itu sendiri, hanya label pemasok yang tersimpan pada tautan ini.',
   removeButtonLabel: 'Hapus',
 
   // Supplier Selector Dialog

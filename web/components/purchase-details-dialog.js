@@ -35,6 +35,8 @@ import '#web/components/material-symbols.js';
  * @property {number} line_number
  * @property {number} inventory_id
  * @property {string} inventory_name
+ * @property {string} supplier_inventory_name
+ * @property {string | null} supplier_unit_of_measurement
  * @property {string | null} unit_of_measurement
  * @property {number} supplier_quantity
  * @property {number} quantity
@@ -113,6 +115,8 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
               pl.line_number,
               pl.inventory_id,
               i.name as inventory_name,
+              pl.supplier_inventory_name,
+              pl.supplier_unit_of_measurement,
               i.unit_of_measurement,
               pl.supplier_quantity,
               pl.quantity,
@@ -128,6 +132,8 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
               line_number: Number(row.line_number),
               inventory_id: Number(row.inventory_id),
               inventory_name: String(row.inventory_name),
+              supplier_inventory_name: String(row.supplier_inventory_name),
+              supplier_unit_of_measurement: row.supplier_unit_of_measurement ? String(row.supplier_unit_of_measurement) : null,
               unit_of_measurement: row.unit_of_measurement ? String(row.unit_of_measurement) : null,
               supplier_quantity: Number(row.supplier_quantity),
               quantity: Number(row.quantity),
@@ -342,13 +348,16 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
                   <td>
                     <div style="display: flex; flex-direction: column;">
                       <span style="font-weight: 500;">${line.inventory_name}</span>
+                      ${line.supplier_inventory_name !== line.inventory_name ? html`
+                        <span style="font-size: 0.8em; color: var(--md-sys-color-on-surface-variant);">${line.supplier_inventory_name}</span>
+                      ` : nothing}
                       ${line.unit_of_measurement ? html`
                         <span style="font-size: 0.8em; color: var(--md-sys-color-on-surface-variant);">${t('purchase', 'tableHeaderItemPerUnit', line.unit_of_measurement)}</span>
                       ` : nothing}
                     </div>
                   </td>
-                  <td class="numeric">${line.supplier_quantity}</td>
-                  <td class="numeric">${line.quantity}</td>
+                  <td class="numeric">${line.supplier_quantity}${line.supplier_unit_of_measurement ? ` ${line.supplier_unit_of_measurement}` : ''}</td>
+                  <td class="numeric">${line.quantity}${line.unit_of_measurement ? ` ${line.unit_of_measurement}` : ''}</td>
                   <td class="numeric">${i18n.displayCurrency(line.price)}</td>
                 </tr>
               `)}

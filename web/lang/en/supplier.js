@@ -45,18 +45,16 @@ const supplier = {
 
   // Supplier Details - Linked Inventories
   linkedInventoriesSectionTitle: 'Linked Inventories',
-  addMappingButtonLabel: 'Add Mapping',
-  noInventoriesLinkedMessage: 'No inventories linked to this supplier yet. Click "Add Mapping" to link an inventory or create purchase orders to auto-link.',
+  addMappingButtonLabel: 'Link Inventory',
+  noInventoriesLinkedMessage: 'No inventories linked to this supplier yet. Link an inventory to save an optional supplier-facing label for receipts and autocomplete.',
   tableHeaderInventory: 'Inventory',
-  tableHeaderSupplierName: 'Supplier Name',
-  tableHeaderConversion: 'Conversion',
-  editMappingAriaLabel: 'Edit mapping for %s',
-  removeMappingAriaLabel: 'Remove mapping for %s',
-  conversionUnitLabel: '%dx',
+  tableHeaderSupplierName: 'Supplier Label',
+  editMappingAriaLabel: 'Edit inventory link for %s',
+  removeMappingAriaLabel: 'Remove inventory link for %s',
   noSupplierNamePlaceholder: '—',
 
   // Supplier Details - Add Inventory Mapping
-  addInventoryMappingTitle: 'Add Inventory Mapping',
+  addInventoryMappingTitle: 'Link Inventory',
   cancelButtonAriaLabel: 'Cancel',
   searchInventoryLabel: 'Search Inventory',
   loadingInventoriesMessage: 'Loading...',
@@ -64,22 +62,20 @@ const supplier = {
   availableInventoriesAriaLabel: 'Available inventories',
   inventoryUnitLabel: 'Unit: %s',
   changeInventoryAriaLabel: 'Change inventory',
-  conversionLabel: 'Conversion',
-  conversionSupportingText: 'Internal units per supplier unit',
-  supplierNameOptionalLabel: 'Supplier Name (Optional)',
-  supplierNameCatalogSupportingText: 'Name as shown in supplier catalog',
-  addMappingSubmitButtonLabel: 'Add Mapping',
+  supplierNameOptionalLabel: 'Supplier Label (Optional)',
+  supplierNameCatalogSupportingText: 'Name as shown on supplier receipts or catalog entries',
+  addMappingSubmitButtonLabel: 'Link Inventory',
 
   // Supplier Details - Edit Inventory Mapping
-  editInventoryMappingTitle: 'Edit Inventory Mapping',
+  editInventoryMappingTitle: 'Edit Inventory Link',
   saveChangesInventoryButtonLabel: 'Save Changes',
-  inventoryMappingExistsError: 'This inventory mapping with the same quantity conversion already exists for this supplier.',
-  autoLinkInventoryNote: 'This will not delete the inventory itself, only the link to this supplier.',
+  inventoryMappingExistsError: 'This inventory is already linked to this supplier.',
+  autoLinkInventoryNote: 'This updates only the supplier link metadata, not the inventory itself.',
 
   // Supplier Details - Delete Inventory Mapping Confirmation
-  removeInventoryMappingTitle: 'Remove Inventory Mapping',
-  removeInventoryMappingMessage: 'Are you sure you want to remove the mapping for %s?',
-  removeInventoryMappingNote: 'This will not delete the inventory itself, only the link to this supplier.',
+  removeInventoryMappingTitle: 'Remove Inventory Link',
+  removeInventoryMappingMessage: 'Are you sure you want to remove the inventory link for %s?',
+  removeInventoryMappingNote: 'This will not delete the inventory itself, only the saved supplier label for this link.',
   removeButtonLabel: 'Remove',
 
   // Supplier Selector Dialog

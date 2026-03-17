@@ -300,8 +300,26 @@ export class PurchaseCreationViewElement extends HTMLElement {
         for (let i = 0; i < state.lines.length; i++) {
           const line = state.lines[i];
           await tx.sql`
-            INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_quantity, quantity, price)
-            VALUES (${purchaseId}, ${i + 1}, ${line.inventoryId}, ${line.supplierQuantity}, ${line.quantity}, ${line.price});
+            INSERT INTO purchase_lines (
+              purchase_id,
+              line_number,
+              inventory_id,
+              supplier_inventory_name,
+              supplier_quantity,
+              supplier_unit_of_measurement,
+              quantity,
+              price
+            )
+            VALUES (
+              ${purchaseId},
+              ${i + 1},
+              ${line.inventoryId},
+              ${line.inventoryName},
+              ${line.supplierQuantity},
+              ${line.unitOfMeasurement ?? ''},
+              ${line.quantity},
+              ${line.price}
+            );
           `;
         }
 

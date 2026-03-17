@@ -133,8 +133,8 @@ describe('Suppliers View', function () {
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', NULL)`;
         await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
         await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
-        await sql`INSERT INTO supplier_inventories (supplier_id, inventory_id) VALUES (1, 1)`;
-        await sql`INSERT INTO supplier_inventories (supplier_id, inventory_id) VALUES (1, 2)`;
+        await sql`INSERT INTO supplier_inventories (record_time, supplier_id, inventory_id) VALUES (1000, 1, 1)`;
+        await sql`INSERT INTO supplier_inventories (record_time, supplier_id, inventory_id) VALUES (2000, 1, 2)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (1, 1, 0)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (2, 1, 1000)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (3, 1, 2000)`;
