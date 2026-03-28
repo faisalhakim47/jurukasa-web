@@ -1,7 +1,7 @@
 /**
  * According to web specification:
- * - The Popover API (popovertarget and popovertargetaction) support <button> and <input type="button"> elements.
- * - The Invoker Commands API (command and commandfor) support only <button> element.
+ * - The Popover API (popovertarget and popovertargetaction attributes) support <button> and <input type="button"> elements.
+ * - The Invoker Commands API (command and commandfor attributes) support only <button> element.
  * 
  * For symmetry, we decide to diverge from the spec a little and apply Invoker Commands API to <input type="button"> element. Not only for consistency, but also for styling simplicity. We designed Outlined Text Field specifically for input, not button. Handling both input and button with semantical selector would be very tidious.
  */
@@ -34,5 +34,5 @@ function getActiveElementRecursively(root, target) {
   if (target instanceof Element && target.shadowRoot instanceof ShadowRoot) {
     return getActiveElementRecursively(target.shadowRoot, target.shadowRoot.activeElement);
   }
-  return [root, target];
+  else return [root, target];
 }

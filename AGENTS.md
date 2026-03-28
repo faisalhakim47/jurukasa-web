@@ -11,11 +11,11 @@ JuruKasa is point-of-sales (POS) web application with following features:
 - `index.html` the entrypoint of single page application.
 - `web/` the implementation of web application.
 - `web/schemas/` database schema definitions (the source of truth, the core business logics are implemented as SQLite triggers).
-- `web/components/` reusable web components.
+- `web/desktop/components/` reusable web components.
 - `web/lang/` translation.
 - `web/contexts/` application contexts following subset of context protocol by w3c's Web Components Community Group.
-- `web/styles/` Material 3 Expressive CSS implementation.
-- `web/views/` manages app routing and pages.
+- `web/desktop/styles/` Material 3 Expressive CSS implementation.
+- `web/desktop/views/` manages app routing and pages.
 - `test/` playwright end-to-end test setup.
 
 ## Compatibility Target

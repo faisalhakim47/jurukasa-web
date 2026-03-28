@@ -1,0 +1,115 @@
+import { html } from 'lit-html';
+import { defineWebComponent } from '#web/component.js';
+import { RouterContextElement } from '#web/contexts/router-context.js';
+import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
+import { useContext } from '#web/hooks/use-context.js';
+import { useEffect } from '#web/hooks/use-effect.js';
+import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
+import { webStyleSheets } from '#web/desktop/styles.js';
+
+import '#web/desktop/components/material-symbols.js';
+import '#web/desktop/components/router-link.js';
+import '#web/desktop/views/books-view.js';
+import '#web/desktop/views/dashboard-view.js';
+import '#web/desktop/views/pos-view.js';
+import '#web/desktop/views/procurement-view.js';
+import '#web/desktop/views/purchase-creation-view.js';
+import '#web/desktop/views/reconciliation-view.js';
+import '#web/desktop/views/sale-view.js';
+import '#web/desktop/views/settings-view.js';
+import '#web/desktop/views/stock-taking-creation-view.js';
+import '#web/desktop/views/stock-view.js';
+
+/**
+ * Material 3 Expressive Desktop Layout
+ * 
+ * Provides a two-column layout with:
+ * 1. Persistent Navigation rail on the inline-start side (left)
+ * 2. Main content area
+ */
+export class DesktopViewElement extends HTMLElement {
+  constructor() {
+    super();
+
+    const host = this;
+    const router = useContext(host, RouterContextElement);
+    const t = useTranslator(host);
+    const render = useRender(host);
+    useAdoptedStyleSheets(host, webStyleSheets);
+
+    useEffect(host, function initialRoute() {
+      if (router.route.pathname === '/') {
+        router.navigate({ pathname: '/dashboard', replace: true });
+      }
+    });
+
+    function renderContent() {
+      const pathname = router.route?.pathname;
+      // the ordering here matters for correct matching
+      if (pathname === '/dashboard') return html`<dashboard-view></dashboard-view>`;
+      else if (pathname.startsWith('/books')) return html`<books-view></books-view>`;
+      else if (pathname.startsWith('/stock/stock-taking-creation')) return html`<stock-taking-creation-view></stock-taking-creation>`;
+      else if (pathname.startsWith('/stock')) return html`<stock-view></stock-view>`;
+      else if (pathname.startsWith('/procurement/purchase-creation')) return html`<purchase-creation-view></purchase-creation-view>`;
+      else if (pathname.startsWith('/procurement')) return html`<procurement-view></procurement-view>`;
+      else if (pathname.startsWith('/sale/point-of-sales')) return html`<pos-view></pos-view>`;
+      else if (pathname.startsWith('/sale')) return html`<sale-view></sale-view>`;
+      else if (pathname.startsWith('/reconciliation')) return html`<reconciliation-view></reconciliation-view>`;
+      else if (pathname.startsWith('/settings')) return html`<settings-view></settings-view>`;
+      else return html`
+        <div style="padding: 32px;">
+          <h1>${t('common', 'pageNotFound404Title')}</h1>
+          <p>${t('common', 'pageNotFoundMessage')}</p>
+        </div>
+      `;
+    }
+
+    useEffect(host, function renderDesktopView() {
+      const currentPath = router.route?.pathname || '/';
+      render(html`
+        <div style="display: flex; flex-direction: row; height: 100vh; width: 100vw;">
+          <aside>
+            <nav aria-label="${t('common', 'mainNavigationAriaLabel')}">
+              <a is="router-link" href="/dashboard" aria-current=${currentPath === '/' ? 'page' : 'false'}>
+                <material-symbols name="dashboard"></material-symbols>
+                <span>${t('common', 'dashboardNavLabel')}</span>
+              </a>
+              <a is="router-link" href="/books" aria-current=${currentPath.startsWith('/books') ? 'page' : 'false'}>
+                <material-symbols name="menu_book"></material-symbols>
+                <span>${t('common', 'booksNavLabel')}</span>
+              </a>
+              <a is="router-link" href="/stock" aria-current=${currentPath.startsWith('/stock') ? 'page' : 'false'}>
+                <material-symbols name="inventory_2"></material-symbols>
+                <span>${t('common', 'stockNavLabel')}</span>
+              </a>
+              <a is="router-link" href="/procurement" aria-current=${currentPath.startsWith('/procurement') ? 'page' : 'false'}>
+                <material-symbols name="shopping_cart"></material-symbols>
+                <span>${t('common', 'procureNavLabel')}</span>
+              </a>
+              <a is="router-link" href="/sale" aria-current=${currentPath.startsWith('/sale') ? 'page' : 'false'}>
+                <material-symbols name="receipt_long"></material-symbols>
+                <span>${t('common', 'saleNavLabel')}</span>
+              </a>
+              <a is="router-link" href="/reconciliation" aria-current=${currentPath.startsWith('/reconciliation') ? 'page' : 'false'}>
+                <material-symbols name="rule"></material-symbols>
+                <span>${t('common', 'reconciliationNavLabel')}</span>
+              </a>
+              <div style="flex-grow: 1;"></div>
+              <hr />
+              <a is="router-link" href="/settings" aria-current=${currentPath === '/settings' ? 'page' : 'false'}>
+                <material-symbols name="settings"></material-symbols>
+                <span>${t('common', 'settingsNavLabel')}</span>
+              </a>
+            </nav>
+          </aside>
+          <div style="flex-grow: 1; overflow: auto;">
+            ${renderContent()}
+          </div>
+        </div>
+      `);
+    });
+  }
+}
+
+defineWebComponent('desktop-view', DesktopViewElement);

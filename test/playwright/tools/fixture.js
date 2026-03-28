@@ -11,9 +11,9 @@ const __dirname = dirname(__filname);
 /** @param {Page} page */
 async function waitForComponents(page) {
   const componentTags = [
-    ...await listComponentTags(join(__dirname, '../../../web/components')),
+    ...await listComponentTags(join(__dirname, '../../../web/desktop/components')),
     ...await listComponentTags(join(__dirname, '../../../web/contexts')),
-    ...await listComponentTags(join(__dirname, '../../../web/views')),
+    ...await listComponentTags(join(__dirname, '../../../web/desktop/views')),
   ];
   await page.evaluate(async function evaluateComponentsWaiter(componentTags) {
     await new Promise(function waitComponetsOrTimeout(resolve, reject) {

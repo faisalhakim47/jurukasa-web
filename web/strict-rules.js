@@ -13,7 +13,7 @@ import { _$LH } from 'lit-html';
  */
 litHtmlInternalLoop:
 for (const key in _$LH) {
-  const partConstructor = /** @type {unknown} */ (_$LH[key]);
+  const partConstructor = /** @type {unknown} */ ((/** @type {any} */ (_$LH))[key]);
   // Check whether partConstructor is the EventPart constructor
   if (typeof partConstructor === 'function' && 'prototype' in partConstructor && 'handleEvent' in partConstructor.prototype) {
     const constructorPrototype = /** @type {unknown} */ (partConstructor.prototype);
@@ -29,7 +29,8 @@ for (const key in _$LH) {
          * @param {unknown} newListener
          * @param {DirectiveParent} [directiveParent]
          */
-        partConstructor.prototype[methodName] = function _$setValue(newListener, directiveParent = this) {
+        partConstructor.prototype[methodName] = function _$setValue(newListener, directiveParent) {
+          if (!directiveParent) directiveParent = this;
           if (typeof newListener === 'function' && newListener.name.trim().length === 0) {
             console.trace('arrow function or anonymous functions are forbidden as event listener:', newListener);
             throw new Error('arrow function or anonymous functions are forbidden. Please use a predefined named function as web/AGENTS.md guidelines.');
@@ -53,7 +54,7 @@ for (const key in _$LH) {
  */
 litHtmlInternalLoop:
 for (const key in _$LH) {
-  const partConstructor = /** @type {unknown} */ (_$LH[key]);
+  const partConstructor = /** @type {unknown} */ ((/** @type {any} */ (_$LH))[key]);
   // Check whether partConstructor is the PropertyPart constructor
   if (typeof partConstructor === 'function' && partConstructor.toString().includes('this.type = 3')) {
     const constructorPrototype = /** @type {unknown} */ (partConstructor.prototype);

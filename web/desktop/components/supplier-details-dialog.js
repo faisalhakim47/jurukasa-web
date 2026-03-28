@@ -1,0 +1,980 @@
+import { reactive } from '@vue/reactivity';
+import { html, nothing } from 'lit-html';
+
+import { defineWebComponent } from '#web/component.js';
+import { useDialog } from '#web/hooks/use-dialog.js';
+import { useElement } from '#web/hooks/use-element.js';
+import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
+import { DatabaseContextElement } from '#web/contexts/database-context.js';
+import { readValue } from '#web/directives/read-value.js';
+import { useAttribute } from '#web/hooks/use-attribute.js';
+import { useContext } from '#web/hooks/use-context.js';
+import { useEffect } from '#web/hooks/use-effect.js';
+import { useRender } from '#web/hooks/use-render.js';
+import { useTranslator } from '#web/hooks/use-translator.js';
+import { webStyleSheets } from '#web/desktop/styles.js';
+import { assertInstanceOf } from '#web/tools/assertion.js';
+
+import '#web/desktop/components/material-symbols.js';
+
+/**
+ * @typedef {object} SupplierDetail
+ * @property {number} id
+ * @property {string} name
+ * @property {string | null} phone_number
+ */
+
+/**
+ * @typedef {object} SupplierInventoryRow
+ * @property {number} record_time
+ * @property {number} inventory_id
+ * @property {string} inventory_name
+ * @property {string | null} supplier_name
+ */
+
+/**
+ * @typedef {object} InventoryOption
+ * @property {number} id
+ * @property {string} name
+ * @property {string | null} unit_of_measurement
+ */
+
+/**
+ * Supplier Details Dialog Component
+ * 
+ * @fires supplier-updated - Fired when supplier is updated
+ */
+export class SupplierDetailsDialogElement extends HTMLElement {
+  constructor() {
+    super();
+
+    const host = this;
+    const database = useContext(host, DatabaseContextElement);
+    const t = useTranslator(host);
+
+    const errorAlertDialog = reactive({
+      element: useElement(host, HTMLDialogElement),
+      open: false,
+    });
+    const deleteConfirmDialog = reactive({
+      element: useElement(host, HTMLDialogElement),
+      open: false,
+    });
+
+    const dialog = useDialog(host);
+    const render = useRender(host);
+    useAdoptedStyleSheets(host, webStyleSheets);
+
+    const state = reactive({
+      supplier: /** @type {SupplierDetail | null} */ (null),
+      supplierInventories: /** @type {SupplierInventoryRow[]} */ ([]),
+      isLoading: false,
+      formError: /** @type {Error | null} */ (null),
+      isEditing: false,
+      formIsSaving: false,
+
+      // Supplier inventory management
+      isAddingInventory: false,
+      isEditingInventory: /** @type {SupplierInventoryRow | null} */ (null),
+      inventorySearchQuery: '',
+      availableInventories: /** @type {InventoryOption[]} */ ([]),
+      isLoadingInventories: false,
+      selectedInventoryId: /** @type {number | null} */ (null),
+      selectedInventory: /** @type {InventoryOption | null} */ (null),
+      newSupplierName: '',
+      pendingDeleteInventory: /** @type {SupplierInventoryRow | null} */ (null),
+    });
+
+    async function loadSupplierDetails() {
+      const supplierId = Number(dialog.context?.dataset.supplierId);
+      if (isNaN(supplierId) || supplierId <= 0) return;
+
+      try {
+        state.isLoading = true;
+        state.formError = null;
+
+        const result = await database.sql`
+          SELECT id, name, phone_number
+          FROM suppliers
+          WHERE id = ${supplierId}
+        `;
+
+        if (result.rows.length === 0) {
+          state.supplier = null;
+          state.supplierInventories = [];
+        }
+        else {
+          const row = result.rows[0];
+          state.supplier = {
+            id: Number(row.id),
+            name: String(row.name),
+            phone_number: row.phone_number ? String(row.phone_number) : null,
+          };
+
+          // Load supplier inventories
+          const inventoriesResult = await database.sql`
+            SELECT
+              si.record_time,
+              si.inventory_id,
+              i.name as inventory_name,
+              si.name as supplier_name
+            FROM supplier_inventories si
+            JOIN inventories i ON i.id = si.inventory_id
+            WHERE si.supplier_id = ${supplierId}
+              AND si.record_time = (
+                SELECT MAX(latest.record_time)
+                FROM supplier_inventories latest
+                WHERE latest.supplier_id = si.supplier_id
+                  AND latest.inventory_id = si.inventory_id
+              )
+            ORDER BY i.name ASC
+          `;
+
+          state.supplierInventories = inventoriesResult.rows.map(function rowToSupplierInventory(row) {
+            return /** @type {SupplierInventoryRow} */ ({
+              record_time: Number(row.record_time),
+              inventory_id: Number(row.inventory_id),
+              inventory_name: String(row.inventory_name),
+              supplier_name: row.supplier_name ? String(row.supplier_name) : null,
+            });
+          });
+        }
+
+        state.isLoading = false;
+      }
+      catch (error) {
+        state.formError = error instanceof Error ? error : new Error(String(error));
+        state.isLoading = false;
+      }
+    }
+
+    async function loadAvailableInventories() {
+      try {
+        state.isLoadingInventories = true;
+
+        const searchPattern = state.inventorySearchQuery.trim() ? `%${state.inventorySearchQuery.trim()}%` : null;
+
+        const result = await database.sql`
+          SELECT id, name, unit_of_measurement
+          FROM inventories
+          WHERE ${searchPattern} IS NULL OR name LIKE ${searchPattern}
+          ORDER BY name ASC
+          LIMIT 50
+        `;
+
+        state.availableInventories = result.rows.map(function rowToInventory(row) {
+          return /** @type {InventoryOption} */ ({
+            id: Number(row.id),
+            name: String(row.name),
+            unit_of_measurement: row.unit_of_measurement ? String(row.unit_of_measurement) : null,
+          });
+        });
+
+        state.isLoadingInventories = false;
+      }
+      catch (error) {
+        state.isLoadingInventories = false;
+        console.error('Failed to load inventories:', error);
+      }
+    }
+
+    useEffect(host, function loadOnOpen() {
+      if (dialog.open && dialog.context?.dataset.supplierId) {
+        loadSupplierDetails();
+      }
+    });
+
+    /** @param {Event} event */
+    function handleInventorySearchInput(event) {
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.inventorySearchQuery = event.currentTarget.value;
+      loadAvailableInventories();
+    }
+
+    function startAddingInventory() {
+      state.isAddingInventory = true;
+      state.isEditingInventory = null;
+      state.selectedInventoryId = null;
+      state.selectedInventory = null;
+      state.newSupplierName = '';
+      state.inventorySearchQuery = '';
+      loadAvailableInventories();
+    }
+
+    function cancelAddingInventory() {
+      state.isAddingInventory = false;
+      state.isEditingInventory = null;
+      state.selectedInventoryId = null;
+      state.selectedInventory = null;
+      state.newSupplierName = '';
+      state.inventorySearchQuery = '';
+    }
+
+    /** @param {number} inventoryId */
+    function selectInventory(inventoryId) {
+      state.selectedInventoryId = inventoryId;
+      state.selectedInventory = state.availableInventories.find((inv) => inv.id === inventoryId) || null;
+    }
+
+    /** @param {Event} event */
+    function handleSupplierNameInput(event) {
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.newSupplierName = event.currentTarget.value;
+    }
+
+    async function addSupplierInventory() {
+      if (!state.supplier || !state.selectedInventory) return;
+
+      const tx = await database.transaction('write');
+
+      try {
+        state.formIsSaving = true;
+
+        const supplierId = state.supplier.id;
+        const inventoryId = state.selectedInventory.id;
+        const supplierName = state.newSupplierName.trim() || null;
+        const recordTime = Date.now();
+
+        // Keep one active informational link per supplier/inventory pair.
+        const existingCheck = await tx.sql`
+          SELECT 1 FROM supplier_inventories
+          WHERE supplier_id = ${supplierId}
+            AND inventory_id = ${inventoryId}
+          LIMIT 1;
+        `;
+
+        if (existingCheck.rows.length > 0) {
+          throw new Error(t('supplier', 'inventoryMappingExistsError'));
+        }
+
+        await tx.sql`
+          INSERT INTO supplier_inventories (record_time, supplier_id, inventory_id, name)
+          VALUES (${recordTime}, ${supplierId}, ${inventoryId}, ${supplierName});
+        `;
+
+        await tx.commit();
+
+        cancelAddingInventory();
+        await loadSupplierDetails();
+
+        host.dispatchEvent(new CustomEvent('supplier-updated', {
+          detail: { supplierId: state.supplier.id },
+          bubbles: true,
+          composed: true,
+        }));
+      }
+      catch (error) {
+        await tx.rollback();
+        state.formError = error instanceof Error ? error : new Error(String(error));
+      }
+      finally {
+        state.formIsSaving = false;
+      }
+    }
+
+    /** @param {SupplierInventoryRow} si */
+    function startEditingInventory(si) {
+      state.isEditingInventory = si;
+      state.isAddingInventory = false;
+      state.newSupplierName = si.supplier_name || '';
+    }
+
+    async function updateSupplierInventory() {
+      if (!state.supplier || !state.isEditingInventory) return;
+
+      const tx = await database.transaction('write');
+
+      try {
+        state.formIsSaving = true;
+
+        const supplierName = state.newSupplierName.trim() || null;
+
+        await tx.sql`
+          UPDATE supplier_inventories
+          SET name = ${supplierName}
+          WHERE record_time = ${state.isEditingInventory.record_time};
+        `;
+
+        await tx.commit();
+
+        cancelAddingInventory();
+        await loadSupplierDetails();
+
+        host.dispatchEvent(new CustomEvent('supplier-updated', {
+          detail: { supplierId: state.supplier.id },
+          bubbles: true,
+          composed: true,
+        }));
+      }
+      catch (error) {
+        await tx.rollback();
+        state.formError = error instanceof Error ? error : new Error(String(error));
+      }
+      finally {
+        state.formIsSaving = false;
+      }
+    }
+
+    /** @param {SupplierInventoryRow} si */
+    function confirmDeleteSupplierInventory(si) {
+      state.pendingDeleteInventory = si;
+    }
+
+    function cancelDeleteSupplierInventory() {
+      state.pendingDeleteInventory = null;
+    }
+
+    async function deleteSupplierInventory() {
+      if (!state.supplier || !state.pendingDeleteInventory) return;
+
+      const tx = await database.transaction('write');
+
+      try {
+        state.formIsSaving = true;
+
+        await tx.sql`
+          DELETE FROM supplier_inventories
+          WHERE record_time = ${state.pendingDeleteInventory.record_time};
+        `;
+
+        await tx.commit();
+
+        state.pendingDeleteInventory = null;
+        await loadSupplierDetails();
+
+        host.dispatchEvent(new CustomEvent('supplier-updated', {
+          detail: { supplierId: state.supplier.id },
+          bubbles: true,
+          composed: true,
+        }));
+      }
+      catch (error) {
+        await tx.rollback();
+        state.formError = error instanceof Error ? error : new Error(String(error));
+      }
+      finally {
+        state.formIsSaving = false;
+      }
+    }
+
+    useEffect(host, function syncDeleteConfirmDialogState() {
+      if (state.pendingDeleteInventory !== null) deleteConfirmDialog.open = true;
+      else deleteConfirmDialog.open = false;
+    });
+
+    /** @param {Event} event */
+    function handleStartEditingInventory(event) {
+      const target = /** @type {HTMLElement} */ (event.currentTarget);
+      const recordTime = Number(target.dataset.recordTime);
+      
+      const si = state.supplierInventories.find(
+        (item) => item.record_time === recordTime
+      );
+      
+      if (si) {
+        startEditingInventory(si);
+      }
+    }
+
+    /** @param {Event} event */
+    function handleConfirmDeleteSupplierInventory(event) {
+      const target = /** @type {HTMLElement} */ (event.currentTarget);
+      const recordTime = Number(target.dataset.recordTime);
+
+      const si = state.supplierInventories.find(
+        (item) => item.record_time === recordTime
+      );
+
+      if (si) {
+        confirmDeleteSupplierInventory(si);
+      }
+    }
+
+    function handleInventorySelectClick(event) {
+      handleInventorySelect(event);
+    }
+
+    function handleInventorySelectKeydown(event) {
+      handleInventoryKeydown(event);
+    }
+
+    /** @param {Event} event */
+    function handleInventorySelect(event) {
+      const validEvent = (event instanceof MouseEvent && event.type === 'click')
+        || (event instanceof KeyboardEvent && (['Enter', ' '].includes(event.key)));
+      if (!validEvent) return;
+
+      const target = /** @type {HTMLElement} */ (event.currentTarget);
+      const inventoryId = Number(target.dataset.inventoryId);
+      selectInventory(inventoryId);
+    }
+
+    /** @param {KeyboardEvent} event */
+    function handleInventoryKeydown(event) {
+      if (['Enter', ' '].includes(event.key)) {
+        event.preventDefault();
+        handleInventorySelect(event);
+      }
+    }
+
+    function handleClearInventorySelection() {
+      state.selectedInventory = null;
+      state.selectedInventoryId = null;
+    }
+
+    /** @param {SubmitEvent} event */
+    async function handleUpdateSubmit(event) {
+      event.preventDefault();
+      assertInstanceOf(HTMLFormElement, event.currentTarget);
+      const form = event.currentTarget;
+
+      if (!state.supplier) return;
+
+      const tx = await database.transaction('write');
+
+      try {
+        state.formIsSaving = true;
+        state.formError = null;
+
+        const data = new FormData(form);
+        const name = /** @type {string} */ (data.get('name'))?.trim();
+        const phoneNumber = /** @type {string} */ (data.get('phoneNumber'))?.trim() || null;
+
+        if (!name) throw new Error(t('supplier', 'supplierNameRequiredError'));
+
+        // Check for duplicate name (excluding current supplier)
+        const duplicateCheck = await tx.sql`
+          SELECT 1 FROM suppliers WHERE name = ${name} AND id != ${state.supplier.id} LIMIT 1;
+        `;
+        if (duplicateCheck.rows.length > 0) {
+          throw new Error(t('supplier', 'supplierNameExistsError'));
+        }
+
+        await tx.sql`
+          UPDATE suppliers
+          SET name = ${name}, phone_number = ${phoneNumber}
+          WHERE id = ${state.supplier.id};
+        `;
+
+        await tx.commit();
+
+        state.isEditing = false;
+        await loadSupplierDetails();
+
+        host.dispatchEvent(new CustomEvent('supplier-updated', {
+          detail: { supplierId: state.supplier.id },
+          bubbles: true,
+          composed: true,
+        }));
+      }
+      catch (error) {
+        await tx.rollback();
+        state.formError = error instanceof Error ? error : new Error(String(error));
+      }
+      finally {
+        state.formIsSaving = false;
+      }
+    }
+
+    function handleDismissErrorDialog() { state.formError = null; }
+
+    function toggleEditMode() {
+      state.isEditing = !state.isEditing;
+    }
+
+    useEffect(host, function syncErrorAlertDialogState() {
+      if (state.formError instanceof Error) errorAlertDialog.open = true;
+      else errorAlertDialog.open = false;
+    });
+
+    useEffect(host, function syncErrorAlertDialogElement() {
+      const dialogElement = errorAlertDialog.element.value;
+      if (dialogElement instanceof HTMLDialogElement) {
+        if (errorAlertDialog.open) dialogElement.showModal();
+        else dialogElement.close();
+      }
+    });
+
+    useEffect(host, function syncErrorAlertDialogCloseEvent() {
+      const dialogElement = errorAlertDialog.element.value;
+      if (dialogElement instanceof HTMLDialogElement) {
+        function handleClose() { errorAlertDialog.open = false; }
+        dialogElement.addEventListener('close', handleClose);
+        return function cleanup() {
+          dialogElement.removeEventListener('close', handleClose);
+        };
+      }
+    });
+
+    useEffect(host, function syncDeleteConfirmDialogElement() {
+      const dialogElement = deleteConfirmDialog.element.value;
+      if (dialogElement instanceof HTMLDialogElement) {
+        if (deleteConfirmDialog.open) dialogElement.showModal();
+        else dialogElement.close();
+      }
+    });
+
+    useEffect(host, function syncDeleteConfirmDialogCloseEvent() {
+      const dialogElement = deleteConfirmDialog.element.value;
+      if (dialogElement instanceof HTMLDialogElement) {
+        function handleClose() { deleteConfirmDialog.open = false; }
+        dialogElement.addEventListener('close', handleClose);
+        return function cleanup() {
+          dialogElement.removeEventListener('close', handleClose);
+        };
+      }
+    });
+
+    function renderLoadingState() {
+      return html`
+        <div
+          role="status"
+          aria-label="${t('supplier', 'loadingSupplierDetailsAriaLabel')}"
+          style="
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            min-height: 200px;
+            color: var(--md-sys-color-on-surface-variant);
+          "
+        >
+          <div role="progressbar" class="linear indeterminate" style="width: 200px;">
+            <div class="track">
+              <div class="indicator"></div>
+            </div>
+          </div>
+          <p>${t('supplier', 'loadingSupplierDetailsMessage')}</p>
+        </div>
+      `;
+    }
+
+    function renderNotFoundState() {
+      return html`
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            min-height: 200px;
+            text-align: center;
+            padding: 24px;
+          "
+        >
+          <material-symbols name="local_shipping" size="48"></material-symbols>
+          <h3 class="title-large">${t('supplier', 'supplierNotFoundTitle')}</h3>
+          <p style="color: var(--md-sys-color-on-surface-variant);">${t('supplier', 'supplierNotFoundMessage')}</p>
+        </div>
+      `;
+    }
+
+    function renderViewMode() {
+      if (!state.supplier) return nothing;
+      const supplier = state.supplier;
+
+      return html`
+        <div style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
+          <!-- Basic Info -->
+          <section>
+            <h3 class="title-medium" style="margin-bottom: 16px;">${t('supplier', 'basicInformationSectionTitle')}</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+              <div>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('supplier', 'nameFieldLabel')}</p>
+                <p class="body-large">${supplier.name}</p>
+              </div>
+              <div>
+                <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('supplier', 'phoneNumberFieldLabel')}</p>
+                <p class="body-large">${supplier.phone_number || t('supplier', 'noSupplierNamePlaceholder')}</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Supplier Inventories -->
+          <section>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 class="title-medium" style="margin: 0;">${t('supplier', 'linkedInventoriesSectionTitle')}</h3>
+              ${!state.isAddingInventory && !state.isEditingInventory ? html`
+                <button role="button" class="text" @click=${startAddingInventory}>
+                  <material-symbols name="add"></material-symbols>
+                  ${t('supplier', 'addMappingButtonLabel')}
+                </button>
+              ` : nothing}
+            </div>
+
+            ${renderAddInventoryForm()}
+            ${renderEditInventoryForm()}
+
+            ${state.supplierInventories.length > 0 ? html`
+              <table aria-label="${t('supplier', 'linkedInventoriesSectionTitle')}" style="--md-sys-density: -3;">
+                <thead>
+                  <tr>
+                    <th scope="col">${t('supplier', 'tableHeaderInventory')}</th>
+                    <th scope="col">${t('supplier', 'tableHeaderSupplierName')}</th>
+                    <th scope="col" style="width: 80px;"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${state.supplierInventories.map((si) => html`
+                    <tr>
+                      <td>${si.inventory_name}</td>
+                      <td style="color: var(--md-sys-color-on-surface-variant);">${si.supplier_name || t('supplier', 'noSupplierNamePlaceholder')}</td>
+                      <td class="center">
+                        <button
+                          role="button"
+                          class="text"
+                          data-record-time="${si.record_time}"
+                          @click=${handleStartEditingInventory}
+                          aria-label="${t('supplier', 'editMappingAriaLabel', si.inventory_name)}"
+                          ?disabled=${state.isAddingInventory || state.isEditingInventory !== null}
+                        >
+                          <material-symbols name="edit" size="20"></material-symbols>
+                        </button>
+                        <button
+                          role="button"
+                          class="text"
+                          data-record-time="${si.record_time}"
+                          @click=${handleConfirmDeleteSupplierInventory}
+                          aria-label="${t('supplier', 'removeMappingAriaLabel', si.inventory_name)}"
+                          ?disabled=${state.isAddingInventory || state.isEditingInventory !== null}
+                        >
+                          <material-symbols name="delete" size="20"></material-symbols>
+                        </button>
+                      </td>
+                    </tr>
+                  `)}
+                </tbody>
+              </table>
+            ` : html`
+              <p style="color: var(--md-sys-color-on-surface-variant);">
+                ${t('supplier', 'noInventoriesLinkedMessage')}
+              </p>
+            `}
+          </section>
+        </div>
+      `;
+    }
+
+    function renderAddInventoryForm() {
+      if (!state.isAddingInventory) return nothing;
+
+      return html`
+        <div style="background-color: var(--md-sys-color-surface-container-high); padding: 16px; border-radius: var(--md-sys-shape-corner-medium); margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h4 class="title-small" style="margin: 0;">${t('supplier', 'addInventoryMappingTitle')}</h4>
+            <button role="button" class="text" @click=${cancelAddingInventory} aria-label="${t('supplier', 'cancelButtonAriaLabel')}">
+              <material-symbols name="close"></material-symbols>
+            </button>
+          </div>
+
+          ${!state.selectedInventory ? html`
+            <!-- Inventory Search -->
+            <div class="outlined-text-field" style="margin-bottom: 12px;">
+              <div class="container">
+                <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
+                <label for="inventory-search-input">${t('supplier', 'searchInventoryLabel')}</label>
+                <input
+                  ${readValue(state, 'inventorySearchQuery')}
+                  id="inventory-search-input"
+                  type="text"
+                  placeholder=" "
+                  autocomplete="off"
+                  @input=${handleInventorySearchInput}
+                />
+              </div>
+            </div>
+
+            <!-- Inventory List -->
+            <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--md-sys-color-outline-variant); border-radius: var(--md-sys-shape-corner-medium);">
+              ${state.isLoadingInventories ? html`
+                <div style="padding: 16px; text-align: center; color: var(--md-sys-color-on-surface-variant);">
+                  ${t('supplier', 'loadingInventoriesMessage')}
+                </div>
+              ` : state.availableInventories.length === 0 ? html`
+                <div style="padding: 16px; text-align: center; color: var(--md-sys-color-on-surface-variant);">
+                  ${t('supplier', 'noInventoriesFoundMessage')}
+                </div>
+              ` : html`
+                <ul role="listbox" aria-label="${t('supplier', 'availableInventoriesAriaLabel')}" style="list-style: none; padding: 0; margin: 0;">
+                  ${state.availableInventories.map((inv) => html`
+                    <li
+                      role="option"
+                      tabindex="0"
+                      aria-selected="false"
+                      data-inventory-id="${inv.id}"
+                      @click=${handleInventorySelectClick}
+                      @keydown=${handleInventorySelectKeydown}
+                      style="
+                        padding: 12px 16px;
+                        cursor: pointer;
+                        border-bottom: 1px solid var(--md-sys-color-outline-variant);
+                      "
+                    >
+                      <p style="margin: 0; font-weight: 500;">${inv.name}</p>
+                      ${inv.unit_of_measurement ? html`
+                        <p style="margin: 0; font-size: 0.875rem; color: var(--md-sys-color-on-surface-variant);">
+                          ${t('supplier', 'inventoryUnitLabel', inv.unit_of_measurement)}
+                        </p>
+                      ` : nothing}
+                    </li>
+                  `)}
+                </ul>
+              `}
+            </div>
+          ` : html`
+            <!-- Selected Inventory -->
+            <div style="background-color: var(--md-sys-color-primary-container); padding: 12px; border-radius: var(--md-sys-shape-corner-small); margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <p class="body-medium" style="margin: 0; font-weight: 500;">${state.selectedInventory.name}</p>
+                  ${state.selectedInventory.unit_of_measurement ? html`
+                    <p class="body-small" style="margin: 4px 0 0 0; color: var(--md-sys-color-on-primary-container);">
+                      ${t('supplier', 'inventoryUnitLabel', state.selectedInventory.unit_of_measurement)}
+                    </p>
+                  ` : nothing}
+                </div>
+                <button role="button" class="text" @click=${handleClearInventorySelection} aria-label="${t('supplier', 'changeInventoryAriaLabel')}">
+                  <material-symbols name="edit"></material-symbols>
+                </button>
+              </div>
+            </div>
+
+            <div class="outlined-text-field" style="--md-sys-density: -4;">
+              <div class="container">
+                <label for="add-supplier-name-input">${t('supplier', 'supplierNameOptionalLabel')}</label>
+                <input
+                  id="add-supplier-name-input"
+                  type="text"
+                  placeholder=" "
+                  ${readValue(state, 'newSupplierName')}
+                  @input=${handleSupplierNameInput}
+                />
+              </div>
+              <div class="supporting-text">${t('supplier', 'supplierNameCatalogSupportingText')}</div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+              <button
+                role="button"
+                type="button"
+                class="tonal"
+                @click=${addSupplierInventory}
+                ?disabled=${!state.selectedInventory || state.formIsSaving}
+              >
+                <material-symbols name="add"></material-symbols>
+                ${t('supplier', 'addMappingSubmitButtonLabel')}
+              </button>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function renderEditInventoryForm() {
+      if (!state.isEditingInventory) return nothing;
+
+      return html`
+        <div style="background-color: var(--md-sys-color-surface-container-high); padding: 16px; border-radius: var(--md-sys-shape-corner-medium); margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h4 class="title-small" style="margin: 0;">${t('supplier', 'editInventoryMappingTitle')}</h4>
+            <button role="button" class="text" @click=${cancelAddingInventory} aria-label="${t('supplier', 'cancelButtonAriaLabel')}">
+              <material-symbols name="close"></material-symbols>
+            </button>
+          </div>
+
+          <!-- Selected Inventory (read-only) -->
+          <div style="background-color: var(--md-sys-color-primary-container); padding: 12px; border-radius: var(--md-sys-shape-corner-small); margin-bottom: 16px;">
+            <p class="body-medium" style="margin: 0; font-weight: 500;">${state.isEditingInventory.inventory_name}</p>
+          </div>
+
+          <div class="outlined-text-field" style="--md-sys-density: -4;">
+            <div class="container">
+              <label for="edit-supplier-name-input">${t('supplier', 'supplierNameOptionalLabel')}</label>
+              <input
+                id="edit-supplier-name-input"
+                type="text"
+                placeholder=" "
+                ${readValue(state, 'newSupplierName')}
+                @input=${handleSupplierNameInput}
+              />
+            </div>
+            <div class="supporting-text">${t('supplier', 'supplierNameCatalogSupportingText')}</div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; margin-top: 12px; gap: 8px;">
+            <button role="button" type="button" class="text" @click=${cancelAddingInventory}>${t('supplier', 'cancelButtonLabel')}</button>
+            <button
+              role="button"
+              type="button"
+              class="tonal"
+              @click=${updateSupplierInventory}
+              ?disabled=${state.formIsSaving}
+            >
+              <material-symbols name="check"></material-symbols>
+              ${t('supplier', 'saveChangesInventoryButtonLabel')}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEditMode() {
+      if (!state.supplier) return nothing;
+      const supplier = state.supplier;
+
+      return html`
+        <form @submit=${handleUpdateSubmit} style="display: flex; flex-direction: column; gap: 24px; padding: 16px 0;">
+          <!-- Supplier Name -->
+          <div class="outlined-text-field">
+            <div class="container">
+              <label for="edit-name-input">${t('supplier', 'supplierNameLabel')}</label>
+              <input
+                id="edit-name-input"
+                name="name"
+                type="text"
+                placeholder=" "
+                required
+                value="${supplier.name}"
+              />
+            </div>
+          </div>
+
+          <!-- Phone Number -->
+          <div class="outlined-text-field">
+            <div class="container">
+              <label for="edit-phone-number-input">${t('supplier', 'phoneNumberLabel')}</label>
+              <input
+                id="edit-phone-number-input"
+                name="phoneNumber"
+                type="tel"
+                placeholder=" "
+                value="${supplier.phone_number || ''}"
+              />
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            <button role="button" type="button" class="text" @click=${toggleEditMode}>${t('supplier', 'cancelButtonLabel')}</button>
+            <button role="button" type="submit" class="tonal">${t('supplier', 'saveChangesButtonLabel')}</button>
+          </div>
+        </form>
+      `;
+    }
+
+    function renderProgressIndicator() {
+      if (!state.isEditing || !state.formIsSaving) return nothing;
+
+      return html`
+        <div role="status" aria-live="polite" aria-busy="true">
+          <progress aria-label="${t('supplier', 'savingChangesProgressIndicatorLabel')}"></progress>
+          <p>${t('supplier', 'savingChangesMessage')}</p>
+        </div>
+      `;
+    }
+
+    useEffect(host, function renderDialog() {
+      render(html`
+        <dialog
+          ${dialog.element}
+          id="supplier-details-dialog"
+          class="full-screen"
+          aria-labelledby="supplier-details-dialog-title"
+        >
+          <div class="container">
+            <header>
+              <h2 id="supplier-details-dialog-title">
+                ${state.supplier ? state.supplier.name : t('supplier', 'detailsDialogTitle')}
+              </h2>
+              <button
+                role="button"
+                type="button"
+                class="text"
+                commandfor="supplier-details-dialog"
+                command="close"
+              ><material-symbols name="close"></material-symbols></button>
+              ${state.supplier && !state.isEditing ? html`
+                <button role="button" type="button" @click=${toggleEditMode}>
+                  <material-symbols name="edit"></material-symbols>
+                  ${t('supplier', 'editButtonLabel')}
+                </button>
+              ` : nothing}
+            </header>
+
+
+            <div role="status" aria-live="polite" aria-busy="true">
+              ${state.formIsSaving ? html`<progress aria-label="${t('supplier', 'savingChangesProgressIndicatorLabel')}"></progress>` : nothing}
+            </div>
+
+            <div class="content" style="max-width: 600px; margin: 0 auto;">
+              ${state.isLoading ? renderLoadingState() : nothing}
+              ${!state.isLoading && !state.supplier ? renderNotFoundState() : nothing}
+              ${!state.isLoading && state.supplier && !state.isEditing ? renderViewMode() : nothing}
+              ${!state.isLoading && state.supplier && state.isEditing ? renderEditMode() : nothing}
+            </div>
+          </div>
+        </dialog>
+
+        <dialog ${errorAlertDialog.element} role="alertdialog" aria-labelledby="error-alert-dialog-title" style="z-index: 1000;">
+          <div class="container">
+            <material-symbols name="error"></material-symbols>
+            <header>
+              <h3 id="error-alert-dialog-title">${t('supplier', 'errorDialogTitle')}</h3>
+            </header>
+            <div class="content">
+              <p>${state.formError?.message}</p>
+            </div>
+            <menu>
+              <li>
+                <button
+                  role="button"
+                  type="button"
+                  class="text"
+                  @click=${handleDismissErrorDialog}
+                >${t('supplier', 'dismissButtonLabel')}</button>
+              </li>
+            </menu>
+          </div>
+        </dialog>
+
+        <dialog ${deleteConfirmDialog.element} role="alertdialog" aria-labelledby="delete-confirm-title">
+          <div class="container">
+            <material-symbols name="delete"></material-symbols>
+            <header>
+              <h3 id="delete-confirm-title">${t('supplier', 'removeInventoryMappingTitle')}</h3>
+            </header>
+            <div class="content">
+              <p>${t('supplier', 'removeInventoryMappingMessage', state.pendingDeleteInventory?.inventory_name)}</p>
+              <p style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;">
+                ${t('supplier', 'removeInventoryMappingNote')}
+              </p>
+            </div>
+            <menu>
+              <li>
+                <button
+                  role="button"
+                  type="button"
+                  class="text"
+                  @click=${cancelDeleteSupplierInventory}
+                >${t('supplier', 'cancelButtonLabel')}</button>
+              </li>
+              <li>
+                <button
+                  role="button"
+                  type="button"
+                  class="text"
+                  style="color: var(--md-sys-color-error);"
+                  @click=${deleteSupplierInventory}
+                  ?disabled=${state.formIsSaving}
+                >${t('supplier', 'removeButtonLabel')}</button>
+              </li>
+            </menu>
+          </div>
+        </dialog>
+      `);
+    });
+  }
+}
+
+defineWebComponent('supplier-details-dialog', SupplierDetailsDialogElement);

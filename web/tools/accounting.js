@@ -2,6 +2,8 @@
  * @typedef {'Manual'|'Purchase'|'Sale'|'Stock Taking'|'Fixed Asset'|'Reconciliation'|'Fiscal Year Closing'|'Fiscal Year Reversal'|'Fiscal Year Depreciation'|'Fiscal Year Depreciation Reversal'} JournalEntryOwnerType
  */
 
+import { assertNonNullable } from '#web/tools/assertion.js';
+
 /**
  * @typedef {object} CashflowCategory
  * @property {number} id
@@ -26,19 +28,23 @@ export async function allocateJournalEntryRef(client) {
  * @returns {Promise<CashflowCategory[]>}
  */
 export async function loadCashflowCategories(client) {
+  /** @type {unknown} */
   const result = await client.sql`
     SELECT id, activity, label
     FROM cashflow_categories
     ORDER BY activity ASC, id ASC
   `;
-
-  return result.rows.map(function mapCashflowCategory(row) {
-    return /** @type {CashflowCategory} */ ({
-      id: Number(row.id),
-      activity: Number(row.activity),
-      label: String(row.label),
+  assertNonNullable(result);
+  if ('rows' in result && Array.isArray(result.rows)) {
+    return result.rows.map(function mapCashflowCategory(row) {
+      return /** @type {CashflowCategory} */ ({
+        id: Number(row.id),
+        activity: Number(row.activity),
+        label: String(row.label),
+      });
     });
-  });
+  }
+  else throw new Error('Invalid result format');
 }
 
 /**
@@ -63,7 +69,6 @@ export async function calculateReconciliationBookBalance(client, accountCode, ch
       AND je.entry_time <= ${checkpointTime}
       AND je.post_time <= ${checkpointTime}
   `;
-
   return Number(result.rows[0]?.balance ?? 0);
 }
 
