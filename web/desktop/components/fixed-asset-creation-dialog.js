@@ -11,7 +11,7 @@ import { TimeContextElement } from '#web/contexts/time-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/desktop/styles.js';
 import { allocateJournalEntryRef, normalizeFixedAssetError } from '#web/tools/accounting.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
@@ -35,6 +35,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
     const time = useContext(host, TimeContextElement);
 
     const t = useTranslator(host);
+    const l = useLiteral(host);
     const dialog = useDialog(host);
     const errorAlertDialog = useElement(host, HTMLDialogElement);
     const render = useRender(host);
@@ -235,7 +236,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.formState = 'error';
-        state.formError = normalizeFixedAssetError(error, t);
+        state.formError = normalizeFixedAssetError(error, l);
         await feedbackDelay();
       }
       finally {

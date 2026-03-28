@@ -87,7 +87,7 @@ describe('Financial Reports', function () {
   test('displays empty state when no reports exist', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) { }),
+      setupDatabase(tursoLibSQLiteServer()),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
@@ -99,7 +99,7 @@ describe('Financial Reports', function () {
   test('generates report and adds it to table', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) { }),
+      setupDatabase(tursoLibSQLiteServer()),
     ]);
 
     await page.evaluate(setupView, tursoLibSQLiteServer().url);

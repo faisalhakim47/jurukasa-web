@@ -129,7 +129,7 @@ describe('Inventory Price Update Dialog', function () {
   test('it shall handle non-existent inventory with error state', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) { }),
+      setupDatabase(tursoLibSQLiteServer()),
     ]);
     await page.evaluate(setupView, [tursoLibSQLiteServer().url, 999]);
 

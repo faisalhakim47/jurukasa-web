@@ -31,17 +31,11 @@ export default /** @type {Partial<StockTranslation>} */ ({
   inventoryGainJournalNote: 'Entri jurnal akan dibuat untuk mencatat keuntungan inventaris.',
   inventoryShrinkageJournalNote: 'Entri jurnal akan dibuat untuk mencatat penyusutan inventaris.',
   recordStockTakingButtonLabel: 'Catat Stok Opname',
-  recordingStockTakingMessage: 'Mencatat stok opname...',
   recordingStockTakingProgressIndicatorLabel: 'Mencatat stok opname',
   errorDialogTitle: 'Kesalahan',
   dismissButtonLabel: 'Tutup',
-  journalEntryRefRequiredError: 'Referensi jurnal penyesuaian stok wajib disiapkan untuk stok opname ini.',
-  closedFiscalYearError: 'Tidak dapat mencatat stok opname dalam tahun buku yang sudah ditutup.',
-  inventoryGainAccountRequiredError: 'Atur akun dengan tag "POS - Inventory Gain" sebelum mencatat selisih stok bertambah.',
-  inventoryShrinkageAccountRequiredError: 'Atur akun dengan tag "POS - Inventory Shrinkage" sebelum mencatat selisih stok berkurang.',
 
   // Stock Takings View
-  stockTakingsViewTitle: 'Stok Opname',
   varianceFilterLabel: 'Varians',
   varianceFilterAll: 'Semua',
   varianceFilterGainsOnly: 'Hanya Keuntungan',

@@ -8,9 +8,6 @@ const supplier = {
   supplierNameRequiredError: 'Supplier name is required.',
   phoneNumberLabel: 'Phone Number (Optional)',
   phoneNumberSupportingText: 'Supplier contact number',
-  addressLabel: 'Address (Optional)',
-  addressSupportingText: 'Supplier address',
-  creatingSupplierMessage: 'Creating supplier...',
   creatingSupplierProgressIndicatorLabel: 'Creating supplier',
   createSupplierButtonLabel: 'Add Supplier',
   cancelButtonLabel: 'Cancel',
@@ -23,25 +20,17 @@ const supplier = {
   loadingSupplierDetailsMessage: 'Loading supplier details...',
   supplierNotFoundTitle: 'Supplier Not Found',
   supplierNotFoundMessage: 'The requested supplier could not be found.',
-  closeButtonAriaLabel: 'Close',
-  closeButtonLabel: 'Close',
   editButtonLabel: 'Edit',
   saveChangesButtonLabel: 'Save Changes',
   savingChangesMessage: 'Saving changes...',
   savingChangesProgressIndicatorLabel: 'Saving changes',
-  deleteButtonLabel: 'Delete',
-  deleteButtonAriaLabel: 'Delete supplier',
 
   // Supplier Details - Basic Information
   basicInformationSectionTitle: 'Basic Information',
   nameFieldLabel: 'Name',
   phoneNumberFieldLabel: 'Phone Number',
-  addressFieldLabel: 'Address',
 
   // Supplier Details - Statistics
-  statisticsSectionTitle: 'Statistics',
-  totalPurchasesLabel: 'Total Purchases',
-  totalAmountLabel: 'Total Amount',
 
   // Supplier Details - Linked Inventories
   linkedInventoriesSectionTitle: 'Linked Inventories',
@@ -70,7 +59,6 @@ const supplier = {
   editInventoryMappingTitle: 'Edit Inventory Link',
   saveChangesInventoryButtonLabel: 'Save Changes',
   inventoryMappingExistsError: 'This inventory is already linked to this supplier.',
-  autoLinkInventoryNote: 'This updates only the supplier link metadata, not the inventory itself.',
 
   // Supplier Details - Delete Inventory Mapping Confirmation
   removeInventoryMappingTitle: 'Remove Inventory Link',
@@ -89,7 +77,6 @@ const supplier = {
   availableSuppliersAriaLabel: 'Available suppliers',
 
   // Suppliers View
-  suppliersViewTitle: 'Suppliers',
   searchLabel: 'Search',
   refreshAriaLabel: 'Refresh suppliers',
   refreshButtonLabel: 'Refresh',
@@ -105,10 +92,8 @@ const supplier = {
   supplierRowAriaLabel: 'Supplier %s',
   tableHeaderName: 'Name',
   tableHeaderPhone: 'Phone',
-  tableHeaderAddress: 'Address',
   tableHeaderInventories: 'Items',
   tableHeaderPurchases: 'Purchases',
-  tableHeaderTotalAmount: 'Total Amount',
   paginationAriaLabel: 'Pagination',
   showingItemsInfo: 'Showing %d–%d of %d',
   firstPageAriaLabel: 'First page',
@@ -118,13 +103,6 @@ const supplier = {
   pageInfo: 'Page %d of %d',
 
   // Supplier Delete Confirmation
-  deleteConfirmTitle: 'Delete Supplier',
-  deleteConfirmMessage: 'Are you sure you want to delete "%s"?',
-  deleteWarningMessage: 'This action cannot be undone. This will permanently delete the supplier.',
-  deletingMessage: 'Deleting...',
-  deleteSupplierButtonLabel: 'Delete Supplier',
-  processingMessage: 'Processing...',
-  processingWaitMessage: 'Please wait while processing your request.',
 };
 
 /** @typedef {typeof supplier} SupplierTranslation */

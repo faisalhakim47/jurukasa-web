@@ -1,6 +1,5 @@
 const fiscalYear = {
   // View - List
-  viewTitle: 'Fiscal Years',
   loadingLabel: 'Loading fiscal years...',
   loadErrorTitle: 'Unable to load fiscal years',
   retryActionLabel: 'Retry',
@@ -30,8 +29,6 @@ const fiscalYear = {
   // Creation Dialog
   creationTitle: 'Create New Fiscal Year',
   creationSubmitLabel: 'Create',
-  creationLoadingLabel: 'Creating fiscal year...',
-  creationSuccessLabel: 'Fiscal year created!',
   creationProgressIndicatorLabel: 'Creating fiscal year',
   closeDialogLabel: 'Close dialog',
   loadingFormLabel: 'Loading form...',
@@ -87,12 +84,6 @@ const fiscalYear = {
   depreciationEntryLabel: 'Depreciation Entry',
   
   // Closing info notice
-  closingInfoTitle: 'About Closing',
-  closingInfoMessage: 'Closing a fiscal year will:',
-  closingInfoPoint1: 'Create closing journal entries to zero out revenue and expense accounts',
-  closingInfoPoint2: 'Transfer net income to retained earnings',
-  closingInfoPoint3: 'Lock the fiscal year from further modifications',
-  closingInfoWarning: 'This action can be reversed if needed, but should be done carefully.',
   
   // Closing Confirmation Dialog
   confirmClosingTitle: 'Close Fiscal Year?',
@@ -139,11 +130,6 @@ const fiscalYear = {
   
   // Common
   dismissLabel: 'Dismiss',
-  fiscalYearNotFound: 'Fiscal year not found',
-  closingJournalEntryRefRequiredError: 'Fiscal year closing requires a reserved closing journal entry reference.',
-  reversalJournalEntryRefRequiredError: 'Fiscal year reversal requires a reserved reversal journal entry reference.',
-  depreciationJournalEntryRefRequiredError: 'Fiscal year closing requires a reserved depreciation journal entry reference.',
-  depreciationReversalJournalEntryRefRequiredError: 'Fiscal year reversal requires a reserved depreciation reversal journal entry reference.',
 };
 
 /** @typedef {typeof fiscalYear} FiscalYearTranslation */

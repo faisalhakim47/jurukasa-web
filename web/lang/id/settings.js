@@ -20,7 +20,6 @@ export default /** @type {Partial<SettingsTranslation>} */ ({
   retryButtonLabel: 'Coba Lagi',
 
   // Config Form
-  savingConfigurationMessage: 'Menyimpan konfigurasi...',
   savingConfigurationProgressIndicatorLabel: 'Menyimpan konfigurasi',
   selectPlaceholder: 'Pilih...',
   resetButtonLabel: 'Atur Ulang',
@@ -98,9 +97,6 @@ export default /** @type {Partial<SettingsTranslation>} */ ({
   switchDatabaseCancelButtonLabel: 'Batal',
 
   // Database Export
-  exportingDatabaseMessage: 'Mengekspor basis data...',
-  exportDatabaseSuccessMessage: 'Basis data berhasil diekspor.',
-  exportDatabaseErrorMessage: 'Gagal mengekspor basis data.',
 
   // Database Setup Navigation
   databaseSetupTitle: 'Pengaturan Basis Data',
@@ -126,9 +122,7 @@ export default /** @type {Partial<SettingsTranslation>} */ ({
   versionSwitchDialogMessage: 'Apakah Anda yakin ingin beralih ke versi %s? Aplikasi akan dimuat ulang setelah versi baru diunduh.',
   versionSwitchDialogConfirmButtonLabel: 'Ganti',
   versionSwitchDialogCancelButtonLabel: 'Batal',
-  versionSwitchDialogLoadingMessage: 'Mengunduh dan mengaktifkan versi...',
   switchingVersionProgressIndicatorLabel: 'Mengganti versi',
-  versionSwitchDialogLoadingNote: 'Aplikasi akan otomatis dimuat ulang saat siap.',
   versionLocalSourceLabel: 'Lokal',
   versionNpmSourceLabel: 'NPM',
 });

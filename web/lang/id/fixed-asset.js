@@ -5,7 +5,6 @@ export default /** @type {FixedAssetTranslation} */ ({
   creationTitle: 'Tambah Aset Tetap',
   addAssetActionLabel: 'Tambah Aset',
   closeActionLabel: 'Tutup',
-  creatingAssetLabel: 'Sedang membuat aset tetap...',
   creatingAssetProgressIndicatorLabel: 'Membuat aset tetap',
 
   // Basic Information Section
@@ -44,7 +43,6 @@ export default /** @type {FixedAssetTranslation} */ ({
   editActionLabel: 'Ubah',
   saveChangesActionLabel: 'Simpan Perubahan',
   cancelActionLabel: 'Batal',
-  savingChangesLabel: 'Menyimpan perubahan...',
   savingChangesProgressIndicatorLabel: 'Menyimpan perubahan',
   loadingDetailsLabel: 'Memuat rincian aset...',
   assetNotFoundTitle: 'Aset Tetap Tidak Ditemukan',
@@ -115,8 +113,6 @@ export default /** @type {FixedAssetTranslation} */ ({
   paymentAccountRequired: 'Silakan pilih akun pembayaran.',
   accountsMustBeDifferent: 'Akun aset, akumulasi penyusutan, dan beban harus berbeda.',
   invalidAcquisitionDate: 'Tanggal perolehan tidak valid.',
-  cannotDeleteWithDepreciation: 'Tidak dapat menghapus aset tetap yang memiliki akumulasi penyusutan.',
-  journalEntryRefRequiredError: 'Tidak dapat membuat jurnal perolehan untuk aset tetap ini.',
   postedHistoryImmutableError: 'Aset tetap ini sudah memiliki riwayat perolehan yang diposting dan tidak dapat diubah lagi.',
   postedHistoryDeleteForbiddenError: 'Aset tetap ini sudah memiliki riwayat perolehan yang diposting dan tidak dapat dihapus.',
 

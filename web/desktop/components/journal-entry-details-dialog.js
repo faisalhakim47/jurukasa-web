@@ -12,7 +12,7 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/desktop/styles.js';
 import {
   allocateJournalEntryRef,
@@ -60,6 +60,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
     const time = useContext(host, TimeContextElement);
 
     const t = useTranslator(host);
+    const l = useLiteral(host);
     const dialog = useDialog(host);
     const render = useRender(host);
     const confirmationDialog = useElement(host, HTMLDialogElement);
@@ -173,7 +174,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         console.error('Failed to load entry details:', error);
-        state.error = normalizeJournalEntryError(error, t);
+        state.error = normalizeJournalEntryError(error, l);
       }
       finally {
         state.isLoading = false;
@@ -229,7 +230,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.actionState = 'error';
-        state.actionError = normalizeJournalEntryError(error, t);
+        state.actionError = normalizeJournalEntryError(error, l);
       }
     }
 
@@ -265,7 +266,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.actionState = 'error';
-        state.actionError = normalizeJournalEntryError(error, t);
+        state.actionError = normalizeJournalEntryError(error, l);
       }
     }
 
@@ -339,7 +340,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.actionState = 'error';
-        state.actionError = normalizeJournalEntryError(error, t);
+        state.actionError = normalizeJournalEntryError(error, l);
       }
     }
 

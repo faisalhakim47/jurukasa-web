@@ -14,7 +14,6 @@ export default /** @type {Partial<OnboardingTranslation>} */ ({
   featureReports: 'Laporan Keuangan - Buat laporan bisnis yang komprehensif',
   getStartedButton: 'Mulai',
   selectLanguageLabel: 'Pilih Bahasa Anda',
-  languageLabel: 'Bahasa',
 
   // Database setup
   databaseConfigTitle: 'Konfigurasi Database',
@@ -59,8 +58,6 @@ export default /** @type {Partial<OnboardingTranslation>} */ ({
   chartOfAccountsSetupSubmitLabel: 'Selesai',
 
   // Finish
-  onboardingComplete: 'Orientasi Selesai',
-  goToDashboard: 'Ke Dashboard',
 
   // Unknown step
   unknownStepTitle: 'Ups!',

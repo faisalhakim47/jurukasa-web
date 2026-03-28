@@ -13,7 +13,7 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/desktop/styles.js';
 import { allocateJournalEntryRef, normalizePurchaseError } from '#web/tools/accounting.js';
 import { sleep } from '#web/tools/timing.js';
@@ -54,6 +54,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
     const time = useContext(host, TimeContextElement);
     const t = useTranslator(host);
 
+    const l = useLiteral(host);
     const dialog = useDialog(host);
     const confirmationDialogElement = useElement(host, HTMLDialogElement);
     const confirmationDialogOpen = reactive({ value: false });
@@ -204,7 +205,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.actionState = 'error';
-        state.actionError = normalizePurchaseError(error, t);
+        state.actionError = normalizePurchaseError(error, l);
       }
     }
 

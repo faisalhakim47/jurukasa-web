@@ -13,7 +13,7 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useConnectedCallback } from '#web/hooks/use-lifecycle.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/desktop/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import {
@@ -70,6 +70,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
     const errorAlertDialog = useElement(host, HTMLDialogElement);
 
     const t = useTranslator(host);
+    const l = useLiteral(host);
     const dialog = useDialog(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -433,7 +434,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.formState = 'error';
-        state.formError = normalizeJournalEntryError(error, t);
+        state.formError = normalizeJournalEntryError(error, l);
         await feedbackDelay();
       }
       finally {

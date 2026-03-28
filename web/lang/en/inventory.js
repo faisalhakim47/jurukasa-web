@@ -18,7 +18,6 @@ const inventory = {
   selectAccountAriaLabel: 'Select account',
   selectInventoryAccountError: 'Please select an inventory account.',
   accountNotTaggedError: 'Selected account must be tagged as "POS - Inventory".',
-  creatingInventoryMessage: 'Creating inventory...',
   creatingInventoryProgressIndicatorLabel: 'Creating inventory',
   errorDialogTitle: 'Error',
   dismissButtonLabel: 'Dismiss',
@@ -29,11 +28,9 @@ const inventory = {
   loadingInventoryDetailsMessage: 'Loading inventory details...',
   inventoryNotFoundTitle: 'Inventory Not Found',
   inventoryNotFoundMessage: 'The requested inventory could not be found.',
-  closeButtonAriaLabel: 'Close',
   editButtonLabel: 'Edit',
   saveChangesButtonLabel: 'Save Changes',
   cancelButtonLabel: 'Cancel',
-  savingChangesMessage: 'Saving changes...',
   savingChangesProgressIndicatorLabel: 'Saving changes',
 
   // Inventory Details - Basic Information Section
@@ -68,13 +65,11 @@ const inventory = {
   inventoryFieldLabel: 'Inventory',
   currentUnitPriceLabel: 'Current Unit Price',
   newUnitPriceLabel: 'New Unit Price',
-  updatingPriceMessage: 'Updating price...',
   updatingPriceProgressIndicatorLabel: 'Updating price',
   updatePriceButtonLabel: 'Update Price',
 
   // Inventory Discounts Edit Dialog
   discountsEditDialogTitle: 'Edit Inventory Discounts',
-  savingDiscountsMessage: 'Saving discounts...',
   savingDiscountsProgressIndicatorLabel: 'Saving discounts',
   saveButtonLabel: 'Save',
   discountDescriptionText: 'How discounts work: For "Every N Items", the discount applies per N items purchased. Example: If N=3 and discount is 500, buying 7 items gives (7÷3)×500 = 1000 off.',
@@ -93,7 +88,6 @@ const inventory = {
   uniqueQuantityError: 'Each discount must have a unique "Every N Items" value.',
 
   // Inventories View
-  inventoriesViewTitle: 'Inventories',
   searchLabel: 'Search',
   stockFilterLabel: 'Stock',
   filterAll: 'All',
@@ -131,9 +125,6 @@ const inventory = {
   nextPageAriaLabel: 'Next page',
 
   // POS/Purchase - Inventory Selector
-  productsLabel: 'Products',
-  noProductsFoundMessage: 'No products found',
-  noProductsAvailableMessage: 'No products available',
 };
 
 /** @typedef {typeof inventory} InventoryTranslation */

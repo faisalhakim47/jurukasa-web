@@ -20,7 +20,6 @@ export default /** @type {Partial<InventoryTranslation>} */ ({
   selectAccountAriaLabel: 'Pilih akun',
   selectInventoryAccountError: 'Mohon pilih akun inventaris.',
   accountNotTaggedError: 'Akun yang dipilih harus diberi tag "POS - Inventory".',
-  creatingInventoryMessage: 'Membuat inventaris...',
   creatingInventoryProgressIndicatorLabel: 'Membuat inventaris',
   errorDialogTitle: 'Kesalahan',
   dismissButtonLabel: 'Tutup',
@@ -31,11 +30,9 @@ export default /** @type {Partial<InventoryTranslation>} */ ({
   loadingInventoryDetailsMessage: 'Memuat detail inventaris...',
   inventoryNotFoundTitle: 'Inventaris Tidak Ditemukan',
   inventoryNotFoundMessage: 'Inventaris yang diminta tidak dapat ditemukan.',
-  closeButtonAriaLabel: 'Tutup',
   editButtonLabel: 'Ubah',
   saveChangesButtonLabel: 'Simpan Perubahan',
   cancelButtonLabel: 'Batal',
-  savingChangesMessage: 'Menyimpan perubahan...',
   savingChangesProgressIndicatorLabel: 'Menyimpan perubahan',
 
   // Inventory Details - Basic Information Section
@@ -70,13 +67,11 @@ export default /** @type {Partial<InventoryTranslation>} */ ({
   inventoryFieldLabel: 'Inventaris',
   currentUnitPriceLabel: 'Harga Satuan Saat Ini',
   newUnitPriceLabel: 'Harga Satuan Baru',
-  updatingPriceMessage: 'Memperbarui harga...',
   updatingPriceProgressIndicatorLabel: 'Memperbarui harga',
   updatePriceButtonLabel: 'Perbarui Harga',
 
   // Inventory Discounts Edit Dialog
   discountsEditDialogTitle: 'Ubah Diskon Inventaris',
-  savingDiscountsMessage: 'Menyimpan diskon...',
   savingDiscountsProgressIndicatorLabel: 'Menyimpan diskon',
   saveButtonLabel: 'Simpan',
   discountDescriptionText: 'Cara kerja diskon: Untuk "Setiap N Item", diskon berlaku per N item yang dibeli. Contoh: Jika N=3 dan diskon adalah 500, membeli 7 item memberikan diskon (7÷3)×500 = 1000.',
@@ -95,7 +90,6 @@ export default /** @type {Partial<InventoryTranslation>} */ ({
   uniqueQuantityError: 'Setiap diskon harus memiliki nilai "Setiap N Item" yang unik.',
 
   // Inventories View
-  inventoriesViewTitle: 'Inventaris',
   searchLabel: 'Cari',
   stockFilterLabel: 'Stok',
   filterAll: 'Semua',
@@ -133,7 +127,4 @@ export default /** @type {Partial<InventoryTranslation>} */ ({
   nextPageAriaLabel: 'Halaman selanjutnya',
 
   // POS/Purchase - Inventory Selector
-  productsLabel: 'Produk',
-  noProductsFoundMessage: 'Tidak ada produk ditemukan',
-  noProductsAvailableMessage: 'Tidak ada produk tersedia',
 });

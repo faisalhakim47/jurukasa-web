@@ -123,7 +123,7 @@ describe('Reconciliation Account Creation Dialog', function () {
   test('open dialog and navigate between account type selection and form', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) { }),
+      setupDatabase(tursoLibSQLiteServer()),
     ]);
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
@@ -167,7 +167,7 @@ describe('Reconciliation Account Creation Dialog', function () {
   test('create reconciliation adjustment account with correct tags and suggested values', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) { }),
+      setupDatabase(tursoLibSQLiteServer()),
     ]);
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
@@ -231,7 +231,7 @@ describe('Reconciliation Account Creation Dialog', function () {
   test('create cash over/short account with tag replacement when previous exists', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) { }),
+      setupDatabase(tursoLibSQLiteServer()),
     ]);
 
     await page.evaluate(setupExistingCashOverShortAccount, tursoLibSQLiteServer().url);
@@ -298,7 +298,7 @@ describe('Reconciliation Account Creation Dialog', function () {
   test('validate duplicate account code and name with submit button state', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) { }),
+      setupDatabase(tursoLibSQLiteServer()),
     ]);
 
     await page.evaluate(setupDuplicateAccountCodeTest, tursoLibSQLiteServer().url);
@@ -355,7 +355,7 @@ describe('Reconciliation Account Creation Dialog', function () {
   test('reset form when dialog is closed and reopened', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) { }),
+      setupDatabase(tursoLibSQLiteServer()),
     ]);
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 

@@ -12,10 +12,8 @@ import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 const test = jurukasaTest;
 const { describe } = test;
 
-/** 
- * @param {[string, string]} arg
- */
-async function setupView([tursoDatabaseUrl, tag]) {
+async function setupView() {
+  const [tursoDatabaseUrl, tag] = arguments;
   document.body.innerHTML = `
     <ready-context>
       <router-context>
@@ -66,7 +64,7 @@ describe('Account Tag Assignment Dialog', function () {
   test('displays dialog title with tag name and category', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) { }),
+      setupDatabase(tursoLibSQLiteServer()),
     ]);
     await page.evaluate(setupView, [tursoLibSQLiteServer().url, 'Asset']);
 

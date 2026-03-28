@@ -1,6 +1,5 @@
 const purchase = {
   // Purchases View
-  purchasesViewTitle: 'Purchases',
   loadingPurchasesAriaLabel: 'Loading purchases',
   loadingPurchasesMessage: 'Loading purchases...',
   unableToLoadPurchasesTitle: 'Unable to load purchases',
@@ -107,8 +106,6 @@ const purchase = {
   discardPurchaseConfirmMessage: 'Are you sure you want to discard purchase #%d?',
   discardPurchaseWarningMessage: 'This action cannot be undone. The purchase and all its lines will be permanently deleted.',
   discardPurchaseButtonLabel: 'Discard Purchase',
-  postRequiresJournalEntryRefError: 'Unable to reserve a journal entry reference before posting this purchase.',
-  postedMutationForbiddenError: 'This purchase has already been posted and can no longer be changed.',
 };
 
 /** @typedef {typeof purchase} PurchaseTranslation */

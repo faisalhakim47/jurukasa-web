@@ -5,7 +5,6 @@ const reconciliation = {
   accountReconciliationTabLabel: 'Account Reconciliation',
   cashCountTabLabel: 'Cash Count',
 
-  loadingReconciliationsAriaLabel: 'Loading reconciliations',
   loadingReconciliationsMessage: 'Loading reconciliation history...',
   unableToLoadReconciliationsTitle: 'Unable to Load Reconciliation History',
   noReconciliationsFoundTitle: 'No Statement Checkpoints Found',
@@ -13,7 +12,6 @@ const reconciliation = {
   noReconciliationsFoundEmptyMessage: 'No statement checkpoints have been recorded yet.',
   reconciliationTableAriaLabel: 'Statement reconciliation history',
 
-  loadingCashCountsAriaLabel: 'Loading cash counts',
   loadingCashCountsMessage: 'Loading cash count history...',
   unableToLoadCashCountsTitle: 'Unable to Load Cash Count History',
   noCashCountsFoundTitle: 'No Cash Counts Found',
@@ -28,9 +26,7 @@ const reconciliation = {
 
   searchLabel: 'Search',
   discrepancyFilterLabel: 'Discrepancy',
-  discrepancyFilterAriaLabel: 'Filter by discrepancy',
   accountFilterLabel: 'Account',
-  accountFilterAriaLabel: 'Filter by account',
   allAccountsLabel: 'All Accounts',
   allDiscrepanciesLabel: 'All',
   balancedLabel: 'Balanced',
@@ -51,9 +47,7 @@ const reconciliation = {
   tableHeaderNote: 'Note',
   tableHeaderActions: 'Actions',
 
-  viewReconciliationDetailsTitle: 'View reconciliation details',
   viewReconciliationDetailsAriaLabel: 'View reconciliation details for checkpoint %d',
-  viewCashCountDetailsTitle: 'View cash count details',
   viewCashCountDetailsAriaLabel: 'View cash count details for checkpoint %d',
 
   createAccountDialogTitle: 'Create Reconciliation Account',
@@ -70,7 +64,6 @@ const reconciliation = {
   reconciliationAdjustmentAccountName: 'Reconciliation Adjustment',
   cashOverShortAccountName: 'Cash Over/Short',
   createReconciliationAccountButtonLabel: 'Create Account',
-  accountCreatedSuccessMessage: 'Reconciliation account created successfully.',
 
   missingReconciliationAccountsTitle: 'Reconciliation Adjustment Account Required',
   missingReconciliationAccountsMessage: 'Create an account tagged Reconciliation - Adjustment before recording statement checkpoints.',
@@ -117,13 +110,6 @@ const reconciliation = {
   externalBalanceRequiredError: 'External balance is required.',
   countedAmountRequiredError: 'Counted amount is required.',
   invalidCheckpointTimeError: 'Checkpoint time must be a valid date and time.',
-  postingAccountRequiredError: 'Reconciliation can only be performed on posting accounts.',
-  physicalCashOnlyError: 'Physical cash count can only be performed on cash or bank accounts.',
-  cashOverShortAccountRequiredError: 'Create an account tagged Reconciliation - Cash Over/Short before recording this cash count.',
-  reconciliationAdjustmentAccountRequiredError: 'Create an account tagged Reconciliation - Adjustment before recording this statement checkpoint.',
-  adjustmentJournalEntryRefRequiredError: 'A discrepancy requires a reserved adjustment journal entry reference.',
-  checkpointImmutableError: 'Recorded reconciliation checkpoints are immutable.',
-  checkpointDeleteForbiddenError: 'Recorded reconciliation checkpoints cannot be deleted.',
 
   detailsDialogTitle: 'Reconciliation Details',
   detailsDialogTitleWithId: 'Reconciliation #%d',
@@ -141,7 +127,6 @@ const reconciliation = {
   typePhysicalLabel: 'Physical',
 
   dismissButtonLabel: 'Dismiss',
-  cancelButtonLabel: 'Cancel',
 };
 
 /** @typedef {typeof reconciliation} ReconciliationTranslation */

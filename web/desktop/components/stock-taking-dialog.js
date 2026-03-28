@@ -11,7 +11,7 @@ import { useAttribute } from '#web/hooks/use-attribute.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/desktop/styles.js';
 import { allocateJournalEntryRef, normalizeStockTakingError } from '#web/tools/accounting.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
@@ -44,6 +44,7 @@ export class StockTakingDialogElement extends HTMLElement {
     const time = useContext(host, TimeContextElement);
     const t = useTranslator(host);
 
+    const l = useLiteral(host);
     const dialog = useDialog(host);
     const errorAlertDialog = useElement(host, HTMLDialogElement);
     const render = useRender(host);
@@ -201,7 +202,7 @@ export class StockTakingDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.formState = 'error';
-        state.formError = normalizeStockTakingError(error, t);
+        state.formError = normalizeStockTakingError(error, l);
         await feedbackDelay();
       }
       finally {

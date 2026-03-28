@@ -10,7 +10,7 @@ import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useElement } from '#web/hooks/use-element.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/desktop/styles.js';
 import {
   allocateJournalEntryRef,
@@ -48,6 +48,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
 
+    const l = useLiteral(host);
     const dialog = useDialog(host);
     const confirmDialog = useElement(host, HTMLDialogElement);
     const errorAlertDialog = useElement(host, HTMLDialogElement);
@@ -177,7 +178,7 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.reversalState = 'error';
-        state.reversalError = normalizeFiscalYearError(error, t);
+        state.reversalError = normalizeFiscalYearError(error, l);
         await feedbackDelay();
         state.reversalState = 'idle';
       }

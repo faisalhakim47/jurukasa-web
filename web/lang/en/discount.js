@@ -2,8 +2,6 @@ const discount = {
   // Discount Creation Dialog
   createDialogTitle: 'Create Discount',
   createButtonLabel: 'Create',
-  closeButtonAriaLabel: 'Close',
-  creatingDiscountMessage: 'Creating discount...',
   creatingDiscountProgressIndicatorLabel: 'Creating discount',
   discountNameLabel: 'Discount Name',
   discountNameSupportingText: 'A unique name for this discount (e.g., "Buy 3 Get 500 Off")',
@@ -40,7 +38,6 @@ const discount = {
   editButtonLabel: 'Edit',
   saveChangesButtonLabel: 'Save Changes',
   cancelButtonLabel: 'Cancel',
-  savingChangesMessage: 'Saving changes...',
   savingChangesProgressIndicatorLabel: 'Saving changes',
 
   // Discount Details - Information Section
@@ -73,16 +70,11 @@ const discount = {
   deleteConfirmWarning: 'This action cannot be undone. Discounts that have been used in sales cannot be deleted.',
   deleteConfirmCancelButton: 'Cancel',
   deleteConfirmDeleteButton: 'Delete',
-  deletingDiscountMessage: 'Deleting discount...',
   cannotDeleteUsedDiscountError: 'Cannot delete discount that has been used in sales.',
 
   // Discounts View
-  discountsViewTitle: 'Discounts',
   searchLabel: 'Search',
   typeFilterLabel: 'Type',
-  typeFilterAll: 'All',
-  typeFilterGlobal: 'Global',
-  typeFilterInventorySpecific: 'Inventory-specific',
   refreshAriaLabel: 'Refresh discounts',
   refreshButtonLabel: 'Refresh',
   createDiscountButtonLabel: 'Create Discount',

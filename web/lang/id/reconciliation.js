@@ -5,7 +5,6 @@ const reconciliation = {
   accountReconciliationTabLabel: 'Rekonsiliasi Akun',
   cashCountTabLabel: 'Penghitungan Kas',
 
-  loadingReconciliationsAriaLabel: 'Memuat rekonsiliasi',
   loadingReconciliationsMessage: 'Memuat riwayat rekonsiliasi...',
   unableToLoadReconciliationsTitle: 'Tidak Dapat Memuat Riwayat Rekonsiliasi',
   noReconciliationsFoundTitle: 'Belum Ada Checkpoint Rekening Koran',
@@ -13,7 +12,6 @@ const reconciliation = {
   noReconciliationsFoundEmptyMessage: 'Belum ada checkpoint rekening koran yang dicatat.',
   reconciliationTableAriaLabel: 'Riwayat rekonsiliasi rekening koran',
 
-  loadingCashCountsAriaLabel: 'Memuat penghitungan kas',
   loadingCashCountsMessage: 'Memuat riwayat penghitungan kas...',
   unableToLoadCashCountsTitle: 'Tidak Dapat Memuat Riwayat Penghitungan Kas',
   noCashCountsFoundTitle: 'Belum Ada Penghitungan Kas',
@@ -28,9 +26,7 @@ const reconciliation = {
 
   searchLabel: 'Cari',
   discrepancyFilterLabel: 'Selisih',
-  discrepancyFilterAriaLabel: 'Filter berdasarkan selisih',
   accountFilterLabel: 'Akun',
-  accountFilterAriaLabel: 'Filter berdasarkan akun',
   allAccountsLabel: 'Semua Akun',
   allDiscrepanciesLabel: 'Semua',
   balancedLabel: 'Seimbang',
@@ -51,9 +47,7 @@ const reconciliation = {
   tableHeaderNote: 'Catatan',
   tableHeaderActions: 'Aksi',
 
-  viewReconciliationDetailsTitle: 'Lihat detail rekonsiliasi',
   viewReconciliationDetailsAriaLabel: 'Lihat detail rekonsiliasi checkpoint %d',
-  viewCashCountDetailsTitle: 'Lihat detail penghitungan kas',
   viewCashCountDetailsAriaLabel: 'Lihat detail penghitungan kas checkpoint %d',
 
   createAccountDialogTitle: 'Buat Akun Rekonsiliasi',
@@ -70,7 +64,6 @@ const reconciliation = {
   reconciliationAdjustmentAccountName: 'Penyesuaian Rekonsiliasi',
   cashOverShortAccountName: 'Selisih Kas',
   createReconciliationAccountButtonLabel: 'Buat Akun',
-  accountCreatedSuccessMessage: 'Akun rekonsiliasi berhasil dibuat.',
 
   missingReconciliationAccountsTitle: 'Akun Penyesuaian Rekonsiliasi Diperlukan',
   missingReconciliationAccountsMessage: 'Buat akun dengan tag Reconciliation - Adjustment sebelum mencatat checkpoint rekening koran.',
@@ -117,13 +110,6 @@ const reconciliation = {
   externalBalanceRequiredError: 'Saldo eksternal wajib diisi.',
   countedAmountRequiredError: 'Jumlah terhitung wajib diisi.',
   invalidCheckpointTimeError: 'Waktu checkpoint harus berupa tanggal dan waktu yang valid.',
-  postingAccountRequiredError: 'Rekonsiliasi hanya dapat dilakukan pada akun posting.',
-  physicalCashOnlyError: 'Penghitungan kas fisik hanya dapat dilakukan pada akun kas atau bank.',
-  cashOverShortAccountRequiredError: 'Buat akun dengan tag Reconciliation - Cash Over/Short sebelum mencatat hitung kas ini.',
-  reconciliationAdjustmentAccountRequiredError: 'Buat akun dengan tag Reconciliation - Adjustment sebelum mencatat checkpoint rekening koran ini.',
-  adjustmentJournalEntryRefRequiredError: 'Selisih membutuhkan referensi entri jurnal penyesuaian yang sudah dicadangkan.',
-  checkpointImmutableError: 'Checkpoint rekonsiliasi yang sudah dicatat tidak dapat diubah.',
-  checkpointDeleteForbiddenError: 'Checkpoint rekonsiliasi yang sudah dicatat tidak dapat dihapus.',
 
   detailsDialogTitle: 'Detail Rekonsiliasi',
   detailsDialogTitleWithId: 'Rekonsiliasi #%d',
@@ -141,7 +127,6 @@ const reconciliation = {
   typePhysicalLabel: 'Fisik',
 
   dismissButtonLabel: 'Tutup',
-  cancelButtonLabel: 'Batal',
 };
 
 /** @typedef {typeof reconciliation} ReconciliationTranslation */

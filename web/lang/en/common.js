@@ -41,16 +41,8 @@ const common = {
   goToPurchasesButtonLabel: 'Go to Purchases',
 
   // Language Selection
-  changeLanguageButtonLabel: 'Change Language',
-  selectLanguageTitle: 'Select Language',
-  closeButtonLabel: 'Close',
 
   // Update Available Dialog
-  updateAvailableDialogTitle: 'Update Available',
-  updateAvailableDialogMessage: 'A new version of JuruKasa is available. Update now to get the latest features and improvements.',
-  updatingApplicationMessage: 'Updating application...',
-  updateLaterButtonLabel: 'Later',
-  updateNowButtonLabel: 'Update Now',
 
   // Error Dialog
   errorDialogTitle: 'Error Occurred',

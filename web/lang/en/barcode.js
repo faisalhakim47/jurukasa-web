@@ -9,24 +9,19 @@ const barcode = {
   assignButtonLabel: 'Assign',
   barcodeAlreadyAssignedToThisError: 'This barcode is already assigned to this inventory.',
   barcodeAlreadyAssignedToAnotherError: 'This barcode is already assigned to another inventory.',
-  assigningBarcodeMessage: 'Assigning barcode...',
   errorDialogTitle: 'Error',
   errorOccurredMessage: 'An error occurred: %s',
   dismissButtonLabel: 'Dismiss',
 
   // Barcodes View
-  barcodesViewTitle: 'Barcodes',
   searchLabel: 'Search',
   clearSearchAriaLabel: 'Clear search',
   assignBarcodeButtonLabel: 'Assign Barcode',
-  loadingBarcodesMessage: 'Loading barcodes...',
-  loadingBarcodesAriaLabel: 'Loading barcodes',
   noBarcodeMatchSearchMessage: 'No barcodes match your search',
   noBarcodesAssignedMessage: 'No barcodes assigned yet',
   tableHeaderBarcode: 'Barcode',
   tableHeaderProductName: 'Product Name',
   tableHeaderAction: 'Action',
-  unassignBarcodeAriaLabel: 'Unassign barcode %s',
   paginationInfo: '%d-%d of %d',
   paginationNoResults: 'No results',
   previousPageAriaLabel: 'Previous page',
@@ -34,7 +29,6 @@ const barcode = {
   confirmUnassignDialogTitle: 'Unassign Barcode',
   confirmUnassignMessage: 'Are you sure you want to unassign barcode <strong>%s</strong> from <strong>%s</strong>?',
   unassignButtonLabel: 'Unassign',
-  unassigningBarcodeMessage: 'Unassigning barcode...',
 
   // Inventory Details Dialog - Barcode Section
   barcodesSection: 'Barcodes',

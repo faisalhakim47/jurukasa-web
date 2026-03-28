@@ -1,7 +1,6 @@
 const journalEntry = {
   creationParamsTitle: 'Create Journal Entry',
   creationSubmitLabel: 'Draft Entry',
-  creationLoadingLabel: 'Creating journal entry...',
   creatingEntryProgressIndicatorLabel: 'Creating journal entry',
   entryDateLabel: 'Entry Date',
   noteLabel: 'Note',
@@ -41,11 +40,6 @@ const journalEntry = {
   cashflowCategoryInvalidLineError: 'Line %d: Cash flow category does not match the selected activity.',
   linesRequired: 'At least one journal entry line is required.',
   unbalancedEntry: 'Journal entry must be balanced to post.',
-  cashflowRequiredError: 'Cash equivalent accounts require cash flow activity and category.',
-  cashflowForbiddenError: 'Non-cash accounts must not include cash flow activity or category.',
-  postedDeleteForbiddenError: 'Posted journal entries cannot be deleted.',
-  postedUpdateForbiddenError: 'Posted journal entries are read-only.',
-  postedLineMutationForbiddenError: 'Posted journal entry lines are read-only.',
 
   detailsTitle: 'Journal Entry Details',
   detailsTitleWithRef: 'Journal Entry #%d',
@@ -57,7 +51,6 @@ const journalEntry = {
   dateLabel: 'Date',
   statusLabel: 'Status',
   workflowLabel: 'Workflow',
-  sourceLabel: 'Source',
   postedDateLabel: 'Posted Date',
   unpostedLabel: 'Unposted',
   accountColumnInfo: 'Account',
@@ -103,11 +96,7 @@ const journalEntry = {
   ownerFiscalYearDepreciationLabel: 'Fiscal Year Depreciation',
   ownerFiscalYearDepreciationReversalLabel: 'Fiscal Year Depreciation Reversal',
 
-  filterSourceAll: 'All Sources',
   filterStatusAll: 'All Statuses',
-  filterSourceManual: 'Manual',
-  filterSourceSystem: 'System',
-  filterSourceLLM: 'LLM',
 
   emptyStateTitle: 'No journal entries found',
   emptyStateMessage: 'Journal entries will appear here once you create them.',

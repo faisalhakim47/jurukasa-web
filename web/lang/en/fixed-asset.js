@@ -3,7 +3,6 @@ const fixedAsset = {
   creationTitle: 'Add Fixed Asset',
   addAssetActionLabel: 'Add Asset',
   closeActionLabel: 'Close',
-  creatingAssetLabel: 'Creating fixed asset...',
   creatingAssetProgressIndicatorLabel: 'Creating fixed asset',
 
   // Basic Information Section
@@ -42,7 +41,6 @@ const fixedAsset = {
   editActionLabel: 'Edit',
   saveChangesActionLabel: 'Save Changes',
   cancelActionLabel: 'Cancel',
-  savingChangesLabel: 'Saving changes...',
   savingChangesProgressIndicatorLabel: 'Saving changes',
   loadingDetailsLabel: 'Loading asset details...',
   assetNotFoundTitle: 'Fixed Asset Not Found',
@@ -113,8 +111,6 @@ const fixedAsset = {
   paymentAccountRequired: 'Please select a payment account.',
   accountsMustBeDifferent: 'Asset, accumulated depreciation, and expense accounts must be different.',
   invalidAcquisitionDate: 'Invalid acquisition date.',
-  cannotDeleteWithDepreciation: 'Cannot delete fixed asset with accumulated depreciation.',
-  journalEntryRefRequiredError: 'Unable to create the acquisition journal entry for this fixed asset.',
   postedHistoryImmutableError: 'This fixed asset already has posted acquisition history and can no longer be edited.',
   postedHistoryDeleteForbiddenError: 'This fixed asset already has posted acquisition history and cannot be deleted.',
 

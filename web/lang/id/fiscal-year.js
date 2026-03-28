@@ -2,7 +2,6 @@
 
 export default /** @type {Partial<FiscalYearTranslation>} */ ({
   // View - List
-  viewTitle: 'Tahun Fiskal',
   loadingLabel: 'Memuat tahun fiskal...',
   loadErrorTitle: 'Gagal memuat tahun fiskal',
   retryActionLabel: 'Coba Lagi',
@@ -32,8 +31,6 @@ export default /** @type {Partial<FiscalYearTranslation>} */ ({
   // Creation Dialog
   creationTitle: 'Buat Tahun Fiskal',
   creationSubmitLabel: 'Buat',
-  creationLoadingLabel: 'Sedang membuat tahun fiskal...',
-  creationSuccessLabel: 'Tahun fiskal berhasil dibuat!',
   creationProgressIndicatorLabel: 'Membuat tahun fiskal',
   closeDialogLabel: 'Tutup dialog',
   loadingFormLabel: 'Memuat formulir...',
@@ -89,12 +86,6 @@ export default /** @type {Partial<FiscalYearTranslation>} */ ({
   depreciationEntryLabel: 'Jurnal Penyusutan',
   
   // Closing info notice
-  closingInfoTitle: 'Tentang Penutupan',
-  closingInfoMessage: 'Menutup tahun fiskal akan:',
-  closingInfoPoint1: 'Membuat jurnal penutup untuk mengosongkan akun pendapatan dan beban',
-  closingInfoPoint2: 'Mentransfer laba bersih ke laba ditahan',
-  closingInfoPoint3: 'Mengunci tahun fiskal dari modifikasi lebih lanjut',
-  closingInfoWarning: 'Tindakan ini dapat dibalik jika diperlukan, tetapi harus dilakukan dengan hati-hati.',
   
   // Closing Confirmation Dialog
   confirmClosingTitle: 'Tutup Tahun Fiskal?',
@@ -141,9 +132,4 @@ export default /** @type {Partial<FiscalYearTranslation>} */ ({
   
   // Common
   dismissLabel: 'Tutup',
-  fiscalYearNotFound: 'Tahun fiskal tidak ditemukan',
-  closingJournalEntryRefRequiredError: 'Penutupan tahun fiskal memerlukan referensi jurnal penutup yang sudah dipesan.',
-  reversalJournalEntryRefRequiredError: 'Pembalikan tahun fiskal memerlukan referensi jurnal pembalikan yang sudah dipesan.',
-  depreciationJournalEntryRefRequiredError: 'Penutupan tahun fiskal memerlukan referensi jurnal penyusutan yang sudah dipesan.',
-  depreciationReversalJournalEntryRefRequiredError: 'Pembalikan tahun fiskal memerlukan referensi jurnal pembalikan penyusutan yang sudah dipesan.',
 });

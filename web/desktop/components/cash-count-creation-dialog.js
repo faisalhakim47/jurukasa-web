@@ -12,7 +12,7 @@ import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { useWatch } from '#web/hooks/use-watch.js';
 import { webStyleSheets } from '#web/desktop/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
@@ -41,6 +41,7 @@ export class CashCountCreationDialogElement extends HTMLElement {
 
     const errorAlertDialog = useElement(host, HTMLDialogElement);
     const formElement = useElement(host, HTMLFormElement);
+    const l = useLiteral(host);
     const dialog = useDialog(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -230,7 +231,7 @@ export class CashCountCreationDialogElement extends HTMLElement {
       }
       catch (error) {
         state.formState = 'error';
-        state.formError = normalizeReconciliationError(error, t);
+        state.formError = normalizeReconciliationError(error, l);
         errorAlertDialog.value?.showModal();
       }
     }

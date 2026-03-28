@@ -10,9 +10,6 @@ export default /** @type {Partial<SupplierTranslation>} */ ({
   supplierNameRequiredError: 'Nama pemasok wajib diisi.',
   phoneNumberLabel: 'Nomor Telepon (Opsional)',
   phoneNumberSupportingText: 'Nomor kontak pemasok',
-  addressLabel: 'Alamat (Opsional)',
-  addressSupportingText: 'Alamat pemasok',
-  creatingSupplierMessage: 'Membuat pemasok...',
   creatingSupplierProgressIndicatorLabel: 'Membuat pemasok',
   createSupplierButtonLabel: 'Tambah Pemasok',
   cancelButtonLabel: 'Batal',
@@ -25,25 +22,17 @@ export default /** @type {Partial<SupplierTranslation>} */ ({
   loadingSupplierDetailsMessage: 'Memuat detail pemasok...',
   supplierNotFoundTitle: 'Pemasok Tidak Ditemukan',
   supplierNotFoundMessage: 'Pemasok yang diminta tidak dapat ditemukan.',
-  closeButtonAriaLabel: 'Tutup',
-  closeButtonLabel: 'Tutup',
   editButtonLabel: 'Ubah',
   saveChangesButtonLabel: 'Simpan Perubahan',
   savingChangesMessage: 'Menyimpan perubahan...',
   savingChangesProgressIndicatorLabel: 'Menyimpan perubahan',
-  deleteButtonLabel: 'Hapus',
-  deleteButtonAriaLabel: 'Hapus pemasok',
 
   // Supplier Details - Basic Information
   basicInformationSectionTitle: 'Informasi Dasar',
   nameFieldLabel: 'Nama',
   phoneNumberFieldLabel: 'Nomor Telepon',
-  addressFieldLabel: 'Alamat',
 
   // Supplier Details - Statistics
-  statisticsSectionTitle: 'Statistik',
-  totalPurchasesLabel: 'Total Pembelian',
-  totalAmountLabel: 'Total Jumlah',
 
   // Supplier Details - Linked Inventories
   linkedInventoriesSectionTitle: 'Inventaris Tertaut',
@@ -72,7 +61,6 @@ export default /** @type {Partial<SupplierTranslation>} */ ({
   editInventoryMappingTitle: 'Ubah Tautan Inventaris',
   saveChangesInventoryButtonLabel: 'Simpan Perubahan',
   inventoryMappingExistsError: 'Inventaris ini sudah tertaut dengan pemasok ini.',
-  autoLinkInventoryNote: 'Ini hanya memperbarui metadata tautan pemasok, bukan inventarisnya.',
 
   // Supplier Details - Delete Inventory Mapping Confirmation
   removeInventoryMappingTitle: 'Hapus Tautan Inventaris',
@@ -91,7 +79,6 @@ export default /** @type {Partial<SupplierTranslation>} */ ({
   availableSuppliersAriaLabel: 'Pemasok tersedia',
 
   // Suppliers View
-  suppliersViewTitle: 'Pemasok',
   searchLabel: 'Cari',
   refreshAriaLabel: 'Muat ulang pemasok',
   refreshButtonLabel: 'Muat Ulang',
@@ -107,10 +94,8 @@ export default /** @type {Partial<SupplierTranslation>} */ ({
   supplierRowAriaLabel: 'Pemasok %s',
   tableHeaderName: 'Nama',
   tableHeaderPhone: 'Telepon',
-  tableHeaderAddress: 'Alamat',
   tableHeaderInventories: 'Item',
   tableHeaderPurchases: 'Pembelian',
-  tableHeaderTotalAmount: 'Total Jumlah',
   paginationAriaLabel: 'Paginasi',
   showingItemsInfo: 'Menampilkan %d–%d dari %d',
   firstPageAriaLabel: 'Halaman pertama',
@@ -120,11 +105,4 @@ export default /** @type {Partial<SupplierTranslation>} */ ({
   pageInfo: 'Halaman %d dari %d',
 
   // Supplier Delete Confirmation
-  deleteConfirmTitle: 'Hapus Pemasok',
-  deleteConfirmMessage: 'Apakah Anda yakin ingin menghapus "%s"?',
-  deleteWarningMessage: 'Tindakan ini tidak dapat dibatalkan. Ini akan menghapus pemasok secara permanen.',
-  deletingMessage: 'Menghapus...',
-  deleteSupplierButtonLabel: 'Hapus Pemasok',
-  processingMessage: 'Memproses...',
-  processingWaitMessage: 'Mohon tunggu sementara permintaan Anda diproses.',
 });

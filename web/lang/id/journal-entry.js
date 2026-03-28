@@ -1,7 +1,6 @@
 const journalEntry = {
   creationParamsTitle: 'Buat Jurnal Umum',
   creationSubmitLabel: 'Draf Jurnal',
-  creationLoadingLabel: 'Sedang membuat jurnal...',
   creatingEntryProgressIndicatorLabel: 'Membuat jurnal umum',
   entryDateLabel: 'Tanggal Entri',
   noteLabel: 'Catatan',
@@ -41,11 +40,6 @@ const journalEntry = {
   cashflowCategoryInvalidLineError: 'Baris %d: Kategori arus kas tidak sesuai dengan aktivitas yang dipilih.',
   linesRequired: 'Setidaknya satu baris jurnal diperlukan.',
   unbalancedEntry: 'Jurnal harus seimbang untuk diposting.',
-  cashflowRequiredError: 'Akun setara kas wajib memiliki aktivitas dan kategori arus kas.',
-  cashflowForbiddenError: 'Akun non-kas tidak boleh memiliki aktivitas atau kategori arus kas.',
-  postedDeleteForbiddenError: 'Jurnal yang sudah diposting tidak dapat dihapus.',
-  postedUpdateForbiddenError: 'Jurnal yang sudah diposting bersifat hanya-baca.',
-  postedLineMutationForbiddenError: 'Baris jurnal yang sudah diposting bersifat hanya-baca.',
 
   detailsTitle: 'Rincian Jurnal Umum',
   detailsTitleWithRef: 'Jurnal Umum #%d',
@@ -57,7 +51,6 @@ const journalEntry = {
   dateLabel: 'Tanggal',
   statusLabel: 'Status',
   workflowLabel: 'Alur Kerja',
-  sourceLabel: 'Sumber',
   postedDateLabel: 'Tanggal Posting',
   unpostedLabel: 'Belum Diposting',
   accountColumnInfo: 'Akun',
@@ -103,11 +96,7 @@ const journalEntry = {
   ownerFiscalYearDepreciationLabel: 'Penyusutan Tahun Buku',
   ownerFiscalYearDepreciationReversalLabel: 'Pembalikan Penyusutan Tahun Buku',
 
-  filterSourceAll: 'Semua Sumber',
   filterStatusAll: 'Semua Status',
-  filterSourceManual: 'Manual',
-  filterSourceSystem: 'Sistem',
-  filterSourceLLM: 'LLM',
 
   emptyStateTitle: 'Belum ada jurnal umum',
   emptyStateMessage: 'Buat jurnal umum pertama Anda untuk mulai melacak transaksi keuangan.',

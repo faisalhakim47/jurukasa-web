@@ -135,187 +135,80 @@ export function normalizeError(error) {
 
 /**
  * @param {unknown} error
- * @param {function(string, string, ...unknown[]): string} t
+ * @param {function(string, ...unknown[]): string} l
  * @returns {Error}
  */
-export function normalizeJournalEntryError(error, t) {
+export function normalizeLiteralError(error, l) {
   const normalizedError = normalizeError(error);
-  const message = normalizedError.message;
+  const localizedMessage = l(normalizedError.message);
 
-  if (message.includes('Cash equivalent account requires cashflow_activity and cashflow_category')) {
-    return new Error(t('journalEntry', 'cashflowRequiredError'));
-  }
-  if (message.includes('Non-cash account must not have cashflow_activity or cashflow_category')) {
-    return new Error(t('journalEntry', 'cashflowForbiddenError'));
-  }
-  if (message.includes('Cannot delete posted journal entry')) {
-    return new Error(t('journalEntry', 'postedDeleteForbiddenError'));
-  }
-  if (message.includes('Cannot modify posted journal entry')) {
-    return new Error(t('journalEntry', 'postedUpdateForbiddenError'));
-  }
-  if (message.includes('Cannot unpost or change post_time of a posted journal entry')) {
-    return new Error(t('journalEntry', 'postedUpdateForbiddenError'));
-  }
-  if (message.includes('Cannot insert lines into posted journal entry') || message.includes('Cannot modify lines of posted journal entry')) {
-    return new Error(t('journalEntry', 'postedLineMutationForbiddenError'));
+  if (localizedMessage === normalizedError.message) return normalizedError;
+  if (localizedMessage.startsWith('[literal.') && localizedMessage.endsWith(']')) {
+    return normalizedError;
   }
 
-  return normalizedError;
+  return new Error(localizedMessage, { cause: normalizedError });
 }
 
 /**
  * @param {unknown} error
- * @param {function(string, string, ...unknown[]): string} t
+ * @param {function(string, ...unknown[]): string} l
  * @returns {Error}
  */
-export function normalizeFiscalYearError(error, t) {
-  const normalizedError = normalizeError(error);
-  const message = normalizedError.message;
-
-  if (message.includes('closing_journal_entry_ref is required')) {
-    return new Error(t('fiscalYear', 'closingJournalEntryRefRequiredError'));
-  }
-  if (message.includes('reversal_journal_entry_ref is required')) {
-    return new Error(t('fiscalYear', 'reversalJournalEntryRefRequiredError'));
-  }
-  if (message.includes('depreciation_journal_entry_ref is required')) {
-    return new Error(t('fiscalYear', 'depreciationJournalEntryRefRequiredError'));
-  }
-  if (message.includes('depreciation_reversal_journal_entry_ref is required')) {
-    return new Error(t('fiscalYear', 'depreciationReversalJournalEntryRefRequiredError'));
-  }
-
-  return normalizedError;
+export function normalizeJournalEntryError(error, l) {
+  return normalizeLiteralError(error, l);
 }
 
 /**
  * @param {unknown} error
- * @param {function(string, string, ...unknown[]): string} t
+ * @param {function(string, ...unknown[]): string} l
  * @returns {Error}
  */
-export function normalizePurchaseError(error, t) {
-  const normalizedError = normalizeError(error);
-  const message = normalizedError.message;
-
-  if (message.includes('Cannot post purchase without journal_entry_ref')) {
-    return new Error(t('purchase', 'postRequiresJournalEntryRefError'));
-  }
-  if (message.includes('Cannot unpost or change post_time of a posted purchase') || message.includes('Cannot modify purchase_time or journal_entry_ref of a posted purchase')) {
-    return new Error(t('purchase', 'postedMutationForbiddenError'));
-  }
-
-  return normalizedError;
+export function normalizeFiscalYearError(error, l) {
+  return normalizeLiteralError(error, l);
 }
 
 /**
  * @param {unknown} error
- * @param {function(string, string, ...unknown[]): string} t
+ * @param {function(string, ...unknown[]): string} l
  * @returns {Error}
  */
-export function normalizeSaleError(error, t) {
-  const normalizedError = normalizeError(error);
-  const message = normalizedError.message;
-
-  if (message.includes('Cannot post sale without journal_entry_ref')) {
-    return new Error(t('sale', 'postRequiresJournalEntryRefError'));
-  }
-  if (message.includes('Cannot post sale: payment total must equal invoice amount')) {
-    return new Error(t('sale', 'paymentTotalMismatchError'));
-  }
-  if (message.includes('Cannot post sale: discount amount exceeds gross amount')) {
-    return new Error(t('sale', 'discountExceedsGrossError'));
-  }
-  if (message.includes('Cannot unpost or change post_time of a posted sale') || message.includes('Cannot modify sale_time or journal_entry_ref of a posted sale')) {
-    return new Error(t('sale', 'postedMutationForbiddenError'));
-  }
-
-  return normalizedError;
+export function normalizePurchaseError(error, l) {
+  return normalizeLiteralError(error, l);
 }
 
 /**
  * @param {unknown} error
- * @param {function(string, string, ...unknown[]): string} t
+ * @param {function(string, ...unknown[]): string} l
  * @returns {Error}
  */
-export function normalizeStockTakingError(error, t) {
-  const normalizedError = normalizeError(error);
-  const message = normalizedError.message;
-
-  if (message.includes('Stock taking journal_entry_ref is required when cost adjustment exists')) {
-    return new Error(t('stock', 'journalEntryRefRequiredError'));
-  }
-  if (message.includes('Cannot record stock taking in a closed fiscal year')) {
-    return new Error(t('stock', 'closedFiscalYearError'));
-  }
-  if (message.includes('Account with tag "POS - Inventory Gain" not found for stock taking adjustment')) {
-    return new Error(t('stock', 'inventoryGainAccountRequiredError'));
-  }
-  if (message.includes('Account with tag "POS - Inventory Shrinkage" not found for stock taking adjustment')) {
-    return new Error(t('stock', 'inventoryShrinkageAccountRequiredError'));
-  }
-
-  return normalizedError;
+export function normalizeSaleError(error, l) {
+  return normalizeLiteralError(error, l);
 }
 
 /**
  * @param {unknown} error
- * @param {function(string, string, ...unknown[]): string} t
+ * @param {function(string, ...unknown[]): string} l
  * @returns {Error}
  */
-export function normalizeFixedAssetError(error, t) {
-  const normalizedError = normalizeError(error);
-  const message = normalizedError.message;
-
-  if (message.includes('journal_entry_ref is required when creating a fixed asset')) {
-    return new Error(t('fixedAsset', 'journalEntryRefRequiredError'));
-  }
-  if (message.includes('Cannot modify fixed asset with posted acquisition history')) {
-    return new Error(t('fixedAsset', 'postedHistoryImmutableError'));
-  }
-  if (message.includes('Cannot delete fixed asset with posted acquisition history')) {
-    return new Error(t('fixedAsset', 'postedHistoryDeleteForbiddenError'));
-  }
-  if (message.includes('Cannot delete fixed asset with accumulated depreciation')) {
-    return new Error(t('fixedAsset', 'cannotDeleteWithDepreciation'));
-  }
-
-  return normalizedError;
+export function normalizeStockTakingError(error, l) {
+  return normalizeLiteralError(error, l);
 }
 
 /**
  * @param {unknown} error
- * @param {function(string, string, ...unknown[]): string} t
+ * @param {function(string, ...unknown[]): string} l
  * @returns {Error}
  */
-export function normalizeReconciliationError(error, t) {
-  const normalizedError = normalizeError(error);
-  const message = normalizedError.message;
+export function normalizeFixedAssetError(error, l) {
+  return normalizeLiteralError(error, l);
+}
 
-  if (message.includes('Checkpoint time must be positive')) {
-    return new Error(t('reconciliation', 'invalidCheckpointTimeError'));
-  }
-  if (message.includes('Reconciliation can only be performed on posting accounts')) {
-    return new Error(t('reconciliation', 'postingAccountRequiredError'));
-  }
-  if (message.includes('Physical cash count can only be performed on cash/bank accounts')) {
-    return new Error(t('reconciliation', 'physicalCashOnlyError'));
-  }
-  if (message.includes('No account tagged Reconciliation - Cash Over/Short found')) {
-    return new Error(t('reconciliation', 'cashOverShortAccountRequiredError'));
-  }
-  if (message.includes('No account tagged Reconciliation - Adjustment found')) {
-    return new Error(t('reconciliation', 'reconciliationAdjustmentAccountRequiredError'));
-  }
-  if (message.includes('adjustment_journal_entry_ref is required when reconciliation discrepancy exists')) {
-    return new Error(t('reconciliation', 'adjustmentJournalEntryRefRequiredError'));
-  }
-  if (message.includes('Reconciliation checkpoints are immutable once recorded')) {
-    return new Error(t('reconciliation', 'checkpointImmutableError'));
-  }
-  if (message.includes('Reconciliation checkpoints cannot be deleted once recorded')) {
-    return new Error(t('reconciliation', 'checkpointDeleteForbiddenError'));
-  }
-
-  return normalizedError;
+/**
+ * @param {unknown} error
+ * @param {function(string, ...unknown[]): string} l
+ * @returns {Error}
+ */
+export function normalizeReconciliationError(error, l) {
+  return normalizeLiteralError(error, l);
 }

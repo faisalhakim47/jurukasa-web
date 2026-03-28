@@ -10,7 +10,7 @@ import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/desktop/styles.js';
 import { normalizeFixedAssetError } from '#web/tools/accounting.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
@@ -69,6 +69,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
     const t = useTranslator(host);
     const errorAlertDialog = useElement(host, HTMLDialogElement);
     const confirmDeleteDialog = useElement(host, HTMLDialogElement);
+    const l = useLiteral(host);
     const dialog = useDialog(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -182,7 +183,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
         state.isLoading = false;
       }
       catch (error) {
-        state.formError = normalizeFixedAssetError(error, t);
+        state.formError = normalizeFixedAssetError(error, l);
         state.isLoading = false;
       }
     }
@@ -242,7 +243,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.formError = normalizeFixedAssetError(error, t);
+        state.formError = normalizeFixedAssetError(error, l);
       }
       finally {
         state.formSaving = false;
@@ -286,7 +287,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.formError = normalizeFixedAssetError(error, t);
+        state.formError = normalizeFixedAssetError(error, l);
         confirmDeleteDialog.value?.close();
       }
       finally {

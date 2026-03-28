@@ -4,8 +4,6 @@ export default /** @type {Partial<DiscountTranslation>} */ ({
   // Discount Creation Dialog
   createDialogTitle: 'Buat Diskon',
   createButtonLabel: 'Buat',
-  closeButtonAriaLabel: 'Tutup',
-  creatingDiscountMessage: 'Membuat diskon...',
   creatingDiscountProgressIndicatorLabel: 'Membuat diskon',
   discountNameLabel: 'Nama Diskon',
   discountNameSupportingText: 'Nama unik untuk diskon ini (contoh: "Beli 3 Diskon 500")',
@@ -42,7 +40,6 @@ export default /** @type {Partial<DiscountTranslation>} */ ({
   editButtonLabel: 'Ubah',
   saveChangesButtonLabel: 'Simpan Perubahan',
   cancelButtonLabel: 'Batal',
-  savingChangesMessage: 'Menyimpan perubahan...',
   savingChangesProgressIndicatorLabel: 'Menyimpan perubahan',
 
   // Discount Details - Information Section
@@ -75,16 +72,11 @@ export default /** @type {Partial<DiscountTranslation>} */ ({
   deleteConfirmWarning: 'Tindakan ini tidak dapat dibatalkan. Diskon yang telah digunakan dalam penjualan tidak dapat dihapus.',
   deleteConfirmCancelButton: 'Batal',
   deleteConfirmDeleteButton: 'Hapus',
-  deletingDiscountMessage: 'Menghapus diskon...',
   cannotDeleteUsedDiscountError: 'Tidak dapat menghapus diskon yang telah digunakan dalam penjualan.',
 
   // Discounts View
-  discountsViewTitle: 'Diskon',
   searchLabel: 'Cari',
   typeFilterLabel: 'Jenis',
-  typeFilterAll: 'Semua',
-  typeFilterGlobal: 'Global',
-  typeFilterInventorySpecific: 'Khusus Inventaris',
   refreshAriaLabel: 'Muat ulang diskon',
   refreshButtonLabel: 'Muat Ulang',
   createDiscountButtonLabel: 'Buat Diskon',

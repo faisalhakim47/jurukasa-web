@@ -10,7 +10,7 @@ import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { useWatch } from '#web/hooks/use-watch.js';
 import { webStyleSheets } from '#web/desktop/styles.js';
 import { normalizeReconciliationError } from '#web/tools/accounting.js';
@@ -42,6 +42,7 @@ export class AccountReconciliationDetailsDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
 
+    const l = useLiteral(host);
     const dialog = useDialog(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
@@ -114,7 +115,7 @@ export class AccountReconciliationDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         state.details = null;
-        state.error = normalizeReconciliationError(error, t);
+        state.error = normalizeReconciliationError(error, l);
       }
       finally {
         state.isLoading = false;
@@ -134,12 +135,14 @@ export class AccountReconciliationDetailsDialogElement extends HTMLElement {
       }));
     }
 
+    /** @param {'PHYSICAL' | 'STATEMENT'} type */
     function getTypeLabel(type) {
       return type === 'PHYSICAL'
         ? t('reconciliation', 'typePhysicalLabel')
         : t('reconciliation', 'typeStatementLabel');
     }
 
+    /** @param {'balanced' | 'overage' | 'shortage'} discrepancyType */
     function getDiscrepancyLabel(discrepancyType) {
       if (discrepancyType === 'balanced') return t('reconciliation', 'balancedLabel');
       if (discrepancyType === 'overage') return t('reconciliation', 'overageLabel');

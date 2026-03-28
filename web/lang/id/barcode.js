@@ -11,24 +11,19 @@ export default /** @type {Partial<BarcodeTranslation>} */ ({
   assignButtonLabel: 'Tetapkan',
   barcodeAlreadyAssignedToThisError: 'Barcode ini sudah ditetapkan untuk inventaris ini.',
   barcodeAlreadyAssignedToAnotherError: 'Barcode ini sudah ditetapkan untuk inventaris lain.',
-  assigningBarcodeMessage: 'Menetapkan barcode...',
   errorDialogTitle: 'Kesalahan',
   errorOccurredMessage: 'Terjadi kesalahan: %s',
   dismissButtonLabel: 'Tutup',
 
   // Barcodes View
-  barcodesViewTitle: 'Barcode',
   searchLabel: 'Cari',
   clearSearchAriaLabel: 'Hapus pencarian',
   assignBarcodeButtonLabel: 'Tetapkan Barcode',
-  loadingBarcodesMessage: 'Memuat barcode...',
-  loadingBarcodesAriaLabel: 'Memuat barcode',
   noBarcodeMatchSearchMessage: 'Tidak ada barcode yang cocok dengan pencarian Anda',
   noBarcodesAssignedMessage: 'Belum ada barcode yang ditetapkan',
   tableHeaderBarcode: 'Barcode',
   tableHeaderProductName: 'Nama Produk',
   tableHeaderAction: 'Aksi',
-  unassignBarcodeAriaLabel: 'Lepas tetapan barcode %s',
   paginationInfo: '%d-%d dari %d',
   paginationNoResults: 'Tidak ada hasil',
   previousPageAriaLabel: 'Halaman sebelumnya',
@@ -36,7 +31,6 @@ export default /** @type {Partial<BarcodeTranslation>} */ ({
   confirmUnassignDialogTitle: 'Lepas Tetapan Barcode',
   confirmUnassignMessage: 'Apakah Anda yakin ingin melepas tetapan barcode <strong>%s</strong> dari <strong>%s</strong>?',
   unassignButtonLabel: 'Lepas Tetapan',
-  unassigningBarcodeMessage: 'Melepas tetapan barcode...',
 
   // Inventory Details Dialog - Barcode Section
   barcodesSection: 'Barcode',

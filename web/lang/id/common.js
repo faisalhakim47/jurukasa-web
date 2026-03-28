@@ -43,16 +43,8 @@ export default /** @type {Partial<CommonTranslation>} */ ({
   goToPurchasesButtonLabel: 'Ke Pembelian',
 
   // Language Selection
-  changeLanguageButtonLabel: 'Ubah Bahasa',
-  selectLanguageTitle: 'Pilih Bahasa',
-  closeButtonLabel: 'Tutup',
 
   // Update Available Dialog
-  updateAvailableDialogTitle: 'Pembaruan Tersedia',
-  updateAvailableDialogMessage: 'Versi baru JuruKasa tersedia. Perbarui sekarang untuk mendapatkan fitur dan peningkatan terbaru.',
-  updatingApplicationMessage: 'Memperbarui aplikasi...',
-  updateLaterButtonLabel: 'Nanti',
-  updateNowButtonLabel: 'Perbarui Sekarang',
 
   // Error Dialog
   errorDialogTitle: 'Terjadi Kesalahan',

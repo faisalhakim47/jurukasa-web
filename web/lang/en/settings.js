@@ -18,7 +18,6 @@ const settings = {
   retryButtonLabel: 'Retry',
 
   // Config Form
-  savingConfigurationMessage: 'Saving configuration...',
   savingConfigurationProgressIndicatorLabel: 'Saving configuration',
   selectPlaceholder: 'Select...',
   resetButtonLabel: 'Reset',
@@ -96,9 +95,6 @@ const settings = {
   switchDatabaseCancelButtonLabel: 'Cancel',
 
   // Database Export
-  exportingDatabaseMessage: 'Exporting database...',
-  exportDatabaseSuccessMessage: 'Database exported successfully.',
-  exportDatabaseErrorMessage: 'Failed to export database.',
 
   // Database Setup Navigation
   databaseSetupTitle: 'Database Setup',
@@ -124,9 +120,7 @@ const settings = {
   versionSwitchDialogMessage: 'Are you sure you want to switch to version %s? The application will reload after the new version is downloaded.',
   versionSwitchDialogConfirmButtonLabel: 'Switch',
   versionSwitchDialogCancelButtonLabel: 'Cancel',
-  versionSwitchDialogLoadingMessage: 'Downloading and activating version...',
   switchingVersionProgressIndicatorLabel: 'Switching version',
-  versionSwitchDialogLoadingNote: 'The application will automatically reload when ready.',
   versionLocalSourceLabel: 'Local',
   versionNpmSourceLabel: 'NPM',
 };

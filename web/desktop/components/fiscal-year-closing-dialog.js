@@ -4,7 +4,7 @@ import { html, nothing } from 'lit-html';
 import { defineWebComponent } from '#web/component.js';
 import { useDialog } from '#web/hooks/use-dialog.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
 import { useContext } from '#web/hooks/use-context.js';
@@ -52,6 +52,7 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
     const t = useTranslator(host);
 
+    const l = useLiteral(host);
     const dialog = useDialog(host);
     const confirmDialog = useElement(host, HTMLDialogElement);
     const errorAlertDialog = useElement(host, HTMLDialogElement);
@@ -231,7 +232,7 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.closingState = 'error';
-        state.closingError = normalizeFiscalYearError(error, t);
+        state.closingError = normalizeFiscalYearError(error, l);
         await feedbackDelay();
         state.closingState = 'idle';
       }
