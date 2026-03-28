@@ -109,4 +109,6 @@ export default /** @type {Partial<PurchaseTranslation>} */ ({
   discardPurchaseConfirmMessage: 'Apakah Anda yakin ingin membuang pembelian #%d?',
   discardPurchaseWarningMessage: 'Tindakan ini tidak dapat dibatalkan. Pembelian dan semua barisnya akan dihapus secara permanen.',
   discardPurchaseButtonLabel: 'Buang Pembelian',
+  postRequiresJournalEntryRefError: 'Tidak dapat menyiapkan referensi jurnal sebelum memposting pembelian ini.',
+  postedMutationForbiddenError: 'Pembelian ini sudah diposting dan tidak dapat diubah lagi.',
 });

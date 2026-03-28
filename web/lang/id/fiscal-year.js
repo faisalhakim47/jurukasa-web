@@ -85,6 +85,7 @@ export default /** @type {Partial<FiscalYearTranslation>} */ ({
   // Closing details
   closedOnLabel: 'Ditutup Pada',
   closingEntryLabel: 'Jurnal Penutup',
+  depreciationEntryLabel: 'Jurnal Penyusutan',
   
   // Closing info notice
   closingInfoTitle: 'Tentang Penutupan',
@@ -115,6 +116,7 @@ export default /** @type {Partial<FiscalYearTranslation>} */ ({
   // Reversal details
   reversedOnLabel: 'Dibalik Pada',
   reversalEntryLabel: 'Jurnal Pembalikan',
+  depreciationReversalEntryLabel: 'Jurnal Pembalikan Penyusutan',
   
   // Reversal warning
   reversalWarningTitle: 'Tentang Pembalikan',
@@ -139,4 +141,8 @@ export default /** @type {Partial<FiscalYearTranslation>} */ ({
   // Common
   dismissLabel: 'Tutup',
   fiscalYearNotFound: 'Tahun fiskal tidak ditemukan',
+  closingJournalEntryRefRequiredError: 'Penutupan tahun fiskal memerlukan referensi jurnal penutup yang sudah dipesan.',
+  reversalJournalEntryRefRequiredError: 'Pembalikan tahun fiskal memerlukan referensi jurnal pembalikan yang sudah dipesan.',
+  depreciationJournalEntryRefRequiredError: 'Penutupan tahun fiskal memerlukan referensi jurnal penyusutan yang sudah dipesan.',
+  depreciationReversalJournalEntryRefRequiredError: 'Pembalikan tahun fiskal memerlukan referensi jurnal pembalikan penyusutan yang sudah dipesan.',
 });

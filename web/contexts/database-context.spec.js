@@ -4,8 +4,8 @@ import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
 import { useStrict } from '#test/playwright/hooks/use-strict.js';
-
-/** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
+import { assertInstanceOf } from '#web/tools/assertion.js';
+import { DatabaseContextElement } from '#web/contexts/database-context.js';
 
 const test = jurukasaTest;
 const { describe } = test;
@@ -37,9 +37,9 @@ async function setupTursoView(tursoDatabaseUrl) {
 
 async function getDatabaseState() {
   await customElements.whenDefined('database-context');
-  /** @type {DatabaseContextElement} */
-  const db = document.querySelector('database-context');
-  return db.state;
+  const database = document.querySelector('database-context');
+  assertInstanceOf(DatabaseContextElement, database);
+  return database.state;
 }
 
 async function setupConnectView() {
@@ -53,14 +53,15 @@ async function setupConnectView() {
 }
 
 async function getInitialState() {
-  /** @type {DatabaseContextElement} */
   const database = document.querySelector('database-context');
+  assertInstanceOf(DatabaseContextElement, database);
   return database.state;
 }
 
+/** @param {string} tursoDatabaseUrl */
 async function connectToDatabase(tursoDatabaseUrl) {
-  /** @type {DatabaseContextElement} */
   const database = document.querySelector('database-context');
+  assertInstanceOf(DatabaseContextElement, database);
   await database.connect({
     provider: 'turso',
     name: 'Personal',
@@ -71,8 +72,8 @@ async function connectToDatabase(tursoDatabaseUrl) {
 }
 
 async function executeSqlQuery() {
-  /** @type {DatabaseContextElement} */
   const database = document.querySelector('database-context');
+  assertInstanceOf(DatabaseContextElement, database);
   const result = await database.sql`SELECT value FROM config WHERE key = 'Schema Version'`;
   return result.rows[0]?.value;
 }
@@ -110,16 +111,13 @@ describe('Database Context', function () {
     await page.evaluate(setupConnectView);
 
     const initialState = await page.evaluate(getInitialState);
-
     expect(initialState, 'it shall start in unconfigured state').toBe('unconfigured');
 
     const finalState = await page.evaluate(connectToDatabase, tursoLibSQLiteServer().url);
-
     expect(finalState.state, 'it shall transition to connected state after connect').toBe('connected');
 
     const result = await page.evaluate(executeSqlQuery);
-
-    expect(result, 'it shall execute SQL queries and return schema version').toBe('007-cash-count');
+    expect(result, 'it shall execute SQL queries and return schema version').toBe('006-account-reconciliation');
   });
 
   test('it shall expose sql method for executing queries on Turso', async function ({ page }) {
@@ -134,7 +132,6 @@ describe('Database Context', function () {
     }, 'it shall reach connected state').toBe('connected');
 
     const result = await page.evaluate(executeSqlQuery);
-
-    expect(result, 'it shall execute SQL query and return correct schema version').toBe('007-cash-count');
+    expect(result, 'it shall execute SQL query and return correct schema version').toBe('006-account-reconciliation');
   });
 });

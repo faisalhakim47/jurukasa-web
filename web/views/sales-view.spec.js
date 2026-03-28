@@ -18,13 +18,40 @@ async function setupView(tursoDatabaseUrl) {
         <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
-              <sales-view></sales-view>
+              <time-context></time-context>
             </i18n-context>
           </device-context>
         </database-context>
       </router-context>
     </ready-context>
   `;
+
+  const deepestContext = document.querySelector('time-context');
+  deepestContext.innerHTML = '<sales-view></sales-view>';
+}
+
+/** @param {(query: TemplateStringsArray, ...params: unknown[]) => Promise<unknown>} sql */
+async function setupSaleInventory(sql) {
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Test Product', 10000, 'piece', 11310)`;
+}
+
+/** @param {(query: TemplateStringsArray, ...params: unknown[]) => Promise<unknown>} sql */
+async function setupCashPaymentMethod(sql) {
+  await sql`INSERT INTO payment_methods (id, name, min_fee, max_fee, rel_fee, account_code) VALUES (1, 'Cash', 0, 0, 0, 11110)`;
+}
+
+/**
+ * @param {(query: TemplateStringsArray, ...params: unknown[]) => Promise<unknown>} sql
+ * @param {number} saleId
+ * @param {string | null} customerName
+ * @param {number} saleTime
+ * @param {number} journalEntryRef
+ */
+async function createPostedSale(sql, saleId, customerName, saleTime, journalEntryRef) {
+  await sql`INSERT INTO sales (id, customer_name, sale_time) VALUES (${saleId}, ${customerName}, ${saleTime})`;
+  await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (${saleId}, 1, 1, 1, 10000, 0)`;
+  await sql`INSERT INTO sale_payments (sale_id, line_number, payment_method_id, amount) VALUES (${saleId}, 1, 1, 10000)`;
+  await sql`UPDATE sales SET journal_entry_ref = ${journalEntryRef}, post_time = ${saleTime + 1} WHERE id = ${saleId}`;
 }
 
 describe('Sales View', function () {
@@ -44,10 +71,10 @@ describe('Sales View', function () {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Test Product', 10000, 'piece', 11310)`;
-        await sql`INSERT INTO sales (id, customer_name, sale_time, post_time) VALUES (1, 'Customer A', 1000000, 1000001)`;
-        await sql`INSERT INTO sales (id, customer_name, sale_time, post_time) VALUES (2, 'Customer B', 2000000, 2000001)`;
-        await sql`INSERT INTO sales (id, customer_name, sale_time, post_time) VALUES (3, NULL, 3000000, 3000001)`;
+        await setupSaleInventory(sql);
+        await sql`INSERT INTO sales (id, customer_name, sale_time) VALUES (1, 'Customer A', 1000000)`;
+        await sql`INSERT INTO sales (id, customer_name, sale_time) VALUES (2, 'Customer B', 2000000)`;
+        await sql`INSERT INTO sales (id, customer_name, sale_time) VALUES (3, NULL, 3000000)`;
         await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (1, 1, 1, 2, 20000, 0)`;
         await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (2, 1, 1, 1, 10000, 0)`;
         await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (3, 1, 1, 3, 30000, 0)`;
@@ -66,10 +93,10 @@ describe('Sales View', function () {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Test Product', 10000, 'piece', 11310)`;
-        await sql`INSERT INTO sales (id, customer_name, sale_time, post_time) VALUES (1, 'Alice Smith', 1000000, 1000001)`;
-        await sql`INSERT INTO sales (id, customer_name, sale_time, post_time) VALUES (2, 'Bob Jones', 2000000, 2000001)`;
-        await sql`INSERT INTO sales (id, customer_name, sale_time, post_time) VALUES (3, 'Alice Johnson', 3000000, 3000001)`;
+        await setupSaleInventory(sql);
+        await sql`INSERT INTO sales (id, customer_name, sale_time) VALUES (1, 'Alice Smith', 1000000)`;
+        await sql`INSERT INTO sales (id, customer_name, sale_time) VALUES (2, 'Bob Jones', 2000000)`;
+        await sql`INSERT INTO sales (id, customer_name, sale_time) VALUES (3, 'Alice Johnson', 3000000)`;
         await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (1, 1, 1, 1, 10000, 0)`;
         await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (2, 1, 1, 1, 10000, 0)`;
         await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (3, 1, 1, 1, 10000, 0)`;
@@ -98,13 +125,12 @@ describe('Sales View', function () {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Test Product', 10000, 'piece', 11310)`;
-        await sql`INSERT INTO sales (id, customer_name, sale_time, post_time) VALUES (1, 'Customer A', 1000000, 1000001)`;
-        await sql`INSERT INTO sales (id, customer_name, sale_time, post_time) VALUES (2, 'Customer B', 2000000, NULL)`;
-        await sql`INSERT INTO sales (id, customer_name, sale_time, post_time) VALUES (3, 'Customer C', 3000000, 3000001)`;
-        await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (1, 1, 1, 1, 10000, 0)`;
+        await setupSaleInventory(sql);
+        await setupCashPaymentMethod(sql);
+        await createPostedSale(sql, 1, 'Customer A', 1000000, 9101);
+        await sql`INSERT INTO sales (id, customer_name, sale_time) VALUES (2, 'Customer B', 2000000)`;
         await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (2, 1, 1, 1, 10000, 0)`;
-        await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (3, 1, 1, 1, 10000, 0)`;
+        await createPostedSale(sql, 3, 'Customer C', 3000000, 9103);
       }),
     ]);
 
@@ -131,9 +157,9 @@ describe('Sales View', function () {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Test Product', 10000, 'piece', 11310)`;
+        await setupSaleInventory(sql);
         for (let i = 1; i <= 15; i++) {
-          await sql`INSERT INTO sales (id, customer_name, sale_time, post_time) VALUES (${i}, ${`Customer ${i}`}, ${1000000 + i * 1000}, ${1000001 + i * 1000})`;
+          await sql`INSERT INTO sales (id, customer_name, sale_time) VALUES (${i}, ${`Customer ${i}`}, ${1000000 + i * 1000})`;
           await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (${i}, 1, 1, 1, 10000, 0)`;
         }
       }),
@@ -169,8 +195,8 @@ describe('Sales View', function () {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Test Product', 10000, 'piece', 11310)`;
-        await sql`INSERT INTO sales (id, customer_name, sale_time, post_time) VALUES (1, 'Test Customer', 1000000, 1000001)`;
+        await setupSaleInventory(sql);
+        await sql`INSERT INTO sales (id, customer_name, sale_time) VALUES (1, 'Test Customer', 1000000)`;
         await sql`INSERT INTO sale_lines (sale_id, line_number, inventory_id, quantity, price, cost) VALUES (1, 1, 1, 1, 10000, 0)`;
       }),
     ]);

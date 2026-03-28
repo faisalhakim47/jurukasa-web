@@ -33,6 +33,10 @@ const stock = {
   recordingStockTakingProgressIndicatorLabel: 'Recording stock taking',
   errorDialogTitle: 'Error',
   dismissButtonLabel: 'Dismiss',
+  journalEntryRefRequiredError: 'A stock adjustment journal entry reference is required for this stock taking.',
+  closedFiscalYearError: 'Cannot record stock taking in a closed fiscal year.',
+  inventoryGainAccountRequiredError: 'Configure an account tagged "POS - Inventory Gain" before recording this stock gain.',
+  inventoryShrinkageAccountRequiredError: 'Configure an account tagged "POS - Inventory Shrinkage" before recording this stock shrinkage.',
 
   // Stock Takings View
   stockTakingsViewTitle: 'Stock Takings',

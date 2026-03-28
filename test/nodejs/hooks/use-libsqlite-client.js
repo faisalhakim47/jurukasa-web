@@ -45,7 +45,6 @@ export function useLibSQLiteClient() {
       join(__dirname, '../../../web/schemas/004-revenue-tracking.sql'),
       join(__dirname, '../../../web/schemas/005-fixed-assets.sql'),
       join(__dirname, '../../../web/schemas/006-account-reconciliation.sql'),
-      join(__dirname, '../../../web/schemas/007-cash-count.sql'),
     ];
     for (const filePath of migrationFiles) {
       const sql = await readFile(filePath, { encoding: 'utf-8' });

@@ -62,6 +62,15 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
     }
 
     /**
+     * Reconciliation workflow tags are unique assignments in the schema.
+     * @param {string} tag
+     * @returns {boolean}
+     */
+    function isUniqueReconciliationTag(tag) {
+      return tag === 'Reconciliation - Adjustment' || tag === 'Reconciliation - Cash Over/Short';
+    }
+
+    /**
      * Get suggested account code based on type
      * @returns {number}
      */
@@ -202,8 +211,7 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
           // Add the reconciliation-specific tag
           const tag = getTagForAccountType();
           if (tag) {
-            // For Cash Over/Short, delete any existing tag assignment first (it's unique)
-            if (accountType === 'cashOverShort') {
+            if (isUniqueReconciliationTag(tag)) {
               await tx.sql`DELETE FROM account_tags WHERE tag = ${tag}`;
             }
             await tx.sql`
@@ -336,6 +344,9 @@ export class ReconciliationAccountCreationDialogElement extends HTMLElement {
                           </div>
                           <span class="body-small" style="color: var(--md-sys-color-on-surface-variant);">
                             ${t('reconciliation', 'adjustmentAccountDescription')}
+                          </span>
+                          <span class="body-small" style="color: var(--md-sys-color-tertiary);">
+                            ${t('reconciliation', 'uniqueAccountWarning')}
                           </span>
                         </button>
 

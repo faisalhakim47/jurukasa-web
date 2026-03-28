@@ -69,9 +69,7 @@ describe('Fiscal Years View', function () {
         const reversedEndTime = new Date('2023-12-31').getTime();
         const reversedPostTime = new Date('2024-01-15').getTime();
         const reversalTime = new Date('2024-02-01').getTime();
-        await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${reversedBeginTime}, ${reversedEndTime}, 'FY 2023 Reversed')`;
-        await sql`UPDATE fiscal_years SET post_time = ${reversedPostTime} WHERE begin_time = ${reversedBeginTime}`;
-        await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${reversedBeginTime}`;
+        await sql`INSERT INTO fiscal_years (begin_time, end_time, name, post_time, reversal_time) VALUES (${reversedBeginTime}, ${reversedEndTime}, 'FY 2023 Reversed', ${reversedPostTime}, ${reversalTime})`;
       }),
     ]);
 
@@ -133,14 +131,17 @@ describe('Fiscal Years View', function () {
         const postTime = new Date('2025-01-15').getTime();
         const entryTime = new Date('2024-06-15').getTime();
 
-        await sql`INSERT INTO journal_entries (entry_time, note, source_type, created_by, post_time) VALUES (${entryTime}, 'Test entry', 'Manual', 'User', ${entryTime})`;
+        await sql`INSERT INTO journal_entries (ref, entry_time, note) VALUES (1, ${entryTime}, 'Test entry')`;
         await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 1, 41000, 0, 10000)`;
         await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (1, 2, 51000, 10000, 0)`;
+        await sql`UPDATE journal_entries SET post_time = ${entryTime} WHERE ref = 1`;
 
-        await sql`INSERT INTO journal_entries (entry_time, note, source_type, created_by, post_time) VALUES (${postTime}, 'Fiscal Year Closing - FY 2024', 'System', 'System', ${postTime})`;
+        await sql`INSERT INTO journal_entries (ref, entry_time, note) VALUES (2, ${postTime}, 'Fiscal Year Closing - FY 2024')`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 1, 51000, 0, 10000)`;
+        await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit) VALUES (2, 2, 32000, 10000, 0)`;
+        await sql`UPDATE journal_entries SET post_time = ${postTime} WHERE ref = 2`;
 
-        await sql`INSERT INTO fiscal_years (begin_time, end_time, name, closing_journal_entry_ref) VALUES (${beginTime}, ${endTime}, 'Closed FY 2024', 2)`;
-        await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
+        await sql`INSERT INTO fiscal_years (begin_time, end_time, name, closing_journal_entry_ref, post_time) VALUES (${beginTime}, ${endTime}, 'Closed FY 2024', 2, ${postTime})`;
       }),
     ]);
 
@@ -152,8 +153,8 @@ describe('Fiscal Years View', function () {
     await expect(dialog, 'it shall open closed fiscal year details dialog').toBeVisible();
     await expect(dialog.getByRole('heading', { name: 'Closed FY 2024' }), 'it shall display closed fiscal year name in dialog heading').toBeVisible();
     await expect(dialog.getByText('Period'), 'it shall display Period label in closed fiscal year dialog').toBeVisible();
-    await expect(dialog.getByText('Closing Entry'), 'it shall display Closing Entry label in closed fiscal year dialog').toBeVisible();
-    await expect(dialog.getByText('#2'), 'it shall display closing journal entry reference').toBeVisible();
+    await expect(dialog.getByRole('heading', { name: 'Closing Entry', exact: true }), 'it shall display Closing Entry label in closed fiscal year dialog').toBeVisible();
+    await expect(dialog.getByText('Journal Entry #2', { exact: true }), 'it shall display closing journal entry reference').toBeVisible();
 
     const table = page.getByRole('table', { name: 'Fiscal years list' });
     await expect(table.getByText('#2'), 'it shall display closing entry reference in table').toBeVisible();

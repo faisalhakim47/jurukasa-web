@@ -22,6 +22,14 @@ BEGIN
       RAISE (ABORT, 'Chart of Accounts template not found')
   END;
 
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1 FROM accounts
+    ) OR EXISTS (
+      SELECT 1 FROM account_tags
+    ) THEN RAISE (ABORT, 'Chart of Accounts template cannot be applied: chart is already initialized or partially populated')
+  END;
+
   -- Retail Business - Indonesia
   INSERT INTO accounts (account_code, name, normal_balance, is_posting_account, control_account_code, create_time, update_time)
   SELECT column1, column2, column3, column4, column5, 0, 0
@@ -143,7 +151,7 @@ BEGIN
     (82200, 'Income Statement - Other Expense'),
     (82300, 'Income Statement - Other Expense'),
     (41000, 'Fiscal Year Closing - Revenue'),
-    (42000, 'Fiscal Year Closing - Revenue'),
+    (42000, 'Fiscal Year Closing - Expense'),
     (51000, 'Fiscal Year Closing - Expense'),
     (61100, 'Fiscal Year Closing - Expense'),
     (61200, 'Fiscal Year Closing - Expense'),

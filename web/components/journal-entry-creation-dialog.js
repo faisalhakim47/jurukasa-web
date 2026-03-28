@@ -16,6 +16,12 @@ import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
+import {
+  allocateJournalEntryRef,
+  getCashflowActivityLabel,
+  loadCashflowCategories,
+  normalizeJournalEntryError,
+} from '#web/tools/accounting.js';
 import { conditionalClass } from '#web/tools/dom.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
@@ -23,11 +29,16 @@ import '#web/components/material-symbols.js';
 import '#web/components/account-selector-dialog.js';
 
 /**
- * @typedef {object} JournalEntryLine
- * @property {number} id - Unique line ID for tracking in UI
- * @property {string} accountName - Account name (resolved from account code)
- * @property {boolean} isAccountValid - Whether account code is valid
- * @property {boolean} isAccountChecked - Whether account code has been validated
+ * @typedef {object} CashflowCategory
+ * @property {number} id
+ * @property {number} activity
+ * @property {string} label
+ */
+
+/**
+ * @typedef {object} JournalEntryLineState
+ * @property {string} accountName
+ * @property {boolean} isCashEquivalent
  */
 
 /**
@@ -63,29 +74,87 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
+    function createJournalEntryLineState() {
+      return /** @type {JournalEntryLineState} */ ({
+        accountName: '-',
+        isCashEquivalent: false,
+      });
+    }
+
+    /** @param {number} lineId */
+    function getLineRow(lineId) {
+      const lineRow = journalEntryLinesTBody.value?.querySelector(`tr[data-line-id="${lineId}"]`);
+      assertInstanceOf(HTMLTableRowElement, lineRow);
+      return lineRow;
+    }
+
+    /** @param {number} lineId */
+    function resetCashflowFields(lineId) {
+      const lineRow = getLineRow(lineId);
+      const activityInput = lineRow.querySelector('select[name="cashflowActivity"]');
+      const categoryInput = lineRow.querySelector('select[name="cashflowCategory"]');
+      assertInstanceOf(HTMLSelectElement, activityInput);
+      assertInstanceOf(HTMLSelectElement, categoryInput);
+      activityInput.value = '';
+      categoryInput.value = '';
+    }
+
+    /**
+     * @param {number} lineId
+     * @param {string} accountCode
+     */
+    async function syncJournalEntryLineAccount(lineId, accountCode) {
+      const lineState = state.lineStates[lineId];
+      const lineRow = getLineRow(lineId);
+      const accountCodeInput = lineRow.querySelector('input[name="accountCode"]');
+      assertInstanceOf(HTMLInputElement, accountCodeInput);
+
+      lineState.accountName = '-';
+      lineState.isCashEquivalent = false;
+      accountCodeInput.setCustomValidity('');
+
+      if (!accountCode) {
+        resetCashflowFields(lineId);
+        return;
+      }
+
+      try {
+        const existingAccountResult = await database.sql`
+          SELECT
+            a.name,
+            EXISTS(
+              SELECT 1
+              FROM account_tags at
+              WHERE at.account_code = a.account_code
+                AND at.tag = 'Cash Flow - Cash Equivalents'
+            ) AS is_cash_equivalent
+          FROM accounts a
+          WHERE a.account_code = ${accountCode}
+          LIMIT 1
+        `;
+
+        if (existingAccountResult.rows.length !== 1) {
+          accountCodeInput.setCustomValidity(t('journalEntry', 'accountCodeNotFound'));
+          resetCashflowFields(lineId);
+          return;
+        }
+
+        const accountRow = existingAccountResult.rows[0];
+        lineState.accountName = String(accountRow.name);
+        lineState.isCashEquivalent = Boolean(accountRow.is_cash_equivalent);
+
+        if (!lineState.isCashEquivalent) resetCashflowFields(lineId);
+      }
+      catch (error) {
+        accountCodeInput.setCustomValidity(t('journalEntry', 'accountCodeValidationError'));
+      }
+    }
+
     /** @param {FocusEvent} event */
     async function accountCodeValidationHandler(event) {
       assertInstanceOf(HTMLInputElement, event.currentTarget);
-      const input = event.currentTarget;
-      const accountNameLabel = input.closest('tr').querySelector('label.account-name');
-      assertInstanceOf(HTMLLabelElement, accountNameLabel);
-      accountNameLabel.textContent = '-';
-      const accountCode = input.value.trim();
-      input.setCustomValidity('');
-      if (accountCode) {
-        try {
-          const existingAccountResult = await database.sql`
-            SELECT name FROM accounts WHERE account_code = ${accountCode} LIMIT 1;
-          `;
-          if (existingAccountResult.rows.length === 1) {
-            accountNameLabel.textContent = String(existingAccountResult.rows[0].name);
-          }
-          else input.setCustomValidity(t('journalEntry', 'accountCodeNotFound'));
-        }
-        catch (error) {
-          input.setCustomValidity(t('journalEntry', 'accountCodeValidationError'));
-        }
-      }
+      const lineId = Number(event.currentTarget.dataset.lineId);
+      await syncJournalEntryLineAccount(lineId, event.currentTarget.value.trim());
     }
 
     function syncSumOfDebitAndCredit() {
@@ -147,9 +216,21 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
       }
     }
 
+    /** @param {Event} event */
+    function cashflowActivityChangeHandler(event) {
+      assertInstanceOf(HTMLSelectElement, event.currentTarget);
+      const lineId = Number(event.currentTarget.dataset.lineId);
+      if (!state.lineStates[lineId]?.isCashEquivalent) event.currentTarget.value = '';
+    }
+
     let nextLineId = 1;
     const state = reactive({
       lineIds: [nextLineId++, nextLineId++],
+      lineStates: /** @type {Record<number, JournalEntryLineState>} */ ({
+        1: createJournalEntryLineState(),
+        2: createJournalEntryLineState(),
+      }),
+      cashflowCategories: /** @type {CashflowCategory[]} */ ([]),
       formState: /** @type {'idle' | 'submitting' | 'success' | 'error'} */ ('idle'),
       formError: null,
     });
@@ -161,7 +242,11 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
       }
     });
 
-    function addJournalEntryLine() { state.lineIds.push(nextLineId++); }
+    function addJournalEntryLine() {
+      const lineId = nextLineId++;
+      state.lineIds.push(lineId);
+      state.lineStates[lineId] = createJournalEntryLineState();
+    }
 
     /** @param {MouseEvent} event */
     function removeJournalEntryLineHandler(event) {
@@ -172,20 +257,19 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
       const index = state.lineIds.indexOf(lineId);
       if (index === -1) throw new Error('Line ID to remove not found.');
       state.lineIds.splice(index, 1);
+      delete state.lineStates[lineId];
       syncSumOfDebitAndCredit();
     }
 
     /** @param {CustomEvent} event */
     function handleAccountSelect(event) {
       const detail = event.detail;
-      const tr = journalEntryLinesTBody.value.children.item(detail.journalEntryLineIndex);
-      assertInstanceOf(HTMLTableRowElement, tr);
+      const lineId = Number(detail.journalEntryLineIndex);
+      const tr = getLineRow(lineId);
       const accountCodeInput = tr.querySelector('input[name="accountCode"]');
-      const accountNameLabel = tr.querySelector('label.account-name');
       assertInstanceOf(HTMLInputElement, accountCodeInput);
-      assertInstanceOf(HTMLLabelElement, accountNameLabel);
       accountCodeInput.value = String(detail.accountCode);
-      accountNameLabel.textContent = String(detail.accountName);
+      syncJournalEntryLineAccount(lineId, String(detail.accountCode));
     }
 
     /** @param {SubmitEvent} event */
@@ -205,6 +289,9 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
         const note = /** @type {string} */ (data.get('note'));
 
         const accountCodes = data.getAll('accountCode');
+        const lineNotes = data.getAll('lineNote');
+        const cashflowActivities = data.getAll('cashflowActivity');
+        const cashflowCategories = data.getAll('cashflowCategory');
         const debits = data.getAll('debit');
         const credits = data.getAll('credit');
 
@@ -214,6 +301,9 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
 
         for (let index = 0; index < accountCodes.length; index++) {
           const accountCode = /** @type {string} */ (accountCodes[index]).trim();
+          const lineNote = /** @type {string} */ (lineNotes[index])?.trim() || null;
+          const cashflowActivityValue = /** @type {string} */ (cashflowActivities[index])?.trim() || '';
+          const cashflowCategoryValue = /** @type {string} */ (cashflowCategories[index])?.trim() || '';
           const debit = parseInt(/** @type {string} */(debits[index]), 10) || 0;
           const credit = parseInt(/** @type {string} */(credits[index]), 10) || 0;
 
@@ -226,7 +316,62 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
           if (debit === 0 && credit === 0) throw new Error(t('journalEntry', 'lineAmountsZero', index + 1));
           if (debit > 0 && credit > 0) throw new Error(t('journalEntry', 'lineAmountsBothPositive', index + 1));
 
-          journalEntryLines.push({ accountCode, debit, credit });
+          const accountValidationResult = await tx.sql`
+            SELECT
+              EXISTS(
+                SELECT 1
+                FROM accounts a
+                WHERE a.account_code = ${accountCode}
+              ) AS account_exists,
+              EXISTS(
+                SELECT 1
+                FROM account_tags at
+                WHERE at.account_code = ${accountCode}
+                  AND at.tag = 'Cash Flow - Cash Equivalents'
+              ) AS is_cash_equivalent
+          `;
+
+          const accountValidationRow = accountValidationResult.rows[0];
+          if (!Boolean(accountValidationRow.account_exists)) {
+            throw new Error(t('journalEntry', 'lineAccountCodeRequired', index + 1));
+          }
+
+          const isCashEquivalent = Boolean(accountValidationRow.is_cash_equivalent);
+          const cashflowActivity = cashflowActivityValue ? parseInt(cashflowActivityValue, 10) : null;
+          const cashflowCategory = cashflowCategoryValue ? parseInt(cashflowCategoryValue, 10) : null;
+
+          if ((cashflowActivity === null) !== (cashflowCategory === null)) {
+            throw new Error(t('journalEntry', 'cashflowPairRequiredError', index + 1));
+          }
+          if (isCashEquivalent && cashflowActivity === null) {
+            throw new Error(t('journalEntry', 'cashflowRequiredLineError', index + 1));
+          }
+          if (!isCashEquivalent && cashflowActivity !== null) {
+            throw new Error(t('journalEntry', 'cashflowForbiddenLineError', index + 1));
+          }
+
+          if (cashflowActivity !== null && cashflowCategory !== null) {
+            const categoryResult = await tx.sql`
+              SELECT 1
+              FROM cashflow_categories
+              WHERE activity = ${cashflowActivity}
+                AND id = ${cashflowCategory}
+              LIMIT 1
+            `;
+
+            if (categoryResult.rows.length !== 1) {
+              throw new Error(t('journalEntry', 'cashflowCategoryInvalidLineError', index + 1));
+            }
+          }
+
+          journalEntryLines.push({
+            accountCode,
+            note: lineNote,
+            debit,
+            credit,
+            cashflowActivity,
+            cashflowCategory,
+          });
           totalDebit += debit;
           totalCredit += credit;
         }
@@ -244,18 +389,32 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
         }
 
         const entryTime = new Date(entryTimeStr).getTime();
+        const journalEntryRef = await allocateJournalEntryRef(tx);
 
-        const journalEntryInsert = await tx.sql`
-          INSERT INTO journal_entries (entry_time, note, source_type, created_by)
-          VALUES (${entryTime}, ${note || null}, 'Manual', 'User')
-          RETURNING ref;
+        await tx.sql`
+          INSERT INTO journal_entries (ref, entry_time, note)
+          VALUES (${journalEntryRef}, ${entryTime}, ${note || null})
         `;
 
-        const journalEntryRef = journalEntryInsert.rows[0].ref;
-
         for (const line of journalEntryLines) await tx.sql`
-          INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
-          VALUES (${journalEntryRef}, ${line.accountCode}, ${line.debit}, ${line.credit});
+          INSERT INTO journal_entry_lines_auto_number (
+            journal_entry_ref,
+            account_code,
+            debit,
+            credit,
+            note,
+            cashflow_activity,
+            cashflow_category
+          )
+          VALUES (
+            ${journalEntryRef},
+            ${line.accountCode},
+            ${line.debit},
+            ${line.credit},
+            ${line.note},
+            ${line.cashflowActivity},
+            ${line.cashflowCategory}
+          )
         `;
 
         await tx.commit();
@@ -274,13 +433,24 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.formState = 'error';
-        state.formError = error;
+        state.formError = normalizeJournalEntryError(error, t);
         await feedbackDelay();
       }
       finally {
         state.formState = 'idle';
       }
     }
+
+    useEffect(host, async function loadDialogCashflowCategories() {
+      if (state.cashflowCategories.length > 0) return;
+
+      try {
+        state.cashflowCategories = await loadCashflowCategories(database);
+      }
+      catch (_error) {
+        state.cashflowCategories = [];
+      }
+    });
 
     useEffect(host, async function syncErrorAlertDialogState() {
       if (errorAlertDialog.value instanceof HTMLDialogElement) {
@@ -354,7 +524,9 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                     <tr>
                       <th scope="col" id="jel-line-number-col" style="text-align: center; width: 64px;">${t('journalEntry', 'lineNumberColumnInfo')}</th>
                       <th scope="col" id="jel-account-code-col" style="text-align: left; width: 128px;">${t('journalEntry', 'accountCodeColumnInfo')}</th>
-                      <th scope="col" id="jel-account-name-col" style="text-align: left; width: 256px;">${t('journalEntry', 'accountNameColumnInfo')}</th>
+                      <th scope="col" id="jel-account-name-col" style="text-align: left; width: 192px;">${t('journalEntry', 'accountNameColumnInfo')}</th>
+                      <th scope="col" id="jel-line-note-col" style="text-align: left; width: 192px;">${t('journalEntry', 'lineNoteColumnInfo')}</th>
+                      <th scope="col" id="jel-cashflow-col" style="text-align: left; width: 240px;">${t('journalEntry', 'cashflowColumnInfo')}</th>
                       <th scope="col" id="jel-debit-col" style="text-align: right; width: 128px;">${t('journalEntry', 'debitColumnInfo')}</th>
                       <th scope="col" id="jel-credit-col" style="text-align: right; width: 128px;">${t('journalEntry', 'creditColumnInfo')}</th>
                       <th scope="col" id="jel-action-col" style="text-align: center; width: 64px;"></th>
@@ -362,7 +534,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                   </thead>
                   <tbody ${journalEntryLinesTBody}>
                     ${repeat(state.lineIds, (lineId) => lineId, (lineId, index) => html`
-                      <tr>
+                      <tr data-line-id=${lineId}>
                         <td style="text-align: center; width: 64px;">${index + 1}</td>
                         <td style="text-align: left; width: 128px;">
                           <div class="outlined-text-field" style="--md-sys-density: -4;">
@@ -371,6 +543,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                                 id=${`account-code-${lineId}`}
                                 type="text"
                                 name="accountCode"
+                                data-line-id=${lineId}
                                 inputmode="numeric"
                                 pattern="[0-9]*"
                                 placeholder=" "
@@ -384,13 +557,65 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                                 aria-label=${`Select account for line ${index + 1}`}
                                 commandfor="account-selector-dialog"
                                 command="--open"
-                                data-journal-entry-line-index=${index}
+                                data-journal-entry-line-index=${lineId}
                               ><material-symbols name="search"></material-symbols></button>
                             </div>
                           </div>
                         </td>
-                        <td style="text-align: left; width: 256px;">
-                          <label id=${`account-name-${lineId}`} for=${`account-code-${lineId}`} class="account-name">-</label>
+                        <td style="text-align: left; width: 192px;">
+                          <label id=${`account-name-${lineId}`} for=${`account-code-${lineId}`} class="account-name">${state.lineStates[lineId]?.accountName || '-'}</label>
+                        </td>
+                        <td style="text-align: left; width: 192px;">
+                          <div class="outlined-text-field" style="--md-sys-density: -4;">
+                            <div class="container">
+                              <input
+                                type="text"
+                                name="lineNote"
+                                placeholder=" "
+                                aria-label=${t('journalEntry', 'lineNoteLabel')}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td style="text-align: left; width: 240px;">
+                          <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <div class="outlined-text-field" style="--md-sys-density: -4;">
+                              <div class="container">
+                                <select
+                                  name="cashflowActivity"
+                                  data-line-id=${lineId}
+                                  aria-label=${t('journalEntry', 'cashflowActivityLabel')}
+                                  ?disabled=${!state.lineStates[lineId]?.isCashEquivalent}
+                                  @change=${cashflowActivityChangeHandler}
+                                >
+                                  <option value="">${t('journalEntry', 'cashflowActivityPlaceholder')}</option>
+                                  <option value="1">${t('journalEntry', 'cashflowActivityOperatingLabel')}</option>
+                                  <option value="2">${t('journalEntry', 'cashflowActivityInvestingLabel')}</option>
+                                  <option value="3">${t('journalEntry', 'cashflowActivityFinancingLabel')}</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div class="outlined-text-field" style="--md-sys-density: -4;">
+                              <div class="container">
+                                <select
+                                  name="cashflowCategory"
+                                  aria-label=${t('journalEntry', 'cashflowCategoryLabel')}
+                                  ?disabled=${!state.lineStates[lineId]?.isCashEquivalent}
+                                >
+                                  <option value="">${t('journalEntry', 'cashflowCategoryPlaceholder')}</option>
+                                  ${[1, 2, 3].map((activity) => html`
+                                    <optgroup label=${getCashflowActivityLabel(activity, t)}>
+                                      ${state.cashflowCategories
+                                        .filter((category) => category.activity === activity)
+                                        .map((category) => html`
+                                          <option value=${String(category.id)}>${category.label}</option>
+                                        `)}
+                                    </optgroup>
+                                  `)}
+                                </select>
+                              </div>
+                            </div>
+                          </div>
                         </td>
                         <td style="text-align: right; width: 128px;">
                           <div class="outlined-text-field" style="--md-sys-density: -4;">
@@ -440,7 +665,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colspan="3" class="label-medium" style="text-align: right;">${t('journalEntry', 'totalLabel')}</td>
+                      <td colspan="5" class="label-medium" style="text-align: right;">${t('journalEntry', 'totalLabel')}</td>
                       <td ${totalDebitCell} class="label-medium" style="text-align: right;"></td>
                       <td ${totalCreditCell} class="label-medium" style="text-align: right;"></td>
                       <td></td>

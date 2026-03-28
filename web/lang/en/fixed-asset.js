@@ -10,8 +10,8 @@ const fixedAsset = {
   basicInfoSectionTitle: 'Basic Information',
   assetNameLabel: 'Asset Name',
   assetNameSupportingText: 'A descriptive name for this fixed asset',
-  descriptionLabel: 'Description (Optional)',
-  descriptionSupportingText: 'Additional details about the asset',
+  noteLabel: 'Note (Optional)',
+  noteSupportingText: 'Additional details about the asset',
 
   // Financial Information Section
   financialInfoSectionTitle: 'Financial Information',
@@ -53,7 +53,7 @@ const fixedAsset = {
   statusLabel: 'Status',
   statusActive: 'Active',
   statusFullyDepreciated: 'Fully Depreciated',
-  descriptionInfoLabel: 'Description',
+  noteInfoLabel: 'Note',
 
   // View Mode - Financial Information
   acquisitionDateInfoLabel: 'Acquisition Date',
@@ -114,6 +114,9 @@ const fixedAsset = {
   accountsMustBeDifferent: 'Asset, accumulated depreciation, and expense accounts must be different.',
   invalidAcquisitionDate: 'Invalid acquisition date.',
   cannotDeleteWithDepreciation: 'Cannot delete fixed asset with accumulated depreciation.',
+  journalEntryRefRequiredError: 'Unable to create the acquisition journal entry for this fixed asset.',
+  postedHistoryImmutableError: 'This fixed asset already has posted acquisition history and can no longer be edited.',
+  postedHistoryDeleteForbiddenError: 'This fixed asset already has posted acquisition history and cannot be deleted.',
 
   // View
   searchLabel: 'Search',

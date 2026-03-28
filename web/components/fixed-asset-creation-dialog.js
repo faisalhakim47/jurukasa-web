@@ -13,6 +13,7 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
+import { allocateJournalEntryRef, normalizeFixedAssetError } from '#web/tools/accounting.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
@@ -139,7 +140,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
 
         const data = new FormData(form);
         const name = /** @type {string} */ (data.get('name'))?.trim();
-        const description = /** @type {string} */ (data.get('description'))?.trim() || null;
+        const note = /** @type {string} */ (data.get('note'))?.trim() || null;
         const acquisitionDateStr = /** @type {string} */ (data.get('acquisitionDate'));
         const acquisitionCost = parseInt(/** @type {string} */ (data.get('acquisitionCost')), 10);
         const usefulLifeYears = parseInt(/** @type {string} */ (data.get('usefulLifeYears')), 10);
@@ -177,12 +178,13 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
         if (acquisitionTime <= 0) throw new Error(t('fixedAsset', 'invalidAcquisitionDate'));
 
         const currentTime = time.currentDate().getTime();
+        const journalEntryRef = await allocateJournalEntryRef(tx);
 
         // Insert fixed asset
         const result = await tx.sql`
           INSERT INTO fixed_assets (
             name,
-            description,
+            note,
             acquisition_time,
             acquisition_cost,
             useful_life_years,
@@ -191,11 +193,12 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
             accumulated_depreciation_account_code,
             depreciation_expense_account_code,
             payment_account_code,
+            journal_entry_ref,
             create_time,
             update_time
           ) VALUES (
             ${name},
-            ${description},
+            ${note},
             ${acquisitionTime},
             ${acquisitionCost},
             ${usefulLifeYears},
@@ -204,6 +207,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
             ${state.accumulatedDepreciationAccountCode},
             ${state.depreciationExpenseAccountCode},
             ${state.paymentAccountCode},
+            ${journalEntryRef},
             ${currentTime},
             ${currentTime}
           )
@@ -231,7 +235,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.formState = 'error';
-        state.formError = error instanceof Error ? error : new Error(String(error));
+        state.formError = normalizeFixedAssetError(error, t);
         await feedbackDelay();
       }
       finally {
@@ -344,17 +348,17 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
                     <div class="supporting-text">${t('fixedAsset', 'assetNameSupportingText')}</div>
                   </div>
 
-                  <!-- Description -->
+                  <!-- Note -->
                   <div class="outlined-text-field" style="margin-bottom: 16px;">
                     <div class="container">
-                      <label for="fixed-asset-description-input">${t('fixedAsset', 'descriptionLabel')}</label>
+                      <label for="fixed-asset-note-input">${t('fixedAsset', 'noteLabel')}</label>
                       <input
-                        id="fixed-asset-description-input"
-                        name="description"
+                        id="fixed-asset-note-input"
+                        name="note"
                         placeholder=" "
                       />
                     </div>
-                    <div class="supporting-text">${t('fixedAsset', 'descriptionSupportingText')}</div>
+                    <div class="supporting-text">${t('fixedAsset', 'noteSupportingText')}</div>
                   </div>
                 </section>
 

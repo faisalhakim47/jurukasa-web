@@ -12,6 +12,10 @@ import { useRender } from '#web/hooks/use-render.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
+import {
+  allocateJournalEntryRef,
+  normalizeFiscalYearError,
+} from '#web/tools/accounting.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
@@ -24,8 +28,10 @@ import { when } from 'lit-html/directives/when.js';
  * @property {string | null} name
  * @property {number | null} post_time
  * @property {number | null} closing_journal_entry_ref
+ * @property {number | null} depreciation_journal_entry_ref
  * @property {number | null} reversal_time
  * @property {number | null} reversal_journal_entry_ref
+ * @property {number | null} depreciation_reversal_journal_entry_ref
  */
 
 /**
@@ -79,8 +85,10 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
             fy.name,
             fy.post_time,
             fy.closing_journal_entry_ref,
+            fy.depreciation_journal_entry_ref,
             fy.reversal_time,
-            fy.reversal_journal_entry_ref
+            fy.reversal_journal_entry_ref,
+            fy.depreciation_reversal_journal_entry_ref
           FROM fiscal_years fy
           WHERE fy.begin_time = ${beginTime}
         `;
@@ -99,8 +107,10 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
           name: fyRow.name ? String(fyRow.name) : null,
           post_time: fyRow.post_time ? Number(fyRow.post_time) : null,
           closing_journal_entry_ref: fyRow.closing_journal_entry_ref ? Number(fyRow.closing_journal_entry_ref) : null,
+          depreciation_journal_entry_ref: fyRow.depreciation_journal_entry_ref ? Number(fyRow.depreciation_journal_entry_ref) : null,
           reversal_time: fyRow.reversal_time ? Number(fyRow.reversal_time) : null,
           reversal_journal_entry_ref: fyRow.reversal_journal_entry_ref ? Number(fyRow.reversal_journal_entry_ref) : null,
+          depreciation_reversal_journal_entry_ref: fyRow.depreciation_reversal_journal_entry_ref ? Number(fyRow.depreciation_reversal_journal_entry_ref) : null,
         };
 
         state.isLoading = false;
@@ -124,6 +134,8 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
       if (state.fiscalYear.post_time === null) return;
       if (state.fiscalYear.reversal_time !== null) return;
 
+      const tx = await database.transaction('write');
+
       try {
         state.reversalState = 'reversing';
         state.reversalError = null;
@@ -134,15 +146,19 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
 
         const beginTime = state.fiscalYear.begin_time;
         const now = Date.now();
+        const reversalJournalEntryRef = await allocateJournalEntryRef(tx);
+        const depreciationReversalJournalEntryRef = await allocateJournalEntryRef(tx);
 
-        // Reverse fiscal year by setting reversal_time
-        // This triggers the automated reversal entry creation via database trigger
-        await database.sql`
+        await tx.sql`
           UPDATE fiscal_years
-          SET reversal_time = ${now}
+          SET reversal_journal_entry_ref = COALESCE(reversal_journal_entry_ref, ${reversalJournalEntryRef}),
+              depreciation_reversal_journal_entry_ref = COALESCE(depreciation_reversal_journal_entry_ref, ${depreciationReversalJournalEntryRef}),
+              reversal_time = ${now}
           WHERE begin_time = ${beginTime}
             AND reversal_time IS NULL
         `;
+
+        await tx.commit();
 
         state.reversalState = 'success';
         await feedbackDelay();
@@ -159,8 +175,9 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
         state.reversalState = 'idle';
       }
       catch (error) {
+        await tx.rollback();
         state.reversalState = 'error';
-        state.reversalError = error instanceof Error ? error : new Error(String(error));
+        state.reversalError = normalizeFiscalYearError(error, t);
         await feedbackDelay();
         state.reversalState = 'idle';
       }
@@ -334,6 +351,14 @@ export class FiscalYearReversalDialogElement extends HTMLElement {
                             <span class="body-medium">${t('fiscalYear', 'reversalEntryLabel')}</span>
                             <span class="body-medium" style="color: var(--md-sys-color-primary);">
                               #${fy.reversal_journal_entry_ref}
+                            </span>
+                          </div>
+                        ` : nothing}
+                        ${fy.depreciation_reversal_journal_entry_ref ? html`
+                          <div style="display: flex; justify-content: space-between;">
+                            <span class="body-medium">${t('fiscalYear', 'depreciationReversalEntryLabel')}</span>
+                            <span class="body-medium" style="color: var(--md-sys-color-primary);">
+                              #${fy.depreciation_reversal_journal_entry_ref}
                             </span>
                           </div>
                         ` : nothing}

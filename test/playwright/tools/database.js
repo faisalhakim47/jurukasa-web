@@ -36,7 +36,6 @@ export async function setupDatabase(tursoLibSQLiteServer, setup) {
     readFile(join(__dirname, '../../../web/schemas/004-revenue-tracking.sql'), { encoding: 'utf-8' }),
     readFile(join(__dirname, '../../../web/schemas/005-fixed-assets.sql'), { encoding: 'utf-8' }),
     readFile(join(__dirname, '../../../web/schemas/006-account-reconciliation.sql'), { encoding: 'utf-8' }),
-    readFile(join(__dirname, '../../../web/schemas/007-cash-count.sql'), { encoding: 'utf-8' }),
   ]);
   for (const migration of migrations) await client.executeMultiple(migration);
   await client.execute(`UPDATE config SET value = 'Testing Business' WHERE key = 'Business Name';`);

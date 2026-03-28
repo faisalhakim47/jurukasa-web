@@ -7,6 +7,9 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
   const sql = useSql();
   const testTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
 
+  let nextJeRef = 1000;
+  function genJeRef() { return nextJeRef++; }
+
   /**
    * @param {number} code
    * @param {string} name
@@ -30,8 +33,9 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
   /** @param {Date} entryDate */
   async function draftJournalEntry(entryDate) {
-    const result = await sql`INSERT INTO journal_entries (entry_time) VALUES (${entryDate.getTime()}) RETURNING ref`;
-    return Number(result.rows[0].ref);
+    const ref = genJeRef();
+    await sql`INSERT INTO journal_entries (ref, entry_time) VALUES (${ref}, ${entryDate.getTime()})`;
+    return ref;
   }
 
   /**
@@ -41,10 +45,14 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
    * @param {number} credit
    */
   async function addJournalLine(ref, accountCode, debit, credit) {
-    await sql`
-      INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
-      VALUES (${ref}, ${accountCode}, ${debit}, ${credit})
-    `;
+    const isCashEquivalent = (await sql`SELECT 1 as v FROM account_tags WHERE account_code = ${accountCode} AND tag = 'Cash Flow - Cash Equivalents'`).rows.length > 0;
+    if (isCashEquivalent) {
+      await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, cashflow_activity, cashflow_category)
+        VALUES (${ref}, ${accountCode}, ${debit}, ${credit}, ${1}, ${1})`;
+    } else {
+      await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
+        VALUES (${ref}, ${accountCode}, ${debit}, ${credit})`;
+    }
   }
 
   /**
@@ -108,20 +116,20 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Verify specific account balances
       const cashLine = trialBalance.find(r => r.account_code === 11110);
-      equal(cashLine.debit, 120000, 'Cash debit should be 120000');
-      equal(cashLine.credit, 0, 'Cash credit should be 0');
+      equal(cashLine?.debit, 120000, 'Cash debit should be 120000');
+      equal(cashLine?.credit, 0, 'Cash credit should be 0');
 
       const inventoryLine = trialBalance.find(r => r.account_code === 11310);
-      equal(inventoryLine.debit, 10000, 'Inventory debit should be 10000');
+      equal(inventoryLine?.debit, 10000, 'Inventory debit should be 10000');
 
       const commonStockLine = trialBalance.find(r => r.account_code === 31000);
-      equal(commonStockLine.credit, 100000, 'Common Stock credit should be 100000');
+      equal(commonStockLine?.credit, 100000, 'Common Stock credit should be 100000');
 
       const salesRevenueLine = trialBalance.find(r => r.account_code === 41000);
-      equal(salesRevenueLine.credit, 50000, 'Sales Revenue credit should be 50000');
+      equal(salesRevenueLine?.credit, 50000, 'Sales Revenue credit should be 50000');
 
       const cogsLine = trialBalance.find(r => r.account_code === 51000);
-      equal(cogsLine.debit, 20000, 'COGS debit should be 20000');
+      equal(cogsLine?.debit, 20000, 'COGS debit should be 20000');
     });
 
     it('shall generate trial balance showing contra account balances correctly', async function () {
@@ -157,13 +165,13 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Verify equipment and accumulated depreciation
       const equipmentLine = trialBalance.find(r => r.account_code === 12110);
-      equal(equipmentLine.debit, 50000, 'Equipment debit should be 50000');
+      equal(equipmentLine?.debit, 50000, 'Equipment debit should be 50000');
 
       const accumDepLine = trialBalance.find(r => r.account_code === 12190);
-      equal(accumDepLine.credit, 5000, 'Accumulated Depreciation credit should be 5000');
+      equal(accumDepLine?.credit, 5000, 'Accumulated Depreciation credit should be 5000');
 
       const depExpenseLine = trialBalance.find(r => r.account_code === 61900);
-      equal(depExpenseLine.debit, 5000, 'Depreciation Expense debit should be 5000');
+      equal(depExpenseLine?.debit, 5000, 'Depreciation Expense debit should be 5000');
 
       // Verify balance
       const totalDebits = trialBalance.reduce((sum, row) => sum + Number(row.debit), 0);
@@ -198,8 +206,8 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Cash has negative balance (shown as credit for debit-normal account)
       const cashLine = trialBalance.find(r => r.account_code === 11110);
-      equal(cashLine.debit, 0, 'Cash debit should be 0 (negative balance)');
-      equal(cashLine.credit, 5000, 'Cash credit should be 5000 (negative balance shown as credit)');
+      equal(cashLine?.debit, 0, 'Cash debit should be 0 (negative balance)');
+      equal(cashLine?.credit, 5000, 'Cash credit should be 5000 (negative balance shown as credit)');
 
       // Verify balance
       const totalDebits = trialBalance.reduce((sum, row) => sum + Number(row.debit), 0);
@@ -264,10 +272,10 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Verify specific asset amounts
       const cashBS = assets.find(r => r.account_code === 11110);
-      equal(cashBS.amount, 120000, 'Cash should be 120000');
+      equal(cashBS?.amount, 120000, 'Cash should be 120000');
 
       const equipmentBS = assets.find(r => r.account_code === 12110);
-      equal(equipmentBS.amount, 30000, 'Equipment should be 30000');
+      equal(equipmentBS?.amount, 30000, 'Equipment should be 30000');
 
       // Verify Liabilities
       const liabilities = balanceSheet.filter(r => r.classification === 'Liabilities');
@@ -282,7 +290,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       ok(equity.length > 0, 'Should have equity accounts');
 
       const commonStockBS = equity.find(r => r.account_code === 31000);
-      equal(commonStockBS.amount, 100000, 'Common Stock should be 100000');
+      equal(commonStockBS?.amount, 100000, 'Common Stock should be 100000');
     });
 
     it('shall verify accounting equation (Assets = Liabilities + Equity)', async function () {
@@ -433,14 +441,14 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Verify revenue accounts
       const salesMutation = mutations.find(m => m.account_code === 41000);
-      equal(salesMutation.net_change, 100000, 'Sales Revenue net change should be 100000');
+      equal(salesMutation?.net_change, 100000, 'Sales Revenue net change should be 100000');
 
       // Verify expense accounts
       const cogsMutation = mutations.find(m => m.account_code === 51000);
-      equal(cogsMutation.net_change, 45000, 'COGS net change should be 45000');
+      equal(cogsMutation?.net_change, 45000, 'COGS net change should be 45000');
 
       const salariesMutation = mutations.find(m => m.account_code === 61300);
-      equal(salariesMutation.net_change, 20000, 'Salaries net change should be 20000');
+      equal(salariesMutation?.net_change, 20000, 'Salaries net change should be 20000');
     });
 
     it('shall generate income statement view with proper categorization', async function () {
@@ -508,18 +516,18 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Verify specific amounts
       const salesRevenue = incomeStatement.find(r => r.account_code === 41000);
-      equal(salesRevenue.amount, 80000, 'Sales Revenue should be 80000');
-      equal(salesRevenue.category, 'Revenue', 'Sales should be in Revenue category');
+      equal(salesRevenue?.amount, 80000, 'Sales Revenue should be 80000');
+      equal(salesRevenue?.category, 'Revenue', 'Sales should be in Revenue category');
 
       const salesReturns = incomeStatement.find(r => r.account_code === 42000);
-      equal(salesReturns.amount, 5000, 'Sales Returns should be 5000');
-      equal(salesReturns.category, 'Contra Revenue', 'Returns should be in Contra Revenue category');
+      equal(salesReturns?.amount, 5000, 'Sales Returns should be 5000');
+      equal(salesReturns?.category, 'Contra Revenue', 'Returns should be in Contra Revenue category');
 
       const cogs = incomeStatement.find(r => r.account_code === 51000);
-      equal(cogs.amount, 35000, 'COGS should be 35000');
+      equal(cogs?.amount, 35000, 'COGS should be 35000');
 
       const interestExpense = incomeStatement.find(r => r.account_code === 82100);
-      equal(interestExpense.category, 'Other Expenses', 'Interest should be in Other Expenses');
+      equal(interestExpense?.category, 'Other Expenses', 'Interest should be in Other Expenses');
     });
 
     it('shall calculate gross profit correctly', async function () {
@@ -713,7 +721,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Close fiscal year
       const postTime = new Date(2025, 0, 5, 0, 0, 0, 0).getTime();
-      await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
+      await sql`UPDATE fiscal_years SET closing_journal_entry_ref = ${genJeRef()}, depreciation_journal_entry_ref = ${genJeRef()}, post_time = ${postTime} WHERE begin_time = ${beginTime}`;
 
       // Generate post-closing report
       const reportTime = new Date(2025, 0, 10, 0, 0, 0, 0).getTime();
@@ -729,14 +737,14 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Revenue and Expense should be zero
       const salesLine = trialBalance.find(r => r.account_code === 41000);
-      equal(Number(salesLine.debit) + Number(salesLine.credit), 0, 'Sales Revenue should be zero after closing');
+      equal(Number(salesLine?.debit) + Number(salesLine?.credit), 0, 'Sales Revenue should be zero after closing');
 
       const salariesLine = trialBalance.find(r => r.account_code === 61300);
-      equal(Number(salariesLine.debit) + Number(salariesLine.credit), 0, 'Salaries Expense should be zero after closing');
+      equal(Number(salariesLine?.debit) + Number(salariesLine?.credit), 0, 'Salaries Expense should be zero after closing');
 
       // Retained Earnings should reflect net income
       const retainedEarningsLine = trialBalance.find(r => r.account_code === 32000);
-      equal(retainedEarningsLine.credit, 30000, 'Retained Earnings should be 30000');
+      equal(retainedEarningsLine?.credit, 30000, 'Retained Earnings should be 30000');
 
       // Verify balance sheet
       const balanceSheet = (await sql`
@@ -744,7 +752,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       `).rows;
 
       const retainedEarningsBS = balanceSheet.find(r => r.account_code === 32000);
-      equal(retainedEarningsBS.amount, 30000, 'Balance Sheet Retained Earnings should be 30000');
+      equal(retainedEarningsBS?.amount, 30000, 'Balance Sheet Retained Earnings should be 30000');
     });
   });
 
@@ -784,14 +792,14 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       `).rows;
 
       const jan10Cash = jan10TrialBalance.find(r => r.account_code === 11110);
-      equal(jan10Cash.debit, 100000, 'Jan 10 report: Cash should be 100000 (only initial investment)');
-      equal(jan10Cash.credit, 0, 'Jan 10 report: Cash credit should be 0');
+      equal(jan10Cash?.debit, 100000, 'Jan 10 report: Cash should be 100000 (only initial investment)');
+      equal(jan10Cash?.credit, 0, 'Jan 10 report: Cash credit should be 0');
 
       const jan10Inventory = jan10TrialBalance.find(r => r.account_code === 11310);
       ok(!jan10Inventory, 'Jan 10 report: Inventory should not exist (transaction on Jan 15)');
 
       const jan10Equity = jan10TrialBalance.find(r => r.account_code === 31000);
-      equal(jan10Equity.credit, 100000, 'Jan 10 report: Equity should be 100000');
+      equal(jan10Equity?.credit, 100000, 'Jan 10 report: Equity should be 100000');
 
       // Generate report as of Jan 20 (should include Jan 2 and Jan 15 transactions)
       const jan20Report = new Date(2024, 0, 20, 0, 0, 0, 0).getTime();
@@ -806,10 +814,10 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       `).rows;
 
       const jan20Cash = jan20TrialBalance.find(r => r.account_code === 11110);
-      equal(jan20Cash.debit, 70000, 'Jan 20 report: Cash should be 70000 (100000 - 30000)');
+      equal(jan20Cash?.debit, 70000, 'Jan 20 report: Cash should be 70000 (100000 - 30000)');
 
       const jan20Inventory = jan20TrialBalance.find(r => r.account_code === 11310);
-      equal(jan20Inventory.debit, 30000, 'Jan 20 report: Inventory should be 30000');
+      equal(jan20Inventory?.debit, 30000, 'Jan 20 report: Inventory should be 30000');
 
       // Verify Jan 20 report does NOT include Feb 10 revenue
       const jan20Revenue = jan20TrialBalance.find(r => r.account_code === 41000);
@@ -851,9 +859,9 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       `).rows;
 
       const jan31Cash = jan31BalanceSheet.find(r => r.account_code === 11110);
-      equal(jan31Cash.amount, 200000, 'Jan 31: Cash should be 200000');
-      equal(jan31Cash.classification, 'Assets', 'Jan 31: Cash should be Assets');
-      equal(jan31Cash.category, 'Current Assets', 'Jan 31: Cash should be Current Assets');
+      equal(jan31Cash?.amount, 200000, 'Jan 31: Cash should be 200000');
+      equal(jan31Cash?.classification, 'Assets', 'Jan 31: Cash should be Assets');
+      equal(jan31Cash?.category, 'Current Assets', 'Jan 31: Cash should be Current Assets');
 
       const jan31Equipment = jan31BalanceSheet.find(r => r.account_code === 12110);
       ok(!jan31Equipment, 'Jan 31: Equipment should not exist (purchased Feb 1)');
@@ -874,12 +882,12 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       `).rows;
 
       const feb28Cash = feb28BalanceSheet.find(r => r.account_code === 11110);
-      equal(feb28Cash.amount, 150000, 'Feb 28: Cash should be 150000 (200000 - 50000)');
+      equal(feb28Cash?.amount, 150000, 'Feb 28: Cash should be 150000 (200000 - 50000)');
 
       const feb28Equipment = feb28BalanceSheet.find(r => r.account_code === 12110);
-      equal(feb28Equipment.amount, 50000, 'Feb 28: Equipment should be 50000');
-      equal(feb28Equipment.classification, 'Assets', 'Feb 28: Equipment should be Assets');
-      equal(feb28Equipment.category, 'Non-Current Assets', 'Feb 28: Equipment should be Non-Current Assets');
+      equal(feb28Equipment?.amount, 50000, 'Feb 28: Equipment should be 50000');
+      equal(feb28Equipment?.classification, 'Assets', 'Feb 28: Equipment should be Assets');
+      equal(feb28Equipment?.category, 'Non-Current Assets', 'Feb 28: Equipment should be Non-Current Assets');
 
       const feb28Payable = feb28BalanceSheet.find(r => r.account_code === 21100);
       ok(!feb28Payable, 'Feb 28: Accounts Payable should not exist (loan taken Mar 15)');
@@ -918,7 +926,7 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       `).rows;
 
       const exactTimeCash = exactTimeTrialBalance.find(r => r.account_code === 11110);
-      equal(exactTimeCash.debit, 100000, 'Transaction at exact report_time should be included');
+      equal(exactTimeCash?.debit, 100000, 'Transaction at exact report_time should be included');
 
       // Generate report 1 millisecond before transaction time
       const beforeTimeReport = new Date(2024, 0, 15, 11, 59, 59, 999).getTime();
@@ -1016,10 +1024,10 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
         `).rows;
 
         const cashLine = trialBalance.find(r => r.account_code === 11110);
-        equal(cashLine.debit, expectedCashBalances[i], `Report ${i + 1}: Cash should be ${expectedCashBalances[i]}`);
+        equal(cashLine?.debit, expectedCashBalances[i], `Report ${i + 1}: Cash should be ${expectedCashBalances[i]}`);
 
         const equityLine = trialBalance.find(r => r.account_code === 31000);
-        equal(equityLine.credit, expectedEquityBalances[i], `Report ${i + 1}: Equity should be ${expectedEquityBalances[i]}`);
+        equal(equityLine?.credit, expectedEquityBalances[i], `Report ${i + 1}: Equity should be ${expectedEquityBalances[i]}`);
 
         // Verify trial balance always balances
         const totalDebits = trialBalance.reduce((sum, row) => sum + Number(row.debit), 0);
@@ -1084,23 +1092,23 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
 
       // Cash: 100000 - 40000 - 20000 = 40000
       const cashLine = trialBalance.find(r => r.account_code === 11110);
-      equal(cashLine.debit, 40000, 'Feb 15: Cash should be 40000');
+      equal(cashLine?.debit, 40000, 'Feb 15: Cash should be 40000');
 
       // Inventory: 40000
       const inventoryLine = trialBalance.find(r => r.account_code === 11310);
-      equal(inventoryLine.debit, 40000, 'Feb 15: Inventory should be 40000');
+      equal(inventoryLine?.debit, 40000, 'Feb 15: Inventory should be 40000');
 
       // Equipment: 20000
       const equipmentLine = trialBalance.find(r => r.account_code === 12110);
-      equal(equipmentLine.debit, 20000, 'Feb 15: Equipment should be 20000');
+      equal(equipmentLine?.debit, 20000, 'Feb 15: Equipment should be 20000');
 
       // AP: 50000
       const payableLine = trialBalance.find(r => r.account_code === 21100);
-      equal(payableLine.credit, 50000, 'Feb 15: AP should be 50000');
+      equal(payableLine?.credit, 50000, 'Feb 15: AP should be 50000');
 
       // Equity: 50000
       const equityLine = trialBalance.find(r => r.account_code === 31000);
-      equal(equityLine.credit, 50000, 'Feb 15: Equity should be 50000');
+      equal(equityLine?.credit, 50000, 'Feb 15: Equity should be 50000');
 
       // Revenue should NOT be included (transaction on Feb 20)
       const revenueLine = trialBalance.find(r => r.account_code === 41000);
@@ -1170,8 +1178,8 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       `).rows;
 
       const jan20Cash = jan20TrialBalance.find(r => r.account_code === 11110);
-      equal(jan20Cash.debit, 0, 'Jan 20: Negative cash should show 0 debit');
-      equal(jan20Cash.credit, 5000, 'Jan 20: Negative cash should show 5000 credit (overdraft)');
+      equal(jan20Cash?.debit, 0, 'Jan 20: Negative cash should show 0 debit');
+      equal(jan20Cash?.credit, 5000, 'Jan 20: Negative cash should show 5000 credit (overdraft)');
 
       // Generate report as of Feb 15 (after capital injection)
       const feb15Report = new Date(2024, 1, 15, 0, 0, 0, 0).getTime();
@@ -1186,8 +1194,8 @@ describe('Accounting Schema Tests - Financial Reporting', function () {
       `).rows;
 
       const feb15Cash = feb15TrialBalance.find(r => r.account_code === 11110);
-      equal(feb15Cash.debit, 15000, 'Feb 15: Cash should be positive 15000');
-      equal(feb15Cash.credit, 0, 'Feb 15: Cash credit should be 0');
+      equal(feb15Cash?.debit, 15000, 'Feb 15: Cash should be positive 15000');
+      equal(feb15Cash?.credit, 0, 'Feb 15: Cash credit should be 0');
     });
   });
 });

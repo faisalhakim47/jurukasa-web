@@ -12,6 +12,10 @@ import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { webStyleSheets } from '#web/styles.js';
+import {
+  allocateJournalEntryRef,
+  normalizeFiscalYearError,
+} from '#web/tools/accounting.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
@@ -24,8 +28,10 @@ import { when } from 'lit-html/directives/when.js';
  * @property {string | null} name
  * @property {number | null} post_time
  * @property {number | null} closing_journal_entry_ref
+ * @property {number | null} depreciation_journal_entry_ref
  * @property {number | null} reversal_time
  * @property {number | null} reversal_journal_entry_ref
+ * @property {number | null} depreciation_reversal_journal_entry_ref
  * @property {number} unposted_entries_count
  * @property {number} total_revenue
  * @property {number} total_expense
@@ -83,8 +89,10 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
             fy.name,
             fy.post_time,
             fy.closing_journal_entry_ref,
+            fy.depreciation_journal_entry_ref,
             fy.reversal_time,
-            fy.reversal_journal_entry_ref
+            fy.reversal_journal_entry_ref,
+            fy.depreciation_reversal_journal_entry_ref
           FROM fiscal_years fy
           WHERE fy.begin_time = ${beginTime}
         `;
@@ -150,8 +158,10 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
           name: fyRow.name ? String(fyRow.name) : null,
           post_time: fyRow.post_time ? Number(fyRow.post_time) : null,
           closing_journal_entry_ref: fyRow.closing_journal_entry_ref ? Number(fyRow.closing_journal_entry_ref) : null,
+          depreciation_journal_entry_ref: fyRow.depreciation_journal_entry_ref ? Number(fyRow.depreciation_journal_entry_ref) : null,
           reversal_time: fyRow.reversal_time ? Number(fyRow.reversal_time) : null,
           reversal_journal_entry_ref: fyRow.reversal_journal_entry_ref ? Number(fyRow.reversal_journal_entry_ref) : null,
+          depreciation_reversal_journal_entry_ref: fyRow.depreciation_reversal_journal_entry_ref ? Number(fyRow.depreciation_reversal_journal_entry_ref) : null,
           unposted_entries_count: Number(unpostedResult.rows[0].count) || 0,
           total_revenue: totalRevenue,
           total_expense: totalExpense,
@@ -178,6 +188,8 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
       if (state.fiscalYear === null) return;
       if (state.fiscalYear.post_time !== null) return;
 
+      const tx = await database.transaction('write');
+
       try {
         state.closingState = 'closing';
         state.closingError = null;
@@ -188,15 +200,19 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
 
         const beginTime = state.fiscalYear.begin_time;
         const now = Date.now();
+        const closingJournalEntryRef = await allocateJournalEntryRef(tx);
+        const depreciationJournalEntryRef = await allocateJournalEntryRef(tx);
 
-        // Close fiscal year by setting post_time
-        // This triggers the automated closing entry creation via database trigger
-        await database.sql`
+        await tx.sql`
           UPDATE fiscal_years
-          SET post_time = ${now}
+          SET closing_journal_entry_ref = COALESCE(closing_journal_entry_ref, ${closingJournalEntryRef}),
+              depreciation_journal_entry_ref = COALESCE(depreciation_journal_entry_ref, ${depreciationJournalEntryRef}),
+              post_time = ${now}
           WHERE begin_time = ${beginTime}
             AND post_time IS NULL
         `;
+
+        await tx.commit();
 
         state.closingState = 'success';
         await feedbackDelay();
@@ -213,8 +229,9 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
         state.closingState = 'idle';
       }
       catch (error) {
+        await tx.rollback();
         state.closingState = 'error';
-        state.closingError = error instanceof Error ? error : new Error(String(error));
+        state.closingError = normalizeFiscalYearError(error, t);
         await feedbackDelay();
         state.closingState = 'idle';
       }
@@ -464,6 +481,14 @@ export class FiscalYearClosingDialogElement extends HTMLElement {
                             <span class="body-medium">${t('fiscalYear', 'closingEntryLabel')}</span>
                             <span class="body-medium" style="color: var(--md-sys-color-primary);">
                               #${fy.closing_journal_entry_ref}
+                            </span>
+                          </div>
+                        ` : nothing}
+                        ${fy.depreciation_journal_entry_ref ? html`
+                          <div style="display: flex; justify-content: space-between;">
+                            <span class="body-medium">${t('fiscalYear', 'depreciationEntryLabel')}</span>
+                            <span class="body-medium" style="color: var(--md-sys-color-primary);">
+                              #${fy.depreciation_journal_entry_ref}
                             </span>
                           </div>
                         ` : nothing}

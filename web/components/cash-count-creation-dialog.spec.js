@@ -15,19 +15,13 @@ const { describe } = test;
 async function setupView(tursoDatabaseUrl) {
   document.body.innerHTML = `
     <ready-context>
-      <time-context>
+      <time-context time="2026-03-18T09:30:00.000Z">
         <router-context>
           <database-context provider="turso" name="My Business" turso-url="${tursoDatabaseUrl}">
             <device-context>
               <i18n-context>
-                <button
-                  type="button"
-                  commandfor="cash-count-creation-dialog"
-                  command="--open"
-                >Count Cash</button>
-                <cash-count-creation-dialog
-                  id="cash-count-creation-dialog"
-                ></cash-count-creation-dialog>
+                <button type="button" commandfor="cash-count-creation-dialog" command="--open">Open Dialog</button>
+                <cash-count-creation-dialog id="cash-count-creation-dialog"></cash-count-creation-dialog>
               </i18n-context>
             </device-context>
           </database-context>
@@ -35,27 +29,55 @@ async function setupView(tursoDatabaseUrl) {
       </time-context>
     </ready-context>
   `;
+  await import('#web/components/cash-count-creation-dialog.js');
+  await customElements.whenDefined('cash-count-creation-dialog');
 }
 
-/**
- * Setup a test database with cash accounts
- * @param {any} sql
- */
-async function setupCashAccounts(sql) {
-  const testTime = Date.now();
-
-  // Cash account (11110) already exists from chart of accounts fixture
-  // It already has the 'Cash Flow - Cash Equivalents' tag
-
-  const entryTime = testTime;
-  await sql`INSERT INTO journal_entries (entry_time) VALUES (${entryTime})`;
-  const result = await sql`SELECT ref FROM journal_entries WHERE entry_time = ${entryTime}`;
-  const ref = Number(result.rows[0].ref);
-
-  await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref}, 11110, 500000, 0)`;
-  await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref}, 31000, 0, 500000)`;
-
-  await sql`UPDATE journal_entries SET post_time = ${entryTime} WHERE ref = ${ref}`;
+async function seedCashAccount(sql) {
+  const entryTime = new Date('2025-01-01T00:00:00.000Z').getTime();
+  await sql`
+    INSERT INTO journal_entries (ref, entry_time, note)
+    VALUES (${92001}, ${entryTime}, ${'Seed cash balance'})
+  `;
+  await sql`
+    INSERT INTO journal_entry_lines_auto_number (
+      journal_entry_ref,
+      account_code,
+      debit,
+      credit,
+      note,
+      cashflow_activity,
+      cashflow_category
+    ) VALUES (
+      ${92001},
+      ${11110},
+      ${500000},
+      ${0},
+      ${'Capital injection'},
+      ${3},
+      ${7}
+    )
+  `;
+  await sql`
+    INSERT INTO journal_entry_lines_auto_number (
+      journal_entry_ref,
+      account_code,
+      debit,
+      credit,
+      note
+    ) VALUES (
+      ${92001},
+      ${31000},
+      ${0},
+      ${500000},
+      ${'Capital injection'}
+    )
+  `;
+  await sql`
+    UPDATE journal_entries
+    SET post_time = ${entryTime}
+    WHERE ref = ${92001}
+  `;
 }
 
 describe('Cash Count Creation Dialog', function () {
@@ -63,142 +85,71 @@ describe('Cash Count Creation Dialog', function () {
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('it shall create a cash count when balanced', async function ({ page }) {
+  test('it records balanced physical cash count without adjustment journal', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), setupCashAccounts),
+      setupDatabase(tursoLibSQLiteServer(), seedCashAccount),
     ]);
-
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await page.getByRole('button', { name: 'Count Cash' }).click();
-
+    await page.getByRole('button', { name: 'Open Dialog' }).click();
     const dialog = page.getByRole('dialog', { name: 'Record Cash Count' });
     await expect(dialog).toBeVisible();
 
-    await dialog.getByLabel('Cash Account').click();
-    await page.getByRole('menu').getByRole('menuitem').filter({ hasText: '11110' }).click();
-
-    await expect(dialog.getByText('System Balance')).toBeVisible();
-
+    await dialog.getByLabel('Cash Account', { exact: true }).click();
+    await page.getByRole('menuitem', { name: '11110 - Kas' }).click();
+    await dialog.getByLabel('Count Time').fill('2025-01-31T23:00');
     await dialog.getByLabel('Counted Amount').fill('500000');
 
-    await expect(dialog.getByText('Cash Shortage')).not.toBeVisible();
-    await expect(dialog.getByText('Cash Overage')).not.toBeVisible();
+    await dialog.getByRole('button', { name: 'Record Cash Count' }).click();
+    await expect(dialog).not.toBeVisible();
 
-    const [cashCountCreatedEvent] = await Promise.all([
-      page.evaluate(async function eventTest() {
-        const { waitForEvent } = await import('#web/tools/dom.js');
-        const cashCountDialog = document.getElementsByTagName('cash-count-creation-dialog').item(0);
-        const event = await waitForEvent(cashCountDialog, 'cash-count-created', 5000);
-        if (event instanceof CustomEvent) return event.detail;
-        else throw new Error('Unexpected event type');
-      }),
-      dialog.getByRole('button', { name: 'Count Cash' }).click(),
-    ]);
-
-    expect(cashCountCreatedEvent.countTime).toBeDefined();
-
-    const cashCount = await page.evaluate(async function getLatestCashCountFromDatabase() {
+    const checkpoint = await page.evaluate(async function readCheckpoint() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       const result = await database.sql`
-        SELECT account_code, counted_amount, discrepancy
-        FROM cash_count_history
-        ORDER BY count_time DESC
-        LIMIT 1
+        SELECT external_balance, book_balance, adjustment_journal_entry_ref
+        FROM reconciliation_checkpoints
+        WHERE type = 'PHYSICAL'
       `;
       return result.rows[0];
     });
 
-    expect(Number(cashCount.account_code)).toBe(11110);
-    expect(Number(cashCount.counted_amount)).toBe(500000);
-    expect(Number(cashCount.discrepancy)).toBe(0);
+    expect(Number(checkpoint.external_balance)).toBe(500000);
+    expect(Number(checkpoint.book_balance)).toBe(500000);
+    expect(checkpoint.adjustment_journal_entry_ref).toBe(null);
   });
 
-  test('it shall show shortage warning when counted less', async function ({ page }) {
+  test('it records shortage physical cash count with adjustment journal', async function ({ page }) {
     await Promise.all([
       loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), setupCashAccounts),
+      setupDatabase(tursoLibSQLiteServer(), seedCashAccount),
     ]);
-
     await page.evaluate(setupView, tursoLibSQLiteServer().url);
 
-    await page.getByRole('button', { name: 'Count Cash' }).click();
-
+    await page.getByRole('button', { name: 'Open Dialog' }).click();
     const dialog = page.getByRole('dialog', { name: 'Record Cash Count' });
-    await expect(dialog).toBeVisible();
 
-    await dialog.getByLabel('Cash Account').click();
-    await page.getByRole('menu').getByRole('menuitem').filter({ hasText: '11110' }).click();
-
+    await dialog.getByLabel('Cash Account', { exact: true }).click();
+    await page.getByRole('menuitem', { name: '11110 - Kas' }).click();
+    await dialog.getByLabel('Count Time').fill('2025-01-31T23:00');
     await dialog.getByLabel('Counted Amount').fill('450000');
 
-    await page.pause();
     await expect(dialog.getByText('Cash Shortage')).toBeVisible();
-    await expect(dialog.getByText('This discrepancy will be automatically recorded')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Record Cash Count' }).click();
 
-    await dialog.getByRole('button', { name: 'Count Cash' }).click();
-
-    await expect(dialog).not.toBeVisible();
-
-    const cashCount = await page.evaluate(async function getLatestCashCountFromDatabase() {
+    const checkpoint = await page.evaluate(async function readCheckpoint() {
       /** @type {DatabaseContextElement} */
       const database = document.querySelector('database-context');
       const result = await database.sql`
-        SELECT account_code, counted_amount, discrepancy, discrepancy_type
-        FROM cash_count_history
-        ORDER BY count_time DESC
-        LIMIT 1
+        SELECT discrepancy, adjustment_journal_entry_ref
+        FROM reconciliation_history
+        WHERE type = 'PHYSICAL'
       `;
       return result.rows[0];
     });
 
-    expect(Number(cashCount.account_code)).toBe(11110);
-    expect(Number(cashCount.counted_amount)).toBe(450000);
-    expect(Number(cashCount.discrepancy)).toBe(-50000);
-    expect(String(cashCount.discrepancy_type)).toBe('shortage');
-  });
-
-  test('it shall show overage warning when counted more', async function ({ page }) {
-    await Promise.all([
-      loadEmptyFixture(page),
-      setupDatabase(tursoLibSQLiteServer(), setupCashAccounts),
-    ]);
-
-    await page.evaluate(setupView, tursoLibSQLiteServer().url);
-
-    await page.getByRole('button', { name: 'Count Cash' }).click();
-
-    const dialog = page.getByRole('dialog', { name: 'Record Cash Count' });
-    await expect(dialog).toBeVisible();
-
-    await dialog.getByLabel('Cash Account').click();
-    await page.getByRole('menu').getByRole('menuitem').filter({ hasText: '11110' }).click();
-
-    await dialog.getByLabel('Counted Amount').fill('550000');
-
-    await expect(dialog.getByText('Cash Overage')).toBeVisible();
-
-    await dialog.getByRole('button', { name: 'Count Cash' }).click();
-
-    await expect(dialog).not.toBeVisible();
-
-    const cashCount = await page.evaluate(async function getLatestCashCountFromDatabase() {
-      /** @type {DatabaseContextElement} */
-      const database = document.querySelector('database-context');
-      const result = await database.sql`
-        SELECT account_code, counted_amount, discrepancy, discrepancy_type
-        FROM cash_count_history
-        ORDER BY count_time DESC
-        LIMIT 1
-      `;
-      return result.rows[0];
-    });
-
-    expect(Number(cashCount.account_code)).toBe(11110);
-    expect(Number(cashCount.counted_amount)).toBe(550000);
-    expect(Number(cashCount.discrepancy)).toBe(50000);
-    expect(String(cashCount.discrepancy_type)).toBe('overage');
+    expect(Number(checkpoint.discrepancy)).toBe(-50000);
+    expect(Number(checkpoint.adjustment_journal_entry_ref)).toBeGreaterThan(0);
   });
 });

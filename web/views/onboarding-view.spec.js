@@ -234,11 +234,22 @@ describe('Onboarding View', function () {
 
   test('complete full onboarding flow from welcome to dashboard', async function ({ page }) {
     await loadEmptyFixture(page);
-    await page.evaluate(setupOnboardingViewFromWelcome, tursoLibSQLiteServer().url);
+    await page.evaluate(setupOnboardingViewWithoutDatabase);
 
-    // Database is already connected, so we get redirected from welcome to business config
+    const welcomeDialog = page.getByRole('dialog', { name: 'Welcome to JuruKasa' });
+    await expect(welcomeDialog, 'shall begin from welcome step').toBeVisible();
+    await welcomeDialog.getByRole('radio', { name: 'English' }).check();
+    await welcomeDialog.getByRole('button', { name: 'Get Started' }).click();
+
+    const databaseConfigDialog = page.getByRole('dialog', { name: 'Configure Database' });
+    await expect(databaseConfigDialog, 'shall navigate to database setup step').toBeVisible();
+    await databaseConfigDialog.getByRole('radio', { name: 'Local Database' }).check();
+    await databaseConfigDialog.getByLabel('Database Name').fill('My Local Database');
+    await databaseConfigDialog.getByRole('button', { name: 'Connect' }).click();
+
     const businessConfigDialog = page.getByRole('dialog', { name: 'Configure Business' });
     await expect(businessConfigDialog, 'shall navigate to business configuration step').toBeVisible();
+    await expect(businessConfigDialog.getByLabel('Language'), 'selected welcome language shall carry into business config').toHaveValue('English');
     await businessConfigDialog.getByLabel('Business Name').fill('My Local Business');
     await businessConfigDialog.getByRole('button', { name: 'Next' }).click();
 

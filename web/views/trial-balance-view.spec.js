@@ -40,6 +40,17 @@ async function getReportId(url) {
   return Number(result.rows[0].id);
 }
 
+/**
+ * @param {(strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>} sql
+ * @param {{ ref: number, entryTime: number, note: string }} entry
+ */
+async function insertDraftJournalEntry(sql, entry) {
+  await sql`
+    INSERT INTO journal_entries (ref, entry_time, note)
+    VALUES (${entry.ref}, ${entry.entryTime}, ${entry.note})
+  `;
+}
+
 describe('Trial Balance View', function () {
   useConsoleOutput(test);
   useStrict(test);
@@ -60,9 +71,14 @@ describe('Trial Balance View', function () {
       await sql`INSERT INTO accounts (account_code, name, normal_balance, balance, is_active, is_posting_account, create_time, update_time) VALUES (31001, 'Sales Revenue', 1, 0, 1, 1, 1704067200000, 1704067200000)`;
       await sql`INSERT INTO account_tags (account_code, tag) VALUES (11001, 'Balance Sheet - Current Asset')`;
       await sql`INSERT INTO account_tags (account_code, tag) VALUES (31001, 'Income Statement - Revenue')`;
-      await sql`INSERT INTO journal_entries (ref, entry_time, note, post_time, source_type, created_by) VALUES (1, 1704067200000, 'Test journal entry', 1704067200000, 'Manual', 'User')`;
-      await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit, description) VALUES (1, 1, 11001, 100000, 0, 'Cash debit')`;
-      await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit, description) VALUES (1, 2, 31001, 0, 100000, 'Sales revenue credit')`;
+      await insertDraftJournalEntry(sql, {
+        ref: 1,
+        entryTime: 1704067200000,
+        note: 'Test journal entry',
+      });
+      await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit, note) VALUES (1, 1, 11001, 100000, 0, 'Cash debit')`;
+      await sql`INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit, note) VALUES (1, 2, 31001, 0, 100000, 'Sales revenue credit')`;
+      await sql`UPDATE journal_entries SET post_time = 1704067200000 WHERE ref = 1`;
       await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (1704067200000, 'Ad Hoc', 'Test Report', 1704067200000)`;
     });
     const reportId = await getReportId(tursoLibSQLiteServer().url);

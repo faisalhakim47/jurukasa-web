@@ -1,4 +1,4 @@
-import { ok, equal } from 'node:assert/strict';
+import { ok, equal, rejects } from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { useSql } from '#test/nodejs/hooks/use-sql.js';
@@ -6,6 +6,9 @@ import { useSql } from '#test/nodejs/hooks/use-sql.js';
 describe('POS Schema Tests', function () {
   const sql = useSql();
   const testTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+
+  let nextJeRef = 1000;
+  function genJeRef() { return nextJeRef++; }
 
   // Account codes from chart of accounts (003-chart-of-accounts.sql)
   const ACCOUNT_KAS = 11110;
@@ -86,12 +89,22 @@ describe('POS Schema Tests', function () {
   }
 
   /**
+   * @param {number} collectTime
+   */
+  async function createDocument(collectTime) {
+    await sql`INSERT INTO documents (collect_time) VALUES (${collectTime})`;
+    return collectTime;
+  }
+
+  /**
    * @param {number} supplierId
    * @param {Date} purchaseDate
+   * @param {number|null} [collectionCollectTime]
    */
-  async function createPurchase(supplierId, purchaseDate) {
+  async function createPurchase(supplierId, purchaseDate, collectionCollectTime) {
     const result = await sql`
-      INSERT INTO purchases (supplier_id, purchase_time) VALUES (${supplierId}, ${purchaseDate.getTime()})
+      INSERT INTO purchases (supplier_id, purchase_time, collection_collect_time)
+      VALUES (${supplierId}, ${purchaseDate.getTime()}, ${collectionCollectTime ?? null})
       RETURNING id
     `;
     return Number(result.rows[0].id);
@@ -103,11 +116,31 @@ describe('POS Schema Tests', function () {
    * @param {number} inventoryId
    * @param {number} quantity
    * @param {number} price
+   * @param {string} [supplierInventoryName]
+   * @param {string} [supplierUnitOfMeasurement]
    */
-  async function addPurchaseLine(purchaseId, lineNumber, inventoryId, quantity, price) {
+  async function addPurchaseLine(purchaseId, lineNumber, inventoryId, quantity, price, supplierInventoryName, supplierUnitOfMeasurement) {
     await sql`
-      INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_quantity, quantity, price)
-      VALUES (${purchaseId}, ${lineNumber}, ${inventoryId}, ${quantity}, ${quantity}, ${price})
+      INSERT INTO purchase_lines (
+        purchase_id,
+        line_number,
+        inventory_id,
+        supplier_inventory_name,
+        supplier_quantity,
+        supplier_unit_of_measurement,
+        quantity,
+        price
+      )
+      VALUES (
+        ${purchaseId},
+        ${lineNumber},
+        ${inventoryId},
+        ${supplierInventoryName ?? 'Supplier Item ' + inventoryId},
+        ${quantity},
+        ${supplierUnitOfMeasurement ?? 'pcs'},
+        ${quantity},
+        ${price}
+      )
     `;
   }
 
@@ -116,7 +149,7 @@ describe('POS Schema Tests', function () {
    * @param {Date} postDate
    */
   async function postPurchase(purchaseId, postDate) {
-    await sql`UPDATE purchases SET post_time = ${postDate.getTime()} WHERE id = ${purchaseId}`;
+    await sql`UPDATE purchases SET journal_entry_ref = ${genJeRef()}, post_time = ${postDate.getTime()} WHERE id = ${purchaseId}`;
   }
 
   /**
@@ -159,7 +192,7 @@ describe('POS Schema Tests', function () {
    * @param {Date} postDate
    */
   async function postSale(saleId, postDate) {
-    await sql`UPDATE sales SET post_time = ${postDate.getTime()} WHERE id = ${saleId}`;
+    await sql`UPDATE sales SET journal_entry_ref = ${genJeRef()}, post_time = ${postDate.getTime()} WHERE id = ${saleId}`;
   }
 
   describe('Inventories', function () {
@@ -180,15 +213,10 @@ describe('POS Schema Tests', function () {
     it('shall reject inventory creation with non-POS inventory account', async function () {
       await setupCompleteChartOfAccounts();
 
-      try {
-        await sql`
-          INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code)
-          VALUES (${'Invalid Inventory'}, ${10000}, ${'pcs'}, ${ACCOUNT_KAS})
-        `;
-        ok(false, 'Should have thrown error');
-      } catch (error) {
-        ok(error.message.includes('Inventory account code must be tagged as "POS - Inventory"'));
-      }
+      await rejects(sql`
+        INSERT INTO inventories (name, unit_price, unit_of_measurement, account_code)
+        VALUES (${'Invalid Inventory'}, ${10000}, ${'pcs'}, ${ACCOUNT_KAS})
+      `, /Inventory account code must be tagged as "POS - Inventory"/);
     });
 
     it('shall create inventory barcodes', async function () {
@@ -201,6 +229,27 @@ describe('POS Schema Tests', function () {
       const barcode = (await sql`SELECT * FROM inventory_barcodes WHERE code = ${'8991234567890'}`).rows[0];
       equal(barcode.code, '8991234567890');
       equal(Number(barcode.inventory_id), inventoryId);
+    });
+
+    it('shall prevent manual updates to system-managed inventory valuation fields', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const supplierId = await createSupplier('Supplier Guard');
+      const inventoryId = await createInventory('Guarded Inventory', 12000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const purchaseDate = new Date(2025, 0, 20, 10, 0, 0, 0);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 50000, 'Guarded Inventory Box', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      await rejects(
+        sql`UPDATE inventories SET stock = ${20} WHERE id = ${inventoryId}`,
+        'Cannot manually update inventories.account_code, cost, stock, or latest_stock_taking_time',
+      );
+
+      const inventory = (await sql`SELECT cost, stock FROM inventories WHERE id = ${inventoryId}`).rows[0];
+      equal(Number(inventory.cost), 50000);
+      equal(Number(inventory.stock), 10);
     });
   });
 
@@ -216,23 +265,24 @@ describe('POS Schema Tests', function () {
       equal(result.rows[0].phone_number, '081234567890');
     });
 
-    it('shall create supplier inventory with quantity conversion', async function () {
+    it('shall create supplier inventory as supplier-specific label', async function () {
       await setupCompleteChartOfAccounts();
 
       const supplierId = await createSupplier('PT Suplai Grosir', '081111222333');
       const inventoryId = await createInventory('Mie Instan', 3000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const recordTime = testTime + 1;
 
-      // Supplier sells in boxes of 40 pieces
       await sql`
-        INSERT INTO supplier_inventories (supplier_id, inventory_id, quantity_conversion, name)
-        VALUES (${supplierId}, ${inventoryId}, ${40}, ${'Mie Instan Box'})
+        INSERT INTO supplier_inventories (record_time, supplier_id, inventory_id, name)
+        VALUES (${recordTime}, ${supplierId}, ${inventoryId}, ${'Mie Instan Box'})
       `;
 
       const result = await sql`
-        SELECT * FROM supplier_inventories WHERE supplier_id = ${supplierId} AND inventory_id = ${inventoryId}
+        SELECT * FROM supplier_inventories WHERE record_time = ${recordTime}
       `;
       equal(result.rows.length, 1);
-      equal(Number(result.rows[0].quantity_conversion), 40);
+      equal(Number(result.rows[0].supplier_id), supplierId);
+      equal(Number(result.rows[0].inventory_id), inventoryId);
       equal(result.rows[0].name, 'Mie Instan Box');
     });
   });
@@ -252,15 +302,13 @@ describe('POS Schema Tests', function () {
     it('shall reject payment method with non-POS payment account', async function () {
       await setupCompleteChartOfAccounts();
 
-      try {
-        await sql`
+      await rejects(
+        sql`
           INSERT INTO payment_methods (account_code, name)
           VALUES (${ACCOUNT_PERSEDIAAN}, ${'Invalid Payment'})
-        `;
-        ok(false, 'Should have thrown error');
-      } catch (error) {
-        ok(error.message.includes('Payment method account code must be tagged as "POS - Payment Method"'));
-      }
+        `,
+        'Payment method account code must be tagged as "POS - Payment Method"',
+      );
     });
 
     it('shall create payment method with fees', async function () {
@@ -303,6 +351,46 @@ describe('POS Schema Tests', function () {
   });
 
   describe('Purchases', function () {
+    it('shall reject purchase line with negative quantity', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const supplierId = await createSupplier('Supplier Negative Quantity');
+      const inventoryId = await createInventory('Negative Purchase Guard', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const purchaseId = await createPurchase(supplierId, new Date(2025, 0, 10, 10, 0, 0, 0));
+
+      await rejects(
+        addPurchaseLine(purchaseId, 1, inventoryId, -5, 50000),
+        /CHECK constraint failed/
+      );
+    });
+
+    it('shall reject purchase line with negative price', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const supplierId = await createSupplier('Supplier Negative Price');
+      const inventoryId = await createInventory('Negative Price Guard', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const purchaseId = await createPurchase(supplierId, new Date(2025, 0, 10, 10, 0, 0, 0));
+
+      await rejects(
+        addPurchaseLine(purchaseId, 1, inventoryId, 5, -50000),
+        /CHECK constraint failed/
+      );
+    });
+
+    it('shall create purchase linked to collected supplier document', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const supplierId = await createSupplier('Supplier Receipt');
+      const collectTime = await createDocument(testTime + 2);
+      const purchaseDate = new Date(2025, 0, 12, 9, 0, 0, 0);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate, collectTime);
+
+      const result = await sql`SELECT * FROM purchases WHERE id = ${purchaseId}`;
+      equal(result.rows.length, 1);
+      equal(Number(result.rows[0].collection_collect_time), collectTime);
+    });
+
     it('shall create and post purchase with journal entry', async function () {
       await setupCompleteChartOfAccounts();
 
@@ -315,7 +403,7 @@ describe('POS Schema Tests', function () {
 
       // Create and post purchase: 100 sachets @ 150,000 IDR
       const purchaseId = await createPurchase(supplierId, purchaseDate);
-      await addPurchaseLine(purchaseId, 1, inventoryId, 100, 150000);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 100, 150000, 'Kopi Sachet Dus', 'dus');
       await postPurchase(purchaseId, postDate);
 
       // Verify inventory updated
@@ -325,7 +413,7 @@ describe('POS Schema Tests', function () {
 
       // Verify journal entry created
       const journalEntry = (await sql`
-        SELECT * FROM journal_entries WHERE source_reference = ${'Purchase #' + purchaseId}
+        SELECT * FROM journal_entries WHERE purchase_id = ${purchaseId}
       `).rows[0];
       ok(journalEntry, 'Journal entry should be created');
       ok(journalEntry.post_time, 'Journal entry should be posted');
@@ -336,6 +424,22 @@ describe('POS Schema Tests', function () {
 
       equal(Number(inventoryAccount.balance), 150000, 'Inventory account should be debited');
       equal(Number(apAccount.balance), 150000, 'AP account should be credited');
+    });
+
+    it('shall reject posting purchase without journal_entry_ref', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const supplierId = await createSupplier('Supplier Missing Purchase Ref');
+      const inventoryId = await createInventory('Missing Purchase Ref Item', 5000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const purchaseDate = new Date(2025, 0, 16, 10, 0, 0, 0);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 40000, 'Missing Purchase Ref Item Box', 'box');
+
+      await rejects(
+        sql`UPDATE purchases SET post_time = ${purchaseDate.getTime()} WHERE id = ${purchaseId}`,
+        /Cannot post purchase without journal_entry_ref/
+      );
     });
 
     it('shall handle purchase with catch-up COGS for negative stock', async function () {
@@ -351,7 +455,7 @@ describe('POS Schema Tests', function () {
 
       // First purchase: 10 kg @ 120,000 IDR
       const purchase1Id = await createPurchase(supplierId, firstPurchaseDate);
-      await addPurchaseLine(purchase1Id, 1, inventoryId, 10, 120000);
+      await addPurchaseLine(purchase1Id, 1, inventoryId, 10, 120000, 'Gula Pasir Karung', 'karung');
       await postPurchase(purchase1Id, firstPurchaseDate);
 
       // Sale: 15 kg (this will create negative stock of -5)
@@ -367,7 +471,7 @@ describe('POS Schema Tests', function () {
 
       // Catch-up purchase: 20 kg @ 250,000 IDR (12,500 per kg)
       const purchase2Id = await createPurchase(supplierId, catchupPurchaseDate);
-      await addPurchaseLine(purchase2Id, 1, inventoryId, 20, 250000);
+      await addPurchaseLine(purchase2Id, 1, inventoryId, 20, 250000, 'Gula Pasir Karung', 'karung');
       await postPurchase(purchase2Id, catchupPurchaseDate);
 
       // Verify catch-up COGS
@@ -382,9 +486,102 @@ describe('POS Schema Tests', function () {
       const cogsAccount = (await sql`SELECT balance FROM accounts WHERE account_code = ${ACCOUNT_HPP}`).rows[0];
       ok(Number(cogsAccount.balance) > 0, 'COGS should be recorded for catch-up');
     });
+
+    it('shall reject catch-up purchase when POS COGS tag is missing', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const firstPurchaseDate = new Date(2025, 1, 1, 10, 0, 0, 0);
+      const saleDate = new Date(2025, 1, 2, 14, 0, 0, 0);
+      const catchupPurchaseDate = new Date(2025, 1, 3, 10, 0, 0, 0);
+
+      const supplierId = await createSupplier('Supplier Missing Catch-up COGS Tag');
+      const inventoryId = await createInventory('Catch-up Guard Item', 15000, 'kg', ACCOUNT_PERSEDIAAN);
+
+      const purchase1Id = await createPurchase(supplierId, firstPurchaseDate);
+      await addPurchaseLine(purchase1Id, 1, inventoryId, 10, 120000, 'Catch-up Guard Item Sack', 'sack');
+      await postPurchase(purchase1Id, firstPurchaseDate);
+
+      const paymentMethodId = await createPaymentMethod(ACCOUNT_KAS, 'Tunai');
+      const saleId = await createSale(saleDate);
+      await addSaleLine(saleId, 1, inventoryId, 15, 225000);
+      await addSalePayment(saleId, 1, paymentMethodId, 225000);
+      await postSale(saleId, saleDate);
+
+      await sql`DELETE FROM account_tags WHERE tag = 'POS - Cost of Goods Sold'`;
+
+      const purchase2Id = await createPurchase(supplierId, catchupPurchaseDate);
+      await addPurchaseLine(purchase2Id, 1, inventoryId, 20, 250000, 'Catch-up Guard Item Sack', 'sack');
+
+      await rejects(
+        sql`UPDATE purchases SET journal_entry_ref = ${genJeRef()}, post_time = ${catchupPurchaseDate.getTime()} WHERE id = ${purchase2Id}`,
+        /Account with tag "POS - Cost of Goods Sold" not found for purchase posting/
+      );
+    });
+
+    it('shall prevent mutating posted purchase header and lines', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const purchaseDate = new Date(2025, 1, 10, 10, 0, 0, 0);
+      const postDate = new Date(2025, 1, 10, 11, 0, 0, 0);
+      const supplierId = await createSupplier('Supplier Posted Purchase');
+      const inventoryId = await createInventory('Immutable Purchase Item', 5000, 'pcs', ACCOUNT_PERSEDIAAN);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 30000, 'Immutable Purchase Item', 'box');
+      await postPurchase(purchaseId, postDate);
+
+      await rejects(
+        sql`UPDATE purchases SET journal_entry_ref = NULL WHERE id = ${purchaseId}`,
+        'Cannot unpost or change post_time of a posted purchase',
+      );
+
+      await rejects(
+        sql`UPDATE purchases SET purchase_time = ${purchaseDate.getTime() + 86400000} WHERE id = ${purchaseId}`,
+        'Cannot modify purchase_time or journal_entry_ref of a posted purchase',
+      );
+
+      await rejects(
+        addPurchaseLine(purchaseId, 2, inventoryId, 5, 15000, 'Late Purchase Line', 'box'),
+        'Cannot add lines to posted purchase',
+      );
+
+      await rejects(
+        sql`UPDATE purchase_lines SET price = ${35000} WHERE purchase_id = ${purchaseId} AND line_number = ${1}`,
+        'Cannot modify lines of posted purchase',
+      );
+
+      await rejects(
+        sql`DELETE FROM purchase_lines WHERE purchase_id = ${purchaseId} AND line_number = ${1}`,
+        'Cannot delete lines of posted purchase',
+      );
+    });
   });
 
   describe('Sales', function () {
+    it('shall reject sale line with negative quantity', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const inventoryId = await createInventory('Negative Sale Guard', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const saleId = await createSale(new Date(2025, 0, 15, 12, 0, 0, 0));
+
+      await rejects(
+        addSaleLine(saleId, 1, inventoryId, -2, 20000),
+        /CHECK constraint failed/
+      );
+    });
+
+    it('shall reject sale line with negative price', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const inventoryId = await createInventory('Negative Price Sale Guard', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const saleId = await createSale(new Date(2025, 0, 15, 12, 0, 0, 0));
+
+      await rejects(
+        addSaleLine(saleId, 1, inventoryId, 2, -20000),
+        /CHECK constraint failed/
+      );
+    });
+
     it('shall create and post sale with journal entry', async function () {
       await setupCompleteChartOfAccounts();
 
@@ -397,7 +594,7 @@ describe('POS Schema Tests', function () {
 
       // Purchase first: 50 bottles @ 100,000 IDR (2,000 per bottle cost)
       const purchaseId = await createPurchase(supplierId, purchaseDate);
-      await addPurchaseLine(purchaseId, 1, inventoryId, 50, 100000);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 50, 100000, 'Air Mineral Dus', 'dus');
       await postPurchase(purchaseId, purchaseDate);
 
       // Setup payment method and create sale: 10 bottles @ 40,000 IDR
@@ -425,7 +622,7 @@ describe('POS Schema Tests', function () {
       equal(Number(updatedInventory.num_of_sales), 10, 'num_of_sales should increase by 10');
 
       // Verify journal entry
-      const journalEntry = (await sql`SELECT * FROM journal_entries WHERE source_reference = ${'Sale #' + saleId}`).rows[0];
+      const journalEntry = (await sql`SELECT * FROM journal_entries WHERE sale_id = ${saleId}`).rows[0];
       ok(journalEntry, 'Journal entry should be created');
 
       // Verify account balances
@@ -436,6 +633,38 @@ describe('POS Schema Tests', function () {
       equal(Number(cashAccount.balance), 40000, 'Cash should be debited');
       equal(Number(revenueAccount.balance), 40000, 'Revenue should be credited');
       equal(Number(cogsAccount.balance), 20000, 'COGS should be debited');
+    });
+
+    it('shall prevent modifying draft sale lines, including manual cost overrides', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const purchaseDate = new Date(2025, 0, 12, 8, 0, 0, 0);
+      const saleDate = new Date(2025, 0, 15, 14, 0, 0, 0);
+
+      const supplierId = await createSupplier('Supplier Draft Sale Guard');
+      const inventoryId = await createInventory('Draft Sale Guard Item', 4000, 'pcs', ACCOUNT_PERSEDIAAN);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 20, 40000, 'Draft Sale Guard Item Box', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      const saleId = await createSale(saleDate);
+      await addSaleLine(saleId, 1, inventoryId, 5, 20000);
+
+      await rejects(
+        sql`UPDATE sale_lines SET cost = ${1} WHERE sale_id = ${saleId} AND line_number = ${1}`,
+        /Sale lines can only be added or removed, not updated/
+      );
+
+      await rejects(
+        sql`UPDATE sale_lines SET price = ${25000} WHERE sale_id = ${saleId} AND line_number = ${1}`,
+        /Sale lines can only be added or removed, not updated/
+      );
+
+      const saleLine = (await sql`SELECT quantity, price, cost FROM sale_lines WHERE sale_id = ${saleId} AND line_number = ${1}`).rows[0];
+      equal(Number(saleLine.quantity), 5);
+      equal(Number(saleLine.price), 20000);
+      equal(Number(saleLine.cost), 10000, 'Auto-calculated cost should remain unchanged');
     });
 
     it('shall create sale with discount', async function () {
@@ -450,7 +679,7 @@ describe('POS Schema Tests', function () {
 
       // Purchase: 100 pcs @ 500,000 IDR
       const purchaseId = await createPurchase(supplierId, purchaseDate);
-      await addPurchaseLine(purchaseId, 1, inventoryId, 100, 500000);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 100, 500000, 'Snack Karton', 'karton');
       await postPurchase(purchaseId, purchaseDate);
 
       // Create discount: Buy 3 get 2000 off
@@ -481,6 +710,154 @@ describe('POS Schema Tests', function () {
       equal(Number(discountAccount.balance), 4000, 'Discount contra-revenue should be debited');
     });
 
+    it('shall reject negative discount amounts', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const supplierId = await createSupplier('Supplier Negative Discount');
+      const inventoryId = await createInventory('Discount Guard Item', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const discountId = await createDiscount('Simple Discount', inventoryId, 1, 500);
+      const purchaseId = await createPurchase(supplierId, new Date(2025, 1, 1, 8, 0, 0, 0));
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 50000, 'Discount Guard Item', 'box');
+      await postPurchase(purchaseId, new Date(2025, 1, 1, 8, 0, 0, 0));
+
+      const saleId = await createSale(new Date(2025, 1, 5, 15, 0, 0, 0));
+      await addSaleLine(saleId, 1, inventoryId, 2, 20000);
+
+      await rejects(
+        sql`
+          INSERT INTO sale_discounts (sale_id, line_number, discount_id, amount)
+          VALUES (${saleId}, ${1}, ${discountId}, ${-1000})
+        `,
+        /CHECK constraint failed/
+      );
+    });
+
+    it('shall reject negative payment fees', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const supplierId = await createSupplier('Supplier Negative Fee');
+      const inventoryId = await createInventory('Fee Guard Item', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const paymentMethodId = await createPaymentMethod(ACCOUNT_KAS, 'Cash Negative Fee');
+      const purchaseDate = new Date(2025, 1, 1, 8, 0, 0, 0);
+      const saleDate = new Date(2025, 1, 5, 15, 0, 0, 0);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 50000, 'Fee Guard Item', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      const saleId = await createSale(saleDate);
+      await addSaleLine(saleId, 1, inventoryId, 1, 10000);
+
+      await rejects(
+        sql`
+          INSERT INTO sale_payments (sale_id, line_number, payment_method_id, amount, payment_fee)
+          VALUES (${saleId}, ${1}, ${paymentMethodId}, ${10000}, ${-500})
+        `,
+        /CHECK constraint failed/
+      );
+    });
+
+    it('shall reject payment fees greater than the payment amount', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const supplierId = await createSupplier('Supplier Excessive Fee');
+      const inventoryId = await createInventory('Excessive Fee Item', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const paymentMethodId = await createPaymentMethod(ACCOUNT_KAS, 'Cash Excessive Fee');
+      const purchaseDate = new Date(2025, 1, 1, 8, 0, 0, 0);
+      const saleDate = new Date(2025, 1, 5, 15, 0, 0, 0);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 50000, 'Excessive Fee Item', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      const saleId = await createSale(saleDate);
+      await addSaleLine(saleId, 1, inventoryId, 1, 10000);
+
+      await rejects(
+        sql`
+          INSERT INTO sale_payments (sale_id, line_number, payment_method_id, amount, payment_fee)
+          VALUES (${saleId}, ${1}, ${paymentMethodId}, ${10000}, ${12000})
+        `,
+        /CHECK constraint failed/
+      );
+    });
+
+    it('shall reject posting sale when payment total does not equal invoice amount', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const supplierId = await createSupplier('Supplier Payment Mismatch');
+      const inventoryId = await createInventory('Payment Mismatch Item', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const paymentMethodId = await createPaymentMethod(ACCOUNT_KAS, 'Cash Payment Mismatch');
+      const purchaseDate = new Date(2025, 1, 1, 8, 0, 0, 0);
+      const saleDate = new Date(2025, 1, 5, 15, 0, 0, 0);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 50000, 'Payment Mismatch Item', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      const saleId = await createSale(saleDate);
+      await addSaleLine(saleId, 1, inventoryId, 1, 10000);
+      await addSalePayment(saleId, 1, paymentMethodId, 9000);
+
+      await rejects(
+        postSale(saleId, saleDate),
+        /Cannot post sale: payment total must equal invoice amount/
+      );
+    });
+
+    it('shall reject posting sale when discount amount exceeds gross amount', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const supplierId = await createSupplier('Supplier Discount Exceeds Gross');
+      const inventoryId = await createInventory('Discount Exceeds Gross Item', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const discountId = await createDiscount('Large Discount', inventoryId, 1, 20000);
+      const paymentMethodId = await createPaymentMethod(ACCOUNT_KAS, 'Cash Discount Exceeds Gross');
+      const purchaseDate = new Date(2025, 1, 1, 8, 0, 0, 0);
+      const saleDate = new Date(2025, 1, 5, 15, 0, 0, 0);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 50000, 'Discount Exceeds Gross Item', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      const saleId = await createSale(saleDate);
+      await addSaleLine(saleId, 1, inventoryId, 1, 10000);
+      await sql`
+        INSERT INTO sale_discounts (sale_id, line_number, discount_id, amount)
+        VALUES (${saleId}, ${1}, ${discountId}, ${15000})
+      `;
+      await addSalePayment(saleId, 1, paymentMethodId, 0);
+
+      await rejects(
+        postSale(saleId, saleDate),
+        /Cannot post sale: discount amount exceeds gross amount/
+      );
+    });
+
+    it('shall reject posting sale with explicit error when sales revenue tag is missing', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const supplierId = await createSupplier('Supplier Missing Revenue Tag');
+      const inventoryId = await createInventory('Missing Revenue Tag Item', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const paymentMethodId = await createPaymentMethod(ACCOUNT_KAS, 'Cash Missing Revenue Tag');
+      const purchaseDate = new Date(2025, 1, 1, 8, 0, 0, 0);
+      const saleDate = new Date(2025, 1, 5, 15, 0, 0, 0);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 50000, 'Missing Revenue Tag Item', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      await sql`DELETE FROM account_tags WHERE tag = ${'POS - Sales Revenue'}`;
+
+      const saleId = await createSale(saleDate);
+      await addSaleLine(saleId, 1, inventoryId, 1, 10000);
+      await addSalePayment(saleId, 1, paymentMethodId, 10000);
+
+      await rejects(
+        postSale(saleId, saleDate),
+        /Account with tag "POS - Sales Revenue" not found for sale posting/
+      );
+    });
+
     it('shall prevent deleting sale line for posted sale', async function () {
       await setupCompleteChartOfAccounts();
 
@@ -492,7 +869,7 @@ describe('POS Schema Tests', function () {
       const inventoryId = await createInventory('Permen', 500, 'pcs', ACCOUNT_PERSEDIAAN);
 
       const purchaseId = await createPurchase(supplierId, purchaseDate);
-      await addPurchaseLine(purchaseId, 1, inventoryId, 200, 40000);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 200, 40000, 'Permen Toples', 'toples');
       await postPurchase(purchaseId, purchaseDate);
 
       const paymentMethodId = await createPaymentMethod(ACCOUNT_KAS, 'Tunai3');
@@ -502,12 +879,36 @@ describe('POS Schema Tests', function () {
       await postSale(saleId, saleDate);
 
       // Try to delete sale line
-      try {
-        await sql`DELETE FROM sale_lines WHERE sale_id = ${saleId}`;
-        ok(false, 'Should have thrown error');
-      } catch (error) {
-        ok(error.message.includes('Cannot delete sale line for posted sale'));
-      }
+      await rejects(
+        sql`DELETE FROM sale_lines WHERE sale_id = ${saleId} AND line_number = ${1}`,
+        'Cannot delete sale line for posted sale',
+      );
+    });
+
+    it('shall prevent duplicate inventory lines in same sale', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const purchaseDate = new Date(2025, 2, 10, 8, 0, 0, 0);
+      const saleDate = new Date(2025, 2, 15, 14, 0, 0, 0);
+
+      // Setup
+      const supplierId = await createSupplier('Supplier Dup');
+      const inventoryId = await createInventory('Widget', 5000, 'pcs', ACCOUNT_PERSEDIAAN);
+
+      // Purchase: 100 pcs @ 200,000 IDR
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 100, 200000, 'Widget Box', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      const paymentMethodId = await createPaymentMethod(ACCOUNT_KAS, 'Tunai-Dup');
+      const saleId = await createSale(saleDate);
+      await addSaleLine(saleId, 1, inventoryId, 5, 25000);
+
+      // Adding a second line for the same inventory should fail
+      await rejects(
+        addSaleLine(saleId, 2, inventoryId, 3, 15000),
+        'UNIQUE constraint failed',
+      );
     });
 
     it('shall allow zero-cost sale when stock is zero or negative', async function () {
@@ -535,6 +936,63 @@ describe('POS Schema Tests', function () {
       equal(Number(updatedInventory.stock), -5, 'Stock should be negative');
       equal(Number(updatedInventory.cost), 0, 'Cost should remain 0');
     });
+
+    it('shall prevent mutating posted sale header and detail rows', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const purchaseDate = new Date(2025, 3, 5, 8, 0, 0, 0);
+      const saleDate = new Date(2025, 3, 8, 10, 0, 0, 0);
+      const supplierId = await createSupplier('Supplier Posted Sale');
+      const inventoryId = await createInventory('Immutable Sale Item', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+      const discountId = await createDiscount('Immutable Sale Discount', inventoryId, 1, 500);
+      const paymentMethodId = await createPaymentMethod(ACCOUNT_KAS, 'Immutable Cash');
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 20, 80000, 'Immutable Sale Item', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      const saleId = await createSale(saleDate);
+      await addSaleLine(saleId, 1, inventoryId, 2, 20000);
+      await sql`
+        INSERT INTO sale_discounts (sale_id, line_number, discount_id, amount)
+        VALUES (${saleId}, ${1}, ${discountId}, ${500})
+      `;
+      await addSalePayment(saleId, 1, paymentMethodId, 19500);
+      await postSale(saleId, saleDate);
+
+      await rejects(
+        sql`UPDATE sales SET journal_entry_ref = NULL WHERE id = ${saleId}`,
+        'Cannot unpost or change post_time of a posted sale',
+      );
+
+      await rejects(
+        sql`UPDATE sales SET sale_time = ${saleDate.getTime() + 86400000} WHERE id = ${saleId}`,
+        'Cannot modify sale_time or journal_entry_ref of a posted sale',
+      );
+
+      await rejects(
+        addSaleLine(saleId, 2, inventoryId, 1, 10000),
+        'Cannot add sale line for posted sale',
+      );
+
+      await rejects(
+        sql`
+          INSERT INTO sale_discounts (sale_id, line_number, discount_id, amount)
+          VALUES (${saleId}, ${2}, ${discountId}, ${500})
+        `,
+        'Cannot add discount to posted sale',
+      );
+
+      await rejects(
+        sql`UPDATE sale_payments SET amount = ${19000} WHERE sale_id = ${saleId} AND line_number = ${1}`,
+        'Cannot modify payment of posted sale',
+      );
+
+      await rejects(
+        sql`DELETE FROM sale_discounts WHERE sale_id = ${saleId} AND line_number = ${1}`,
+        'Cannot delete discount of posted sale',
+      );
+    });
   });
 
   describe('Stock Taking', function () {
@@ -550,14 +1008,14 @@ describe('POS Schema Tests', function () {
 
       // Purchase: 50 pcs @ 150,000 (3,000 per unit)
       const purchaseId = await createPurchase(supplierId, purchaseDate);
-      await addPurchaseLine(purchaseId, 1, inventoryId, 50, 150000);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 50, 150000, 'Buku Tulis Pack', 'pack');
       await postPurchase(purchaseId, purchaseDate);
 
       // Stock taking: found 55 pcs (gain of 5 pcs)
       // Expected cost: 150,000, Actual cost = 55 * 3000 = 165,000
       await sql`
-        INSERT INTO stock_takings (inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost)
-        VALUES (${inventoryId}, ${auditDate.getTime()}, ${50}, ${55}, ${150000}, ${165000})
+        INSERT INTO stock_takings (inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost, journal_entry_ref)
+        VALUES (${inventoryId}, ${auditDate.getTime()}, ${50}, ${55}, ${150000}, ${165000}, ${genJeRef()})
       `;
 
       // Verify inventory updated
@@ -582,14 +1040,14 @@ describe('POS Schema Tests', function () {
 
       // Purchase: 100 pcs @ 100,000 (1,000 per unit)
       const purchaseId = await createPurchase(supplierId, purchaseDate);
-      await addPurchaseLine(purchaseId, 1, inventoryId, 100, 100000);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 100, 100000, 'Pensil Box', 'box');
       await postPurchase(purchaseId, purchaseDate);
 
       // Stock taking: found 90 pcs (shrinkage of 10 pcs)
       // Expected cost: 100,000, Actual cost = 90 * 1000 = 90,000
       await sql`
-        INSERT INTO stock_takings (inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost)
-        VALUES (${inventoryId}, ${auditDate.getTime()}, ${100}, ${90}, ${100000}, ${90000})
+        INSERT INTO stock_takings (inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost, journal_entry_ref)
+        VALUES (${inventoryId}, ${auditDate.getTime()}, ${100}, ${90}, ${100000}, ${90000}, ${genJeRef()})
       `;
 
       // Verify inventory updated
@@ -600,6 +1058,133 @@ describe('POS Schema Tests', function () {
       // Verify shrinkage account debited
       const shrinkageAccount = (await sql`SELECT balance FROM accounts WHERE account_code = ${ACCOUNT_SELISIH_PERSEDIAAN}`).rows[0];
       equal(Number(shrinkageAccount.balance), 10000, 'Inventory Shrinkage should be debited');
+    });
+
+    it('shall reject stock taking when expected snapshot does not match current inventory state', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const purchaseDate = new Date(2025, 5, 20, 8, 0, 0, 0);
+      const auditDate = new Date(2025, 5, 21, 9, 0, 0, 0);
+      const supplierId = await createSupplier('Supplier Snapshot Guard');
+      const inventoryId = await createInventory('Snapshot Guard Item', 2000, 'pcs', ACCOUNT_PERSEDIAAN);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 50000, 'Snapshot Guard Item', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      await rejects(
+        sql`
+          INSERT INTO stock_takings (inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost, journal_entry_ref)
+          VALUES (${inventoryId}, ${auditDate.getTime()}, ${10}, ${10}, ${999999}, ${999999}, ${genJeRef()})
+        `,
+        /Stock taking expected_cost must match current inventory cost/
+      );
+
+      const inventory = (await sql`SELECT stock, cost FROM inventories WHERE id = ${inventoryId}`).rows[0];
+      const inventoryAccount = (await sql`SELECT balance FROM accounts WHERE account_code = ${ACCOUNT_PERSEDIAAN}`).rows[0];
+      equal(Number(inventory.stock), 10);
+      equal(Number(inventory.cost), 50000);
+      equal(Number(inventoryAccount.balance), 50000);
+    });
+
+    it('shall reject stock taking inside a closed fiscal year even when no cost adjustment is needed', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const purchaseDate = new Date(2025, 0, 10, 8, 0, 0, 0);
+      const closingDate = new Date(2026, 0, 15, 0, 0, 0, 0);
+      const auditDate = new Date(2025, 6, 1, 9, 0, 0, 0);
+      const supplierId = await createSupplier('Supplier Closed Period Guard');
+      const inventoryId = await createInventory('Closed Period Guard Item', 3000, 'pcs', ACCOUNT_PERSEDIAAN);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 50000, 'Closed Period Guard Item', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      await sql`
+        INSERT INTO fiscal_years (begin_time, end_time, name)
+        VALUES (${new Date(2025, 0, 1, 0, 0, 0, 0).getTime()}, ${new Date(2025, 11, 31, 0, 0, 0, 0).getTime()}, ${'FY 2025'})
+      `;
+
+      await sql`
+        UPDATE fiscal_years
+        SET closing_journal_entry_ref = ${genJeRef()}, depreciation_journal_entry_ref = ${genJeRef()}, post_time = ${closingDate.getTime()}
+        WHERE name = ${'FY 2025'}
+      `;
+
+      await rejects(
+        sql`
+          INSERT INTO stock_takings (inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost, journal_entry_ref)
+          VALUES (${inventoryId}, ${auditDate.getTime()}, ${10}, ${8}, ${50000}, ${50000}, ${genJeRef()})
+        `,
+        /Cannot record stock taking in a closed fiscal year/
+      );
+
+      const inventory = (await sql`SELECT stock, cost, latest_stock_taking_time FROM inventories WHERE id = ${inventoryId}`).rows[0];
+      equal(Number(inventory.stock), 10);
+      equal(Number(inventory.cost), 50000);
+      equal(inventory.latest_stock_taking_time, null);
+    });
+
+    it('shall prevent modifying stock taking after it is recorded', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const purchaseDate = new Date(2025, 6, 1, 8, 0, 0, 0);
+      const auditDate = new Date(2025, 6, 2, 9, 0, 0, 0);
+      const supplierId = await createSupplier('Supplier Immutable Stock Taking');
+      const inventoryId = await createInventory('Immutable Stock Item', 2000, 'pcs', ACCOUNT_PERSEDIAAN);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 50000, 'Immutable Stock Item', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      await sql`
+        INSERT INTO stock_takings (inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost, journal_entry_ref)
+        VALUES (${inventoryId}, ${auditDate.getTime()}, ${10}, ${8}, ${50000}, ${40000}, ${genJeRef()})
+      `;
+
+      await rejects(
+        sql`UPDATE stock_takings SET actual_stock = ${9}, actual_cost = ${45000} WHERE inventory_id = ${inventoryId}`,
+        /Stock takings are immutable once recorded/
+      );
+
+      const stockTaking = (await sql`
+        SELECT actual_stock, actual_cost FROM stock_takings WHERE inventory_id = ${inventoryId}
+      `).rows[0];
+      equal(Number(stockTaking.actual_stock), 8);
+      equal(Number(stockTaking.actual_cost), 40000);
+
+      const inventory = (await sql`SELECT stock, cost FROM inventories WHERE id = ${inventoryId}`).rows[0];
+      equal(Number(inventory.stock), 8);
+      equal(Number(inventory.cost), 40000);
+    });
+
+    it('shall prevent deleting stock taking after it is recorded', async function () {
+      await setupCompleteChartOfAccounts();
+
+      const purchaseDate = new Date(2025, 6, 3, 8, 0, 0, 0);
+      const auditDate = new Date(2025, 6, 4, 9, 0, 0, 0);
+      const supplierId = await createSupplier('Supplier No Delete Stock Taking');
+      const inventoryId = await createInventory('No Delete Stock Item', 3000, 'pcs', ACCOUNT_PERSEDIAAN);
+
+      const purchaseId = await createPurchase(supplierId, purchaseDate);
+      await addPurchaseLine(purchaseId, 1, inventoryId, 10, 50000, 'No Delete Stock Item', 'box');
+      await postPurchase(purchaseId, purchaseDate);
+
+      await sql`
+        INSERT INTO stock_takings (inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost)
+        VALUES (${inventoryId}, ${auditDate.getTime()}, ${10}, ${10}, ${50000}, ${50000})
+      `;
+
+      await rejects(
+        sql`DELETE FROM stock_takings WHERE inventory_id = ${inventoryId}`,
+        /Stock takings cannot be deleted once recorded/
+      );
+
+      const count = (await sql`SELECT COUNT(*) AS count FROM stock_takings WHERE inventory_id = ${inventoryId}`).rows[0];
+      equal(Number(count.count), 1);
+
+      const inventory = (await sql`SELECT latest_stock_taking_time FROM inventories WHERE id = ${inventoryId}`).rows[0];
+      equal(Number(inventory.latest_stock_taking_time), auditDate.getTime());
     });
   });
 
@@ -633,12 +1218,10 @@ describe('POS Schema Tests', function () {
       // Try to close fiscal year
       const fiscalYear = (await sql`SELECT * FROM fiscal_years WHERE name = ${'FY 2025'}`).rows[0];
 
-      try {
-        await sql`UPDATE fiscal_years SET post_time = ${closingDate.getTime()} WHERE begin_time = ${fiscalYear.begin_time}`;
-        ok(false, 'Should have thrown error');
-      } catch (error) {
-        ok(error.message.includes('Cannot close fiscal year') && error.message.includes('negative stock'), `Error message should mention negative stock, got: ${error.message}`);
-      }
+      await rejects(
+        sql`UPDATE fiscal_years SET closing_journal_entry_ref = ${genJeRef()}, depreciation_journal_entry_ref = ${genJeRef()}, post_time = ${closingDate.getTime()} WHERE begin_time = ${fiscalYear.begin_time}`,
+        /(?=.*Cannot close fiscal year)(?=.*negative stock)/
+      );
     });
   });
 
@@ -653,20 +1236,50 @@ describe('POS Schema Tests', function () {
       const entryTime = new Date(2025, 6, 1, 10, 0, 0, 0);
 
       const result = await sql`
-        INSERT INTO journal_entries (entry_time, source_type) VALUES (${entryTime.getTime()}, ${'Manual'})
+        INSERT INTO journal_entries (entry_time) VALUES (${entryTime.getTime()})
         RETURNING ref
       `;
       const journalEntryRef = Number(result.rows[0].ref);
 
-      try {
-        await sql`
+      await rejects(
+        sql`
           INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit)
           VALUES (${journalEntryRef}, ${1}, ${ACCOUNT_PERSEDIAAN}, ${10000}, ${0})
-        `;
-        ok(false, 'Should have thrown error');
-      } catch (error) {
-        ok(error.message.includes('Manual journal entries are not allowed for accounts tagged as "POS - Inventory"'));
-      }
+        `,
+        /Manual journal entries are not allowed for accounts tagged as "POS - Inventory"/
+      );
+    });
+
+    it('shall prevent updating a draft manual journal entry line into a POS inventory account', async function () {
+      await setupCompleteChartOfAccounts();
+
+      await createInventory('Protected Item', 10000, 'pcs', ACCOUNT_PERSEDIAAN);
+
+      const entryTime = new Date(2025, 6, 1, 10, 0, 0, 0);
+      const result = await sql`
+        INSERT INTO journal_entries (entry_time) VALUES (${entryTime.getTime()})
+        RETURNING ref
+      `;
+      const journalEntryRef = Number(result.rows[0].ref);
+
+      await sql`
+        INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit)
+        VALUES (${journalEntryRef}, ${1}, ${61100}, ${10000}, ${0})
+      `;
+
+      await sql`
+        INSERT INTO journal_entry_lines (journal_entry_ref, line_number, account_code, debit, credit)
+        VALUES (${journalEntryRef}, ${2}, ${31000}, ${0}, ${10000})
+      `;
+
+      await rejects(
+        sql`
+          UPDATE journal_entry_lines
+          SET account_code = ${ACCOUNT_PERSEDIAAN}
+          WHERE journal_entry_ref = ${journalEntryRef} AND line_number = ${1}
+        `,
+        /Manual journal entries are not allowed for accounts tagged as "POS - Inventory"/
+      );
     });
   });
 
@@ -684,8 +1297,8 @@ describe('POS Schema Tests', function () {
 
       // Purchase
       const purchaseId = await createPurchase(supplierId, purchaseDate);
-      await addPurchaseLine(purchaseId, 1, inventoryAId, 50, 250000);
-      await addPurchaseLine(purchaseId, 2, inventoryBId, 50, 375000);
+      await addPurchaseLine(purchaseId, 1, inventoryAId, 50, 250000, 'Item A Box', 'box');
+      await addPurchaseLine(purchaseId, 2, inventoryBId, 50, 375000, 'Item B Box', 'box');
       await postPurchase(purchaseId, purchaseDate);
 
       // Create discount for Item A only
@@ -696,15 +1309,13 @@ describe('POS Schema Tests', function () {
       await addSaleLine(saleId, 1, inventoryBId, 5, 75000);
 
       // Try to apply discount A to sale line with Item B
-      try {
-        await sql`
+      await rejects(
+        sql`
           INSERT INTO sale_discounts (sale_id, line_number, discount_id, amount)
           VALUES (${saleId}, ${1}, ${discountAId}, ${5000})
-        `;
-        ok(false, 'Should have thrown error');
-      } catch (error) {
-        ok(error.message.includes('Discount is not applicable to this inventory'));
-      }
+        `,
+        /Discount is not applicable to this sale/,
+      );
     });
   });
 });

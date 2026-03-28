@@ -7,12 +7,12 @@ import { useDialog } from '#web/hooks/use-dialog.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
-import { TimeContextElement } from '#web/contexts/time-context.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
+import { normalizeFixedAssetError } from '#web/tools/accounting.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
@@ -23,7 +23,7 @@ import { useElement } from '#web/hooks/use-element.js';
  * @typedef {object} FixedAssetDetail
  * @property {number} id
  * @property {string} name
- * @property {string | null} description
+ * @property {string | null} note
  * @property {number} acquisition_time
  * @property {number} acquisition_cost
  * @property {number} useful_life_years
@@ -38,6 +38,8 @@ import { useElement } from '#web/hooks/use-element.js';
  * @property {string} depreciation_expense_account_name
  * @property {number} payment_account_code
  * @property {string} payment_account_name
+ * @property {number} journal_entry_ref
+ * @property {number | null} acquisition_journal_post_time
  * @property {number} create_time
  * @property {number} update_time
  */
@@ -63,7 +65,6 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
-    const time = useContext(host, TimeContextElement);
 
     const t = useTranslator(host);
     const errorAlertDialog = useElement(host, HTMLDialogElement);
@@ -94,7 +95,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           SELECT
             fa.id,
             fa.name,
-            fa.description,
+            fa.note,
             fa.acquisition_time,
             fa.acquisition_cost,
             fa.useful_life_years,
@@ -109,6 +110,8 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
             a3.name as depreciation_expense_account_name,
             fa.payment_account_code,
             a4.name as payment_account_name,
+            fa.journal_entry_ref,
+            je.post_time as acquisition_journal_post_time,
             fa.create_time,
             fa.update_time
           FROM fixed_assets fa
@@ -116,6 +119,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           JOIN accounts a2 ON a2.account_code = fa.accumulated_depreciation_account_code
           JOIN accounts a3 ON a3.account_code = fa.depreciation_expense_account_code
           JOIN accounts a4 ON a4.account_code = fa.payment_account_code
+          LEFT JOIN journal_entries je ON je.ref = fa.journal_entry_ref
           WHERE fa.id = ${assetId}
         `;
 
@@ -128,7 +132,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           state.asset = {
             id: Number(row.id),
             name: String(row.name),
-            description: row.description ? String(row.description) : null,
+            note: row.note ? String(row.note) : null,
             acquisition_time: Number(row.acquisition_time),
             acquisition_cost: Number(row.acquisition_cost),
             useful_life_years: Number(row.useful_life_years),
@@ -143,6 +147,8 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
             depreciation_expense_account_name: String(row.depreciation_expense_account_name),
             payment_account_code: Number(row.payment_account_code),
             payment_account_name: String(row.payment_account_name),
+            journal_entry_ref: Number(row.journal_entry_ref),
+            acquisition_journal_post_time: row.acquisition_journal_post_time ? Number(row.acquisition_journal_post_time) : null,
             create_time: Number(row.create_time),
             update_time: Number(row.update_time),
           };
@@ -156,10 +162,10 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
               jel.credit as amount
             FROM journal_entries je
             JOIN journal_entry_lines jel ON jel.journal_entry_ref = je.ref
-            WHERE jel.reference = ${'FixedAsset:' + assetId}
-              AND jel.account_code = ${state.asset.accumulated_depreciation_account_code}
+            WHERE jel.account_code = ${state.asset.accumulated_depreciation_account_code}
               AND jel.credit > 0
               AND je.post_time IS NOT NULL
+              AND jel.note = ${'Accumulated Depreciation: ' + state.asset.name}
             ORDER BY je.entry_time DESC
           `;
 
@@ -176,7 +182,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
         state.isLoading = false;
       }
       catch (error) {
-        state.formError = error instanceof Error ? error : new Error(String(error));
+        state.formError = normalizeFixedAssetError(error, t);
         state.isLoading = false;
       }
     }
@@ -186,6 +192,16 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
       if (dialog.open && !isNaN(assetId)) loadAssetDetails();
     });
 
+    function canEditAsset() {
+      if (!state.asset) return false;
+      return state.asset.accumulated_depreciation === 0 && state.asset.acquisition_journal_post_time === null;
+    }
+
+    function canDeleteAsset() {
+      if (!state.asset) return false;
+      return state.asset.accumulated_depreciation === 0 && state.asset.acquisition_journal_post_time === null;
+    }
+
     /** @param {SubmitEvent} event */
     async function handleUpdateSubmit(event) {
       event.preventDefault();
@@ -194,7 +210,6 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
 
       if (!state.asset) return;
 
-      // Can only edit name and description if asset has accumulated depreciation
       const tx = await database.transaction('write');
 
       try {
@@ -203,17 +218,14 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
 
         const data = new FormData(form);
         const name = /** @type {string} */ (data.get('name'))?.trim();
-        const description = /** @type {string} */ (data.get('description'))?.trim() || null;
+        const note = /** @type {string} */ (data.get('note'))?.trim() || null;
 
         // Validate inputs
         if (!name) throw new Error(t('fixedAsset', 'assetNameRequired'));
 
-        const currentTime = time.currentDate().getTime();
-
-        // Update fixed asset (only name and description)
         await tx.sql`
           UPDATE fixed_assets
-          SET name = ${name}, description = ${description}, update_time = ${currentTime}
+          SET name = ${name}, note = ${note}
           WHERE id = ${state.asset.id};
         `;
 
@@ -230,7 +242,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.formError = error instanceof Error ? error : new Error(String(error));
+        state.formError = normalizeFixedAssetError(error, t);
       }
       finally {
         state.formSaving = false;
@@ -254,27 +266,11 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
         state.isDeleting = true;
         state.formError = null;
 
-        // Check if asset can be deleted (no accumulated depreciation)
-        if (state.asset.accumulated_depreciation > 0) {
-          throw new Error(t('fixedAsset', 'cannotDeleteWithDepreciation'));
+        if (!canDeleteAsset()) {
+          throw new Error(t('fixedAsset', 'postedHistoryDeleteForbiddenError'));
         }
 
-        // Delete the fixed asset
         await tx.sql`DELETE FROM fixed_assets WHERE id = ${state.asset.id};`;
-
-        // Delete the acquisition journal entry
-        // First get the journal entry ref
-        const jeResult = await tx.sql`
-          SELECT ref FROM journal_entries WHERE source_reference = ${'FixedAsset:' + state.asset.id};
-        `;
-
-        for (const row of jeResult.rows) {
-          const jeRef = Number(row.ref);
-          // Delete journal entry lines first (foreign key constraint)
-          await tx.sql`DELETE FROM journal_entry_lines WHERE journal_entry_ref = ${jeRef};`;
-          // Then delete the journal entry
-          await tx.sql`DELETE FROM journal_entries WHERE ref = ${jeRef};`;
-        }
 
         await tx.commit();
 
@@ -290,7 +286,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
       }
       catch (error) {
         await tx.rollback();
-        state.formError = error instanceof Error ? error : new Error(String(error));
+        state.formError = normalizeFixedAssetError(error, t);
         confirmDeleteDialog.value?.close();
       }
       finally {
@@ -391,10 +387,19 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
                   >${asset.is_fully_depreciated === 1 ? t('fixedAsset', 'statusFullyDepreciated') : t('fixedAsset', 'statusActive')}</span>
                 </p>
               </div>
-              ${asset.description ? html`
+              ${asset.note ? html`
                 <div style="grid-column: span 2;">
-                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'descriptionInfoLabel')}</p>
-                  <p class="body-large">${asset.description}</p>
+                  <p class="label-small" style="color: var(--md-sys-color-on-surface-variant);">${t('fixedAsset', 'noteInfoLabel')}</p>
+                  <p class="body-large">${asset.note}</p>
+                </div>
+              ` : nothing}
+
+              ${asset.acquisition_journal_post_time !== null ? html`
+                <div style="grid-column: span 2; padding: 12px 16px; background-color: var(--md-sys-color-surface-container); border-radius: var(--md-sys-shape-corner-medium);">
+                  <p class="body-medium" style="margin: 0; color: var(--md-sys-color-on-surface-variant);">
+                    <material-symbols name="lock" size="18" style="vertical-align: middle; margin-right: 4px;"></material-symbols>
+                    ${t('fixedAsset', 'postedHistoryImmutableError')}
+                  </p>
                 </div>
               ` : nothing}
             </div>
@@ -526,7 +531,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
           ` : nothing}
 
           <!-- Delete Button (only if no depreciation) -->
-          ${asset.accumulated_depreciation === 0 ? html`
+          ${canDeleteAsset() ? html`
             <section style="border-top: 1px solid var(--md-sys-color-outline-variant); padding-top: 24px; margin-top: 8px;">
               <h3 class="title-medium" style="margin-bottom: 8px; color: var(--md-sys-color-error);">${t('fixedAsset', 'dangerZoneSectionTitle')}</h3>
               <p class="body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px;">
@@ -568,15 +573,15 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
             </div>
           </div>
 
-          <!-- Description -->
+          <!-- Note -->
           <div class="outlined-text-field">
             <div class="container">
-              <label for="edit-description-input">${t('fixedAsset', 'descriptionLabel')}</label>
+              <label for="edit-note-input">${t('fixedAsset', 'noteLabel')}</label>
               <input
-                id="edit-description-input"
-                name="description"
+                id="edit-note-input"
+                name="note"
                 placeholder=" "
-                value="${asset.description || ''}"
+                value="${asset.note || ''}"
               >
             </div>
           </div>
@@ -618,7 +623,7 @@ export class FixedAssetDetailsDialogElement extends HTMLElement {
                 commandfor="fixed-asset-details-dialog"
                 command="close"
               ><material-symbols name="close"></material-symbols></button>
-              ${state.asset && !state.isEditing ? html`
+              ${state.asset && !state.isEditing && canEditAsset() ? html`
                 <button role="button" type="button" @click=${toggleEditMode}>
                   <material-symbols name="edit"></material-symbols>
                   ${t('fixedAsset', 'editActionLabel')}

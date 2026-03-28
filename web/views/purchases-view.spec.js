@@ -17,19 +17,44 @@ async function setupView(tursoDatabaseUrl) {
         <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
-              <purchases-view></purchases-view>
+              <time-context></time-context>
             </i18n-context>
           </device-context>
         </database-context>
       </router-context>
     </ready-context>
   `;
+
+  const deepestContext = document.querySelector('time-context');
+  deepestContext.innerHTML = '<purchases-view></purchases-view>';
 }
 
 function insertNewPurchase() {
   /** @type {DatabaseContextElement} */
   const database = document.querySelector('database-context');
-  return database.sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (2, 1, 2000000, 2000000)`;
+  return database.sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (2, 1, 2000000)`;
+}
+
+/** @param {(query: TemplateStringsArray, ...params: unknown[]) => Promise<unknown>} sql */
+async function setupPurchaseInventory(sql) {
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
+}
+
+/**
+ * @param {(query: TemplateStringsArray, ...params: unknown[]) => Promise<unknown>} sql
+ * @param {number} purchaseId
+ * @param {number} supplierId
+ * @param {number} purchaseTime
+ * @param {number} journalEntryRef
+ */
+async function createPostedPurchase(sql, purchaseId, supplierId, purchaseTime, journalEntryRef) {
+  await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (${purchaseId}, ${supplierId}, ${purchaseTime})`;
+  await sql`
+    INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price)
+    VALUES (${purchaseId}, 1, 1, 'Product A Box', 1, 'box', 1, 10000)
+  `;
+  await sql`UPDATE purchases SET journal_entry_ref = ${journalEntryRef}, post_time = ${purchaseTime} WHERE id = ${purchaseId}`;
 }
 
 describe('Purchases View', function () {
@@ -53,15 +78,13 @@ describe('Purchases View', function () {
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Supplier A', '081234567890')`;
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (2, 'Supplier B', '082345678901')`;
-        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (11111, 'Inventory Account', 0, 0, 0)`;
-        await sql`INSERT INTO account_tags (account_code, tag) VALUES (11111, 'POS - Inventory')`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11111)`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11111)`;
-        await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (1, 1, 1000000, 1000000)`;
-        await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (2, 2, 2000000, NULL)`;
+        await setupPurchaseInventory(sql);
+        await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (1, 1, 1000000)`;
+        await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (2, 2, 2000000)`;
         await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (1, 1, 1, 'Product A Box', 10, 'box', 10, 100000)`;
         await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (1, 2, 2, 'Product B Pack', 5, 'pack', 5, 100000)`;
         await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (2, 1, 1, 'Product A Box', 3, 'box', 3, 30000)`;
+        await sql`UPDATE purchases SET journal_entry_ref = 9001, post_time = 1000000 WHERE id = 1`;
       }),
     ]);
 
@@ -83,7 +106,8 @@ describe('Purchases View', function () {
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', NULL)`;
-        await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (1, 1, 1000000, 1000000)`;
+        await setupPurchaseInventory(sql);
+        await createPostedPurchase(sql, 1, 1, 1000000, 9002);
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (2, 1, 2000000, NULL)`;
         await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (3, 1, 3000000, NULL)`;
       }),
@@ -117,8 +141,8 @@ describe('Purchases View', function () {
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'ABC Supplier', NULL)`;
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (2, 'XYZ Trading', NULL)`;
-        await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (1, 1, 1000000, 1000000)`;
-        await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (2, 2, 2000000, 2000000)`;
+        await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (1, 1, 1000000)`;
+        await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (2, 2, 2000000)`;
       }),
     ]);
 
@@ -142,7 +166,7 @@ describe('Purchases View', function () {
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', NULL)`;
         for (let index = 1; index <= 25; index++) {
-          await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (${index}, 1, ${index * 1000}, ${index * 1000})`;
+          await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (${index}, 1, ${index * 1000})`;
         }
       }),
     ]);
@@ -169,10 +193,8 @@ describe('Purchases View', function () {
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', NULL)`;
-        await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (11112, 'Inventory Account', 0, 0, 0)`;
-        await sql`INSERT INTO account_tags (account_code, tag) VALUES (11112, 'POS - Inventory')`;
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11112)`;
-        await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (1, 1, 1000000, 1000000)`;
+        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
+        await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (1, 1, 1000000)`;
         await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (1, 1, 1, 'Product A Box', 10, 'box', 10, 100000)`;
         await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (1, 2, 1, 'Product A Pack', 5, 'pack', 5, 50000)`;
       }),
@@ -192,7 +214,7 @@ describe('Purchases View', function () {
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', NULL)`;
-        await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (1, 1, 1000000, 1000000)`;
+        await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (1, 1, 1000000)`;
       }),
     ]);
 
@@ -210,7 +232,7 @@ describe('Purchases View', function () {
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         await sql`INSERT INTO suppliers (id, name, phone_number) VALUES (1, 'Test Supplier', NULL)`;
-        await sql`INSERT INTO purchases (id, supplier_id, purchase_time, post_time) VALUES (1, 1, 1000000, 1000000)`;
+        await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (1, 1, 1000000)`;
       }),
     ]);
 

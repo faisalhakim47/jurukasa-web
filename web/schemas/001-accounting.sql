@@ -36,15 +36,15 @@ CREATE TABLE config (
     'Fiscal Year Start Month'
   )),
   value TEXT NOT NULL CHECK (LENGTH(value) >= 0),
-  description TEXT,
+  note TEXT,
   create_time INTEGER NOT NULL,
   update_time INTEGER NOT NULL
 ) STRICT, WITHOUT ROWID; -- EOS
 
 CREATE INDEX config_update_time_index ON config (update_time); -- EOS
 
--- Insert default configuration
-INSERT INTO config (key, value, description, create_time, update_time) VALUES
+-- Default configs
+INSERT INTO config (key, value, note, create_time, update_time) VALUES
   ('Business Name', '', 'Business or entity name', 0, 0),
   ('Business Type', 'Small Business', 'Type of business entity', 0, 0),
   ('Currency Code', 'IDR', 'Base currency code (ISO 4217)', 0, 0),
@@ -153,6 +153,9 @@ BEGIN
     AND is_posting_account != 0;
 END; -- EOS
 
+-- Note: DELETE triggers have no NEW row, so we use wall-clock time via strftime.
+-- This differs from INSERT/UPDATE triggers which propagate the event timestamp.
+-- The result is truncated to second precision (* 1000) since strftime('%s') returns seconds.
 CREATE TRIGGER accounts_child_delete_trigger
 AFTER DELETE ON accounts FOR EACH ROW
 WHEN OLD.control_account_code IS NOT NULL
@@ -161,7 +164,7 @@ BEGIN
   SET is_posting_account = CASE WHEN (
       SELECT COUNT(1) FROM accounts a WHERE a.control_account_code = OLD.control_account_code
     ) > 0 THEN 0 ELSE 1 END,
-    update_time = strftime('%s','now')
+    update_time = CAST(strftime('%s', 'now') AS INTEGER) * 1000
   WHERE account_code = OLD.control_account_code;
 END; -- EOS
 
@@ -209,20 +212,8 @@ CREATE TABLE account_tags (
     'Income Statement - Expense',
     'Income Statement - Other Expense',
 
-    -- Cash Flow Statement Tags
+    -- Cash Flow Statement Tags (Direct Method)
     'Cash Flow - Cash Equivalents',
-    'Cash Flow - Revenue',
-    'Cash Flow - Expense',
-    'Cash Flow - Activity - Operating',
-    'Cash Flow - Activity - Investing',
-    'Cash Flow - Activity - Financing',
-    'Cash Flow - Non-Cash - Depreciation',
-    'Cash Flow - Non-Cash - Amortization',
-    'Cash Flow - Non-Cash - Impairment',
-    'Cash Flow - Non-Cash - Gain/Loss',
-    'Cash Flow - Non-Cash - Stock Compensation',
-    'Cash Flow - Working Capital - Current Asset',
-    'Cash Flow - Working Capital - Current Liability',
 
     -- POS System Tags
     'POS - Accounts Payable',
@@ -256,6 +247,7 @@ CREATE UNIQUE INDEX account_tags_unique_pos_costofgoodssold_index ON account_tag
 CREATE UNIQUE INDEX account_tags_unique_pos_inventorygain_index ON account_tags (tag) WHERE tag = 'POS - Inventory Gain'; -- EOS
 CREATE UNIQUE INDEX account_tags_unique_pos_inventoryshrinkage_index ON account_tags (tag) WHERE tag = 'POS - Inventory Shrinkage'; -- EOS
 CREATE UNIQUE INDEX account_tags_unique_reconciliation_cashovershort_index ON account_tags (tag) WHERE tag = 'Reconciliation - Cash Over/Short'; -- EOS
+CREATE UNIQUE INDEX account_tags_unique_reconciliation_adjustment_index ON account_tags (tag) WHERE tag = 'Reconciliation - Adjustment'; -- EOS
 
 -- Prevent updates to account_tags: tags are immutable (delete + insert to change)
 CREATE TRIGGER account_tags_update_prevention_trigger
@@ -270,13 +262,10 @@ END; -- EOS
 
 -- Journal entry header
 CREATE TABLE journal_entries (
-  ref INTEGER PRIMARY KEY AUTOINCREMENT,
+  ref INTEGER PRIMARY KEY,
   entry_time INTEGER NOT NULL,
   note TEXT,
   post_time INTEGER,
-  source_type TEXT DEFAULT 'Manual' CHECK (source_type IN ('Manual', 'LLM', 'System')),
-  source_reference TEXT,
-  created_by TEXT DEFAULT 'User' CHECK (created_by IN ('User', 'System', 'Migration')),
   reversal_of_ref INTEGER REFERENCES journal_entries (ref) ON UPDATE RESTRICT ON DELETE RESTRICT,
   reversed_by_ref INTEGER REFERENCES journal_entries (ref) ON UPDATE RESTRICT ON DELETE RESTRICT,
   idempotent_key TEXT
@@ -287,7 +276,6 @@ CREATE INDEX journal_entries_entry_time_post_time_index ON journal_entries (entr
 CREATE INDEX journal_entries_post_time_not_null_index ON journal_entries (post_time) WHERE post_time IS NOT NULL; -- EOS
 CREATE INDEX journal_entries_post_time_ref_index ON journal_entries (post_time, ref) WHERE post_time IS NOT NULL; -- EOS
 CREATE INDEX journal_entries_ref_post_time_index ON journal_entries(ref, post_time); -- EOS
-CREATE INDEX journal_entries_source_type_index ON journal_entries (source_type, entry_time); -- EOS
 CREATE INDEX journal_entries_reversal_index ON journal_entries (reversal_of_ref) WHERE reversal_of_ref IS NOT NULL; -- EOS
 CREATE UNIQUE INDEX journal_entries_idempotent_key_index ON journal_entries (idempotent_key) WHERE idempotent_key IS NOT NULL; -- EOS
 
@@ -312,6 +300,27 @@ BEGIN
     END;
 END; -- EOS
 
+-- Posted journal entries are immutable, except that system reversal workflows
+-- may later fill in reversed_by_ref on the original posted entry.
+CREATE TRIGGER journal_entries_posted_entry_update_prevention_trigger
+BEFORE UPDATE ON journal_entries FOR EACH ROW
+WHEN old.post_time IS NOT NULL
+  AND new.post_time = old.post_time
+  AND (
+    new.ref != old.ref OR
+    new.entry_time != old.entry_time OR
+    old.note IS NOT new.note OR
+    old.reversal_of_ref IS NOT new.reversal_of_ref OR
+    old.idempotent_key IS NOT new.idempotent_key OR
+    (
+      old.reversed_by_ref IS NOT new.reversed_by_ref
+      AND NOT (old.reversed_by_ref IS NULL AND new.reversed_by_ref IS NOT NULL)
+    )
+  )
+BEGIN
+  SELECT RAISE(ABORT, 'Cannot modify posted journal entry');
+END; -- EOS
+
 -- Prevent unposting or changing the post_time of a posted journal entry.
 -- Once posted, post_time becomes immutable to keep account balances consistent.
 CREATE TRIGGER journal_entries_post_time_immutability_trigger
@@ -321,6 +330,25 @@ BEGIN
   SELECT RAISE(ABORT, 'Cannot unpost or change post_time of a posted journal entry');
 END; -- EOS
 
+-- Cash flow category lookup
+-- activity: 1=Operating, 2=Investing, 3=Financing
+CREATE TABLE cashflow_categories (
+  id INTEGER PRIMARY KEY,
+  activity INTEGER NOT NULL CHECK (activity IN (1, 2, 3)),
+  label TEXT NOT NULL,
+  UNIQUE (activity, id)
+) STRICT; -- EOS
+
+-- Pre-populated standard cash flow categories
+INSERT INTO cashflow_categories (id, activity, label) VALUES
+  (1, 1, 'Customer Receipt'),
+  (2, 1, 'Supplier Payment'),
+  (3, 1, 'Rent Payment'),
+  (4, 1, 'Reconciliation Adjustment'),
+  (5, 2, 'Asset Purchase'),
+  (6, 3, 'Loan Proceeds'),
+  (7, 3, 'Capital Injection'); -- EOS
+
 -- Journal entry line items
 CREATE TABLE journal_entry_lines (
   journal_entry_ref INTEGER NOT NULL REFERENCES journal_entries (ref) ON UPDATE RESTRICT ON DELETE RESTRICT,
@@ -328,20 +356,22 @@ CREATE TABLE journal_entry_lines (
   account_code INTEGER NOT NULL REFERENCES accounts (account_code) ON UPDATE RESTRICT ON DELETE RESTRICT,
   debit INTEGER NOT NULL DEFAULT 0,
   credit INTEGER NOT NULL DEFAULT 0,
-  description TEXT, -- Line-specific description
-  reference TEXT, -- External reference (invoice #, etc.)
+  note TEXT, -- Line-specific note
+  cashflow_activity INTEGER, -- Cash flow activity code: 1=Operating, 2=Investing, 3=Financing (required for cash equivalent accounts)
+  cashflow_category INTEGER, -- Cash flow category ID (from cashflow_categories)
   PRIMARY KEY (journal_entry_ref, line_number),
   CHECK (debit >= 0 AND credit >= 0 AND (debit = 0 OR credit = 0)),
-  CHECK (debit > 0 OR credit > 0) -- At least one must be positive
+  CHECK (debit > 0 OR credit > 0), -- At least one must be positive
+  CHECK (cashflow_activity IS NULL OR cashflow_activity IN (1, 2, 3)),
+  CHECK ((cashflow_activity IS NULL) = (cashflow_category IS NULL)), -- Both must be NULL or both non-NULL
+  FOREIGN KEY (cashflow_activity, cashflow_category) REFERENCES cashflow_categories (activity, id)
 ) STRICT, WITHOUT ROWID; -- EOS
 
 CREATE INDEX journal_entry_lines_account_debit_credit_index ON journal_entry_lines (account_code, debit, credit); -- EOS
 CREATE INDEX journal_entry_lines_journal_account_index ON journal_entry_lines(account_code, journal_entry_ref); -- EOS
 CREATE INDEX journal_entry_lines_ref_line_index ON journal_entry_lines (journal_entry_ref, line_number); -- EOS
 
--- Prevent creating or modifying journal entry lines that post directly to
--- a control (parent) account. Posting must be done to posting (leaf)
--- accounts only.
+-- a control (parent) account. Posting must be done to posting (leaf) accounts only.
 CREATE TRIGGER journal_entry_lines_control_account_insert_prevention_trigger
 BEFORE INSERT ON journal_entry_lines FOR EACH ROW
 BEGIN
@@ -350,6 +380,22 @@ BEGIN
       WHEN EXISTS(
         SELECT 1 FROM accounts a WHERE a.control_account_code = NEW.account_code LIMIT 1
       ) THEN RAISE(ABORT, 'Cannot post journal entry line to a control account on insert')
+    END;
+END; -- EOS
+
+CREATE TRIGGER journal_entry_lines_cashflow_classification_insert_validation_trigger
+BEFORE INSERT ON journal_entry_lines FOR EACH ROW
+BEGIN
+  SELECT
+    CASE
+      WHEN EXISTS(
+        SELECT 1 FROM account_tags WHERE account_code = NEW.account_code AND tag = 'Cash Flow - Cash Equivalents'
+      ) AND NEW.cashflow_activity IS NULL
+      THEN RAISE(ABORT, 'Cash equivalent account requires cashflow_activity and cashflow_category')
+      WHEN NOT EXISTS(
+        SELECT 1 FROM account_tags WHERE account_code = NEW.account_code AND tag = 'Cash Flow - Cash Equivalents'
+      ) AND NEW.cashflow_activity IS NOT NULL
+      THEN RAISE(ABORT, 'Non-cash account must not have cashflow_activity or cashflow_category')
     END;
 END; -- EOS
 
@@ -363,12 +409,36 @@ BEGIN
     END;
 END; -- EOS
 
--- Validation trigger for posting journal entries
+CREATE TRIGGER journal_entry_lines_cashflow_classification_update_validation_trigger
+BEFORE UPDATE ON journal_entry_lines FOR EACH ROW
+BEGIN
+  SELECT
+    CASE
+      WHEN EXISTS(
+        SELECT 1 FROM account_tags WHERE account_code = NEW.account_code AND tag = 'Cash Flow - Cash Equivalents'
+      ) AND NEW.cashflow_activity IS NULL
+      THEN RAISE(ABORT, 'Cash equivalent account requires cashflow_activity and cashflow_category')
+      WHEN NOT EXISTS(
+        SELECT 1 FROM account_tags WHERE account_code = NEW.account_code AND tag = 'Cash Flow - Cash Equivalents'
+      ) AND NEW.cashflow_activity IS NOT NULL
+      THEN RAISE(ABORT, 'Non-cash account must not have cashflow_activity or cashflow_category')
+    END;
+END; -- EOS
+
+CREATE TRIGGER journal_entry_lines_posted_entry_insert_prevention_trigger
+BEFORE INSERT ON journal_entry_lines FOR EACH ROW
+BEGIN
+  SELECT
+    CASE
+      WHEN (SELECT post_time FROM journal_entries WHERE ref = NEW.journal_entry_ref) IS NOT NULL
+      THEN RAISE(ABORT, 'Cannot add lines to posted journal entry')
+    END;
+END; -- EOS
+
 CREATE TRIGGER journal_entries_post_validation_trigger
 BEFORE UPDATE OF post_time ON journal_entries FOR EACH ROW
 WHEN new.post_time IS NOT NULL AND old.post_time IS NULL
 BEGIN
-  -- Ensure journal entry balances
   SELECT
     CASE
       WHEN new.post_time <= 0 THEN RAISE(ABORT, 'Post time must be positive')
@@ -376,6 +446,14 @@ BEGIN
       THEN RAISE(ABORT, 'Journal entry does not balance')
       WHEN (SELECT COUNT(*) FROM journal_entry_lines WHERE journal_entry_ref = new.ref) < 2
       THEN RAISE(ABORT, 'Journal entry must have at least 2 lines')
+      WHEN EXISTS (
+        SELECT 1 FROM fiscal_years fy
+        WHERE fy.post_time IS NOT NULL
+          AND fy.reversal_time IS NULL
+          AND new.entry_time > fy.begin_time
+          AND new.entry_time <= fy.end_time
+          AND (fy.closing_journal_entry_ref IS NULL OR new.ref != fy.closing_journal_entry_ref)
+      ) THEN RAISE(ABORT, 'Cannot post journal entry dated inside a closed fiscal year')
     END;
 END; -- EOS
 
@@ -409,7 +487,7 @@ BEFORE UPDATE ON journal_entry_lines FOR EACH ROW
 BEGIN
   SELECT
     CASE
-      WHEN (SELECT post_time FROM journal_entries WHERE ref = old.journal_entry_ref) IS NOT NULL 
+      WHEN (SELECT post_time FROM journal_entries WHERE ref = old.journal_entry_ref) IS NOT NULL
       THEN RAISE(ABORT, 'Cannot modify lines of posted journal entry')
     END;
 END; -- EOS
@@ -420,7 +498,7 @@ BEFORE DELETE ON journal_entry_lines FOR EACH ROW
 BEGIN
   SELECT
     CASE
-      WHEN (SELECT post_time FROM journal_entries WHERE ref = old.journal_entry_ref) IS NOT NULL 
+      WHEN (SELECT post_time FROM journal_entries WHERE ref = old.journal_entry_ref) IS NOT NULL
       THEN RAISE(ABORT, 'Cannot delete lines of posted journal entry')
     END;
 END; -- EOS
@@ -433,8 +511,9 @@ SELECT
   jel.account_code,
   jel.debit,
   jel.credit,
-  jel.description,
-  jel.reference
+  jel.note,
+  jel.cashflow_activity,
+  jel.cashflow_category
 FROM journal_entry_lines jel; -- EOS
 
 -- Auto-numbering trigger for journal entry lines
@@ -447,8 +526,9 @@ BEGIN
     account_code,
     debit,
     credit,
-    description,
-    reference
+    note,
+    cashflow_activity,
+    cashflow_category
   )
   VALUES (
     new.journal_entry_ref,
@@ -459,8 +539,9 @@ BEGIN
     new.account_code,
     COALESCE(new.debit, 0),
     COALESCE(new.credit, 0),
-    new.description,
-    new.reference
+    new.note,
+    new.cashflow_activity,
+    new.cashflow_category
   );
 END; -- EOS
 
@@ -470,15 +551,13 @@ SELECT
   je.ref,
   je.entry_time,
   je.note,
-  je.source_type,
   je.post_time,
   jel.line_number,
   jel.account_code,
   a.name AS account_name,
   jel.debit,
   jel.credit,
-  jel.description,
-  jel.reference
+  jel.note AS line_note
 FROM journal_entry_lines jel
 JOIN journal_entries je ON je.ref = jel.journal_entry_ref
 JOIN accounts a ON a.account_code = jel.account_code
@@ -491,7 +570,7 @@ ORDER BY je.ref ASC, jel.line_number ASC; -- EOS
 
 -- Fiscal year periods
 CREATE TABLE fiscal_years (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER PRIMARY KEY,
   begin_time INTEGER NOT NULL UNIQUE,
   end_time INTEGER NOT NULL,
   post_time INTEGER,
@@ -517,7 +596,7 @@ BEGIN
   SELECT
     CASE
       WHEN EXISTS (
-        SELECT 1 FROM fiscal_years 
+        SELECT 1 FROM fiscal_years
         WHERE reversal_time IS NULL
           AND (new.begin_time < end_time AND new.end_time > begin_time)
       ) THEN RAISE(ABORT, 'Fiscal year periods cannot overlap')
@@ -543,11 +622,22 @@ BEGIN
       WHEN new.post_time <= 0 THEN RAISE(ABORT, 'Post time must be positive')
       WHEN EXISTS (
         SELECT 1 FROM journal_entries je
-        LEFT JOIN journal_entry_lines jel ON jel.journal_entry_ref = je.ref
-        WHERE je.entry_time > new.begin_time 
+        WHERE je.entry_time > new.begin_time
           AND je.entry_time <= new.end_time
           AND je.post_time IS NULL
       ) THEN RAISE(ABORT, 'Cannot close fiscal year with unposted journal entries')
+      WHEN new.closing_journal_entry_ref IS NULL AND EXISTS (
+        SELECT 1
+        FROM fiscal_year_account_mutation fam
+        JOIN account_tags at ON at.account_code = fam.account_code
+        WHERE fam.fiscal_year_id = new.id
+          AND at.tag IN (
+            'Fiscal Year Closing - Revenue',
+            'Fiscal Year Closing - Expense',
+            'Fiscal Year Closing - Dividend'
+          )
+          AND fam.net_change != 0
+      ) THEN RAISE(ABORT, 'closing_journal_entry_ref is required when a fiscal year closing entry will be posted')
     END;
 END; -- EOS
 
@@ -587,7 +677,8 @@ BEGIN
     CASE
       WHEN EXISTS (
         SELECT 1 FROM fiscal_years
-        WHERE id > old.id AND reversal_time IS NULL
+        WHERE begin_time > old.begin_time
+          AND reversal_time IS NULL
       ) THEN RAISE(ABORT, 'Cannot reverse fiscal year: newer fiscal years exist')
     END;
 
@@ -596,6 +687,8 @@ BEGIN
     CASE
       WHEN new.reversal_time <= old.post_time
       THEN RAISE(ABORT, 'Reversal time must be after post time')
+      WHEN old.closing_journal_entry_ref IS NOT NULL AND new.reversal_journal_entry_ref IS NULL
+      THEN RAISE(ABORT, 'reversal_journal_entry_ref is required when reversing a closed fiscal year')
     END;
 END; -- EOS
 
@@ -612,18 +705,14 @@ CREATE TRIGGER fiscal_years_reversal_trigger
 AFTER UPDATE OF reversal_time ON fiscal_years FOR EACH ROW
 WHEN new.reversal_time IS NOT NULL AND old.reversal_time IS NULL AND old.closing_journal_entry_ref IS NOT NULL
 BEGIN
-  -- Create reversal journal entry header
+  -- Create reversal journal entry header using app-provided ref
   INSERT INTO journal_entries (
+    ref,
     entry_time,
-    note,
-    source_type,
-    created_by,
     reversal_of_ref
   ) VALUES (
+    new.reversal_journal_entry_ref,
     new.reversal_time,
-    'Reversal of FY' || strftime('%Y', datetime(new.end_time, 'unixepoch')) || ' Closing Entry',
-    'System',
-    'System',
     old.closing_journal_entry_ref
   );
 
@@ -633,28 +722,26 @@ BEGIN
     account_code,
     debit,
     credit,
-    description,
-    reference
+    note
   )
   SELECT
-    last_insert_rowid(),
+    new.reversal_journal_entry_ref,
     jel.account_code,
     jel.credit,  -- Swap: old credit becomes new debit
     jel.debit,   -- Swap: old debit becomes new credit
-    'Reversal: ' || COALESCE(jel.description, ''),
-    jel.reference
+    'Reversal: ' || COALESCE(jel.note, '')
   FROM journal_entry_lines jel
   WHERE jel.journal_entry_ref = old.closing_journal_entry_ref;
 
   -- Auto-post the reversal entry
   UPDATE journal_entries
   SET post_time = new.reversal_time
-  WHERE ref = last_insert_rowid();
+  WHERE ref = new.reversal_journal_entry_ref;
 
-  -- Store reversal journal entry reference
-  UPDATE fiscal_years
-  SET reversal_journal_entry_ref = last_insert_rowid()
-  WHERE id = new.id;
+  -- Mark the original closing entry as reversed
+  UPDATE journal_entries
+  SET reversed_by_ref = new.reversal_journal_entry_ref
+  WHERE ref = old.closing_journal_entry_ref;
 END; -- EOS
 
 -- Account mutation view for fiscal year analysis
@@ -688,13 +775,22 @@ CREATE TRIGGER fiscal_years_closing_trigger
 AFTER UPDATE OF post_time ON fiscal_years FOR EACH ROW
 WHEN old.post_time IS NULL AND new.post_time IS NOT NULL
 BEGIN
-  -- Create comprehensive closing entry
-  INSERT INTO journal_entries (entry_time, note, source_type, created_by)
-  VALUES (
-    new.end_time,
-    'FY' || strftime('%Y', datetime(new.end_time, 'unixepoch')) || ' Closing Entry',
-    'System',
-    'System'
+  -- Create comprehensive closing entry using app-provided ref
+  INSERT INTO journal_entries (ref, entry_time)
+  SELECT
+    new.closing_journal_entry_ref,
+    new.end_time
+  WHERE EXISTS (
+    SELECT 1
+    FROM fiscal_year_account_mutation fam
+    JOIN account_tags at ON at.account_code = fam.account_code
+    WHERE fam.fiscal_year_id = new.id
+      AND at.tag IN (
+        'Fiscal Year Closing - Revenue',
+        'Fiscal Year Closing - Expense',
+        'Fiscal Year Closing - Dividend'
+      )
+      AND fam.net_change != 0
   );
 
   -- Revenue closing entries: debit revenue accounts to zero their period balance
@@ -703,7 +799,7 @@ BEGIN
   -- To close: create the opposite entry
   INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
   SELECT
-    last_insert_rowid(),
+    new.closing_journal_entry_ref,
     period_change.account_code,
     -- If net_change > 0, we need to debit to offset the credit balance
     -- If net_change < 0, we need to credit to offset the debit balance
@@ -732,7 +828,7 @@ BEGIN
   -- For debit-normal expense accounts: net_change > 0 means debit balance, need to credit to close
   INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
   SELECT
-    last_insert_rowid(),
+    new.closing_journal_entry_ref,
     period_change.account_code,
     CASE WHEN period_change.net_change < 0 THEN ABS(period_change.net_change) ELSE 0 END,
     CASE WHEN period_change.net_change > 0 THEN period_change.net_change ELSE 0 END
@@ -758,7 +854,7 @@ BEGIN
   -- Dividend closing entries: credit dividend accounts to zero their period balance
   INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
   SELECT
-    last_insert_rowid(),
+    new.closing_journal_entry_ref,
     period_change.account_code,
     CASE WHEN period_change.net_change < 0 THEN ABS(period_change.net_change) ELSE 0 END,
     CASE WHEN period_change.net_change > 0 THEN period_change.net_change ELSE 0 END
@@ -785,7 +881,7 @@ BEGIN
   -- Net income = Revenues - Expenses - Dividends
   INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
   SELECT
-    last_insert_rowid(),
+    new.closing_journal_entry_ref,
     re.account_code,
     CASE WHEN calc.net_income > 0 THEN 0 ELSE ABS(calc.net_income) END,
     CASE WHEN calc.net_income > 0 THEN calc.net_income ELSE 0 END
@@ -818,33 +914,28 @@ BEGIN
     WHERE at.tag IN ('Fiscal Year Closing - Revenue', 'Fiscal Year Closing - Expense', 'Fiscal Year Closing - Dividend')
   ) calc
   CROSS JOIN (
-    SELECT account_code as account_code 
-    FROM accounts 
+    SELECT account_code as account_code
+    FROM accounts
     WHERE account_code IN (SELECT account_code FROM account_tags WHERE tag = 'Fiscal Year Closing - Retained Earning')
     LIMIT 1
   ) re
   WHERE calc.net_income != 0;
 
-  -- Post the closing entry if it has at least 2 lines, otherwise delete it
+  -- Post the closing entry if it has at least 2 lines, otherwise clean up
   UPDATE journal_entries
   SET post_time = new.end_time
-  WHERE ref = last_insert_rowid()
-    AND (SELECT COUNT(*) FROM journal_entry_lines WHERE journal_entry_ref = last_insert_rowid()) >= 2;
+  WHERE ref = new.closing_journal_entry_ref
+    AND (SELECT COUNT(*) FROM journal_entry_lines WHERE journal_entry_ref = new.closing_journal_entry_ref) >= 2;
+
+  -- NULL out closing_journal_entry_ref BEFORE deleting the JE (ON DELETE RESTRICT would block otherwise)
+  UPDATE fiscal_years
+  SET closing_journal_entry_ref = NULL
+  WHERE id = new.id
+    AND (SELECT COUNT(*) FROM journal_entry_lines WHERE journal_entry_ref = new.closing_journal_entry_ref) < 2;
 
   DELETE FROM journal_entries
-  WHERE ref = last_insert_rowid()
-    AND (SELECT COUNT(*) FROM journal_entry_lines WHERE journal_entry_ref = last_insert_rowid()) < 2;
-
-  -- Store closing journal entry reference if it exists
-  UPDATE fiscal_years
-  SET
-    closing_journal_entry_ref = (
-      SELECT ref FROM journal_entries
-      WHERE ref = last_insert_rowid()
-        AND EXISTS (SELECT 1 FROM journal_entry_lines WHERE journal_entry_ref = last_insert_rowid())
-    )
-  WHERE id = new.id
-    AND closing_journal_entry_ref IS NULL;
+  WHERE ref = new.closing_journal_entry_ref
+    AND (SELECT COUNT(*) FROM journal_entry_lines WHERE journal_entry_ref = new.closing_journal_entry_ref) < 2;
 END; -- EOS
 
 -- =================================================================
@@ -853,7 +944,7 @@ END; -- EOS
 
 -- Balance report generation
 CREATE TABLE balance_reports (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER PRIMARY KEY,
   report_time INTEGER NOT NULL,
   report_type TEXT NOT NULL DEFAULT 'Period End' CHECK (report_type IN ('Period End', 'Monthly', 'Quarterly', 'Annual', 'Ad Hoc')),
   fiscal_year_id INTEGER REFERENCES fiscal_years (id) ON UPDATE RESTRICT ON DELETE RESTRICT,
@@ -909,7 +1000,7 @@ BEGIN
   SELECT
     new.id,
     a.account_code,
-    CASE 
+    CASE
       WHEN period_balance >= 0 AND a.normal_balance = 0 THEN period_balance  -- Debit normal, positive balance
       WHEN period_balance < 0 AND a.normal_balance = 1 THEN ABS(period_balance)  -- Credit normal, negative balance (shown as debit)
       ELSE 0
@@ -917,7 +1008,7 @@ BEGIN
     CASE
       WHEN period_balance >= 0 AND a.normal_balance = 1 THEN period_balance  -- Credit normal, positive balance
       WHEN period_balance < 0 AND a.normal_balance = 0 THEN ABS(period_balance)  -- Debit normal, negative balance (shown as credit)
-      ELSE 0 
+      ELSE 0
     END AS credit
   FROM accounts a
   LEFT JOIN (
@@ -1050,7 +1141,8 @@ END; -- EOS
 -- INCOME STATEMENT REPORTING
 -- =================================================================
 
--- Income statement view (based on fiscal year mutations)
+-- Income statement view (based on fiscal year mutations, excluding the closing journal entry so
+-- the view returns correct pre-closing activity even after a fiscal year has been closed)
 CREATE VIEW income_statement AS
 SELECT
   CASE
@@ -1067,18 +1159,28 @@ SELECT
     WHEN at.tag = 'Income Statement - Expense' THEN 'Operating Expenses'
     WHEN at.tag = 'Income Statement - Other Expense' THEN 'Other Expenses'
   END AS category,
-  fyam.account_code,
-  fyam.account_name,
-  fyam.net_change AS amount,
-  fyam.fiscal_year_id,
-  fyam.begin_time,
-  fyam.end_time,
+  a.account_code,
+  a.name AS account_name,
+  COALESCE(SUM(
+    CASE a.normal_balance
+      WHEN 0 THEN jel.debit - jel.credit
+      WHEN 1 THEN jel.credit - jel.debit
+    END
+  ), 0) AS amount,
+  fy.id AS fiscal_year_id,
+  fy.begin_time,
+  fy.end_time,
   fy.name AS fiscal_year_name
-FROM fiscal_year_account_mutation fyam
-JOIN account_tags at ON at.account_code = fyam.account_code
-JOIN fiscal_years fy ON fy.id = fyam.fiscal_year_id
-WHERE fyam.net_change != 0
-  AND at.tag IN (
+FROM fiscal_years fy
+CROSS JOIN accounts a
+JOIN account_tags at ON at.account_code = a.account_code
+LEFT JOIN journal_entries je ON je.entry_time > fy.begin_time
+  AND je.entry_time <= fy.end_time
+  AND je.post_time IS NOT NULL
+  AND (fy.closing_journal_entry_ref IS NULL OR je.ref != fy.closing_journal_entry_ref)
+LEFT JOIN journal_entry_lines jel ON jel.journal_entry_ref = je.ref
+  AND jel.account_code = a.account_code
+WHERE at.tag IN (
     'Income Statement - Revenue',
     'Income Statement - Contra Revenue',
     'Income Statement - Other Revenue',
@@ -1086,7 +1188,14 @@ WHERE fyam.net_change != 0
     'Income Statement - Expense',
     'Income Statement - Other Expense'
   )
-ORDER BY fyam.fiscal_year_id DESC, classification, category, fyam.account_code; -- EOS
+GROUP BY fy.id, a.account_code
+HAVING COALESCE(SUM(
+  CASE a.normal_balance
+    WHEN 0 THEN jel.debit - jel.credit
+    WHEN 1 THEN jel.credit - jel.debit
+  END
+), 0) != 0
+ORDER BY fy.id DESC, classification, category, a.account_code; -- EOS
 
 -- =================================================================
 -- CASH FLOW STATEMENT REPORTING
@@ -1094,7 +1203,7 @@ ORDER BY fyam.fiscal_year_id DESC, classification, category, fyam.account_code; 
 
 -- Cash flow reporting tables
 CREATE TABLE cashflow_reports (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id INTEGER PRIMARY KEY,
   report_time INTEGER NOT NULL,
   begin_time INTEGER NOT NULL,
   end_time INTEGER NOT NULL,
@@ -1106,15 +1215,38 @@ CREATE TABLE cashflow_reports (
 
 CREATE TABLE cashflow_statement_lines (
   cashflow_report_id INTEGER NOT NULL REFERENCES cashflow_reports (id) ON UPDATE RESTRICT ON DELETE RESTRICT,
-  activity_type TEXT NOT NULL CHECK (activity_type IN ('Operating', 'Investing', 'Financing')),
-  line_description TEXT NOT NULL,
+  activity_type INTEGER NOT NULL CHECK (activity_type IN (1, 2, 3)), -- 1=Operating, 2=Investing, 3=Financing
+  line_note TEXT NOT NULL,
   amount INTEGER NOT NULL,
-  PRIMARY KEY (cashflow_report_id, activity_type, line_description)
+  PRIMARY KEY (cashflow_report_id, activity_type, line_note)
 ) STRICT, WITHOUT ROWID; -- EOS
 
 CREATE INDEX cashflow_statement_lines_report_id_index ON cashflow_statement_lines (cashflow_report_id); -- EOS
-CREATE INDEX cashflow_statement_lines_activity_index ON cashflow_statement_lines (activity_type, line_description); -- EOS
+CREATE INDEX cashflow_statement_lines_activity_index ON cashflow_statement_lines (activity_type, line_note); -- EOS
 CREATE INDEX cashflow_reports_time_range_index ON cashflow_reports (report_time, begin_time, end_time); -- EOS
+
+-- Auto-generate cash flow statement lines when a cashflow report is created
+-- Direct Method: aggregates classified cash transactions from journal_entry_lines
+CREATE TRIGGER cashflow_report_generation_trigger
+AFTER INSERT ON cashflow_reports FOR EACH ROW
+BEGIN
+  -- Populate statement lines by aggregating classified cash transactions
+  INSERT INTO cashflow_statement_lines (cashflow_report_id, activity_type, line_note, amount)
+  SELECT
+    NEW.id,
+    jel.cashflow_activity,
+    cc.label,
+    SUM(jel.debit - jel.credit)
+  FROM journal_entry_lines jel
+  JOIN cashflow_categories cc ON cc.id = jel.cashflow_category
+  JOIN journal_entries je ON je.ref = jel.journal_entry_ref
+  WHERE jel.cashflow_activity IS NOT NULL
+    AND je.post_time IS NOT NULL
+    AND je.entry_time > NEW.begin_time
+    AND je.entry_time <= NEW.end_time
+  GROUP BY jel.cashflow_activity, jel.cashflow_category
+  HAVING SUM(jel.debit - jel.credit) != 0;
+END; -- EOS
 
 -- Cash flow statement view
 CREATE VIEW cashflow_statement AS
@@ -1125,16 +1257,12 @@ SELECT
   cr.end_time,
   cr.name,
   csl.activity_type,
-  csl.line_description,
+  csl.line_note,
   csl.amount
 FROM cashflow_reports cr
 JOIN cashflow_statement_lines csl ON csl.cashflow_report_id = cr.id
 ORDER BY cr.report_time DESC,
-  CASE csl.activity_type
-    WHEN 'Operating' THEN 1
-    WHEN 'Investing' THEN 2
-    WHEN 'Financing' THEN 3
-  END,
-  csl.line_description; -- EOS
+  csl.activity_type,
+  csl.line_note; -- EOS
 
 INSERT INTO config (key, value, create_time, update_time) VALUES ('Schema Version', '001-accounting', 0, 0); -- EOS

@@ -15,6 +15,7 @@ import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
+import { allocateJournalEntryRef, normalizePurchaseError } from '#web/tools/accounting.js';
 import { sleep } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
@@ -178,10 +179,12 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
         state.actionError = null;
 
         const postTime = time.currentDate().getTime();
+        const journalEntryRef = await allocateJournalEntryRef(tx);
 
         await tx.sql`
           UPDATE purchases
-          SET post_time = ${postTime}
+          SET journal_entry_ref = ${journalEntryRef},
+              post_time = ${postTime}
           WHERE id = ${state.purchase.id}
         `;
 
@@ -201,7 +204,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.actionState = 'error';
-        state.actionError = error instanceof Error ? error : new Error(String(error));
+        state.actionError = normalizePurchaseError(error, t);
       }
     }
 

@@ -27,17 +27,17 @@
   },
   "dependencies": {
     "@fontsource-variable/source-sans-3": "5.2.9",
-    "@material-symbols/svg-400": "0.40.2",
-    "@sqlite.org/sqlite-wasm": "3.51.2-build6",
-    "@vue/reactivity": "3.5.27",
+    "@material-symbols/svg-400": "0.42.3",
+    "@sqlite.org/sqlite-wasm": "3.51.2-build8",
+    "@vue/reactivity": "3.5.30",
     "lit-html": "3.3.2"
   },
   "devDependencies": {
-    "@libsql/client": "0.17.0",
-    "@playwright/test": "1.58.1",
-    "@types/node": "25.2.1",
-    "@types/web": "0.0.327",
-    "playwright": "1.58.1"
+    "@libsql/client": "0.17.2",
+    "@playwright/test": "1.58.2",
+    "@types/node": "^25.5.0",
+    "@types/web": "0.0.344",
+    "playwright": "1.58.2"
   },
   "files": [
     "web/app.js",
@@ -89,6 +89,7 @@
     "web/views/suppliers-view.js",
     "web/views/trial-balance-view.js",
     "web/views/version-manager-view.js",
+    "web/tools/accounting.js",
     "web/tools/array.js",
     "web/tools/assertion.js",
     "web/tools/dom.js",
@@ -126,7 +127,6 @@
     "web/schemas/004-revenue-tracking.sql",
     "web/schemas/005-fixed-assets.sql",
     "web/schemas/006-account-reconciliation.sql",
-    "web/schemas/007-cash-count.sql",
     "web/lang/en.js",
     "web/lang/id.js",
     "web/lang/id/account.js",

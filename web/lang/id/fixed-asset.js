@@ -11,8 +11,8 @@ export default /** @type {FixedAssetTranslation} */ ({
   basicInfoSectionTitle: 'Informasi Dasar',
   assetNameLabel: 'Nama Aset',
   assetNameSupportingText: 'Nama deskriptif untuk aset tetap ini',
-  descriptionLabel: 'Deskripsi (Opsional)',
-  descriptionSupportingText: 'Rincian tambahan tentang aset',
+  noteLabel: 'Catatan (Opsional)',
+  noteSupportingText: 'Rincian tambahan tentang aset',
 
   // Financial Information Section
   financialInfoSectionTitle: 'Informasi Keuangan',
@@ -53,7 +53,7 @@ export default /** @type {FixedAssetTranslation} */ ({
   statusLabel: 'Status',
   statusActive: 'Aktif',
   statusFullyDepreciated: 'Telah Tersusut Penuh',
-  descriptionInfoLabel: 'Deskripsi',
+  noteInfoLabel: 'Catatan',
 
   // View Mode - Financial Information
   acquisitionDateInfoLabel: 'Tanggal Perolehan',
@@ -114,6 +114,9 @@ export default /** @type {FixedAssetTranslation} */ ({
   accountsMustBeDifferent: 'Akun aset, akumulasi penyusutan, dan beban harus berbeda.',
   invalidAcquisitionDate: 'Tanggal perolehan tidak valid.',
   cannotDeleteWithDepreciation: 'Tidak dapat menghapus aset tetap yang memiliki akumulasi penyusutan.',
+  journalEntryRefRequiredError: 'Tidak dapat membuat jurnal perolehan untuk aset tetap ini.',
+  postedHistoryImmutableError: 'Aset tetap ini sudah memiliki riwayat perolehan yang diposting dan tidak dapat diubah lagi.',
+  postedHistoryDeleteForbiddenError: 'Aset tetap ini sudah memiliki riwayat perolehan yang diposting dan tidak dapat dihapus.',
 
   // View
   searchLabel: 'Cari',

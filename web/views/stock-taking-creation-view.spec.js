@@ -19,13 +19,16 @@ async function setupView(tursoDatabaseUrl) {
         <database-context provider="turso" name="My Business" turso-url=${tursoDatabaseUrl}>
           <device-context>
             <i18n-context>
-              <stock-taking-creation-view></stock-taking-creation-view>
+              <time-context></time-context>
             </i18n-context>
           </device-context>
         </database-context>
       </router-context>
     </ready-context>
   `;
+
+  const deepestContext = document.querySelector('time-context');
+  deepestContext.innerHTML = '<stock-taking-creation-view></stock-taking-creation-view>';
 }
 
 function mockDateTo2025_01_16() {
@@ -70,10 +73,12 @@ async function setupInventoriesWithCost(sql) {
   await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
   await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
   await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (3, 'Product C', 15000, 'unit', 11310)`;
-  await sql`UPDATE accounts SET balance = 22500 WHERE account_code = 11310`;
-  await sql`UPDATE inventories SET cost = 5000, stock = 1 WHERE id = 1`;
-  await sql`UPDATE inventories SET cost = 10000, stock = 1 WHERE id = 2`;
-  await sql`UPDATE inventories SET cost = 7500, stock = 1 WHERE id = 3`;
+  await sql`INSERT INTO suppliers (id, name) VALUES (1, 'Supplier Cost Fixture')`;
+  await sql`INSERT INTO purchases (id, supplier_id, purchase_time) VALUES (1, 1, 1735689600000)`;
+  await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (1, 1, 1, 'Product A', 1, 'piece', 1, 5000)`;
+  await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (1, 2, 2, 'Product B', 1, 'piece', 1, 10000)`;
+  await sql`INSERT INTO purchase_lines (purchase_id, line_number, inventory_id, supplier_inventory_name, supplier_quantity, supplier_unit_of_measurement, quantity, price) VALUES (1, 3, 3, 'Product C', 1, 'unit', 1, 7500)`;
+  await sql`UPDATE purchases SET journal_entry_ref = 9201, post_time = 1735689600000 WHERE id = 1`;
 }
 
 async function setupInventoryWithAuditDate(sql) {

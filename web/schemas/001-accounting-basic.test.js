@@ -8,6 +8,9 @@ describe('Accounting Schema Tests - Basic', function () {
 
   const testTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
 
+  let nextJeRef = 1000;
+  function genJeRef() { return nextJeRef++; }
+
   /**
    * @param {number} code
    * @param {string} name
@@ -33,10 +36,11 @@ describe('Accounting Schema Tests - Basic', function () {
    * @param {Date} entryDate
    */
   async function draftJournalEntry(entryDate) {
-    const result = await sql`
-      INSERT INTO journal_entries (entry_time) VALUES (${entryDate.getTime()}) RETURNING ref
+    const ref = genJeRef();
+    await sql`
+      INSERT INTO journal_entries (ref, entry_time) VALUES (${ref}, ${entryDate.getTime()})
     `;
-    return Number(result.rows[0].ref);
+    return ref;
   };
 
   /**
@@ -210,10 +214,53 @@ describe('Accounting Schema Tests - Basic', function () {
         /Cannot unpost or change post_time of a posted journal entry/
       );
 
+      await rejects(
+        sql`UPDATE journal_entries SET note = ${'rewritten'}, entry_time = ${testTime + 1} WHERE ref = ${ref}`,
+        /Cannot modify posted journal entry/
+      );
+
       // Try to add line
       // Note: Schema doesn't explicitly prevent INSERT on posted journal entry lines in the provided text,
       // but let's see if it's covered or if I need to add it.
       // If this fails (i.e., it allows insert), I will add the trigger.
+    });
+
+    it('shall prevent adding lines to posted journal entry', async function () {
+      await createAccount(1000, 'Cash', 0);
+      await createAccount(4000, 'Sales', 1);
+      await createAccount(5000, 'Expense', 0);
+
+      const ref = await draftJournalEntry(new Date(2025, 0, 2, 0, 0, 0, 0));
+      await addJournalLine(ref, 1000, 500, 0);
+      await addJournalLine(ref, 4000, 0, 500);
+      await postJournalEntry(ref, new Date(2025, 0, 2, 0, 0, 0, 0));
+
+      await rejects(
+        addJournalLine(ref, 5000, 100, 0),
+        /Cannot add lines to posted journal entry/
+      );
+    });
+  });
+
+  describe('Account Hierarchy Triggers', function () {
+    it('shall set update_time in milliseconds when child account is deleted', async function () {
+      const beforeMs = Date.now();
+      await createAccount(10000, 'Parent', 0);
+      await createAccount(10100, 'Child', 0, 10000);
+
+      // Delete child account
+      await sql`DELETE FROM accounts WHERE account_code = 10100`;
+
+      const result = await sql`SELECT update_time FROM accounts WHERE account_code = 10000`;
+      const updateTime = Number(result.rows[0].update_time);
+      const afterMs = Date.now();
+
+      // update_time should be in milliseconds (order of 10^12), not seconds (order of 10^9)
+      // SQLite strftime('%s','now') * 1000 truncates sub-second precision, so allow 1s tolerance
+      equal(updateTime >= beforeMs - 1000, true, `update_time ${updateTime} should be near ${beforeMs} (milliseconds)`);
+      equal(updateTime <= afterMs + 1000, true, `update_time ${updateTime} should be <= ${afterMs} + 1s (milliseconds)`);
+      // Ensure it's definitely in milliseconds, not seconds
+      equal(updateTime > 1_000_000_000_000, true, `update_time ${updateTime} should be in milliseconds (> 10^12)`);
     });
   });
 });

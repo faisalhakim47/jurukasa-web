@@ -68,6 +68,17 @@ function setupViewWithBalanceSheetReportId({ url, id }) {
   `;
 }
 
+/**
+ * @param {(strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>} sql
+ * @param {{ ref: number, entryTime: number, note: string }} entry
+ */
+async function insertDraftJournalEntry(sql, entry) {
+  await sql`
+    INSERT INTO journal_entries (ref, entry_time, note)
+    VALUES (${entry.ref}, ${entry.entryTime}, ${entry.note})
+  `;
+}
+
 describe('Financial Reports', function () {
   useConsoleOutput(test);
   useStrict(test);
@@ -142,20 +153,28 @@ describe('Financial Reports', function () {
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         const reportTime = new Date(2024, 0, 4, 0, 0, 0, 0).getTime();
+        const ref1 = 1;
+        const ref2 = 2;
 
-        const ref1Result = await sql`INSERT INTO journal_entries (entry_time) VALUES (${new Date(2024, 0, 2, 0, 0, 0, 0).getTime()}) RETURNING ref`;
-        const ref1 = Number(ref1Result.rows[0].ref);
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref1}, 11110, 150000, 0)`;
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref1}, 11200, 50000, 0)`;
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref1}, 31000, 0, 200000)`;
+        await insertDraftJournalEntry(sql, {
+          ref: ref1,
+          entryTime: new Date(2024, 0, 2, 0, 0, 0, 0).getTime(),
+          note: 'Opening capital',
+        });
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note, cashflow_activity, cashflow_category) VALUES (${ref1}, 11110, 150000, 0, ${'Capital injection'}, 3, 7)`;
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note) VALUES (${ref1}, 11200, 50000, 0, ${'Accounts receivable opening balance'})`;
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note) VALUES (${ref1}, 31000, 0, 200000, ${'Owner equity'})`;
         await sql`UPDATE journal_entries SET post_time = ${new Date(2024, 0, 2, 0, 0, 0, 0).getTime()} WHERE ref = ${ref1}`;
 
-        const ref2Result = await sql`INSERT INTO journal_entries (entry_time) VALUES (${new Date(2024, 0, 3, 0, 0, 0, 0).getTime()}) RETURNING ref`;
-        const ref2 = Number(ref2Result.rows[0].ref);
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref2}, 11310, 260000, 0)`;
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref2}, 41000, 0, 100000)`;
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref2}, 21100, 0, 30000)`;
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref2}, 31000, 0, 130000)`;
+        await insertDraftJournalEntry(sql, {
+          ref: ref2,
+          entryTime: new Date(2024, 0, 3, 0, 0, 0, 0).getTime(),
+          note: 'Inventory and liability adjustment',
+        });
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note) VALUES (${ref2}, 11310, 260000, 0, ${'Inventory adjustment'})`;
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note) VALUES (${ref2}, 41000, 0, 100000, ${'Sales revenue'})`;
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note) VALUES (${ref2}, 21100, 0, 30000, ${'Accounts payable'})`;
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note) VALUES (${ref2}, 31000, 0, 130000, ${'Owner equity adjustment'})`;
         await sql`UPDATE journal_entries SET post_time = ${new Date(2024, 0, 3, 0, 0, 0, 0).getTime()} WHERE ref = ${ref2}`;
 
         await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (${reportTime}, 'Ad Hoc', 'Test Report', ${reportTime})`;
@@ -223,23 +242,35 @@ describe('Financial Reports', function () {
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
         const entryTime = new Date(2024, 5, 30, 0, 0, 0, 0).getTime();
+        const ref1 = 1;
+        const ref2 = 2;
+        const ref3 = 3;
 
-        const ref1Result = await sql`INSERT INTO journal_entries (entry_time) VALUES (${new Date(2024, 0, 2, 0, 0, 0, 0).getTime()}) RETURNING ref`;
-        const ref1 = Number(ref1Result.rows[0].ref);
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref1}, 11110, 100000, 0)`;
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref1}, 31000, 0, 100000)`;
+        await insertDraftJournalEntry(sql, {
+          ref: ref1,
+          entryTime: new Date(2024, 0, 2, 0, 0, 0, 0).getTime(),
+          note: 'Owner capital contribution',
+        });
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note, cashflow_activity, cashflow_category) VALUES (${ref1}, 11110, 100000, 0, ${'Capital injection'}, 3, 7)`;
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note) VALUES (${ref1}, 31000, 0, 100000, ${'Owner equity'})`;
         await sql`UPDATE journal_entries SET post_time = ${new Date(2024, 0, 2, 0, 0, 0, 0).getTime()} WHERE ref = ${ref1}`;
 
-        const ref2Result = await sql`INSERT INTO journal_entries (entry_time) VALUES (${new Date(2024, 1, 15, 0, 0, 0, 0).getTime()}) RETURNING ref`;
-        const ref2 = Number(ref2Result.rows[0].ref);
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref2}, 12110, 50000, 0)`;
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref2}, 11110, 0, 50000)`;
+        await insertDraftJournalEntry(sql, {
+          ref: ref2,
+          entryTime: new Date(2024, 1, 15, 0, 0, 0, 0).getTime(),
+          note: 'Equipment purchase',
+        });
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note) VALUES (${ref2}, 12110, 50000, 0, ${'Store equipment'})`;
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note, cashflow_activity, cashflow_category) VALUES (${ref2}, 11110, 0, 50000, ${'Asset purchase'}, 2, 5)`;
         await sql`UPDATE journal_entries SET post_time = ${new Date(2024, 1, 15, 0, 0, 0, 0).getTime()} WHERE ref = ${ref2}`;
 
-        const ref3Result = await sql`INSERT INTO journal_entries (entry_time) VALUES (${new Date(2024, 3, 10, 0, 0, 0, 0).getTime()}) RETURNING ref`;
-        const ref3 = Number(ref3Result.rows[0].ref);
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref3}, 11310, 25000, 0)`;
-        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit) VALUES (${ref3}, 21100, 0, 25000)`;
+        await insertDraftJournalEntry(sql, {
+          ref: ref3,
+          entryTime: new Date(2024, 3, 10, 0, 0, 0, 0).getTime(),
+          note: 'Inventory purchase on account',
+        });
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note) VALUES (${ref3}, 11310, 25000, 0, ${'Inventory received'})`;
+        await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note) VALUES (${ref3}, 21100, 0, 25000, ${'Accounts payable'})`;
         await sql`UPDATE journal_entries SET post_time = ${new Date(2024, 3, 10, 0, 0, 0, 0).getTime()} WHERE ref = ${ref3}`;
 
         await sql`INSERT INTO balance_reports (report_time, report_type, name, create_time) VALUES (${entryTime}, 'Ad Hoc', 'Q2 2024 Balance Sheet', ${new Date(2024, 0, 1, 0, 0, 0, 0).getTime()})`;

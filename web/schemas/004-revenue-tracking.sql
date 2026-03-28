@@ -47,7 +47,7 @@ SELECT
   -- SQLite strftime returns seconds, we convert to milliseconds for JS compatibility
   CAST(strftime('%s', datetime(je.entry_time / 1000, 'unixepoch', 'start of day')) AS INTEGER) * 1000 AS date_key,
   COALESCE(SUM(
-    CASE 
+    CASE
       WHEN at.tag = 'POS - Sales Revenue' THEN jel.credit
       ELSE 0
     END
@@ -59,7 +59,7 @@ SELECT
     END
   ), 0) AS discount_amount,
   COALESCE(SUM(
-    CASE 
+    CASE
       WHEN at.tag = 'POS - Sales Revenue' THEN jel.credit
       WHEN at.tag = 'POS - Sales Discount' THEN -jel.debit
       ELSE 0
@@ -70,8 +70,7 @@ FROM journal_entries je
 JOIN journal_entry_lines jel ON jel.journal_entry_ref = je.ref
 JOIN account_tags at ON at.account_code = jel.account_code
 WHERE je.post_time IS NOT NULL
-  AND je.source_type = 'System'
-  AND je.source_reference LIKE 'Sale #%'
+  AND je.sale_id IS NOT NULL
   AND at.tag IN ('POS - Sales Revenue', 'POS - Sales Discount')
 GROUP BY date_key
 HAVING gross_revenue > 0 OR discount_amount > 0; -- EOS
@@ -155,20 +154,27 @@ ORDER BY ds.date_key ASC; -- EOS
 -- FISCAL YEAR REVENUE SUMMARY VIEW
 -- =================================================================
 
--- View to get revenue summary for current fiscal year
 CREATE VIEW fiscal_year_revenue_summary AS
+WITH posted_sales AS (
+  SELECT
+    s.id,
+    s.sale_time,
+    COALESCE((SELECT SUM(sl.price) FROM sale_lines sl WHERE sl.sale_id = s.id), 0) AS gross_revenue,
+    COALESCE((SELECT SUM(sd.amount) FROM sale_discounts sd WHERE sd.sale_id = s.id), 0) AS discount_amount
+  FROM sales s
+  WHERE s.post_time IS NOT NULL
+)
 SELECT
   fy.id AS fiscal_year_id,
   fy.begin_time,
   fy.end_time,
   fy.name AS fiscal_year_name,
-  COALESCE(SUM(dr.net_revenue), 0) AS total_net_revenue,
-  COALESCE(SUM(dr.gross_revenue), 0) AS total_gross_revenue,
-  COALESCE(SUM(dr.discount_amount), 0) AS total_discount,
-  COALESCE(SUM(dr.transaction_count), 0) AS total_transactions
+  COALESCE(SUM(ps.gross_revenue - ps.discount_amount), 0) AS total_net_revenue,
+  COALESCE(SUM(ps.gross_revenue), 0) AS total_gross_revenue,
+  COALESCE(SUM(ps.discount_amount), 0) AS total_discount,
+  COALESCE(COUNT(ps.id), 0) AS total_transactions
 FROM fiscal_years fy
-LEFT JOIN daily_revenue dr ON dr.date_key >= fy.begin_time AND dr.date_key < fy.end_time
-WHERE fy.post_time IS NULL
+LEFT JOIN posted_sales ps ON ps.sale_time > fy.begin_time AND ps.sale_time <= fy.end_time
 GROUP BY fy.id, fy.begin_time, fy.end_time, fy.name; -- EOS
 
 -- =================================================================
@@ -191,7 +197,7 @@ BEGIN
     -- Discount amount from sale_discounts
     (SELECT COALESCE(SUM(amount), 0) FROM sale_discounts WHERE sale_id = NEW.id),
     -- Net revenue
-    (SELECT COALESCE(SUM(price), 0) FROM sale_lines WHERE sale_id = NEW.id) - 
+    (SELECT COALESCE(SUM(price), 0) FROM sale_lines WHERE sale_id = NEW.id) -
     (SELECT COALESCE(SUM(amount), 0) FROM sale_discounts WHERE sale_id = NEW.id),
     -- Transaction count
     1,

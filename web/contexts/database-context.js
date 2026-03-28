@@ -67,7 +67,7 @@ export class DatabaseContextElement extends HTMLElement {
 
     const connection = reactive({
       state: /** @type {ConnectionState} */ ('init'),
-      error: /** @type {Error} */ (undefined),
+      error: /** @type {unknown} */ (undefined),
       client: /** @type {DatabaseClient|undefined} */ (undefined),
       databases: /** @type {DatabaseConfig[]} */ ([]),
     });
@@ -161,7 +161,7 @@ export class DatabaseContextElement extends HTMLElement {
     useEffect(host, function evaluateExistingState() {
       console.debug('database-context', 'evaluateExistingState', connection.state, router.route?.pathname, { provider: router.route?.database?.provider });
       if (connection.state === 'init' && router.route) {
-        let config = /** @type {DatabaseConfig} */ (undefined);
+        let config = /** @type {DatabaseConfig} */ (/** @type {unknown} */ (undefined));
 
         if (false) { }
         else if (providerAttr.value === 'local') config = {
@@ -249,31 +249,24 @@ async function createDatabaseClient(config) {
  */
 async function autoMigrate(client) {
   const schemaVersion = await getSchemaVersion(client);
-  if (schemaVersion === '007-cash-count') return; // Already latest schema
-  else if (schemaVersion === '006-account-reconciliation') {
-    await migrate(client, '/web/schemas/007-cash-count.sql');
-  }
+  if (schemaVersion === '006-account-reconciliation') return;
   else if (schemaVersion === '005-fixed-assets') {
     await migrate(client, '/web/schemas/006-account-reconciliation.sql');
-    await migrate(client, '/web/schemas/007-cash-count.sql');
   }
   else if (schemaVersion === '004-revenue-tracking') {
     await migrate(client, '/web/schemas/005-fixed-assets.sql');
     await migrate(client, '/web/schemas/006-account-reconciliation.sql');
-    await migrate(client, '/web/schemas/007-cash-count.sql');
   }
   else if (schemaVersion === '003-chart-of-accounts') {
     await migrate(client, '/web/schemas/004-revenue-tracking.sql');
     await migrate(client, '/web/schemas/005-fixed-assets.sql');
     await migrate(client, '/web/schemas/006-account-reconciliation.sql');
-    await migrate(client, '/web/schemas/007-cash-count.sql');
   }
   else if (schemaVersion === '002-pos') {
     await migrate(client, '/web/schemas/003-chart-of-accounts.sql');
     await migrate(client, '/web/schemas/004-revenue-tracking.sql');
     await migrate(client, '/web/schemas/005-fixed-assets.sql');
     await migrate(client, '/web/schemas/006-account-reconciliation.sql');
-    await migrate(client, '/web/schemas/007-cash-count.sql');
   }
   else if (schemaVersion === '001-accounting') {
     await migrate(client, '/web/schemas/002-pos.sql');
@@ -281,7 +274,6 @@ async function autoMigrate(client) {
     await migrate(client, '/web/schemas/004-revenue-tracking.sql');
     await migrate(client, '/web/schemas/005-fixed-assets.sql');
     await migrate(client, '/web/schemas/006-account-reconciliation.sql');
-    await migrate(client, '/web/schemas/007-cash-count.sql');
   }
   else if (schemaVersion === undefined) {
     await migrate(client, '/web/schemas/001-accounting.sql');
@@ -290,7 +282,6 @@ async function autoMigrate(client) {
     await migrate(client, '/web/schemas/004-revenue-tracking.sql');
     await migrate(client, '/web/schemas/005-fixed-assets.sql');
     await migrate(client, '/web/schemas/006-account-reconciliation.sql');
-    await migrate(client, '/web/schemas/007-cash-count.sql');
   }
 }
 

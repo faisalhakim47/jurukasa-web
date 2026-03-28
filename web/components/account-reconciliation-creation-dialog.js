@@ -2,10 +2,12 @@ import { reactive } from '@vue/reactivity';
 import { html, nothing } from 'lit-html';
 
 import { defineWebComponent } from '#web/component.js';
-import { useDialog } from '#web/hooks/use-dialog.js';
-import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
+import { I18nContextElement } from '#web/contexts/i18n-context.js';
+import { TimeContextElement } from '#web/contexts/time-context.js';
+import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
+import { useDialog } from '#web/hooks/use-dialog.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useElement } from '#web/hooks/use-element.js';
 import { useRender } from '#web/hooks/use-render.js';
@@ -13,269 +15,241 @@ import { useTranslator } from '#web/hooks/use-translator.js';
 import { useWatch } from '#web/hooks/use-watch.js';
 import { webStyleSheets } from '#web/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
-import { readValue } from '#web/directives/read-value.js';
+import {
+  calculateReconciliationBookBalance,
+  normalizeReconciliationError,
+} from '#web/tools/accounting.js';
 
 import '#web/components/material-symbols.js';
 import '#web/components/account-selector-dialog.js';
 
-/**
- * Account Reconciliation Creation Dialog Component
- * 
- * @fires account-reconciliation-created - Fired when a reconciliation session is successfully created. Detail: { reconciliationId: number }
- */
 export class AccountReconciliationCreationDialogElement extends HTMLElement {
   constructor() {
     super();
 
     const host = this;
     const database = useContext(host, DatabaseContextElement);
+    const i18n = useContext(host, I18nContextElement);
+    const time = useContext(host, TimeContextElement);
     const t = useTranslator(host);
 
     const errorAlertDialog = useElement(host, HTMLDialogElement);
+    const formElement = useElement(host, HTMLFormElement);
     const dialog = useDialog(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
-    const formElement = useElement(host, HTMLFormElement);
-    const form = reactive({
-      state: /** @type {'idle' | 'submitting' | 'calculating' | 'success' | 'error'} */ ('idle'),
-      error: /** @type {Error | null} */ (null),
-
-      // Fields
+    const state = reactive({
+      formState: /** @type {'idle' | 'loading-preview' | 'submitting' | 'error'} */ ('idle'),
+      formError: /** @type {Error | null} */ (null),
       accountCode: /** @type {number | null} */ (null),
-      accountName: /** @type {string} */ (''),
-      statementBeginTime: /** @type {string} */ (''), // YYYY-MM-DD
-      statementEndTime: /** @type {string} */ (''), // YYYY-MM-DD
-      statementReference: /** @type {string} */ (''),
-      statementOpeningBalance: /** @type {string} */ ('0'),
-      statementClosingBalance: /** @type {string} */ ('0'),
-      note: /** @type {string} */ (''),
-
-      // Calculated Internal Values
-      internalOpeningBalance: /** @type {number} */ (0),
-      internalClosingBalance: /** @type {number} */ (0),
-      hasCalculatedBalances: false,
-      currencyDecimals: 0,
+      accountName: '',
+      checkpointTime: '',
+      externalBalance: '',
+      note: '',
+      bookBalance: 0,
+      hasBookBalance: false,
     });
 
-    useEffect(host, async function loadConfig() {
-      try {
-        const result = await database.sql`SELECT value FROM config WHERE key = 'Currency Decimals'`;
-        const decimals = Number(result.rows[0]?.value ?? 0);
-        form.currencyDecimals = Number.isInteger(decimals) && decimals >= 0 ? decimals : 0;
-      }
-      catch (error) {
-        console.trace('Failed to load currency config:', error);
-      }
-    });
+    let previewToken = 0;
 
-    /**
-     * @param {number} accountCode
-     * @param {string} beginDate
-     * @param {string} endDate
-     */
-    async function calculateInternalBalances(accountCode, beginDate, endDate) {
-      if (!accountCode || !beginDate || !endDate) {
-        form.internalOpeningBalance = 0;
-        form.internalClosingBalance = 0;
-        form.hasCalculatedBalances = false;
+    function resetForm() {
+      state.formState = 'idle';
+      state.formError = null;
+      state.accountCode = null;
+      state.accountName = '';
+      state.checkpointTime = time.currentDate().toISOString().slice(0, 16);
+      state.externalBalance = '';
+      state.note = '';
+      state.bookBalance = 0;
+      state.hasBookBalance = false;
+      formElement.value?.reset();
+    }
+
+    async function refreshBookBalance() {
+      const currentToken = ++previewToken;
+
+      if (state.accountCode === null || state.checkpointTime === '') {
+        state.bookBalance = 0;
+        state.hasBookBalance = false;
+        if (state.formState === 'loading-preview') state.formState = 'idle';
+        return;
+      }
+
+      const checkpointTime = new Date(state.checkpointTime).getTime();
+      if (Number.isNaN(checkpointTime) || checkpointTime <= 0) {
+        state.bookBalance = 0;
+        state.hasBookBalance = false;
+        if (state.formState === 'loading-preview') state.formState = 'idle';
         return;
       }
 
       try {
-        form.state = 'calculating';
-        const beginTime = new Date(beginDate).getTime();
-        const endTime = new Date(endDate).getTime();
-
-        // Get account normal balance
-        const accountResult = await database.sql`
-          SELECT normal_balance FROM accounts WHERE account_code = ${accountCode}
-        `;
-        if (accountResult.rows.length === 0) throw new Error('Account not found');
-        const normalBalance = Number(accountResult.rows[0].normal_balance);
-
-        // Calculate Opening Balance (entries <= beginTime)
-        // Schema says statement_begin_time is exclusive for the period
-        // So opening balance should be balance AT beginTime.
-        const openingResult = await database.sql`
-          SELECT SUM(
-            CASE ${normalBalance}
-              WHEN 0 THEN debit - credit
-              WHEN 1 THEN credit - debit
-            END
-          ) as balance
-          FROM journal_entry_lines jel
-          JOIN journal_entries je ON je.ref = jel.journal_entry_ref
-          WHERE jel.account_code = ${accountCode}
-            AND je.post_time IS NOT NULL
-            AND je.entry_time <= ${beginTime}
-        `;
-
-        // Calculate Closing Balance (entries <= endTime)
-        const closingResult = await database.sql`
-          SELECT SUM(
-            CASE ${normalBalance}
-              WHEN 0 THEN debit - credit
-              WHEN 1 THEN credit - debit
-            END
-          ) as balance
-          FROM journal_entry_lines jel
-          JOIN journal_entries je ON je.ref = jel.journal_entry_ref
-          WHERE jel.account_code = ${accountCode}
-            AND je.post_time IS NOT NULL
-            AND je.entry_time <= ${endTime}
-        `;
-
-        form.internalOpeningBalance = Number(openingResult.rows[0]?.balance ?? 0);
-        form.internalClosingBalance = Number(closingResult.rows[0]?.balance ?? 0);
-        form.hasCalculatedBalances = true;
-        form.state = 'idle';
+        if (state.formState === 'idle') state.formState = 'loading-preview';
+        const bookBalance = await calculateReconciliationBookBalance(database, state.accountCode, checkpointTime);
+        if (currentToken !== previewToken) return;
+        state.bookBalance = bookBalance;
+        state.hasBookBalance = true;
       }
-      catch (error) {
-        console.error('Error calculating balances:', error);
-        form.state = 'idle'; // Recover to idle but maybe show warning?
+      catch {
+        if (currentToken !== previewToken) return;
+        state.bookBalance = 0;
+        state.hasBookBalance = false;
+      }
+      finally {
+        if (currentToken === previewToken && state.formState === 'loading-preview') {
+          state.formState = 'idle';
+        }
       }
     }
 
-    /**
-     * Trigger balance calculation if all required fields are present
-     */
-    function tryCalculateBalances() {
-      if (form.accountCode && form.statementBeginTime && form.statementEndTime) {
-        calculateInternalBalances(
-          form.accountCode,
-          form.statementBeginTime,
-          form.statementEndTime
-        );
-      }
+    function closeErrorDialog() {
+      errorAlertDialog.value?.close();
+    }
+
+    function readExternalBalance() {
+      const externalBalance = Number.parseInt(state.externalBalance, 10);
+      return Number.isNaN(externalBalance) ? null : externalBalance;
     }
 
     /** @param {CustomEvent} event */
     function handleAccountSelected(event) {
-      form.accountCode = event.detail.accountCode;
-      form.accountName = event.detail.accountName;
-      tryCalculateBalances();
+      state.accountCode = Number(event.detail.accountCode);
+      state.accountName = String(event.detail.accountName);
+      void refreshBookBalance();
     }
 
     /** @param {Event} event */
-    function handleDateChange(event) {
-      // Just let the model update through input binding if we had it, but we use native events
+    function handleCheckpointTimeInput(event) {
       assertInstanceOf(HTMLInputElement, event.currentTarget);
-      if (event.currentTarget.name === 'statementBeginTime') {
-        form.statementBeginTime = event.currentTarget.value;
-      } else if (event.currentTarget.name === 'statementEndTime') {
-        form.statementEndTime = event.currentTarget.value;
-      }
-      tryCalculateBalances();
+      state.checkpointTime = event.currentTarget.value;
+      void refreshBookBalance();
+    }
+
+    /** @param {Event} event */
+    function handleExternalBalanceInput(event) {
+      assertInstanceOf(HTMLInputElement, event.currentTarget);
+      state.externalBalance = event.currentTarget.value;
     }
 
     /** @param {Event} event */
     function handleNoteInput(event) {
       assertInstanceOf(HTMLTextAreaElement, event.currentTarget);
-      form.note = event.currentTarget.value;
+      state.note = event.currentTarget.value;
     }
 
     /** @param {SubmitEvent} event */
     async function handleSubmit(event) {
       event.preventDefault();
-      if (form.state === 'submitting') return;
-
-      const tx = await database.transaction('write');
+      if (state.formState === 'submitting') return;
 
       try {
-        if (!form.accountCode) throw new Error(t('reconciliation', 'accountRequiredError'));
-        if (!form.statementBeginTime) throw new Error(t('reconciliation', 'beginDateRequiredError'));
-        if (!form.statementEndTime) throw new Error(t('reconciliation', 'endDateRequiredError'));
+        if (state.accountCode === null) throw new Error(t('reconciliation', 'accountRequiredError'));
+        if (state.checkpointTime === '') throw new Error(t('reconciliation', 'checkpointTimeRequiredError'));
+        if (state.externalBalance.trim() === '') throw new Error(t('reconciliation', 'externalBalanceRequiredError'));
 
-        const beginTime = new Date(form.statementBeginTime).getTime();
-        const endTime = new Date(form.statementEndTime).getTime();
-
-        if (beginTime >= endTime) {
-          throw new Error(t('reconciliation', 'periodInvalidError'));
+        const checkpointTime = new Date(state.checkpointTime).getTime();
+        if (Number.isNaN(checkpointTime) || checkpointTime <= 0) {
+          throw new Error(t('reconciliation', 'invalidCheckpointTimeError'));
         }
 
-        form.state = 'submitting';
-        form.error = null;
+        const externalBalance = Number.parseInt(state.externalBalance, 10);
+        if (Number.isNaN(externalBalance)) {
+          throw new Error(t('reconciliation', 'externalBalanceRequiredError'));
+        }
 
-        const multiplier = Math.pow(10, form.currencyDecimals);
-        const sOpen = Math.round(parseFloat(form.statementOpeningBalance) * multiplier);
-        const sClose = Math.round(parseFloat(form.statementClosingBalance) * multiplier);
+        state.formState = 'submitting';
+        state.formError = null;
 
-        const result = await tx.sql`
-          INSERT INTO reconciliation_sessions (
+        const result = await database.sql`
+          INSERT INTO reconciliation_checkpoints (
             account_code,
-            reconciliation_time,
-            statement_begin_time,
-            statement_end_time,
-            statement_reference,
-            statement_opening_balance,
-            statement_closing_balance,
-            internal_opening_balance,
-            internal_closing_balance,
+            type,
+            checkpoint_time,
+            external_balance,
+            adjustment_journal_entry_ref,
             note,
             create_time
           ) VALUES (
-            ${form.accountCode},
-            ${Date.now()},
-            ${beginTime},
-            ${endTime},
-            ${form.statementReference || null},
-            ${sOpen},
-            ${sClose},
-            ${form.internalOpeningBalance},
-            ${form.internalClosingBalance},
-            ${form.note || null},
-            ${Date.now()}
+            ${state.accountCode},
+            ${'STATEMENT'},
+            ${checkpointTime},
+            ${externalBalance},
+            (SELECT COALESCE(MAX(ref), 0) + 1 FROM journal_entries),
+            ${state.note || null},
+            ${time.currentDate().getTime()}
           ) RETURNING id
         `;
-
-        await tx.commit();
-
-        const newId = result.rows[0].id;
 
         host.dispatchEvent(new CustomEvent('account-reconciliation-created', {
           bubbles: true,
           composed: true,
-          detail: { reconciliationId: newId },
+          detail: { reconciliationId: Number(result.rows[0].id) },
         }));
 
-        form.state = 'success';
         dialog.open = false;
-
       }
       catch (error) {
-        await tx.rollback();
-        form.state = 'error';
-        form.error = error instanceof Error ? error : new Error(String(error));
+        state.formState = 'error';
+        state.formError = normalizeReconciliationError(error, t);
         errorAlertDialog.value?.showModal();
       }
     }
 
-    useWatch(host, dialog, 'open', function onDialogOpenChange(isOpen) {
-      if (isOpen) {
-        form.state = 'idle';
-        form.error = null;
-        form.accountCode = null;
-        form.accountName = '';
-        form.statementBeginTime = '';
-        form.statementEndTime = '';
-        form.statementReference = '';
-        form.statementOpeningBalance = '0';
-        form.statementClosingBalance = '0';
-        form.note = '';
-        form.internalOpeningBalance = 0;
-        form.internalClosingBalance = 0;
-        form.hasCalculatedBalances = false;
-        formElement.value?.reset();
-      }
-    });
-
     /** @param {Event} event */
     function handleDialogClose(event) {
-      if (form.state === 'submitting') {
-        event.preventDefault();
-      }
+      if (state.formState === 'submitting') event.preventDefault();
     }
+
+    function renderPreview() {
+      const externalBalance = readExternalBalance();
+      const discrepancy = externalBalance === null ? null : externalBalance - state.bookBalance;
+      const isBalanced = discrepancy === 0;
+
+      return html`
+        <section style="display: grid; gap: 12px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+            <article style="padding: 16px; border-radius: var(--md-sys-shape-corner-large); background: var(--md-sys-color-surface-container-low);">
+              <p class="label-medium" style="margin: 0; color: var(--md-sys-color-on-surface-variant);">${t('reconciliation', 'bookBalanceLabel')}</p>
+              <p class="title-large" style="margin: 8px 0 0 0;">${state.hasBookBalance ? i18n.displayCurrency(state.bookBalance) : '—'}</p>
+            </article>
+            <article style="padding: 16px; border-radius: var(--md-sys-shape-corner-large); background: var(--md-sys-color-surface-container-low);">
+              <p class="label-medium" style="margin: 0; color: var(--md-sys-color-on-surface-variant);">${t('reconciliation', 'externalBalanceLabel')}</p>
+              <p class="title-large" style="margin: 8px 0 0 0;">${externalBalance === null ? '—' : i18n.displayCurrency(externalBalance)}</p>
+            </article>
+            <article style="padding: 16px; border-radius: var(--md-sys-shape-corner-large); background: var(--md-sys-color-surface-container-low);">
+              <p class="label-medium" style="margin: 0; color: var(--md-sys-color-on-surface-variant);">${t('reconciliation', 'balanceDifferenceLabel')}</p>
+              <p class="title-large" style="margin: 8px 0 0 0; color: ${isBalanced ? 'inherit' : 'var(--md-sys-color-error)'};">${discrepancy === null ? '—' : i18n.displayCurrency(discrepancy)}</p>
+            </article>
+          </div>
+          <div role="status" style="padding: 16px; border-radius: var(--md-sys-shape-corner-large); background: ${isBalanced ? 'var(--md-sys-color-primary-container)' : 'var(--md-sys-color-tertiary-container)'}; color: ${isBalanced ? 'var(--md-sys-color-on-primary-container)' : 'var(--md-sys-color-on-tertiary-container)'};">
+            <p class="label-large" style="margin: 0 0 4px 0;">
+              ${externalBalance === null
+                ? t('reconciliation', 'checkpointPreviewPendingLabel')
+                : isBalanced
+                  ? t('reconciliation', 'balancedLabel')
+                  : discrepancy > 0
+                    ? t('reconciliation', 'overageLabel')
+                    : t('reconciliation', 'shortageLabel')}
+            </p>
+            <p class="body-medium" style="margin: 0;">
+              ${externalBalance === null
+                ? t('reconciliation', 'enterExternalBalancePreviewMessage')
+                : isBalanced
+                  ? t('reconciliation', 'statementBalancedMessage')
+                  : t('reconciliation', 'statementAdjustmentWillBeRecordedMessage')}
+            </p>
+          </div>
+        </section>
+      `;
+    }
+
+    useWatch(host, dialog, 'open', function onDialogOpenChange(isOpen) {
+      if (isOpen) {
+        resetForm();
+        void refreshBookBalance();
+      }
+    });
 
     useEffect(host, function renderDialog() {
       render(html`
@@ -284,7 +258,7 @@ export class AccountReconciliationCreationDialogElement extends HTMLElement {
           id="account-reconciliation-creation-dialog"
           class="full-screen"
           role="dialog"
-          aria-labelledby="reconciliation-creation-title"
+          aria-labelledby="account-reconciliation-creation-title"
           @close=${handleDialogClose}
         >
           <form
@@ -295,7 +269,8 @@ export class AccountReconciliationCreationDialogElement extends HTMLElement {
           >
             <header>
               <hgroup>
-                <h2 id="reconciliation-creation-title">${t('reconciliation', 'createReconciliationTitle')}</h2>
+                <h2 id="account-reconciliation-creation-title">${t('reconciliation', 'createReconciliationTitle')}</h2>
+                <p>${t('reconciliation', 'createReconciliationDescription')}</p>
               </hgroup>
               <button
                 role="button"
@@ -309,232 +284,104 @@ export class AccountReconciliationCreationDialogElement extends HTMLElement {
                 role="button"
                 type="submit"
                 class="filled"
-                ?disabled=${!form.accountCode || !form.statementBeginTime || !form.statementEndTime || form.state === 'submitting'}
+                ?disabled=${state.accountCode === null || state.checkpointTime === '' || state.externalBalance.trim() === '' || state.formState === 'submitting'}
               >
-                ${form.state === 'submitting' ? html`
-                  <div role="progressbar" class="circular indeterminate extra-small"></div>
-                ` : nothing}
+                ${state.formState === 'submitting' ? html`<div role="progressbar" class="circular indeterminate extra-small"></div>` : nothing}
                 ${t('reconciliation', 'createButtonLabel')}
               </button>
             </header>
 
-            <div class="content">
-              <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
-                
-                <!-- Account Selection -->
-                 
-                <section>
-                  <h3 class="title-medium" style="margin-bottom: 16px;">${t('reconciliation', 'accountSectionTitle')}</h3>
-                  <div style="display: flex; gap: 12px; align-items: flex-end;">
-                    <div class="outlined-text-field">
-                      <div class="container">
-                        <label for="account-input">${t('reconciliation', 'accountLabel')}</label>
-                        <input
-                          id="account-input"
-                          type="button"
-                          readonly
-                          required
-                          placeholder=" "
-                          value="${form.accountName ? `${form.accountCode} - ${form.accountName}` : ''}"
-                          commandfor="account-selector-dialog"
-                          command="--open"
-                        />
-                        ${form.accountCode ? html`
-                          <button
-                            type="button"
-                            class="trailing-icon"
-                            aria-label="${t('reconciliation', 'accountLabel')}"
-                          ><material-symbols name="close"></material-symbols></button>
-                        ` : html`
-                          <button
-                            type="button"
-                            class="trailing-icon"
-                            commandfor="account-selector-dialog"
-                            command="--open"
-                            aria-label="${t('reconciliation', 'selectAccountButtonLabel')}"
-                          ><material-symbols name="search"></material-symbols></button>
-                        `}
-                      </div>
-                    </div>
+            <div class="content" style="display: grid; gap: 20px;">
+              <section style="display: grid; gap: 16px;">
+                <h3 class="title-medium" style="margin: 0;">${t('reconciliation', 'accountSectionTitle')}</h3>
+                <div class="outlined-text-field">
+                  <div class="container">
+                    <label for="statement-account-selector">${t('reconciliation', 'accountLabel')}</label>
+                    <input
+                      id="statement-account-selector"
+                      type="button"
+                      aria-label="${t('reconciliation', 'accountLabel')}"
+                      value="${state.accountCode === null ? '' : `${state.accountCode} - ${state.accountName}`}"
+                      placeholder=" "
+                      commandfor="account-selector-dialog"
+                      command="--open"
+                    />
+                    <label for="statement-account-selector" class="trailing-icon">
+                      <material-symbols name="arrow_drop_down"></material-symbols>
+                    </label>
                   </div>
-                </section>
+                </div>
+              </section>
 
-                <!-- Period -->
-                <section>
-                  <h3 class="title-medium" style="margin-bottom: 16px;">${t('reconciliation', 'periodSectionTitle')}</h3>
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div class="outlined-text-field">
-                      <div class="container">
-                        <label for="statement-begin-date-input">${t('reconciliation', 'beginDateLabel')}</label>
-                        <input
-                          id="statement-begin-date-input"
-                          name="statementBeginTime"
-                          type="date"
-                          required
-                          value="${form.statementBeginTime}"
-                          @change=${handleDateChange}
-                        />
-                      </div>
-                    </div>
-                    <div class="outlined-text-field">
-                      <div class="container">
-                        <label for="statement-end-date-input">${t('reconciliation', 'endDateLabel')}</label>
-                        <input
-                          id="statement-end-date-input"
-                          name="statementEndTime"
-                          type="date"
-                          required
-                          value="${form.statementEndTime}"
-                          @change=${handleDateChange}
-                        />
-                      </div>
-                    </div>
+              <section style="display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+                <div class="outlined-text-field">
+                  <div class="container">
+                    <label for="statement-checkpoint-time">${t('reconciliation', 'checkpointTimeLabel')}</label>
+                    <input
+                      .value=${state.checkpointTime}
+                      id="statement-checkpoint-time"
+                      type="datetime-local"
+                      name="checkpointTime"
+                      placeholder=" "
+                      required
+                      @input=${handleCheckpointTimeInput}
+                    />
                   </div>
-                </section>
+                </div>
 
-                <!-- Comparison (Internal vs Statement) -->
-                ${form.hasCalculatedBalances ? html`
-                  <div style="
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 24px;
-                    padding: 16px;
-                    background-color: var(--md-sys-color-surface-container);
-                    border-radius: 12px;
-                  ">
-                    <!-- Internal Record -->
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
-                      <h4 class="title-small" style="color: var(--md-sys-color-primary);">
-                        ${t('reconciliation', 'internalRecordTitle')}
-                      </h4>
-                      
-                      <div class="outlined-text-field" style="--md-sys-density: -2;">
-                        <div class="container">
-                          <label for="internal-opening-balance-input">${t('reconciliation', 'internalOpeningBalanceLabel')}</label>
-                          <input id="internal-opening-balance-input" type="text" readonly value="${form.internalOpeningBalance}" />
-                        </div>
-                      </div>
-
-                      <div class="outlined-text-field" style="--md-sys-density: -2;">
-                        <div class="container">
-                          <label for="internal-closing-balance-input">${t('reconciliation', 'internalClosingBalanceLabel')}</label>
-                          <input id="internal-closing-balance-input" type="text" readonly value="${form.internalClosingBalance}" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Statement Record -->
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
-                      <h4 class="title-small" style="color: var(--md-sys-color-tertiary);">
-                        ${t('reconciliation', 'statementRecordTitle')}
-                      </h4>
-
-                      <div class="outlined-text-field" style="--md-sys-density: -2;">
-                        <div class="container">
-                          <label for="statement-opening-balance-input">${t('reconciliation', 'statementOpeningBalanceLabel')}</label>
-                          <input
-                            id="statement-opening-balance-input"
-                            name="statementOpeningBalance"
-                            type="number"
-                            inputmode="decimal"
-                            step="${form.currencyDecimals > 0 ? Array(form.currencyDecimals).fill(0).map((_, i) => i === 0 ? '.' : '0').join('') + '1' : '1'}"
-                            required
-                            value="${form.statementOpeningBalance}"
-                            ${readValue(form, 'statementOpeningBalance')}
-                          />
-                        </div>
-                      </div>
-
-                      <div class="outlined-text-field" style="--md-sys-density: -2;">
-                        <div class="container">
-                          <label for="statement-closing-balance-input">${t('reconciliation', 'statementClosingBalanceLabel')}</label>
-                          <input
-                            id="statement-closing-balance-input"
-                            name="statementClosingBalance"
-                            type="number"
-                            inputmode="decimal"
-                            step="${form.currencyDecimals > 0 ? Array(form.currencyDecimals).fill(0).map((_, i) => i === 0 ? '.' : '0').join('') + '1' : '1'}"
-                            required
-                            value="${form.statementClosingBalance}"
-                            ${readValue(form, 'statementClosingBalance')}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                <div class="outlined-text-field">
+                  <div class="container">
+                    <label for="statement-external-balance">${t('reconciliation', 'statementBalanceLabel')}</label>
+                    <input
+                      .value=${state.externalBalance}
+                      id="statement-external-balance"
+                      type="number"
+                      inputmode="numeric"
+                      name="externalBalance"
+                      placeholder=" "
+                      required
+                      @input=${handleExternalBalanceInput}
+                    />
                   </div>
-                ` : nothing}
+                </div>
+              </section>
 
-                <!-- Additional Info -->
-                <section>
-                   <h3 class="title-medium" style="margin-bottom: 16px;">${t('reconciliation', 'detailsSectionTitle')}</h3>
-                   <div style="display: flex; flex-direction: column; gap: 16px;">
-                      <div class="outlined-text-field">
-                        <div class="container">
-                           <label>${t('reconciliation', 'statementReferenceLabel')}</label>
-                          <input
-                            name="statementReference"
-                            type="text"
-                            placeholder="e.g. Bank Statement Jan 2026"
-                            value="${form.statementReference}"
-                            ${readValue(form, 'statementReference')}
-                          />
-                        </div>
-                      </div>
-
-                      <div class="outlined-text-field">
-                        <div class="container">
-                          <label>${t('reconciliation', 'noteLabel')}</label>
-                          <textarea
-                            name="note"
-                            rows="3"
-                            placeholder=" "
-                            value="${form.note}"
-                            @input=${handleNoteInput}
-                          ></textarea>
-                        </div>
-                      </div>
-                   </div>
-                </section>
-                
+              <div class="outlined-text-field textarea">
+                <div class="container">
+                  <label for="statement-note">${t('reconciliation', 'noteLabel')}</label>
+                  <textarea
+                    .value=${state.note}
+                    id="statement-note"
+                    name="note"
+                    placeholder=" "
+                    rows="4"
+                    @input=${handleNoteInput}
+                  ></textarea>
+                </div>
               </div>
+
+              ${renderPreview()}
             </div>
           </form>
+
+          <account-selector-dialog
+            id="account-selector-dialog"
+            @account-select=${handleAccountSelected}
+          ></account-selector-dialog>
         </dialog>
 
-        <!-- Nested Account Selector -->
-        <account-selector-dialog
-          id="account-selector-dialog"
-          @account-select=${handleAccountSelected}
-        ></account-selector-dialog>
-
-        <!-- Error Alert -->
-        <dialog
-          ${errorAlertDialog}
-          role="alertdialog"
-          id="reconciliation-creation-error-dialog"
-          aria-labelledby="reconciliation-creation-error-title"
-        >
-          <div class="container">
-            <material-symbols name="error" style="color: var(--md-sys-color-error);"></material-symbols>
+        <dialog ${errorAlertDialog} role="alertdialog" aria-labelledby="account-reconciliation-creation-error-title">
+          <article class="container" style="min-width: min(420px, calc(100vw - 32px));">
             <header>
-              <hgroup>
-                <h3 id="reconciliation-creation-error-title">${t('reconciliation', 'errorTitle')}</h3>
-              </hgroup>
+              <h2 id="account-reconciliation-creation-error-title">${t('reconciliation', 'errorTitle')}</h2>
             </header>
             <div class="content">
-              <p>${form.error?.message}</p>
+              <p>${state.formError?.message ?? t('reconciliation', 'unknownErrorMessage')}</p>
             </div>
-            <menu>
-              <li>
-                <button
-                  role="button"
-                  class="text"
-                  commandfor="reconciliation-creation-error-dialog"
-                  command="close"
-                >${t('reconciliation', 'dismissButtonLabel')}</button>
-              </li>
-            </menu>
-          </div>
+            <footer>
+              <button type="button" class="filled" @click=${closeErrorDialog}>${t('reconciliation', 'dismissButtonLabel')}</button>
+            </footer>
+          </article>
         </dialog>
       `);
     });

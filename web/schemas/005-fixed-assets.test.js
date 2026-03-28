@@ -8,6 +8,9 @@ describe('Fixed Assets Schema Tests', function () {
   const sql = useSql();
   const testTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
 
+  let nextJeRef = 1000;
+  function genJeRef() { return nextJeRef++; }
+
   /**
    * @param {number} code
    * @param {string} name
@@ -49,8 +52,9 @@ describe('Fixed Assets Schema Tests', function () {
         name, acquisition_time, acquisition_cost, useful_life_years, salvage_value,
         asset_account_code, accumulated_depreciation_account_code,
         depreciation_expense_account_code, payment_account_code,
+        journal_entry_ref,
         create_time, update_time
-      ) VALUES (${name}, ${acquisitionTime}, ${cost}, ${years}, ${salvage}, 1500, 1510, 5100, 1000, ${testTime}, ${testTime})
+      ) VALUES (${name}, ${acquisitionTime}, ${cost}, ${years}, ${salvage}, 1500, 1510, 5100, 1000, ${genJeRef()}, ${testTime}, ${testTime})
       RETURNING id
     `;
     return Number(result.rows[0].id);
@@ -70,7 +74,15 @@ describe('Fixed Assets Schema Tests', function () {
    * @param {number} postTime
    */
   async function closeFiscalYear(beginTime, postTime) {
-    await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
+    await sql`UPDATE fiscal_years SET closing_journal_entry_ref = ${genJeRef()}, depreciation_journal_entry_ref = ${genJeRef()}, post_time = ${postTime} WHERE begin_time = ${beginTime}`;
+  }
+
+  /**
+   * @param {number} beginTime
+   * @param {number} reversalTime
+   */
+  async function reverseFiscalYear(beginTime, reversalTime) {
+    await sql`UPDATE fiscal_years SET depreciation_reversal_journal_entry_ref = ${genJeRef()}, reversal_time = ${reversalTime} WHERE begin_time = ${beginTime}`;
   }
 
   describe('Fixed Asset Creation', function () {
@@ -104,8 +116,9 @@ describe('Fixed Assets Schema Tests', function () {
             name, acquisition_time, acquisition_cost, useful_life_years, salvage_value,
             asset_account_code, accumulated_depreciation_account_code,
             depreciation_expense_account_code, payment_account_code,
+            journal_entry_ref,
             create_time, update_time
-          ) VALUES ('Desk', 0, 10000000, 5, 1000000, 1500, 1510, 5100, 1000, ${testTime}, ${testTime})
+          ) VALUES ('Desk', 0, 10000000, 5, 1000000, 1500, 1510, 5100, 1000, ${genJeRef()}, ${testTime}, ${testTime})
         `,
         { message: /Acquisition time must be positive/ },
       );
@@ -120,10 +133,27 @@ describe('Fixed Assets Schema Tests', function () {
             name, acquisition_time, acquisition_cost, useful_life_years, salvage_value,
             asset_account_code, accumulated_depreciation_account_code,
             depreciation_expense_account_code, payment_account_code,
+            journal_entry_ref,
             create_time, update_time
-          ) VALUES ('Desk', ${testTime}, 10000000, 5, 10000000, 1500, 1510, 5100, 1000, ${testTime}, ${testTime})
+          ) VALUES ('Desk', ${testTime}, 10000000, 5, 10000000, 1500, 1510, 5100, 1000, ${genJeRef()}, ${testTime}, ${testTime})
         `,
         { message: /Acquisition cost must be greater than salvage value/ }
+      );
+    });
+
+    it('shall require journal_entry_ref when creating a fixed asset', async function () {
+      await setupAssetAccounts();
+
+      await rejects(
+        sql`
+          INSERT INTO fixed_assets (
+            name, acquisition_time, acquisition_cost, useful_life_years, salvage_value,
+            asset_account_code, accumulated_depreciation_account_code,
+            depreciation_expense_account_code, payment_account_code,
+            create_time, update_time
+          ) VALUES ('Desk', ${testTime}, 10000000, 5, 1000000, 1500, 1510, 5100, 1000, ${testTime}, ${testTime})
+        `,
+        { message: /journal_entry_ref is required when creating a fixed asset/ }
       );
     });
 
@@ -136,8 +166,9 @@ describe('Fixed Assets Schema Tests', function () {
             name, acquisition_time, acquisition_cost, useful_life_years, salvage_value,
             asset_account_code, accumulated_depreciation_account_code,
             depreciation_expense_account_code, payment_account_code,
+            journal_entry_ref,
             create_time, update_time
-          ) VALUES ('Desk', ${testTime}, 10000000, 5, 1000000, 1500, 1500, 5100, 1000, ${testTime}, ${testTime})
+          ) VALUES ('Desk', ${testTime}, 10000000, 5, 1000000, 1500, 1500, 5100, 1000, ${genJeRef()}, ${testTime}, ${testTime})
         `,
         { message: /CHECK constraint failed/ }
       );
@@ -164,6 +195,72 @@ describe('Fixed Assets Schema Tests', function () {
         { message: /Cannot acquire asset in a closed fiscal year/ },
       );
     });
+
+    it('shall allow asset creation exactly at closed fiscal year begin_time', async function () {
+      await setupAssetAccounts();
+
+      const fyBegin = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
+      const fyEnd = new Date(2024, 11, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'FY2024');
+      await closeFiscalYear(fyBegin, fyEnd);
+
+      const assetId = await createFixedAsset(
+        'Boundary Begin Asset',
+        10000000,
+        5,
+        1000000,
+        fyBegin
+      );
+
+      const result = await sql`SELECT * FROM fixed_assets WHERE id = ${assetId}`;
+      equal(result.rows.length, 1);
+      equal(result.rows[0].acquisition_time, fyBegin);
+    });
+
+    it('shall reject asset creation exactly at closed fiscal year end_time', async function () {
+      await setupAssetAccounts();
+
+      const fyBegin = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
+      const fyEnd = new Date(2024, 11, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'FY2024');
+      await closeFiscalYear(fyBegin, fyEnd);
+
+      await rejects(
+        createFixedAsset(
+          'Boundary End Asset',
+          10000000,
+          5,
+          1000000,
+          fyEnd
+        ),
+        { message: /Cannot acquire asset in a closed fiscal year/ },
+      );
+    });
+
+    it('shall allow asset creation in a reversed fiscal year', async function () {
+      await setupAssetAccounts();
+
+      const fyBegin = new Date(2024, 0, 1).getTime();
+      const fyEnd = new Date(2024, 11, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'FY2024');
+      await closeFiscalYear(fyBegin, fyEnd);
+
+      const reversalTime = new Date(2025, 0, 15).getTime();
+      await sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${fyBegin}`;
+
+      const acquisitionTime = new Date(2024, 5, 1).getTime();
+      const assetId = await createFixedAsset(
+        'Reopened Period Asset',
+        10000000,
+        5,
+        1000000,
+        acquisitionTime
+      );
+
+      const result = await sql`SELECT * FROM fixed_assets WHERE id = ${assetId}`;
+      equal(result.rows.length, 1);
+      equal(result.rows[0].name, 'Reopened Period Asset');
+    });
   });
 
   describe('Asset Acquisition Journal Entry', function () {
@@ -180,11 +277,9 @@ describe('Fixed Assets Schema Tests', function () {
 
       // Check journal entry was created
       const jeResult = await sql`
-        SELECT * FROM journal_entries WHERE source_reference = ${'FixedAsset:' + assetId}
+        SELECT * FROM journal_entries WHERE fixed_asset_id = ${assetId}
       `;
       equal(jeResult.rows.length, 1);
-      equal(jeResult.rows[0].note, 'Asset Acquisition: Office Computer');
-      equal(jeResult.rows[0].source_type, 'System');
       equal(jeResult.rows[0].post_time, testTime); // Automatically posted
 
       // Check journal entry lines
@@ -217,7 +312,7 @@ describe('Fixed Assets Schema Tests', function () {
 
       // Check if journal entry exists and is posted
       const jeCheck = await sql`
-        SELECT * FROM journal_entries WHERE source_reference = ${'FixedAsset:' + assetId}
+        SELECT * FROM journal_entries WHERE fixed_asset_id = ${assetId}
       `;
       ok(jeCheck.rows.length > 0, 'Journal entry should exist');
       ok(jeCheck.rows[0].post_time, 'Journal entry should be posted');
@@ -235,6 +330,26 @@ describe('Fixed Assets Schema Tests', function () {
       // Check Cash account balance
       const cashResult = await sql`SELECT balance FROM accounts WHERE account_code = 1000`;
       equal(cashResult.rows[0].balance, -2000000); // Credit balance (decreased)
+    });
+
+    it('shall prevent multiple journal entries from linking to the same fixed asset', async function () {
+      await setupAssetAccounts();
+
+      const assetId = await createFixedAsset(
+        'Office Cabinet',
+        3000000,
+        5,
+        300000,
+        testTime,
+      );
+
+      await rejects(
+        sql`
+          INSERT INTO journal_entries (ref, entry_time, fixed_asset_id)
+          VALUES (${genJeRef()}, ${testTime + 1}, ${assetId})
+        `,
+        { message: /UNIQUE constraint failed: journal_entries.fixed_asset_id/ }
+      );
     });
   });
 
@@ -261,8 +376,10 @@ describe('Fixed Assets Schema Tests', function () {
       await closeFiscalYear(fyBegin, fyEnd);
 
       // Check depreciation journal entry was created
+      const fy = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${fyBegin}`).rows[0];
+      ok(fy.depreciation_journal_entry_ref, 'Depreciation journal entry ref should be set');
       const jeResult = await sql`
-        SELECT * FROM journal_entries WHERE note = 'FY Depreciation Expense' AND entry_time = ${fyEnd}
+        SELECT * FROM journal_entries WHERE ref = ${fy.depreciation_journal_entry_ref}
       `;
       equal(jeResult.rows.length, 1);
       ok(jeResult.rows[0].post_time); // Should be posted
@@ -335,32 +452,43 @@ describe('Fixed Assets Schema Tests', function () {
     it('shall cap depreciation at remaining book value', async function () {
       await setupAssetAccounts();
 
-      // Create asset
       const acquisitionTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
       const assetId = await createFixedAsset(
         'Equipment',
         10000000, // 10 million IDR
-        3, // 3 years
+        1, // 1 year
         1000000, // 1 million salvage
         acquisitionTime
       );
 
-      // Manually set accumulated depreciation to near-full
-      // Depreciable amount: 10,000,000 - 1,000,000 = 9,000,000
-      // Set to 8,500,000 (leaving 500,000 remaining)
-      await sql`UPDATE fixed_assets SET accumulated_depreciation = 8500000 WHERE id = ${assetId}`;
+      const fy1Begin = acquisitionTime;
+      const fy1End = new Date(2025, 10, 30, 23, 59, 59, 999).getTime();
+      const fy2Begin = fy1End;
+      const fy2End = new Date(2025, 11, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fy1Begin, fy1End, 'FY2025 Pre-Close');
+      await createFiscalYear(fy2Begin, fy2End, 'FY2025 Final Month');
 
-      // Create and close fiscal year
-      const fyBegin = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
-      const fyEnd = new Date(2025, 11, 31, 23, 59, 59, 999).getTime();
-      await createFiscalYear(fyBegin, fyEnd, 'FY2025');
-      await closeFiscalYear(fyBegin, fyEnd);
+      await closeFiscalYear(fy1Begin, fy1End);
+      const afterFirstClose = (await sql`
+        SELECT accumulated_depreciation FROM fixed_assets WHERE id = ${assetId}
+      `).rows[0];
 
-      // Check depreciation was capped at remaining 500,000 (not full 3,000,000)
+      await closeFiscalYear(fy2Begin, fy2End);
+
       const assetResult = await sql`
         SELECT accumulated_depreciation FROM fixed_assets WHERE id = ${assetId}
       `;
       equal(assetResult.rows[0].accumulated_depreciation, 9000000); // Fully depreciated
+
+      const fy2 = (await sql`SELECT depreciation_journal_entry_ref FROM fiscal_years WHERE begin_time = ${fy2Begin}`).rows[0];
+      const fy2Je = (await sql`
+        SELECT SUM(debit) AS total_debit, SUM(credit) AS total_credit
+        FROM journal_entry_lines
+        WHERE journal_entry_ref = ${fy2.depreciation_journal_entry_ref}
+      `).rows[0];
+      const remainingDepreciation = 9000000 - Number(afterFirstClose.accumulated_depreciation);
+      equal(Number(fy2Je.total_debit), remainingDepreciation, 'Second close should only post the remaining depreciation amount');
+      equal(Number(fy2Je.total_credit), remainingDepreciation, 'Second close should stay balanced while capping at the remaining amount');
     });
 
     it('shall depreciate multiple assets in single fiscal year close', async function () {
@@ -389,12 +517,11 @@ describe('Fixed Assets Schema Tests', function () {
       equal(assetResult.rows[2].accumulated_depreciation, 3000000 / 2); // 1,500,000
 
       // Check journal entry has correct total
+      const fy = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${fyBegin}`).rows[0];
       const jeResult = await sql`
-        SELECT SUM(debit) as total_debit, SUM(credit) as total_credit 
-        FROM journal_entry_lines 
-        WHERE journal_entry_ref IN (
-          SELECT ref FROM journal_entries WHERE note = 'FY Depreciation Expense'
-        )
+        SELECT SUM(debit) as total_debit, SUM(credit) as total_credit
+        FROM journal_entry_lines
+        WHERE journal_entry_ref = ${fy.depreciation_journal_entry_ref}
       `;
       const totalDepreciation = 2000000 + 2000000 + 1500000; // 5,500,000
       equal(jeResult.rows[0].total_debit, totalDepreciation);
@@ -420,17 +547,258 @@ describe('Fixed Assets Schema Tests', function () {
       );
 
       // Close fiscal year
+      const beforeClose = (await sql`
+        SELECT accumulated_depreciation, update_time FROM fixed_assets WHERE id = ${assetId}
+      `).rows[0];
+
       await closeFiscalYear(fyBegin, fyEnd);
 
       // Check asset has no depreciation
       const assetResult = await sql`
-        SELECT accumulated_depreciation FROM fixed_assets WHERE id = ${assetId}
+        SELECT accumulated_depreciation, update_time FROM fixed_assets WHERE id = ${assetId}
       `;
       equal(assetResult.rows[0].accumulated_depreciation, 0);
+      equal(assetResult.rows[0].update_time, beforeClose.update_time, 'No-op depreciation close should not mutate fixed asset update_time');
+
+      const fiscalYearResult = await sql`
+        SELECT depreciation_journal_entry_ref FROM fiscal_years WHERE begin_time = ${fyBegin}
+      `;
+      equal(fiscalYearResult.rows[0].depreciation_journal_entry_ref, null, 'No depreciation journal entry ref should remain when nothing was posted');
+    });
+
+    it('shall require depreciation_journal_entry_ref when fiscal year close will post depreciation', async function () {
+      await setupAssetAccounts();
+
+      const acquisitionTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      await createFixedAsset(
+        'Missing Ref Asset',
+        12000,
+        1,
+        0,
+        acquisitionTime
+      );
+
+      const fyBegin = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const fyEnd = new Date(2025, 11, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'FY2025');
+
+      await rejects(
+        sql`UPDATE fiscal_years SET closing_journal_entry_ref = ${genJeRef()}, post_time = ${fyEnd} WHERE begin_time = ${fyBegin}`,
+        { message: /depreciation_journal_entry_ref is required when depreciation will be posted/ }
+      );
+    });
+
+    it('shall allow closing fiscal year without depreciation_journal_entry_ref when no depreciation is due', async function () {
+      await setupAssetAccounts();
+
+      const fyBegin = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const fyEnd = new Date(2025, 11, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'FY2025');
+
+      await sql`UPDATE fiscal_years SET closing_journal_entry_ref = ${genJeRef()}, post_time = ${fyEnd} WHERE begin_time = ${fyBegin}`;
+
+      const fiscalYear = (await sql`SELECT post_time, depreciation_journal_entry_ref FROM fiscal_years WHERE begin_time = ${fyBegin}`).rows[0];
+      equal(fiscalYear.post_time, fyEnd);
+      equal(fiscalYear.depreciation_journal_entry_ref, null);
+
+      const journalEntries = await sql`SELECT COUNT(*) AS count FROM journal_entries`;
+      equal(Number(journalEntries.rows[0].count), 0, 'No journal entries should remain when neither closing nor depreciation posts lines');
+    });
+
+    it('shall prorate depreciation for short fiscal years', async function () {
+      await setupAssetAccounts();
+
+      const acquisitionTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const assetId = await createFixedAsset(
+        'Short Fiscal Year Asset',
+        12000,
+        1,
+        0,
+        acquisitionTime
+      );
+
+      const fyBegin = acquisitionTime;
+      const fyEnd = new Date(2025, 0, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'Jan 2025');
+      await closeFiscalYear(fyBegin, fyEnd);
+
+      const millisecondsPerYear = 365 * 24 * 60 * 60 * 1000;
+      const expectedDepreciation = Math.round(12000 * ((fyEnd - acquisitionTime) / millisecondsPerYear));
+      const asset = (await sql`
+        SELECT accumulated_depreciation, is_fully_depreciated FROM fixed_assets WHERE id = ${assetId}
+      `).rows[0];
+
+      equal(asset.accumulated_depreciation, expectedDepreciation, 'Depreciation should be prorated to the short fiscal period');
+      equal(asset.is_fully_depreciated, 0, 'Asset should not be fully depreciated after a short fiscal year');
+    });
+
+    it('shall fully depreciate asset with non-divisible amounts within useful life', async function () {
+      await setupAssetAccounts();
+
+      // 10,000 depreciable over 7 years → ROUND(10000/7) = 1429 per year
+      // Without ROUND (integer division): 10000/7 = 1428, would need 8 years
+      // With ROUND: 1429*6 = 8574, year 7 capped at MIN(1429, 1426) = 1426, total = 10000
+      const acquisitionTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const assetId = await createFixedAsset(
+        'Non-Divisible Asset',
+        10000, // acquisition cost
+        7, // 7 years
+        0, // no salvage
+        acquisitionTime
+      );
+
+      // Close 7 fiscal years
+      for (let year = 0; year < 7; year++) {
+        const fyBegin = new Date(2025 + year, 0, 1, 0, 0, 0, 0).getTime();
+        const fyEnd = new Date(2025 + year, 11, 31, 23, 59, 59, 999).getTime();
+        await createFiscalYear(fyBegin, fyEnd, `FY${2025 + year}`);
+        await closeFiscalYear(fyBegin, fyEnd);
+      }
+
+      const asset = (await sql`SELECT accumulated_depreciation, is_fully_depreciated FROM fixed_assets WHERE id = ${assetId}`).rows[0];
+      equal(asset.accumulated_depreciation, 10000, 'Asset should be fully depreciated within useful life');
+      equal(asset.is_fully_depreciated, 1, 'Asset should be marked fully depreciated');
+    });
+
+    it('shall reverse posted depreciation and restore accumulated depreciation state', async function () {
+      await setupAssetAccounts();
+
+      const acquisitionTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const assetId = await createFixedAsset(
+        'Reversible Asset',
+        12000000,
+        3,
+        0,
+        acquisitionTime
+      );
+
+      const fyBegin = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const fyEnd = new Date(2025, 11, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'FY2025');
+      await closeFiscalYear(fyBegin, fyEnd);
+
+      const closedFiscalYear = (await sql`
+        SELECT depreciation_journal_entry_ref FROM fiscal_years WHERE begin_time = ${fyBegin}
+      `).rows[0];
+      const depreciationBeforeReversal = Number((await sql`
+        SELECT accumulated_depreciation FROM fixed_assets WHERE id = ${assetId}
+      `).rows[0].accumulated_depreciation);
+      ok(depreciationBeforeReversal > 0, 'Closing the fiscal year should post depreciation before reversal');
+
+      const reversalTime = new Date(2026, 0, 15, 0, 0, 0, 0).getTime();
+      await reverseFiscalYear(fyBegin, reversalTime);
+
+      const reversedFiscalYear = (await sql`
+        SELECT depreciation_reversal_journal_entry_ref FROM fiscal_years WHERE begin_time = ${fyBegin}
+      `).rows[0];
+      ok(reversedFiscalYear.depreciation_reversal_journal_entry_ref, 'Depreciation reversal journal entry ref should be set');
+
+      const reversalEntry = (await sql`
+        SELECT reversal_of_ref, post_time FROM journal_entries WHERE ref = ${reversedFiscalYear.depreciation_reversal_journal_entry_ref}
+      `).rows[0];
+      equal(reversalEntry.reversal_of_ref, closedFiscalYear.depreciation_journal_entry_ref, 'Depreciation reversal entry should point at the original depreciation entry');
+      equal(reversalEntry.post_time, reversalTime, 'Depreciation reversal entry should be posted at reversal_time');
+
+      const assetAfterReversal = (await sql`
+        SELECT accumulated_depreciation FROM fixed_assets WHERE id = ${assetId}
+      `).rows[0];
+      equal(assetAfterReversal.accumulated_depreciation, 0, 'Reversal should restore accumulated depreciation to the pre-close amount');
+
+      const accountBalances = (await sql`
+        SELECT account_code, balance FROM accounts WHERE account_code IN (1510, 5100) ORDER BY account_code
+      `).rows;
+      equal(accountBalances[0].balance, 0, 'Accumulated depreciation account should be restored after reversal');
+      equal(accountBalances[1].balance, 0, 'Depreciation expense account should be restored after reversal');
+    });
+
+    it('shall require depreciation_reversal_journal_entry_ref when reversing posted depreciation', async function () {
+      await setupAssetAccounts();
+
+      const acquisitionTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      await createFixedAsset(
+        'Missing Depreciation Reversal Ref',
+        12000000,
+        3,
+        0,
+        acquisitionTime
+      );
+
+      const fyBegin = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const fyEnd = new Date(2025, 11, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'FY2025');
+      await closeFiscalYear(fyBegin, fyEnd);
+
+      const reversalTime = new Date(2026, 0, 15, 0, 0, 0, 0).getTime();
+      await rejects(
+        sql`UPDATE fiscal_years SET reversal_time = ${reversalTime} WHERE begin_time = ${fyBegin}`,
+        { message: /depreciation_reversal_journal_entry_ref is required when reversing posted depreciation/ }
+      );
+    });
+
+    it('shall not mutate unrelated later assets when reversing posted depreciation', async function () {
+      await setupAssetAccounts();
+
+      const fyBegin = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const fyEnd = new Date(2025, 11, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'FY2025');
+
+      await createFixedAsset(
+        'FY2025 Asset',
+        12000000,
+        3,
+        0,
+        fyBegin
+      );
+      await closeFiscalYear(fyBegin, fyEnd);
+
+      const laterAcquisitionTime = new Date(2026, 0, 10, 0, 0, 0, 0).getTime();
+      const laterAssetId = await createFixedAsset(
+        'FY2026 Asset',
+        24000000,
+        4,
+        0,
+        laterAcquisitionTime
+      );
+
+      const beforeReversal = (await sql`
+        SELECT accumulated_depreciation, update_time
+        FROM fixed_assets
+        WHERE id = ${laterAssetId}
+      `).rows[0];
+
+      const reversalTime = new Date(2026, 0, 15, 0, 0, 0, 0).getTime();
+      await reverseFiscalYear(fyBegin, reversalTime);
+
+      const afterReversal = (await sql`
+        SELECT accumulated_depreciation, update_time
+        FROM fixed_assets
+        WHERE id = ${laterAssetId}
+      `).rows[0];
+
+      equal(afterReversal.accumulated_depreciation, beforeReversal.accumulated_depreciation);
+      equal(afterReversal.update_time, beforeReversal.update_time);
     });
   });
 
   describe('Asset Modification Protection', function () {
+    it('shall prevent manual updates to accumulated depreciation outside fiscal year workflows', async function () {
+      await setupAssetAccounts();
+
+      const acquisitionTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const assetId = await createFixedAsset(
+        'Guarded Asset',
+        10000000,
+        5,
+        1000000,
+        acquisitionTime
+      );
+
+      await rejects(
+        sql`UPDATE fixed_assets SET accumulated_depreciation = 2000000 WHERE id = ${assetId}`,
+        { message: /Cannot manually update fixed_assets\.accumulated_depreciation or update_time; use fiscal year close\/reversal workflows/ }
+      );
+    });
+
     it('shall prevent modification of depreciated asset cost parameters', async function () {
       await setupAssetAccounts();
 
@@ -443,13 +811,39 @@ describe('Fixed Assets Schema Tests', function () {
         acquisitionTime
       );
 
-      // Manually add some accumulated depreciation
-      await sql`UPDATE fixed_assets SET accumulated_depreciation = 2000000 WHERE id = ${assetId}`;
+      const fyBegin = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const fyEnd = new Date(2025, 11, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'FY2025');
+      await closeFiscalYear(fyBegin, fyEnd);
 
       // Attempt to modify acquisition cost
       await rejects(
         sql`UPDATE fixed_assets SET acquisition_cost = 15000000 WHERE id = ${assetId}`,
-        { message: /Cannot modify cost parameters of asset with accumulated depreciation/ }
+        { message: /Cannot modify fixed asset with posted acquisition history/ }
+      );
+    });
+
+    it('shall prevent modifying posted fixed asset metadata before depreciation begins', async function () {
+      await setupAssetAccounts();
+      await createAccount(1600, 'Alternate Fixed Assets', 0);
+
+      const acquisitionTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const assetId = await createFixedAsset(
+        'Immutable Posted Asset',
+        5000000,
+        5,
+        0,
+        acquisitionTime
+      );
+
+      await rejects(
+        sql`UPDATE fixed_assets SET acquisition_time = ${acquisitionTime + 24 * 60 * 60 * 1000} WHERE id = ${assetId}`,
+        { message: /Cannot modify fixed asset with posted acquisition history/ }
+      );
+
+      await rejects(
+        sql`UPDATE fixed_assets SET asset_account_code = ${1600} WHERE id = ${assetId}`,
+        { message: /Cannot modify fixed asset with posted acquisition history/ }
       );
     });
 
@@ -465,8 +859,10 @@ describe('Fixed Assets Schema Tests', function () {
         acquisitionTime
       );
 
-      // Manually add some accumulated depreciation
-      await sql`UPDATE fixed_assets SET accumulated_depreciation = 2000000 WHERE id = ${assetId}`;
+      const fyBegin = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const fyEnd = new Date(2025, 11, 31, 23, 59, 59, 999).getTime();
+      await createFiscalYear(fyBegin, fyEnd, 'FY2025');
+      await closeFiscalYear(fyBegin, fyEnd);
 
       // Attempt to delete
       await rejects(
@@ -475,7 +871,7 @@ describe('Fixed Assets Schema Tests', function () {
       );
     });
 
-    it('shall allow deletion of asset with no depreciation', async function () {
+    it('shall prevent deletion of asset with posted acquisition history', async function () {
       await setupAssetAccounts();
 
       const acquisitionTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
@@ -487,11 +883,13 @@ describe('Fixed Assets Schema Tests', function () {
         acquisitionTime
       );
 
-      // Should succeed
-      await sql`DELETE FROM fixed_assets WHERE id = ${assetId}`;
+      await rejects(
+        sql`DELETE FROM fixed_assets WHERE id = ${assetId}`,
+        { message: /Cannot delete fixed asset with posted acquisition history/ }
+      );
 
       const result = await sql`SELECT * FROM fixed_assets WHERE id = ${assetId}`;
-      equal(result.rows.length, 0);
+      equal(result.rows.length, 1);
     });
   });
 
@@ -529,6 +927,119 @@ describe('Fixed Assets Schema Tests', function () {
       equal(faBalance, 12000000); // Asset account unchanged
       equal(accumDeprBalance, 3000000); // 12M / 4 = 3M per year
       equal(deprExpenseBalance, 3000000); // Expense recorded
+    });
+  });
+
+  describe('Cash Flow Classification on Acquisition', function () {
+    it('shall classify acquisition payment as investing activity for cash equivalent accounts', async function () {
+      await setupAssetAccounts();
+      await addTag(1000, 'Cash Flow - Cash Equivalents');
+
+      const acquisitionTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const assetId = await createFixedAsset(
+        'Office Chair',
+        3000000,
+        5,
+        300000,
+        acquisitionTime
+      );
+
+      // Check journal entry lines for cash flow classification
+      const jeResult = await sql`
+        SELECT * FROM journal_entries WHERE fixed_asset_id = ${assetId}
+      `;
+      const lines = (await sql`
+        SELECT * FROM journal_entry_lines WHERE journal_entry_ref = ${jeResult.rows[0].ref} ORDER BY line_number
+      `).rows;
+
+      // Credit line (Cash payment) should have investing activity classification
+      const cashLine = lines.find(l => l.account_code === 1000);
+      equal(cashLine?.cashflow_activity, 2, 'Payment should be classified as Investing activity');
+      equal(cashLine?.cashflow_category, 5, 'Payment should be classified as Asset Purchase category');
+
+      // Debit line (Fixed Asset) should NOT have cash flow classification
+      const assetLine = lines.find(l => l.account_code === 1500);
+      equal(assetLine?.cashflow_activity, null, 'Asset debit should not have cashflow_activity');
+      equal(assetLine?.cashflow_category, null, 'Asset debit should not have cashflow_category');
+    });
+
+    it('shall not classify acquisition payment when payment account is not cash equivalent', async function () {
+      await setupAssetAccounts();
+      // Note: 1000 (Cash) is NOT tagged as Cash Flow - Cash Equivalents here
+
+      const acquisitionTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
+      const assetId = await createFixedAsset(
+        'Office Chair',
+        3000000,
+        5,
+        300000,
+        acquisitionTime
+      );
+
+      const jeResult = await sql`
+        SELECT * FROM journal_entries WHERE fixed_asset_id = ${assetId}
+      `;
+      const lines = (await sql`
+        SELECT * FROM journal_entry_lines WHERE journal_entry_ref = ${jeResult.rows[0].ref} ORDER BY line_number
+      `).rows;
+
+      // Cash line should NOT have cash flow classification
+      const cashLine = lines.find(l => l.account_code === 1000);
+      equal(cashLine?.cashflow_activity, null, 'Non-cash-equivalent payment should not have cashflow_activity');
+      equal(cashLine?.cashflow_category, null, 'Non-cash-equivalent payment should not have cashflow_category');
+    });
+  });
+
+  describe('Account Code Distinctness Validation', function () {
+    it('shall reject payment_account_code equal to asset_account_code', async function () {
+      await setupAssetAccounts();
+
+      await rejects(
+        sql`
+          INSERT INTO fixed_assets (
+            name, acquisition_time, acquisition_cost, useful_life_years, salvage_value,
+            asset_account_code, accumulated_depreciation_account_code,
+            depreciation_expense_account_code, payment_account_code,
+            journal_entry_ref,
+            create_time, update_time
+          ) VALUES ('Desk', ${testTime}, 10000000, 5, 1000000, 1500, 1510, 5100, 1500, ${genJeRef()}, ${testTime}, ${testTime})
+        `,
+        { message: /CHECK/ },
+      );
+    });
+
+    it('shall reject payment_account_code equal to accumulated_depreciation_account_code', async function () {
+      await setupAssetAccounts();
+
+      await rejects(
+        sql`
+          INSERT INTO fixed_assets (
+            name, acquisition_time, acquisition_cost, useful_life_years, salvage_value,
+            asset_account_code, accumulated_depreciation_account_code,
+            depreciation_expense_account_code, payment_account_code,
+            journal_entry_ref,
+            create_time, update_time
+          ) VALUES ('Desk', ${testTime}, 10000000, 5, 1000000, 1500, 1510, 5100, 1510, ${genJeRef()}, ${testTime}, ${testTime})
+        `,
+        { message: /CHECK/ },
+      );
+    });
+
+    it('shall reject payment_account_code equal to depreciation_expense_account_code', async function () {
+      await setupAssetAccounts();
+
+      await rejects(
+        sql`
+          INSERT INTO fixed_assets (
+            name, acquisition_time, acquisition_cost, useful_life_years, salvage_value,
+            asset_account_code, accumulated_depreciation_account_code,
+            depreciation_expense_account_code, payment_account_code,
+            journal_entry_ref,
+            create_time, update_time
+          ) VALUES ('Desk', ${testTime}, 10000000, 5, 1000000, 1500, 1510, 5100, 5100, ${genJeRef()}, ${testTime}, ${testTime})
+        `,
+        { message: /CHECK/ },
+      );
     });
   });
 });

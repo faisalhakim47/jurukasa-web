@@ -64,7 +64,7 @@ describe('Fixed Assets', function () {
     const dialog = page.getByRole('dialog', { name: 'Add Fixed Asset' });
     await expect(dialog, 'it shall open creation dialog').toBeVisible();
     await expect(dialog.getByLabel('Asset Name'), 'it shall display Asset Name field').toBeVisible();
-    await expect(dialog.getByLabel('Description (Optional)'), 'it shall display Description field').toBeVisible();
+    await expect(dialog.getByLabel('Note (Optional)'), 'it shall display Note field').toBeVisible();
     await expect(dialog.getByLabel('Acquisition Date'), 'it shall display Acquisition Date field').toBeVisible();
     await expect(dialog.getByLabel('Acquisition Cost'), 'it shall display Acquisition Cost field').toBeVisible();
     await expect(dialog.getByLabel('Useful Life (Years)'), 'it shall display Useful Life field').toBeVisible();

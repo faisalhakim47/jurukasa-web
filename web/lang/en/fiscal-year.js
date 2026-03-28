@@ -84,6 +84,7 @@ const fiscalYear = {
   // Closing details
   closedOnLabel: 'Closed On',
   closingEntryLabel: 'Closing Entry',
+  depreciationEntryLabel: 'Depreciation Entry',
   
   // Closing info notice
   closingInfoTitle: 'About Closing',
@@ -114,6 +115,7 @@ const fiscalYear = {
   // Reversal details
   reversedOnLabel: 'Reversed On',
   reversalEntryLabel: 'Reversal Entry',
+  depreciationReversalEntryLabel: 'Depreciation Reversal Entry',
   
   // Reversal warning
   reversalWarningTitle: 'About Reversal',
@@ -138,6 +140,10 @@ const fiscalYear = {
   // Common
   dismissLabel: 'Dismiss',
   fiscalYearNotFound: 'Fiscal year not found',
+  closingJournalEntryRefRequiredError: 'Fiscal year closing requires a reserved closing journal entry reference.',
+  reversalJournalEntryRefRequiredError: 'Fiscal year reversal requires a reserved reversal journal entry reference.',
+  depreciationJournalEntryRefRequiredError: 'Fiscal year closing requires a reserved depreciation journal entry reference.',
+  depreciationReversalJournalEntryRefRequiredError: 'Fiscal year reversal requires a reserved depreciation reversal journal entry reference.',
 };
 
 /** @typedef {typeof fiscalYear} FiscalYearTranslation */

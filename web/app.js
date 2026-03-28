@@ -70,6 +70,7 @@ import '#web/hooks/use-translator.js';
 import '#web/hooks/use-watch.js';
 import '#web/hooks/use-window-event-listener.js';
 
+import '#web/tools/accounting.js';
 import '#web/tools/array.js';
 import '#web/tools/assertion.js';
 import '#web/tools/dom.js';

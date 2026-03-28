@@ -99,4 +99,8 @@ export default /** @type {Partial<SaleTranslation>} */ ({
   // Error
   errorTitle: 'Kesalahan',
   dismissButtonLabel: 'Tutup',
+  postRequiresJournalEntryRefError: 'Tidak dapat menyiapkan referensi jurnal sebelum memposting penjualan ini.',
+  paymentTotalMismatchError: 'Total pembayaran harus sama dengan nilai tagihan sebelum penjualan diposting.',
+  discountExceedsGrossError: 'Total diskon tidak boleh melebihi nilai bruto penjualan.',
+  postedMutationForbiddenError: 'Penjualan ini sudah diposting dan tidak dapat diubah lagi.',
 });

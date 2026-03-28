@@ -27,35 +27,53 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 async function setupStockTakingsData(sql) {
-  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
-  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (2, 'Product B', 20000, 'piece', 11310)`;
-  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (1, 1, 1000000, 100, 110, 1000000, 1100000)`;
-  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (2, 2, 2000000, 50, 45, 1000000, 900000)`;
-  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (3, 1, 3000000, 30, 30, 300000, 300000)`;
+  await setupInventoryAccount(sql, 113101, 'Inventory A', 1000000);
+  await setupInventoryAccount(sql, 113102, 'Inventory B', 1000000);
+  await setupInventoryAccount(sql, 113103, 'Inventory C', 300000);
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock, cost) VALUES (1, 'Product A', 10000, 'piece', 113101, 100, 1000000)`;
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock, cost) VALUES (2, 'Product B', 20000, 'piece', 113102, 50, 1000000)`;
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock, cost) VALUES (3, 'Product A', 10000, 'piece', 113103, 30, 300000)`;
+  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost, journal_entry_ref) VALUES (1, 1, 1000000, 100, 110, 1000000, 1100000, 1001)`;
+  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost, journal_entry_ref) VALUES (2, 2, 2000000, 50, 45, 1000000, 900000, 1002)`;
+  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (3, 3, 3000000, 30, 30, 300000, 300000)`;
 }
 
 async function setupVarianceFilterData(sql) {
-  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
-  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (1, 1, 1000000, 100, 110, 1000000, 1100000)`;
-  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (2, 1, 2000000, 50, 45, 500000, 450000)`;
-  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (3, 1, 3000000, 30, 30, 300000, 300000)`;
+  await setupInventoryAccount(sql, 113201, 'Inventory A', 1000000);
+  await setupInventoryAccount(sql, 113202, 'Inventory B', 500000);
+  await setupInventoryAccount(sql, 113203, 'Inventory C', 300000);
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock, cost) VALUES (1, 'Product A', 10000, 'piece', 113201, 100, 1000000)`;
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock, cost) VALUES (2, 'Product A', 10000, 'piece', 113202, 50, 500000)`;
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock, cost) VALUES (3, 'Product A', 10000, 'piece', 113203, 30, 300000)`;
+  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost, journal_entry_ref) VALUES (1, 1, 1000000, 100, 110, 1000000, 1100000, 1101)`;
+  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost, journal_entry_ref) VALUES (2, 2, 2000000, 50, 45, 500000, 450000, 1102)`;
+  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (3, 3, 3000000, 30, 30, 300000, 300000)`;
 }
 
 async function setupSingleStockTaking(sql) {
-  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
-  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (1, 1, 1000000, 100, 110, 1000000, 1100000)`;
+  await setupInventoryAccount(sql, 113301, 'Inventory A', 1000000);
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock, cost) VALUES (1, 'Product A', 10000, 'piece', 113301, 100, 1000000)`;
+  await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost, journal_entry_ref) VALUES (1, 1, 1000000, 100, 110, 1000000, 1100000, 1201)`;
 }
 
 async function setupPaginationData(sql) {
-  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
+  await setupInventoryAccount(sql, 113401, 'Inventory A', 1000000);
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock, cost) VALUES (1, 'Product A', 10000, 'piece', 113401, 100, 1000000)`;
   for (let i = 1; i <= 25; i++) {
     await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (${i}, 1, ${i * 1000}, 100, 100, 1000000, 1000000)`;
   }
 }
 
 async function setupSingleStockTakingForRefresh(sql) {
-  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
+  await setupInventoryAccount(sql, 113501, 'Inventory A', 1000000);
+  await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock, cost) VALUES (1, 'Product A', 10000, 'piece', 113501, 100, 1000000)`;
   await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (1, 1, 1000000, 100, 100, 1000000, 1000000)`;
+}
+
+async function setupInventoryAccount(sql, accountCode, accountName, balance) {
+  await sql`INSERT INTO accounts (account_code, name, normal_balance, create_time, update_time) VALUES (${accountCode}, ${accountName}, 0, 0, 0)`;
+  await sql`INSERT INTO account_tags (account_code, tag) VALUES (${accountCode}, 'POS - Inventory')`;
+  await sql`UPDATE accounts SET balance = ${balance} WHERE account_code = ${accountCode}`;
 }
 
 function insertNewStockTaking() {
@@ -64,7 +82,7 @@ function insertNewStockTaking() {
   
   return database.sql`
     INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost)
-    VALUES (2, 1, 2000000, 50, 50, 500000, 500000)
+    VALUES (2, 1, 2000000, 100, 100, 1000000, 1000000)
   `;
 }
 
@@ -209,7 +227,8 @@ describe('Stock Takings View', function () {
     await Promise.all([
       loadEmptyFixture(page),
       setupDatabase(tursoLibSQLiteServer(), async function setupData(sql) {
-        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code) VALUES (1, 'Product A', 10000, 'piece', 11310)`;
+        await setupInventoryAccount(sql, 113601, 'Inventory A', 1000000);
+        await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock, cost) VALUES (1, 'Product A', 10000, 'piece', 113601, 100, 1000000)`;
         await sql`INSERT INTO stock_takings (id, inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost) VALUES (1, 1, ${timestamp}, 100, 100, 1000000, 1000000)`;
       }),
     ]);

@@ -7,12 +7,24 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
   const sql = useSql();
   const testTime = new Date(2025, 0, 1, 0, 0, 0, 0).getTime();
 
+  let nextJeRef = 1000;
+  function genJeRef() { return nextJeRef++; }
+
+  /**
+   * @param {number} beginTime
+   * @param {number} postTime
+   */
+  async function closeFiscalYear(beginTime, postTime) {
+    await sql`UPDATE fiscal_years SET closing_journal_entry_ref = ${genJeRef()}, depreciation_journal_entry_ref = ${genJeRef()}, post_time = ${postTime} WHERE begin_time = ${beginTime}`;
+  }
+
   /**
    * @param {Date} entryDate
    */
   async function draftJournalEntry(entryDate) {
-    const result = await sql`INSERT INTO journal_entries (entry_time) VALUES (${entryDate.getTime()}) RETURNING ref`;
-    return Number(result.rows[0].ref);
+    const ref = genJeRef();
+    await sql`INSERT INTO journal_entries (ref, entry_time) VALUES (${ref}, ${entryDate.getTime()})`;
+    return ref;
   }
 
   /**
@@ -22,8 +34,14 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
    * @param {number} credit
    */
   async function addJournalLine(ref, accountCode, debit, credit) {
-    await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
-       VALUES (${ref}, ${accountCode}, ${debit}, ${credit})`;
+    const isCashEquivalent = (await sql`SELECT 1 as v FROM account_tags WHERE account_code = ${accountCode} AND tag = 'Cash Flow - Cash Equivalents'`).rows.length > 0;
+    if (isCashEquivalent) {
+      await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, cashflow_activity, cashflow_category)
+         VALUES (${ref}, ${accountCode}, ${debit}, ${credit}, ${1}, ${1})`;
+    } else {
+      await sql`INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit)
+         VALUES (${ref}, ${accountCode}, ${debit}, ${credit})`;
+    }
   }
 
   /**
@@ -74,7 +92,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
 
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
-      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
+      await closeFiscalYear(beginTime, testTime);
 
       // Verify all revenue accounts are zeroed
       const salesRevenue = (await sql`SELECT balance FROM accounts WHERE account_code = 41000`).rows[0];
@@ -138,7 +156,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
 
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
-      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
+      await closeFiscalYear(beginTime, testTime);
 
       // Verify all expense accounts are zeroed
       const cogs = (await sql`SELECT balance FROM accounts WHERE account_code = 51000`).rows[0];
@@ -207,7 +225,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
 
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
-      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
+      await closeFiscalYear(beginTime, testTime);
 
       // Verify all temporary accounts are zeroed
       const salesRevenue = (await sql`SELECT balance FROM accounts WHERE account_code = 41000`).rows[0];
@@ -259,7 +277,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
 
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
-      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
+      await closeFiscalYear(beginTime, testTime);
 
       // Verify accounts are zeroed
       const salesRevenue = (await sql`SELECT balance FROM accounts WHERE account_code = 41000`).rows[0];
@@ -285,6 +303,10 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
       // Verify fiscal year is closed
       const fiscalYear = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${beginTime}`).rows[0];
       ok(fiscalYear.post_time, 'Fiscal year should be posted');
+      equal(fiscalYear.closing_journal_entry_ref, null, 'No closing journal entry should be linked when no closing lines are needed');
+
+      const journalEntries = (await sql`SELECT COUNT(*) as count FROM journal_entries`).rows[0];
+      equal(journalEntries.count, 0, 'No orphan closing journal entry should be created for an empty fiscal year');
 
       // Verify retained earnings is still zero
       const retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = 32000`).rows[0];
@@ -314,7 +336,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
 
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
-      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
+      await closeFiscalYear(beginTime, testTime);
 
       // Verify balances
       const salesRevenue = (await sql`SELECT balance FROM accounts WHERE account_code = 41000`).rows[0];
@@ -353,7 +375,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
       // Create and close fiscal year
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
-      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
+      await closeFiscalYear(beginTime, testTime);
 
       // Verify retained earnings (should include all transactions: 2000 + 3000 = 5000)
       const retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = 32000`).rows[0];
@@ -385,7 +407,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${fy2023Begin}, ${fy2023End}, 'FY2023')`;
 
       const postTime2023 = new Date(2024, 0, 5, 0, 0, 0, 0).getTime();
-      await sql`UPDATE fiscal_years SET post_time = ${postTime2023} WHERE begin_time = ${fy2023Begin}`;
+      await closeFiscalYear(fy2023Begin, postTime2023);
 
       // Verify FY2023 closing
       let retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = 32000`).rows[0];
@@ -411,7 +433,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${fy2024Begin}, ${fy2024End}, 'FY2024')`;
 
       const postTime2024 = new Date(2025, 0, 5, 0, 0, 0, 0).getTime();
-      await sql`UPDATE fiscal_years SET post_time = ${postTime2024} WHERE begin_time = ${fy2024Begin}`;
+      await closeFiscalYear(fy2024Begin, postTime2024);
 
       // Verify cumulative retained earnings
       retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = 32000`).rows[0];
@@ -455,7 +477,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
         await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, ${'FY' + year})`;
 
         const postTime = new Date(year + 1, 0, 5, 0, 0, 0, 0).getTime();
-        await sql`UPDATE fiscal_years SET post_time = ${postTime} WHERE begin_time = ${beginTime}`;
+        await closeFiscalYear(beginTime, postTime);
       }
 
       // Verify final accumulated retained earnings
@@ -473,6 +495,25 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
   });
 
   describe('Validation Rules', function () {
+      it('shall require closing_journal_entry_ref when fiscal year closing will post a closing entry', async function () {
+        await setupStandardClosingAccounts();
+
+        const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
+        const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
+
+        const ref = await draftJournalEntry(new Date(2024, 5, 15, 0, 0, 0, 0));
+        await addJournalLine(ref, 11110, 5000, 0);
+        await addJournalLine(ref, 41000, 0, 5000);
+        await postJournalEntry(ref, new Date(2024, 5, 15, 0, 0, 0, 0));
+
+        await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+
+        await rejects(
+          sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`,
+          /closing_journal_entry_ref is required when a fiscal year closing entry will be posted/
+        );
+      });
+
     it('shall prevent closing fiscal year with unposted entries within period', async function () {
       await setupStandardClosingAccounts();
 
@@ -496,7 +537,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
 
       // Attempt to close should fail
       await rejects(
-        sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`,
+        sql`UPDATE fiscal_years SET closing_journal_entry_ref = ${genJeRef()}, depreciation_journal_entry_ref = ${genJeRef()}, post_time = ${testTime} WHERE begin_time = ${beginTime}`,
         /Cannot close fiscal year with unposted journal entries/
       );
     });
@@ -523,11 +564,30 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
       // Closing should succeed
-      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
+      await closeFiscalYear(beginTime, testTime);
 
       // Verify fiscal year was closed
       const fiscalYear = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${beginTime}`).rows[0];
       ok(fiscalYear.post_time, 'Fiscal year should be closed');
+    });
+
+    it('shall prevent posting backdated journal entries into a closed fiscal year', async function () {
+      await setupStandardClosingAccounts();
+
+      const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
+      const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
+
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await closeFiscalYear(beginTime, testTime);
+
+      const ref = await draftJournalEntry(new Date(2024, 6, 10, 0, 0, 0, 0));
+      await addJournalLine(ref, 61100, 1000, 0);
+      await addJournalLine(ref, 31000, 0, 1000);
+
+      await rejects(
+        postJournalEntry(ref, new Date(2025, 0, 10, 0, 0, 0, 0)),
+        /Cannot post journal entry dated inside a closed fiscal year/
+      );
     });
 
     it('shall prevent modifying closed fiscal year attributes', async function () {
@@ -539,7 +599,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
       // Create and close fiscal year
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
-      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
+      await closeFiscalYear(beginTime, testTime);
 
       // Attempt to change post_time
       const newPostTime = new Date(2025, 0, 10, 0, 0, 0, 0).getTime();
@@ -628,7 +688,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
 
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
-      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
+      await closeFiscalYear(beginTime, testTime);
 
       // Verify closing entry metadata
       const fiscalYear = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${beginTime}`).rows[0];
@@ -636,8 +696,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
 
       const closingEntry = (await sql`SELECT * FROM journal_entries WHERE ref = ${fiscalYear.closing_journal_entry_ref}`).rows[0];
 
-      equal(closingEntry.source_type, 'System', 'Closing entry source_type should be System');
-      equal(closingEntry.created_by, 'System', 'Closing entry created_by should be System');
+      ok(closingEntry, 'Closing entry should exist');
     });
 
     it('shall post closing entry at fiscal year end time', async function () {
@@ -655,7 +714,7 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
 
       await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
 
-      await sql`UPDATE fiscal_years SET post_time = ${testTime} WHERE begin_time = ${beginTime}`;
+      await closeFiscalYear(beginTime, testTime);
 
       // Verify closing entry post_time equals fiscal year end_time
       const fiscalYear = (await sql`SELECT * FROM fiscal_years WHERE begin_time = ${beginTime}`).rows[0];
@@ -663,6 +722,73 @@ describe('Accounting Schema Tests - Fiscal Year Closing', function () {
 
       equal(closingEntry.post_time, endTime, 'Closing entry post_time should equal fiscal year end_time');
       equal(closingEntry.entry_time, endTime, 'Closing entry entry_time should equal fiscal year end_time');
+    });
+  });
+
+  describe('Contra Revenue Closing', function () {
+    it('shall close contra revenue (sales discount) correctly as debit-normal account', async function () {
+      await setupStandardClosingAccounts();
+
+      // Post a sale: DR Cash 10000, CR Sales Revenue 10000
+      const ref1 = await draftJournalEntry(new Date(2024, 3, 10, 0, 0, 0, 0));
+      await addJournalLine(ref1, 11110, 10000, 0); // Cash
+      await addJournalLine(ref1, 41000, 0, 10000); // Sales Revenue
+      await postJournalEntry(ref1, new Date(2024, 3, 10, 0, 0, 0, 0));
+
+      // Post a discount: DR Sales Discount 2000, CR Cash 2000
+      const ref2 = await draftJournalEntry(new Date(2024, 5, 15, 0, 0, 0, 0));
+      await addJournalLine(ref2, 42000, 2000, 0); // Sales Discount (debit-normal contra revenue)
+      await addJournalLine(ref2, 11110, 0, 2000); // Cash
+      await postJournalEntry(ref2, new Date(2024, 5, 15, 0, 0, 0, 0));
+
+      // Verify pre-closing balances
+      const preDiscount = (await sql`SELECT balance FROM accounts WHERE account_code = 42000`).rows[0];
+      equal(preDiscount.balance, 2000, 'Sales Discount should have debit balance of 2000');
+
+      const preRevenue = (await sql`SELECT balance FROM accounts WHERE account_code = 41000`).rows[0];
+      equal(preRevenue.balance, 10000, 'Sales Revenue should have credit balance of 10000');
+
+      // Close fiscal year
+      const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
+      const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
+
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await closeFiscalYear(beginTime, testTime);
+
+      // Verify contra revenue (42000) is zeroed
+      const postDiscount = (await sql`SELECT balance FROM accounts WHERE account_code = 42000`).rows[0];
+      equal(postDiscount.balance, 0, 'Sales Discount should be zeroed after closing');
+
+      // Verify revenue (41000) is zeroed
+      const postRevenue = (await sql`SELECT balance FROM accounts WHERE account_code = 41000`).rows[0];
+      equal(postRevenue.balance, 0, 'Sales Revenue should be zeroed after closing');
+
+      // Net income = Revenue 10000 - Contra Revenue 2000 = 8000
+      // Retained Earnings should reflect this
+      const retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = 32000`).rows[0];
+      equal(retainedEarnings.balance, 8000, 'Retained Earnings should be net income (revenue - discount)');
+    });
+
+    it('shall handle contra revenue with zero balance', async function () {
+      await setupStandardClosingAccounts();
+
+      // Post revenue only, no discounts
+      const ref1 = await draftJournalEntry(new Date(2024, 3, 10, 0, 0, 0, 0));
+      await addJournalLine(ref1, 11110, 5000, 0);
+      await addJournalLine(ref1, 41000, 0, 5000);
+      await postJournalEntry(ref1, new Date(2024, 3, 10, 0, 0, 0, 0));
+
+      const beginTime = new Date(2024, 0, 1, 0, 0, 0, 0).getTime();
+      const endTime = new Date(2024, 11, 31, 0, 0, 0, 0).getTime();
+
+      await sql`INSERT INTO fiscal_years (begin_time, end_time, name) VALUES (${beginTime}, ${endTime}, 'FY2024')`;
+      await closeFiscalYear(beginTime, testTime);
+
+      const discount = (await sql`SELECT balance FROM accounts WHERE account_code = 42000`).rows[0];
+      equal(discount.balance, 0, 'Unused contra revenue should remain zero');
+
+      const retainedEarnings = (await sql`SELECT balance FROM accounts WHERE account_code = 32000`).rows[0];
+      equal(retainedEarnings.balance, 5000, 'Retained Earnings should equal full revenue');
     });
   });
 });

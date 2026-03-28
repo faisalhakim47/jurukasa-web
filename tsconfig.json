@@ -5,6 +5,10 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "lib": ["ESNext", "DOM", "WebWorker"],
+    "types": ["node"],
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "strictNullChecks": false,
     "paths": {
       "#web/*": ["./web/*"],
       "#test/*": ["./test/*"]

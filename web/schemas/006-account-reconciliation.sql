@@ -1,23 +1,27 @@
 -- =================================================================
 -- Account Reconciliation Migration Script
--- Version: 1.0
--- Date: 2026-01-11
+-- Version: 2.0
+-- Date: 2026-03-12
 -- SQLite Version: 3.43.0
 -- Dependencies: 001-accounting.sql
--- 
--- This script creates the account reconciliation schema.
--- 
--- Purpose:
--- - Audit and verify internal financial data against external/actual data
--- - Automatically record proper journal entries when discrepancies exist
--- - Maintain audit trail for all reconciliation activities
--- 
--- Key Concepts:
--- - Reconciliation Session: A reconciliation event for a specific account
--- - External Statement Items: Individual items from external sources (bank statements, etc.)
--- - Matching: Link internal journal entries with external items
--- - Discrepancy: Difference between internal records and external statements
--- 
+--
+-- Unified Reconciliation Feature:
+-- - Replaces the previous complex session/items/matches/discrepancies model
+-- - Unifies Bank Statement Reconciliation and Physical Cash Count into one feature
+-- - User provides the external balance (statement closing balance or counted amount)
+-- - System automatically records the book balance as of checkpoint_time and creates a single
+--   adjustment journal entry to align the books when a discrepancy exists
+--
+-- Workflow:
+-- 1. User creates a checkpoint with account_code, type, checkpoint_time, external_balance
+-- 2. System captures the book balance as of checkpoint_time automatically
+-- 3. If external_balance != book_balance, system auto-creates and posts one adjustment entry
+-- 4. adjustment_journal_entry_ref is NULL when books are already balanced
+--
+-- Types:
+-- - STATEMENT: closing balance from a bank or external statement
+-- - PHYSICAL:  total amount physically counted (cash drawer, safe, etc.)
+--
 -- Migration Features:
 -- - ACID transaction boundary
 -- - Performance-optimized indexes
@@ -25,503 +29,317 @@
 -- =================================================================
 
 -- =================================================================
--- RECONCILIATION ACCOUNT TAGS
+-- RECONCILIATION CHECKPOINTS
 -- =================================================================
 
--- Add reconciliation-related tags to account_tags
--- Note: This uses INSERT OR IGNORE pattern since we can't modify the CHECK constraint
--- in an early development stage we'll update 001-accounting.sql directly
-
--- =================================================================
--- RECONCILIATION SESSIONS
--- =================================================================
-
--- Reconciliation session represents a single reconciliation event for an account
--- It captures the state at the time of reconciliation and tracks the outcome
-CREATE TABLE reconciliation_sessions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE reconciliation_checkpoints (
+  id INTEGER PRIMARY KEY,
   account_code INTEGER NOT NULL REFERENCES accounts (account_code) ON UPDATE RESTRICT ON DELETE RESTRICT,
-  reconciliation_time INTEGER NOT NULL, -- when the reconciliation was performed
-  statement_begin_time INTEGER NOT NULL, -- statement period start (exclusive)
-  statement_end_time INTEGER NOT NULL, -- statement period end (inclusive)
-  statement_reference TEXT, -- external reference (bank statement #, date, etc.)
-  statement_opening_balance INTEGER NOT NULL, -- opening balance per external statement
-  statement_closing_balance INTEGER NOT NULL, -- closing balance per external statement
-  internal_opening_balance INTEGER NOT NULL, -- opening balance per internal records
-  internal_closing_balance INTEGER NOT NULL, -- closing balance per internal records
-  complete_time INTEGER, -- NULL = draft, non-NULL = completed (timestamp when reconciliation was finalized)
-  adjustment_journal_entry_ref INTEGER REFERENCES journal_entries (ref) ON UPDATE RESTRICT ON DELETE RESTRICT, -- non-NULL indicates completed with adjustments
+  type TEXT NOT NULL CHECK (type IN ('STATEMENT', 'PHYSICAL')),
+  checkpoint_time INTEGER NOT NULL,
+  external_balance INTEGER NOT NULL,
+  book_balance INTEGER NOT NULL DEFAULT 0, -- auto-set by trigger from posted journal entries as of checkpoint_time
+  adjustment_journal_entry_ref INTEGER REFERENCES journal_entries (ref) ON UPDATE RESTRICT ON DELETE RESTRICT,
+  -- NULL when external_balance == book_balance (no adjustment needed)
   note TEXT,
-  create_time INTEGER NOT NULL,
-  CHECK (statement_begin_time < statement_end_time)
+  create_time INTEGER NOT NULL
 ) STRICT; -- EOS
 
-CREATE INDEX reconciliation_sessions_account_code_index ON reconciliation_sessions (account_code); -- EOS
-CREATE INDEX reconciliation_sessions_account_time_index ON reconciliation_sessions (account_code, reconciliation_time); -- EOS
-CREATE INDEX reconciliation_sessions_complete_time_index ON reconciliation_sessions (complete_time); -- EOS
-CREATE INDEX reconciliation_sessions_complete_time_null_index ON reconciliation_sessions (complete_time) WHERE complete_time IS NULL; -- EOS
-CREATE INDEX reconciliation_sessions_time_index ON reconciliation_sessions (reconciliation_time); -- EOS
-CREATE INDEX reconciliation_sessions_period_index ON reconciliation_sessions (statement_begin_time, statement_end_time); -- EOS
+CREATE INDEX reconciliation_checkpoints_account_code_index ON reconciliation_checkpoints (account_code); -- EOS
+CREATE INDEX reconciliation_checkpoints_account_time_index ON reconciliation_checkpoints (account_code, checkpoint_time); -- EOS
+CREATE INDEX reconciliation_checkpoints_time_index ON reconciliation_checkpoints (checkpoint_time); -- EOS
+CREATE INDEX reconciliation_checkpoints_type_index ON reconciliation_checkpoints (type); -- EOS
 
--- Validation trigger for reconciliation session insert
-CREATE TRIGGER reconciliation_sessions_insert_validation_trigger
-BEFORE INSERT ON reconciliation_sessions FOR EACH ROW
+ALTER TABLE journal_entries ADD COLUMN reconciliation_id INTEGER REFERENCES reconciliation_checkpoints (id); -- EOS
+CREATE UNIQUE INDEX journal_entries_reconciliation_id_index ON journal_entries (reconciliation_id) WHERE reconciliation_id IS NOT NULL; -- EOS
+CREATE TRIGGER journal_entries_posted_reconciliation_link_update_prevention_trigger
+BEFORE UPDATE OF reconciliation_id ON journal_entries FOR EACH ROW
+WHEN OLD.post_time IS NOT NULL AND OLD.reconciliation_id IS NOT NEW.reconciliation_id
 BEGIN
-  -- Ensure account is a posting account
+  SELECT RAISE(ABORT, 'Cannot modify posted journal entry');
+END; -- EOS
+
+-- Extend POS inventory protection trigger to also allow reconciliation journal entries.
+-- (Previous trigger versions checked purchase_id, sale_id, stock_taking_id, fixed_asset_id)
+-- NOTE: This trigger is redefined across multiple migrations (002-pos, 005-fixed-assets, here).
+-- Any future migration that adds a new journal_entries FK column (like purchase_id, sale_id, etc.)
+-- MUST DROP and recreate this trigger with ALL prior NULL checks plus the new column.
+DROP TRIGGER IF EXISTS journal_entry_lines_prevent_manual_pos_inventory_trigger; -- EOS
+DROP TRIGGER IF EXISTS journal_entry_lines_prevent_manual_pos_inventory_update_trigger; -- EOS
+
+CREATE TRIGGER journal_entry_lines_prevent_manual_pos_inventory_trigger
+BEFORE INSERT ON journal_entry_lines FOR EACH ROW
+BEGIN
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM journal_entries je
+      WHERE je.ref = NEW.journal_entry_ref
+        AND je.purchase_id IS NULL
+        AND je.sale_id IS NULL
+        AND je.stock_taking_id IS NULL
+        AND je.fixed_asset_id IS NULL
+        AND je.reconciliation_id IS NULL
+    ) AND EXISTS (
+      SELECT 1
+      FROM account_tags at
+      WHERE at.account_code = NEW.account_code
+        AND at.tag = 'POS - Inventory'
+    ) AND EXISTS (
+      SELECT 1
+      FROM inventories p
+      WHERE p.account_code = NEW.account_code
+    ) THEN
+      RAISE(ABORT, 'Manual journal entries are not allowed for accounts tagged as "POS - Inventory" and linked to inventories to maintain inventory valuation integrity.')
+  END;
+END; -- EOS
+
+CREATE TRIGGER journal_entry_lines_prevent_manual_pos_inventory_update_trigger
+BEFORE UPDATE ON journal_entry_lines FOR EACH ROW
+BEGIN
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM journal_entries je
+      WHERE je.ref = NEW.journal_entry_ref
+        AND je.purchase_id IS NULL
+        AND je.sale_id IS NULL
+        AND je.stock_taking_id IS NULL
+        AND je.fixed_asset_id IS NULL
+        AND je.reconciliation_id IS NULL
+    ) AND EXISTS (
+      SELECT 1
+      FROM account_tags at
+      WHERE at.account_code = NEW.account_code
+        AND at.tag = 'POS - Inventory'
+    ) AND EXISTS (
+      SELECT 1
+      FROM inventories p
+      WHERE p.account_code = NEW.account_code
+    ) THEN
+      RAISE(ABORT, 'Manual journal entries are not allowed for accounts tagged as "POS - Inventory" and linked to inventories to maintain inventory valuation integrity.')
+  END;
+END; -- EOS
+
+-- Validate reconciliation checkpoint before insert
+CREATE TRIGGER reconciliation_checkpoints_insert_validation_trigger
+BEFORE INSERT ON reconciliation_checkpoints FOR EACH ROW
+BEGIN
   SELECT
     CASE
+      WHEN NEW.checkpoint_time <= 0 THEN RAISE(ABORT, 'Checkpoint time must be positive')
+
       WHEN NOT EXISTS (
-        SELECT 1 FROM accounts 
-        WHERE account_code = NEW.account_code 
+        SELECT 1 FROM accounts
+        WHERE account_code = NEW.account_code
           AND is_posting_account = 1
       ) THEN RAISE(ABORT, 'Reconciliation can only be performed on posting accounts')
-    END;
 
-  -- Ensure no overlapping draft sessions for same account
-  SELECT
-    CASE
-      WHEN EXISTS (
-        SELECT 1 FROM reconciliation_sessions
+      WHEN NEW.type = 'PHYSICAL' AND NOT EXISTS (
+        SELECT 1 FROM account_tags
         WHERE account_code = NEW.account_code
-          AND complete_time IS NULL
-      ) THEN RAISE(ABORT, 'Cannot create new reconciliation session: draft session exists for this account')
+          AND tag = 'Cash Flow - Cash Equivalents'
+      ) THEN RAISE(ABORT, 'Physical cash count can only be performed on cash/bank accounts')
+
+      WHEN NEW.type = 'PHYSICAL' AND NOT EXISTS (
+        SELECT 1 FROM account_tags WHERE tag = 'Reconciliation - Cash Over/Short'
+      ) THEN RAISE(ABORT, 'No account tagged Reconciliation - Cash Over/Short found')
+
+      WHEN NEW.type = 'STATEMENT' AND NOT EXISTS (
+        SELECT 1 FROM account_tags WHERE tag = 'Reconciliation - Adjustment'
+      ) THEN RAISE(ABORT, 'No account tagged Reconciliation - Adjustment found')
+
+      WHEN NEW.adjustment_journal_entry_ref IS NULL AND NEW.external_balance != COALESCE((
+        SELECT SUM(
+          CASE a.normal_balance
+            WHEN 0 THEN jel.debit - jel.credit
+            WHEN 1 THEN jel.credit - jel.debit
+          END
+        )
+        FROM accounts a
+        JOIN journal_entry_lines jel ON jel.account_code = a.account_code
+        JOIN journal_entries je ON je.ref = jel.journal_entry_ref
+        WHERE a.account_code = NEW.account_code
+          AND je.post_time IS NOT NULL
+          AND je.entry_time <= NEW.checkpoint_time
+          AND je.post_time <= NEW.checkpoint_time
+      ), 0) THEN RAISE(ABORT, 'adjustment_journal_entry_ref is required when reconciliation discrepancy exists')
     END;
 END; -- EOS
 
--- =================================================================
--- EXTERNAL STATEMENT ITEMS
--- =================================================================
-
--- Individual line items from external statement (e.g., bank transactions)
-CREATE TABLE reconciliation_statement_items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  reconciliation_session_id INTEGER NOT NULL REFERENCES reconciliation_sessions (id) ON UPDATE RESTRICT ON DELETE CASCADE,
-  item_time INTEGER NOT NULL, -- transaction date from external statement
-  description TEXT, -- description from external statement
-  reference TEXT, -- external reference number (check #, transfer ID, etc.)
-  debit INTEGER NOT NULL DEFAULT 0 CHECK (debit >= 0), -- amount debited per statement
-  credit INTEGER NOT NULL DEFAULT 0 CHECK (credit >= 0), -- amount credited per statement
-  is_matched INTEGER NOT NULL DEFAULT 0 CHECK (is_matched IN (0, 1)),
-  matched_journal_entry_ref INTEGER REFERENCES journal_entries (ref) ON UPDATE RESTRICT ON DELETE RESTRICT,
-  CHECK (debit = 0 OR credit = 0), -- only one can be non-zero
-  CHECK (debit > 0 OR credit > 0) -- at least one must be positive
-) STRICT; -- EOS
-
-CREATE INDEX reconciliation_statement_items_session_index ON reconciliation_statement_items (reconciliation_session_id); -- EOS
-CREATE INDEX reconciliation_statement_items_time_index ON reconciliation_statement_items (item_time); -- EOS
-CREATE INDEX reconciliation_statement_items_matched_index ON reconciliation_statement_items (is_matched); -- EOS
-CREATE INDEX reconciliation_statement_items_unmatched_index ON reconciliation_statement_items (reconciliation_session_id, is_matched) WHERE is_matched = 0; -- EOS
-
--- =================================================================
--- INTERNAL TRANSACTION MATCHING
--- =================================================================
-
--- Track which internal journal entries have been matched to statement items
-CREATE TABLE reconciliation_matches (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  reconciliation_session_id INTEGER NOT NULL REFERENCES reconciliation_sessions (id) ON UPDATE RESTRICT ON DELETE CASCADE,
-  statement_item_id INTEGER REFERENCES reconciliation_statement_items (id) ON UPDATE RESTRICT ON DELETE CASCADE,
-  journal_entry_ref INTEGER NOT NULL REFERENCES journal_entries (ref) ON UPDATE RESTRICT ON DELETE RESTRICT,
-  journal_entry_line_number INTEGER NOT NULL,
-  match_type TEXT NOT NULL CHECK (match_type IN (
-    'exact', -- amounts match exactly
-    'partial', -- partial match (statement item covers multiple journal entries or vice versa)
-    'manual', -- manually matched by user despite differences
-    'outstanding' -- internal transaction not yet cleared in external statement
-  )),
-  note TEXT,
-  FOREIGN KEY (journal_entry_ref, journal_entry_line_number) REFERENCES journal_entry_lines (journal_entry_ref, line_number) ON UPDATE RESTRICT ON DELETE RESTRICT
-) STRICT; -- EOS
-
-CREATE INDEX reconciliation_matches_session_index ON reconciliation_matches (reconciliation_session_id); -- EOS
-CREATE INDEX reconciliation_matches_statement_item_index ON reconciliation_matches (statement_item_id) WHERE statement_item_id IS NOT NULL; -- EOS
-CREATE INDEX reconciliation_matches_journal_index ON reconciliation_matches (journal_entry_ref, journal_entry_line_number); -- EOS
-CREATE INDEX reconciliation_matches_type_index ON reconciliation_matches (match_type); -- EOS
-
--- Update statement item is_matched flag when match is created
-CREATE TRIGGER reconciliation_matches_insert_trigger
-AFTER INSERT ON reconciliation_matches FOR EACH ROW
-WHEN NEW.statement_item_id IS NOT NULL
+-- Auto-set book_balance and create a single adjustment journal entry when needed
+CREATE TRIGGER reconciliation_checkpoints_insert_trigger
+AFTER INSERT ON reconciliation_checkpoints FOR EACH ROW
 BEGIN
-  UPDATE reconciliation_statement_items
-  SET is_matched = 1,
-      matched_journal_entry_ref = NEW.journal_entry_ref
-  WHERE id = NEW.statement_item_id;
-END; -- EOS
-
--- Update statement item is_matched flag when match is deleted
-CREATE TRIGGER reconciliation_matches_delete_trigger
-AFTER DELETE ON reconciliation_matches FOR EACH ROW
-WHEN OLD.statement_item_id IS NOT NULL
-BEGIN
-  UPDATE reconciliation_statement_items
-  SET is_matched = CASE 
-    WHEN EXISTS (SELECT 1 FROM reconciliation_matches WHERE statement_item_id = OLD.statement_item_id) 
-    THEN 1 ELSE 0 END,
-    matched_journal_entry_ref = (
-      SELECT journal_entry_ref 
-      FROM reconciliation_matches 
-      WHERE statement_item_id = OLD.statement_item_id 
-      LIMIT 1
+  -- Capture the factual book balance as of checkpoint_time.
+  -- A transaction only affects the checkpoint if it had both happened and been posted by then.
+  UPDATE reconciliation_checkpoints
+  SET book_balance = COALESCE((
+    SELECT SUM(
+      CASE a.normal_balance
+        WHEN 0 THEN jel.debit - jel.credit
+        WHEN 1 THEN jel.credit - jel.debit
+      END
     )
-  WHERE id = OLD.statement_item_id;
-END; -- EOS
-
--- =================================================================
--- RECONCILIATION DISCREPANCIES
--- =================================================================
-
--- Track identified discrepancies during reconciliation
-CREATE TABLE reconciliation_discrepancies (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  reconciliation_session_id INTEGER NOT NULL REFERENCES reconciliation_sessions (id) ON UPDATE RESTRICT ON DELETE CASCADE,
-  discrepancy_type TEXT NOT NULL CHECK (discrepancy_type IN (
-    'unrecorded_debit', -- debit in statement not in books (e.g., bank fee not recorded)
-    'unrecorded_credit', -- credit in statement not in books (e.g., interest earned)
-    'timing_difference', -- transaction recorded in different period
-    'amount_difference', -- same transaction, different amount
-    'missing_in_statement', -- recorded in books, not in statement
-    'duplicate', -- potential duplicate entry
-    'other' -- other discrepancy
-  )),
-  statement_item_id INTEGER REFERENCES reconciliation_statement_items (id) ON UPDATE RESTRICT ON DELETE CASCADE,
-  journal_entry_ref INTEGER REFERENCES journal_entries (ref) ON UPDATE RESTRICT ON DELETE RESTRICT,
-  expected_amount INTEGER, -- what amount was expected
-  actual_amount INTEGER, -- what amount was found
-  difference_amount INTEGER NOT NULL, -- the discrepancy amount (actual - expected)
-  resolution TEXT CHECK (resolution IN (
-    'pending', -- not yet resolved
-    'adjusted', -- journal entry created to correct
-    'accepted', -- accepted as timing difference (will clear next period)
-    'written_off', -- written off as immaterial
-    'investigated' -- under investigation
-  )) DEFAULT 'pending',
-  resolution_journal_entry_ref INTEGER REFERENCES journal_entries (ref) ON UPDATE RESTRICT ON DELETE RESTRICT,
-  note TEXT
-) STRICT; -- EOS
-
-CREATE INDEX reconciliation_discrepancies_session_index ON reconciliation_discrepancies (reconciliation_session_id); -- EOS
-CREATE INDEX reconciliation_discrepancies_type_index ON reconciliation_discrepancies (discrepancy_type); -- EOS
-CREATE INDEX reconciliation_discrepancies_resolution_index ON reconciliation_discrepancies (resolution); -- EOS
-CREATE INDEX reconciliation_discrepancies_pending_index ON reconciliation_discrepancies (resolution) WHERE resolution = 'pending'; -- EOS
-
--- =================================================================
--- RECONCILIATION COMPLETION
--- =================================================================
-
--- Validation and processing when reconciliation is completed
-CREATE TRIGGER reconciliation_sessions_complete_validation_trigger
-BEFORE UPDATE OF complete_time ON reconciliation_sessions FOR EACH ROW
-WHEN OLD.complete_time IS NULL AND NEW.complete_time IS NOT NULL
-BEGIN
-  -- Verify reconciliation is balanced
-  SELECT
-    CASE
-      -- Calculate: statement closing - statement opening = sum of statement items
-      WHEN (
-        NEW.statement_closing_balance - NEW.statement_opening_balance
-      ) != (
-        SELECT COALESCE(SUM(credit) - SUM(debit), 0)
-        FROM reconciliation_statement_items
-        WHERE reconciliation_session_id = NEW.id
-      ) THEN RAISE(ABORT, 'Statement items do not reconcile to statement balance change')
-    END;
-END; -- EOS
-
--- Generate adjustment journal entry when reconciliation is completed with unmatched items
-CREATE TRIGGER reconciliation_sessions_complete_trigger
-AFTER UPDATE OF complete_time ON reconciliation_sessions FOR EACH ROW
-WHEN OLD.complete_time IS NULL AND NEW.complete_time IS NOT NULL
-  AND EXISTS (SELECT 1 FROM reconciliation_statement_items WHERE reconciliation_session_id = NEW.id AND is_matched = 0)
-BEGIN
-  -- Create adjustment journal entry for unmatched statement items
-  INSERT INTO journal_entries (entry_time, note, source_type, source_reference, created_by)
-  SELECT
-    NEW.reconciliation_time,
-    'Reconciliation Adjustment - ' || a.name || ' (' || COALESCE(NEW.statement_reference, 'Session #' || NEW.id) || ')',
-    'System',
-    'Reconciliation #' || NEW.id,
-    'System'
-  FROM accounts a
-  WHERE a.account_code = NEW.account_code;
-
-  -- Debit entries for unmatched statement debits (reduces our asset/increases expense)
-  -- Use Cash Over/Short account for cash counts, Reconciliation Adjustment for others
-  INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, description, reference)
-  SELECT
-    (SELECT ref FROM journal_entries WHERE source_reference = 'Reconciliation #' || NEW.id ORDER BY ref DESC LIMIT 1),
-    COALESCE(
-      -- For cash counts, use Cash Over/Short account
-      (SELECT at.account_code FROM account_tags at 
-       WHERE at.tag = 'Reconciliation - Cash Over/Short' 
-         AND NEW.statement_reference LIKE 'Cash Count @%'
-       LIMIT 1),
-      -- For other reconciliations, use Reconciliation Adjustment account  
-      (SELECT at.account_code FROM account_tags at 
-       WHERE at.tag = 'Reconciliation - Adjustment'
-       LIMIT 1)
-    ),
-    rsi.debit,
-    0,
-    'Unrecorded: ' || COALESCE(rsi.description, 'Statement debit'),
-    rsi.reference
-  FROM reconciliation_statement_items rsi
-  WHERE rsi.reconciliation_session_id = NEW.id
-    AND rsi.is_matched = 0
-    AND rsi.debit > 0
-    AND (
-      EXISTS (SELECT 1 FROM account_tags WHERE tag = 'Reconciliation - Adjustment')
-      OR EXISTS (SELECT 1 FROM account_tags WHERE tag = 'Reconciliation - Cash Over/Short')
-    );
-
-  -- Credit to the reconciled account for statement debits
-  INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, description)
-  SELECT
-    (SELECT ref FROM journal_entries WHERE source_reference = 'Reconciliation #' || NEW.id ORDER BY ref DESC LIMIT 1),
-    NEW.account_code,
-    0,
-    (SELECT SUM(rsi.debit) FROM reconciliation_statement_items rsi WHERE rsi.reconciliation_session_id = NEW.id AND rsi.is_matched = 0 AND rsi.debit > 0),
-    'Reconciliation - Statement debits adjustment'
-  FROM (SELECT 1) AS dummy
-  WHERE (SELECT SUM(rsi.debit) FROM reconciliation_statement_items rsi WHERE rsi.reconciliation_session_id = NEW.id AND rsi.is_matched = 0 AND rsi.debit > 0) > 0;
-
-  -- Credit entries for unmatched statement credits (increases our asset/revenue)
-  -- Use Cash Over/Short account for cash counts, Reconciliation Adjustment for others
-  INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, description, reference)
-  SELECT
-    (SELECT ref FROM journal_entries WHERE source_reference = 'Reconciliation #' || NEW.id ORDER BY ref DESC LIMIT 1),
-    COALESCE(
-      -- For cash counts, use Cash Over/Short account
-      (SELECT at.account_code FROM account_tags at 
-       WHERE at.tag = 'Reconciliation - Cash Over/Short' 
-         AND NEW.statement_reference LIKE 'Cash Count @%'
-       LIMIT 1),
-      -- For other reconciliations, use Reconciliation Adjustment account  
-      (SELECT at.account_code FROM account_tags at 
-       WHERE at.tag = 'Reconciliation - Adjustment'
-       LIMIT 1)
-    ),
-    0,
-    rsi.credit,
-    'Unrecorded: ' || COALESCE(rsi.description, 'Statement credit'),
-    rsi.reference
-  FROM reconciliation_statement_items rsi
-  WHERE rsi.reconciliation_session_id = NEW.id
-    AND rsi.is_matched = 0
-    AND rsi.credit > 0
-    AND (
-      EXISTS (SELECT 1 FROM account_tags WHERE tag = 'Reconciliation - Adjustment')
-      OR EXISTS (SELECT 1 FROM account_tags WHERE tag = 'Reconciliation - Cash Over/Short')
-    );
-
-  -- Debit to the reconciled account for statement credits
-  INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, description)
-  SELECT
-    (SELECT ref FROM journal_entries WHERE source_reference = 'Reconciliation #' || NEW.id ORDER BY ref DESC LIMIT 1),
-    NEW.account_code,
-    (SELECT SUM(rsi.credit) FROM reconciliation_statement_items rsi WHERE rsi.reconciliation_session_id = NEW.id AND rsi.is_matched = 0 AND rsi.credit > 0),
-    0,
-    'Reconciliation - Statement credits adjustment'
-  FROM (SELECT 1) AS dummy
-  WHERE (SELECT SUM(rsi.credit) FROM reconciliation_statement_items rsi WHERE rsi.reconciliation_session_id = NEW.id AND rsi.is_matched = 0 AND rsi.credit > 0) > 0;
-
-  -- Post the adjustment journal entry if it has lines
-  UPDATE journal_entries
-  SET post_time = NEW.reconciliation_time
-  WHERE ref = (
-    SELECT ref FROM journal_entries 
-    WHERE source_reference = 'Reconciliation #' || NEW.id 
-    ORDER BY ref DESC LIMIT 1
-  )
-  AND (SELECT COUNT(*) FROM journal_entry_lines WHERE journal_entry_ref = (
-    SELECT ref FROM journal_entries WHERE source_reference = 'Reconciliation #' || NEW.id ORDER BY ref DESC LIMIT 1
-  )) >= 2;
-
-  -- Store adjustment journal entry reference
-  UPDATE reconciliation_sessions
-  SET adjustment_journal_entry_ref = (
-    SELECT ref FROM journal_entries 
-    WHERE source_reference = 'Reconciliation #' || NEW.id 
-      AND post_time IS NOT NULL
-    ORDER BY ref DESC LIMIT 1
-  )
+    FROM accounts a
+    JOIN journal_entry_lines jel ON jel.account_code = a.account_code
+    JOIN journal_entries je ON je.ref = jel.journal_entry_ref
+    WHERE a.account_code = NEW.account_code
+      AND je.post_time IS NOT NULL
+      AND je.entry_time <= NEW.checkpoint_time
+      AND je.post_time <= NEW.checkpoint_time
+  ), 0)
   WHERE id = NEW.id;
 
-  -- Create discrepancy records for unmatched items
-  INSERT INTO reconciliation_discrepancies (
-    reconciliation_session_id,
-    discrepancy_type,
-    statement_item_id,
-    difference_amount,
-    resolution,
-    resolution_journal_entry_ref,
-    note
-  )
+  -- Create adjustment journal entry only when external balance differs from book balance
+  -- Uses app-provided adjustment_journal_entry_ref
+  INSERT INTO journal_entries (ref, entry_time, reconciliation_id)
   SELECT
-    NEW.id,
-    CASE 
-      WHEN rsi.debit > 0 THEN 'unrecorded_debit'
-      ELSE 'unrecorded_credit'
+    NEW.adjustment_journal_entry_ref,
+    NEW.checkpoint_time,
+    NEW.id
+  FROM reconciliation_checkpoints rc
+  WHERE rc.id = NEW.id
+    AND NEW.external_balance != rc.book_balance;
+
+  -- Line 1: Reconciled account
+  -- Debit-normal account (normal_balance=0): overage → DR account; shortage → CR account
+  -- Credit-normal account (normal_balance=1): overage → CR account; shortage → DR account
+  INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note, cashflow_activity, cashflow_category)
+  SELECT
+    NEW.adjustment_journal_entry_ref,
+    NEW.account_code,
+    CASE
+      WHEN (a.normal_balance = 0 AND (NEW.external_balance - rc.book_balance) > 0)
+        OR (a.normal_balance = 1 AND (NEW.external_balance - rc.book_balance) < 0)
+      THEN ABS(NEW.external_balance - rc.book_balance)
+      ELSE 0
     END,
-    rsi.id,
-    CASE 
-      WHEN rsi.debit > 0 THEN -rsi.debit
-      ELSE rsi.credit
+    CASE
+      WHEN (a.normal_balance = 0 AND (NEW.external_balance - rc.book_balance) < 0)
+        OR (a.normal_balance = 1 AND (NEW.external_balance - rc.book_balance) > 0)
+      THEN ABS(NEW.external_balance - rc.book_balance)
+      ELSE 0
     END,
-    'adjusted',
-    (SELECT ref FROM journal_entries WHERE source_reference = 'Reconciliation #' || NEW.id AND post_time IS NOT NULL ORDER BY ref DESC LIMIT 1),
-    'Auto-adjusted during reconciliation completion'
-  FROM reconciliation_statement_items rsi
-  WHERE rsi.reconciliation_session_id = NEW.id
-    AND rsi.is_matched = 0;
+    'Reconciliation adjustment',
+    CASE WHEN EXISTS(SELECT 1 FROM account_tags WHERE account_code = NEW.account_code AND tag = 'Cash Flow - Cash Equivalents') THEN 1 ELSE NULL END,
+    CASE WHEN EXISTS(SELECT 1 FROM account_tags WHERE account_code = NEW.account_code AND tag = 'Cash Flow - Cash Equivalents') THEN 4 ELSE NULL END
+  FROM reconciliation_checkpoints rc
+  JOIN accounts a ON a.account_code = rc.account_code
+  WHERE rc.id = NEW.id
+    AND NEW.external_balance != rc.book_balance;
+
+  -- Line 2: Adjustment account (mirror of line 1)
+  -- PHYSICAL uses Cash Over/Short; STATEMENT uses Reconciliation Adjustment
+  INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, note)
+  SELECT
+    NEW.adjustment_journal_entry_ref,
+    CASE NEW.type
+      WHEN 'PHYSICAL'
+      THEN (SELECT account_code FROM account_tags WHERE tag = 'Reconciliation - Cash Over/Short' LIMIT 1)
+      ELSE (SELECT account_code FROM account_tags WHERE tag = 'Reconciliation - Adjustment' LIMIT 1)
+    END,
+    CASE
+      WHEN (a.normal_balance = 0 AND (NEW.external_balance - rc.book_balance) < 0)
+        OR (a.normal_balance = 1 AND (NEW.external_balance - rc.book_balance) > 0)
+      THEN ABS(NEW.external_balance - rc.book_balance)
+      ELSE 0
+    END,
+    CASE
+      WHEN (a.normal_balance = 0 AND (NEW.external_balance - rc.book_balance) > 0)
+        OR (a.normal_balance = 1 AND (NEW.external_balance - rc.book_balance) < 0)
+      THEN ABS(NEW.external_balance - rc.book_balance)
+      ELSE 0
+    END,
+    CASE
+      WHEN NEW.type = 'PHYSICAL' THEN
+        CASE WHEN (NEW.external_balance - rc.book_balance) > 0 THEN 'Cash overage' ELSE 'Cash shortage' END
+      ELSE
+        CASE WHEN (NEW.external_balance - rc.book_balance) > 0 THEN 'Unrecorded credit' ELSE 'Unrecorded debit' END
+    END
+  FROM reconciliation_checkpoints rc
+  JOIN accounts a ON a.account_code = rc.account_code
+  WHERE rc.id = NEW.id
+    AND NEW.external_balance != rc.book_balance;
+
+  -- Post the adjustment journal entry immediately
+  UPDATE journal_entries
+  SET post_time = NEW.checkpoint_time
+  WHERE ref = NEW.adjustment_journal_entry_ref;
+
+  -- NULL out adjustment_journal_entry_ref if no journal entry was created (no discrepancy)
+  UPDATE reconciliation_checkpoints
+  SET adjustment_journal_entry_ref = NULL
+  WHERE id = NEW.id
+    AND NEW.adjustment_journal_entry_ref IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM journal_entries WHERE ref = NEW.adjustment_journal_entry_ref);
 END; -- EOS
 
--- Prevent complete_time change once completed
-CREATE TRIGGER reconciliation_sessions_complete_time_immutability_trigger
-BEFORE UPDATE OF complete_time ON reconciliation_sessions FOR EACH ROW
-WHEN OLD.complete_time IS NOT NULL AND (NEW.complete_time IS NULL OR NEW.complete_time != OLD.complete_time)
-BEGIN
-  SELECT RAISE(ABORT, 'Cannot change or remove complete_time of completed reconciliation session');
-END; -- EOS
-
--- =================================================================
--- RECONCILIATION VIEWS
--- =================================================================
-
--- Summary view of reconciliation sessions
-CREATE VIEW reconciliation_session_summary AS
-SELECT
-  rs.id,
-  rs.account_code,
-  a.name AS account_name,
-  rs.reconciliation_time,
-  rs.statement_begin_time,
-  rs.statement_end_time,
-  rs.statement_reference,
-  rs.statement_opening_balance,
-  rs.statement_closing_balance,
-  rs.internal_opening_balance,
-  rs.internal_closing_balance,
-  (rs.statement_closing_balance - rs.internal_closing_balance) AS balance_difference,
-  rs.complete_time,
-  rs.adjustment_journal_entry_ref,
-  (SELECT COUNT(*) FROM reconciliation_statement_items WHERE reconciliation_session_id = rs.id) AS total_statement_items,
-  (SELECT COUNT(*) FROM reconciliation_statement_items WHERE reconciliation_session_id = rs.id AND is_matched = 1) AS matched_items,
-  (SELECT COUNT(*) FROM reconciliation_statement_items WHERE reconciliation_session_id = rs.id AND is_matched = 0) AS unmatched_items,
-  (SELECT COUNT(*) FROM reconciliation_discrepancies WHERE reconciliation_session_id = rs.id) AS total_discrepancies,
-  (SELECT COUNT(*) FROM reconciliation_discrepancies WHERE reconciliation_session_id = rs.id AND resolution = 'pending') AS pending_discrepancies,
-  rs.note,
-  rs.create_time
-FROM reconciliation_sessions rs
-JOIN accounts a ON a.account_code = rs.account_code
-ORDER BY rs.reconciliation_time DESC; -- EOS
-
--- View for unmatched internal transactions (outstanding items)
-CREATE VIEW reconciliation_outstanding_transactions AS
-SELECT
-  rs.id AS reconciliation_session_id,
-  rs.account_code,
-  a.name AS account_name,
-  je.ref AS journal_entry_ref,
-  jel.line_number,
-  je.entry_time,
-  je.note AS journal_note,
-  jel.debit,
-  jel.credit,
-  jel.description,
-  jel.reference
-FROM reconciliation_sessions rs
-JOIN accounts a ON a.account_code = rs.account_code
-JOIN journal_entry_lines jel ON jel.account_code = rs.account_code
-JOIN journal_entries je ON je.ref = jel.journal_entry_ref
-WHERE rs.complete_time IS NULL
-  AND je.post_time IS NOT NULL
-  AND je.entry_time > rs.statement_begin_time
-  AND je.entry_time <= rs.statement_end_time
+CREATE TRIGGER reconciliation_checkpoints_update_prevention_trigger
+BEFORE UPDATE ON reconciliation_checkpoints FOR EACH ROW
+WHEN NOT (
+  OLD.account_code = NEW.account_code
+  AND OLD.type = NEW.type
+  AND OLD.checkpoint_time = NEW.checkpoint_time
+  AND OLD.external_balance = NEW.external_balance
+  AND OLD.book_balance = 0
+  AND OLD.adjustment_journal_entry_ref IS NEW.adjustment_journal_entry_ref
+  AND OLD.note IS NEW.note
+  AND OLD.create_time = NEW.create_time
+)
+AND NOT (
+  OLD.account_code = NEW.account_code
+  AND OLD.type = NEW.type
+  AND OLD.checkpoint_time = NEW.checkpoint_time
+  AND OLD.external_balance = NEW.external_balance
+  AND OLD.book_balance = NEW.book_balance
+  AND OLD.adjustment_journal_entry_ref IS NOT NULL
+  AND NEW.adjustment_journal_entry_ref IS NULL
   AND NOT EXISTS (
-    SELECT 1 FROM reconciliation_matches rm
-    WHERE rm.reconciliation_session_id = rs.id
-      AND rm.journal_entry_ref = je.ref
-      AND rm.journal_entry_line_number = jel.line_number
+    SELECT 1 FROM journal_entries
+    WHERE ref = OLD.adjustment_journal_entry_ref
   )
-ORDER BY je.entry_time; -- EOS
+  AND OLD.note IS NEW.note
+  AND OLD.create_time = NEW.create_time
+)
+BEGIN
+  SELECT RAISE(ABORT, 'Reconciliation checkpoints are immutable once recorded');
+END; -- EOS
 
--- View for reconciliation history by account
-CREATE VIEW account_reconciliation_history AS
-SELECT
-  a.account_code,
-  a.name AS account_name,
-  rs.id AS reconciliation_session_id,
-  rs.reconciliation_time,
-  rs.statement_begin_time,
-  rs.statement_end_time,
-  rs.statement_reference,
-  rs.complete_time,
-  rs.adjustment_journal_entry_ref,
-  (rs.statement_closing_balance - rs.internal_closing_balance) AS balance_difference,
-  (SELECT COUNT(*) FROM reconciliation_discrepancies WHERE reconciliation_session_id = rs.id) AS discrepancy_count
-FROM accounts a
-LEFT JOIN reconciliation_sessions rs ON rs.account_code = a.account_code
-WHERE rs.complete_time IS NOT NULL
-ORDER BY a.account_code, rs.reconciliation_time DESC; -- EOS
+CREATE TRIGGER reconciliation_checkpoints_delete_prevention_trigger
+BEFORE DELETE ON reconciliation_checkpoints FOR EACH ROW
+BEGIN
+  SELECT RAISE(ABORT, 'Reconciliation checkpoints cannot be deleted once recorded');
+END; -- EOS
 
 -- =================================================================
--- RECONCILIATION HELPER FUNCTIONS VIA VIEWS
+-- RECONCILIATION HISTORY VIEW
 -- =================================================================
 
--- View to help calculate internal balance for a period
-CREATE VIEW account_period_balance AS
+CREATE VIEW reconciliation_history AS
 SELECT
-  a.account_code,
+  rc.id,
+  rc.account_code,
   a.name AS account_name,
-  a.normal_balance,
-  fy.begin_time AS period_begin,
-  fy.end_time AS period_end,
-  -- Opening balance: sum of all posted entries before period
-  COALESCE((
-    SELECT SUM(
-      CASE a.normal_balance
-        WHEN 0 THEN jel.debit - jel.credit
-        WHEN 1 THEN jel.credit - jel.debit
-      END
-    )
-    FROM journal_entry_lines jel
-    JOIN journal_entries je ON je.ref = jel.journal_entry_ref
-    WHERE jel.account_code = a.account_code
-      AND je.post_time IS NOT NULL
-      AND je.entry_time <= fy.begin_time
-  ), 0) AS opening_balance,
-  -- Period activity
-  COALESCE((
-    SELECT SUM(
-      CASE a.normal_balance
-        WHEN 0 THEN jel.debit - jel.credit
-        WHEN 1 THEN jel.credit - jel.debit
-      END
-    )
-    FROM journal_entry_lines jel
-    JOIN journal_entries je ON je.ref = jel.journal_entry_ref
-    WHERE jel.account_code = a.account_code
-      AND je.post_time IS NOT NULL
-      AND je.entry_time > fy.begin_time
-      AND je.entry_time <= fy.end_time
-  ), 0) AS period_change,
-  -- Closing balance: opening + activity
-  COALESCE((
-    SELECT SUM(
-      CASE a.normal_balance
-        WHEN 0 THEN jel.debit - jel.credit
-        WHEN 1 THEN jel.credit - jel.debit
-      END
-    )
-    FROM journal_entry_lines jel
-    JOIN journal_entries je ON je.ref = jel.journal_entry_ref
-    WHERE jel.account_code = a.account_code
-      AND je.post_time IS NOT NULL
-      AND je.entry_time <= fy.end_time
-  ), 0) AS closing_balance
-FROM accounts a
-CROSS JOIN fiscal_years fy
-WHERE a.is_posting_account = 1; -- EOS
+  rc.type,
+  rc.checkpoint_time,
+  rc.external_balance,
+  rc.book_balance,
+  (rc.external_balance - rc.book_balance) AS discrepancy,
+  CASE
+    -- For debit-normal accounts (normal_balance=0): external > book means overage
+    -- For credit-normal accounts (normal_balance=1): external > book means shortage (more liability)
+    WHEN (rc.external_balance - rc.book_balance) = 0 THEN 'balanced'
+    WHEN (a.normal_balance = 0 AND (rc.external_balance - rc.book_balance) > 0)
+      OR (a.normal_balance = 1 AND (rc.external_balance - rc.book_balance) < 0)
+    THEN 'overage'
+    ELSE 'shortage'
+  END AS discrepancy_type,
+  rc.adjustment_journal_entry_ref,
+  rc.note,
+  rc.create_time
+FROM reconciliation_checkpoints rc
+JOIN accounts a ON a.account_code = rc.account_code
+ORDER BY rc.checkpoint_time DESC; -- EOS
 
 UPDATE config SET value = '006-account-reconciliation' WHERE key = 'Schema Version'; -- EOS

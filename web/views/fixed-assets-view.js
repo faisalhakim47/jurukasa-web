@@ -23,7 +23,7 @@ import '#web/components/fixed-asset-details-dialog.js';
  * @typedef {object} FixedAssetRow
  * @property {number} id
  * @property {string} name
- * @property {string | null} description
+ * @property {string | null} note
  * @property {number} acquisition_time
  * @property {number} acquisition_cost
  * @property {number} useful_life_years
@@ -95,7 +95,7 @@ export class FixedAssetsViewElement extends HTMLElement {
           SELECT
             fa.id,
             fa.name,
-            fa.description,
+            fa.note,
             fa.acquisition_time,
             fa.acquisition_cost,
             fa.useful_life_years,
@@ -118,7 +118,7 @@ export class FixedAssetsViewElement extends HTMLElement {
           return /** @type {FixedAssetRow} */ ({
             id: Number(row.id),
             name: String(row.name),
-            description: row.description ? String(row.description) : null,
+            note: row.note ? String(row.note) : null,
             acquisition_time: Number(row.acquisition_time),
             acquisition_cost: Number(row.acquisition_cost),
             useful_life_years: Number(row.useful_life_years),

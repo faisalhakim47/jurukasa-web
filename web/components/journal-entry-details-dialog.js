@@ -14,6 +14,13 @@ import { useExposed } from '#web/hooks/use-exposed.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
+import {
+  allocateJournalEntryRef,
+  getCashflowActivityLabel,
+  getJournalEntryOwnerLabel,
+  getJournalEntryOwnerType,
+  normalizeJournalEntryError,
+} from '#web/tools/accounting.js';
 import { sleep } from '#web/tools/timing.js';
 
 import '#web/components/material-symbols.js';
@@ -23,7 +30,7 @@ import '#web/components/material-symbols.js';
  * @property {number} ref
  * @property {number} entry_time
  * @property {string | null} note
- * @property {string} source_type
+ * @property {string} owner_type
  * @property {number | null} post_time
  * @property {number} total_amount
  * @property {number | null} reversal_of_ref - Reference to the journal entry this entry reverses
@@ -37,8 +44,10 @@ import '#web/components/material-symbols.js';
  * @property {string} account_name
  * @property {number} debit
  * @property {number} credit
- * @property {string | null} description
- * @property {string | null} reference
+ * @property {string | null} note
+ * @property {number | null} cashflow_activity
+ * @property {number | null} cashflow_category
+ * @property {string | null} cashflow_category_label
  */
 
 export class JournalEntryDetailsDialogElement extends HTMLElement {
@@ -86,10 +95,26 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
               je.ref,
               je.entry_time,
               je.note,
-              je.source_type,
               je.post_time,
               je.reversal_of_ref,
               je.reversed_by_ref,
+              je.purchase_id,
+              je.sale_id,
+              je.stock_taking_id,
+              je.fixed_asset_id,
+              je.reconciliation_id,
+              EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.closing_journal_entry_ref = je.ref
+              ) AS is_fiscal_year_closing,
+              EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.reversal_journal_entry_ref = je.ref
+              ) AS is_fiscal_year_reversal,
+              EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.depreciation_journal_entry_ref = je.ref
+              ) AS is_fiscal_year_depreciation,
+              EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.depreciation_reversal_journal_entry_ref = je.ref
+              ) AS is_fiscal_year_depreciation_reversal,
               COALESCE(SUM(jel.debit), 0) as total_amount
             FROM journal_entries je
             LEFT JOIN journal_entry_lines jel ON jel.journal_entry_ref = je.ref
@@ -100,11 +125,12 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
         if (journalEntryResult.rows.length === 0) throw new Error(t('journalEntry', 'entryNotFound', journalEntryRef));
 
         const journalEntryRow = journalEntryResult.rows[0];
+        const ownerType = getJournalEntryOwnerType(journalEntryRow);
         state.journalEntry = {
           ref: Number(journalEntryRow.ref),
           entry_time: Number(journalEntryRow.entry_time),
           note: journalEntryRow.note ? String(journalEntryRow.note) : null,
-          source_type: String(journalEntryRow.source_type),
+          owner_type: ownerType,
           post_time: journalEntryRow.post_time ? Number(journalEntryRow.post_time) : null,
           total_amount: Number(journalEntryRow.total_amount),
           reversal_of_ref: journalEntryRow.reversal_of_ref ? Number(journalEntryRow.reversal_of_ref) : null,
@@ -118,10 +144,15 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
               a.name as account_name,
               jel.debit,
               jel.credit,
-              jel.description,
-              jel.reference
+              jel.note,
+              jel.cashflow_activity,
+              jel.cashflow_category,
+              cc.label AS cashflow_category_label
             FROM journal_entry_lines jel
             JOIN accounts a ON a.account_code = jel.account_code
+            LEFT JOIN cashflow_categories cc
+              ON cc.activity = jel.cashflow_activity
+             AND cc.id = jel.cashflow_category
             WHERE jel.journal_entry_ref = ${journalEntryRef}
             ORDER BY jel.line_number ASC
           `;
@@ -133,14 +164,16 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
             account_name: String(row.account_name),
             debit: Number(row.debit),
             credit: Number(row.credit),
-            description: row.description ? String(row.description) : null,
-            reference: row.reference ? String(row.reference) : null,
+            note: row.note ? String(row.note) : null,
+            cashflow_activity: row.cashflow_activity ? Number(row.cashflow_activity) : null,
+            cashflow_category: row.cashflow_category ? Number(row.cashflow_category) : null,
+            cashflow_category_label: row.cashflow_category_label ? String(row.cashflow_category_label) : null,
           });
         });
       }
       catch (error) {
         console.error('Failed to load entry details:', error);
-        state.error = error instanceof Error ? error : new Error(String(error));
+        state.error = normalizeJournalEntryError(error, t);
       }
       finally {
         state.isLoading = false;
@@ -196,7 +229,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.actionState = 'error';
-        state.actionError = error instanceof Error ? error : new Error(String(error));
+        state.actionError = normalizeJournalEntryError(error, t);
       }
     }
 
@@ -232,7 +265,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.actionState = 'error';
-        state.actionError = error instanceof Error ? error : new Error(String(error));
+        state.actionError = normalizeJournalEntryError(error, t);
       }
     }
 
@@ -248,32 +281,42 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
         const originalNote = state.journalEntry.note;
         let reversalNote = t('journalEntry', 'reversalNote', originalRef);
         if (originalNote) reversalNote += ` - ${originalNote}`;
+        const reversalRef = await allocateJournalEntryRef(tx);
 
-        // Create reversal journal entry
-        const insertResult = await tx.sql`
-          INSERT INTO journal_entries (entry_time, note, source_type, created_by, reversal_of_ref)
-          VALUES (${entryTime}, ${reversalNote}, 'Manual', 'User', ${originalRef})
-          RETURNING ref
+        await tx.sql`
+          INSERT INTO journal_entries (ref, entry_time, note, reversal_of_ref)
+          VALUES (${reversalRef}, ${entryTime}, ${reversalNote}, ${originalRef})
         `;
 
-        const reversalRef = Number(insertResult.rows[0].ref);
-
-        // Create reversed lines (swap debit and credit)
         for (const line of state.journalEntryLines) {
           await tx.sql`
-            INSERT INTO journal_entry_lines_auto_number (journal_entry_ref, account_code, debit, credit, description, reference)
-            VALUES (${reversalRef}, ${line.account_code}, ${line.credit}, ${line.debit}, ${line.description}, ${line.reference})
+            INSERT INTO journal_entry_lines_auto_number (
+              journal_entry_ref,
+              account_code,
+              debit,
+              credit,
+              note,
+              cashflow_activity,
+              cashflow_category
+            )
+            VALUES (
+              ${reversalRef},
+              ${line.account_code},
+              ${line.credit},
+              ${line.debit},
+              ${line.note},
+              ${line.cashflow_activity},
+              ${line.cashflow_category}
+            )
           `;
         }
 
-        // Post the reversal entry
         await tx.sql`
           UPDATE journal_entries
           SET post_time = ${postTime}
           WHERE ref = ${reversalRef}
         `;
 
-        // Update original entry to reference the reversal
         await tx.sql`
           UPDATE journal_entries
           SET reversed_by_ref = ${reversalRef}
@@ -296,7 +339,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.actionState = 'error';
-        state.actionError = error instanceof Error ? error : new Error(String(error));
+        state.actionError = normalizeJournalEntryError(error, t);
       }
     }
 
@@ -400,8 +443,8 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
             <dt style="color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'statusLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${renderStatusBadge()}</dd>
 
-            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'sourceLabel')}</dt>
-            <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${state.journalEntry.source_type}</dd>
+            <dt style="color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'workflowLabel')}</dt>
+            <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${getJournalEntryOwnerLabel(state.journalEntry.owner_type, t)}</dd>
 
             <dt style="color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'postedDateLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${isPosted ? i18n.date.format(state.journalEntry.post_time) : t('journalEntry', 'unpostedLabel')}</dd>
@@ -426,7 +469,12 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
                     <div style="display: flex; flex-direction: column;">
                       <span style="font-weight: 500;">${line.account_name}</span>
                       <span style="font-size: 0.8em; color: var(--md-sys-color-on-surface-variant);">${line.account_code}</span>
-                      ${line.description ? html`<span style="font-size: 0.9em; font-style: italic;">${line.description}</span>` : ''}
+                      ${line.note ? html`<span style="font-size: 0.9em; font-style: italic;">${line.note}</span>` : nothing}
+                      ${line.cashflow_activity !== null && line.cashflow_category_label ? html`
+                        <span style="font-size: 0.8em; color: var(--md-sys-color-on-surface-variant);">
+                          ${getCashflowActivityLabel(line.cashflow_activity, t)}: ${line.cashflow_category_label}
+                        </span>
+                      ` : nothing}
                     </div>
                   </td>
                   <td class="numeric">${line.debit > 0 ? i18n.displayCurrency(line.debit) : '—'}</td>

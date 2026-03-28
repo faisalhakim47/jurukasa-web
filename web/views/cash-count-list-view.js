@@ -1,6 +1,6 @@
+import { reactive } from '@vue/reactivity';
 import { html, nothing } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
-import { reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
@@ -17,27 +17,26 @@ import { assertInstanceOf } from '#web/tools/assertion.js';
 
 import '#web/components/material-symbols.js';
 import '#web/components/cash-count-creation-dialog.js';
+import '#web/components/account-reconciliation-details-dialog.js';
+
+const discrepancyFilterOptions = /** @type {const} */ (['All', 'Balanced', 'Overage', 'Shortage']);
+
+/** @typedef {typeof discrepancyFilterOptions[number]} DiscrepancyFilter */
+/** @typedef {'All' | number} AccountFilter */
 
 /**
  * @typedef {object} CashCountRow
- * @property {number} count_time
- * @property {number} account_code
- * @property {string} account_name
- * @property {number} counted_amount
- * @property {number} system_balance
+ * @property {number} id
+ * @property {number} accountCode
+ * @property {string} accountName
+ * @property {number} checkpointTime
+ * @property {number} bookBalance
+ * @property {number} externalBalance
  * @property {number} discrepancy
- * @property {'overage'|'shortage'|'balanced'} discrepancy_type
- * @property {number | null} reconciliation_session_id
- * @property {number | null} reconciliation_complete_time
- * @property {number | null} adjustment_journal_entry_ref
+ * @property {'balanced' | 'overage' | 'shortage'} discrepancyType
+ * @property {number | null} adjustmentJournalEntryRef
  * @property {string | null} note
  */
-
-const accountFilterOptions = /** @type {const} */ (['All']);
-const discrepancyFilterOptions = /** @type {const} */ (['All', 'Balanced', 'Overage', 'Shortage']);
-
-/** @typedef {typeof accountFilterOptions[number] | number} AccountFilter */
-/** @typedef {typeof discrepancyFilterOptions[number]} DiscrepancyFilter */
 
 export class CashCountListViewElement extends HTMLElement {
   constructor() {
@@ -51,80 +50,81 @@ export class CashCountListViewElement extends HTMLElement {
     useAdoptedStyleSheets(host, webStyleSheets);
 
     const state = reactive({
-      cashCounts: /** @type {CashCountRow[]} */ ([]),
-      filteredCashCounts: /** @type {CashCountRow[]} */ ([]),
       isLoading: true,
       error: /** @type {Error | null} */ (null),
-      accountFilter: /** @type {AccountFilter} */ ('All'),
-      discrepancyFilter: /** @type {DiscrepancyFilter} */ ('All'),
+      rows: /** @type {CashCountRow[]} */ ([]),
+      filteredRows: /** @type {CashCountRow[]} */ ([]),
       searchQuery: '',
+      discrepancyFilter: /** @type {DiscrepancyFilter} */ ('All'),
+      accountFilter: /** @type {AccountFilter} */ ('All'),
       hasCashAccounts: false,
       checkingAccounts: true,
     });
 
-    useBusyStateUntil(host, function firstLoad() {
+    useBusyStateUntil(host, function readyState() {
       return state.isLoading === false && state.checkingAccounts === false;
     });
 
-    /**
-     * Filter cash counts based on account, discrepancy type, and search query
-     * @param {CashCountRow[]} cashCounts
-     * @returns {CashCountRow[]}
-     */
-    function filterCashCounts(cashCounts) {
-      let filtered = cashCounts;
+    function getAccountOptions() {
+      const options = [{ value: 'All', label: t('reconciliation', 'allAccountsLabel') }];
+      const seen = new Set();
+      for (const row of state.rows) {
+        if (seen.has(row.accountCode)) continue;
+        seen.add(row.accountCode);
+        options.push({ value: String(row.accountCode), label: `${row.accountCode} - ${row.accountName}` });
+      }
+      return options;
+    }
 
-      // Filter by account
+    function filterRows(rows) {
+      let filteredRows = rows;
+
       if (state.accountFilter !== 'All') {
-        filtered = filtered.filter(function (cc) {
-          return cc.account_code === state.accountFilter;
+        filteredRows = filteredRows.filter(function filterByAccount(row) {
+          return row.accountCode === state.accountFilter;
         });
       }
 
-      // Filter by discrepancy type
       if (state.discrepancyFilter === 'Balanced') {
-        filtered = filtered.filter(function (cc) {
-          return cc.discrepancy_type === 'balanced';
+        filteredRows = filteredRows.filter(function filterBalanced(row) {
+          return row.discrepancyType === 'balanced';
         });
       }
       else if (state.discrepancyFilter === 'Overage') {
-        filtered = filtered.filter(function (cc) {
-          return cc.discrepancy_type === 'overage';
+        filteredRows = filteredRows.filter(function filterOverage(row) {
+          return row.discrepancyType === 'overage';
         });
       }
       else if (state.discrepancyFilter === 'Shortage') {
-        filtered = filtered.filter(function (cc) {
-          return cc.discrepancy_type === 'shortage';
+        filteredRows = filteredRows.filter(function filterShortage(row) {
+          return row.discrepancyType === 'shortage';
         });
       }
 
-      // Filter by search query
-      if (state.searchQuery.trim()) {
-        const query = state.searchQuery.toLowerCase();
-        filtered = filtered.filter(function (cc) {
-          const matchesAccount = cc.account_name.toLowerCase().includes(query)
-            || String(cc.account_code).includes(query);
-          const matchesNote = cc.note?.toLowerCase().includes(query);
-          return matchesAccount || matchesNote;
+      const query = state.searchQuery.trim().toLowerCase();
+      if (query !== '') {
+        filteredRows = filteredRows.filter(function filterByQuery(row) {
+          return row.accountName.toLowerCase().includes(query)
+            || String(row.accountCode).includes(query)
+            || String(row.note ?? '').toLowerCase().includes(query)
+            || String(row.adjustmentJournalEntryRef ?? '').includes(query);
         });
       }
 
-      return filtered;
+      return filteredRows;
     }
 
     async function checkCashAccounts() {
       try {
         state.checkingAccounts = true;
         const result = await database.sql`
-          SELECT COUNT(*) as count
+          SELECT COUNT(*) AS count
           FROM account_tags
           WHERE tag = 'Cash Flow - Cash Equivalents'
         `;
-        const count = Number(result.rows[0]?.count ?? 0);
-        state.hasCashAccounts = count > 0;
+        state.hasCashAccounts = Number(result.rows[0]?.count ?? 0) > 0;
       }
-      catch (error) {
-        console.error('Error checking cash accounts:', error);
+      catch {
         state.hasCashAccounts = false;
       }
       finally {
@@ -132,373 +132,214 @@ export class CashCountListViewElement extends HTMLElement {
       }
     }
 
-    async function loadCashCounts() {
+    async function loadRows() {
       try {
         state.isLoading = true;
         state.error = null;
 
         const result = await database.sql`
           SELECT
-            count_time,
+            id,
             account_code,
             account_name,
-            counted_amount,
-            system_balance,
+            checkpoint_time,
+            book_balance,
+            external_balance,
             discrepancy,
             discrepancy_type,
-            reconciliation_session_id,
-            reconciliation_complete_time,
             adjustment_journal_entry_ref,
             note
-          FROM cash_count_history
-          ORDER BY count_time DESC
+          FROM reconciliation_history
+          WHERE type = 'PHYSICAL'
+          ORDER BY checkpoint_time DESC, id DESC
         `;
 
-        state.cashCounts = result.rows.map(function rowToCashCount(row) {
+        state.rows = result.rows.map(function mapRow(row) {
           return /** @type {CashCountRow} */ ({
-            count_time: Number(row.count_time),
-            account_code: Number(row.account_code),
-            account_name: String(row.account_name),
-            counted_amount: Number(row.counted_amount),
-            system_balance: Number(row.system_balance),
+            id: Number(row.id),
+            accountCode: Number(row.account_code),
+            accountName: String(row.account_name),
+            checkpointTime: Number(row.checkpoint_time),
+            bookBalance: Number(row.book_balance),
+            externalBalance: Number(row.external_balance),
             discrepancy: Number(row.discrepancy),
-            discrepancy_type: String(row.discrepancy_type),
-            reconciliation_session_id: row.reconciliation_session_id !== null ? Number(row.reconciliation_session_id) : null,
-            reconciliation_complete_time: row.reconciliation_complete_time !== null ? Number(row.reconciliation_complete_time) : null,
-            adjustment_journal_entry_ref: row.adjustment_journal_entry_ref !== null ? Number(row.adjustment_journal_entry_ref) : null,
-            note: row.note !== null ? String(row.note) : null,
+            discrepancyType: /** @type {'balanced' | 'overage' | 'shortage'} */ (String(row.discrepancy_type)),
+            adjustmentJournalEntryRef: row.adjustment_journal_entry_ref === null ? null : Number(row.adjustment_journal_entry_ref),
+            note: row.note === null ? null : String(row.note),
           });
         });
 
-        state.filteredCashCounts = filterCashCounts(state.cashCounts);
-        state.isLoading = false;
+        state.filteredRows = filterRows(state.rows);
       }
       catch (error) {
         state.error = error instanceof Error ? error : new Error(String(error));
+      }
+      finally {
         state.isLoading = false;
       }
-    }
-
-    useEffect(host, checkCashAccounts);
-
-    useEffect(host, loadCashCounts);
-
-    /** @param {Event} event */
-    function handleAccountFilterChange(event) {
-      assertInstanceOf(HTMLButtonElement, event.currentTarget);
-      const value = event.currentTarget.dataset.account;
-      state.accountFilter = value === 'All' ? 'All' : Number(value);
-      state.filteredCashCounts = filterCashCounts(state.cashCounts);
-    }
-
-    /** @param {Event} event */
-    function handleDiscrepancyFilterChange(event) {
-      assertInstanceOf(HTMLButtonElement, event.currentTarget);
-      state.discrepancyFilter = /** @type {DiscrepancyFilter} */ (event.currentTarget.dataset.discrepancy);
-      state.filteredCashCounts = filterCashCounts(state.cashCounts);
     }
 
     /** @param {Event} event */
     function handleSearchInput(event) {
       assertInstanceOf(HTMLInputElement, event.currentTarget);
       state.searchQuery = event.currentTarget.value;
-      state.filteredCashCounts = filterCashCounts(state.cashCounts);
+      state.filteredRows = filterRows(state.rows);
     }
 
     /** @param {Event} event */
-    function handleCashCountCreated(event) {
-      loadCashCounts();
-
+    function handleDiscrepancyFilterChange(event) {
+      assertInstanceOf(HTMLButtonElement, event.currentTarget);
+      state.discrepancyFilter = /** @type {DiscrepancyFilter} */ (event.currentTarget.dataset.discrepancy);
+      state.filteredRows = filterRows(state.rows);
     }
 
-    /** @param {number} countTime */
-    function handleViewCashCountClick(countTime) {
-      return function (event) {
-        // TODO: Open cash count details view/dialog or navigate to reconciliation
-        alert(t('reconciliation', 'todoViewCashCountMessage'));
-      };
+    /** @param {Event} event */
+    function handleAccountFilterChange(event) {
+      assertInstanceOf(HTMLButtonElement, event.currentTarget);
+      const accountCode = event.currentTarget.dataset.accountCode;
+      state.accountFilter = accountCode === 'All' ? 'All' : Number(accountCode);
+      state.filteredRows = filterRows(state.rows);
     }
 
-    function renderLoadingIndicator() {
+    /** @param {CustomEvent} event */
+    function handleViewJournalEntry(event) {
+      host.dispatchEvent(new CustomEvent('view-journal-entry', {
+        detail: event.detail,
+        bubbles: true,
+        composed: true,
+      }));
+    }
+
+    function renderLoadingState() {
       return html`
-        <div
-          role="status"
-          aria-label="${t('reconciliation', 'loadingCashCountsAriaLabel')}"
-          style="
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            min-height: 200px;
-            color: var(--md-sys-color-on-surface-variant);
-          "
-        >
-          <div role="progressbar" class="linear indeterminate" style="width: 200px;">
-            <div class="track">
-              <div class="indicator"></div>
-            </div>
+        <div role="status" style="display: grid; gap: 16px; justify-items: center; padding: 48px 24px;">
+          <div role="progressbar" class="linear indeterminate" style="width: 240px;">
+            <div class="track"><div class="indicator"></div></div>
           </div>
           <p>${t('reconciliation', 'loadingCashCountsMessage')}</p>
         </div>
       `;
     }
 
-    /**
-     * @param {Error} error
-     */
-    function renderErrorNotice(error) {
+    function renderErrorState() {
       return html`
-        <div
-          role="alert"
-          style="
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            min-height: 200px;
-            text-align: center;
-            padding: 24px;
-          "
-        >
-          <material-symbols name="error" size="48"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('reconciliation', 'unableToLoadCashCountsTitle')}</h2>
-          <p style="color: var(--md-sys-color-on-surface-variant);">${error.message}</p>
-          <button role="button" class="tonal" @click=${loadCashCounts}>
-            <material-symbols name="refresh"></material-symbols>
-            ${t('reconciliation', 'retryButtonLabel')}
-          </button>
+        <div role="alert" style="display: grid; gap: 16px; justify-items: center; padding: 48px 24px; text-align: center;">
+          <material-symbols name="error"></material-symbols>
+          <h2 style="margin: 0;">${t('reconciliation', 'unableToLoadCashCountsTitle')}</h2>
+          <p style="margin: 0;">${state.error?.message}</p>
+          <button type="button" class="tonal" @click=${loadRows}>${t('reconciliation', 'retryButtonLabel')}</button>
         </div>
       `;
     }
 
     function renderMissingAccountsWarning() {
       return html`
-        <div
-          role="alert"
-          style="
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            min-height: 300px;
-            text-align: center;
-            padding: 48px;
-            background-color: var(--md-sys-color-surface-container-low);
-            border-radius: 12px;
-            margin: 24px;
-          "
-        >
-          <material-symbols name="warning" size="64" style="color: var(--md-sys-color-tertiary);"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">
-            ${t('reconciliation', 'missingCashAccountsTitle')}
-          </h2>
-          <p style="max-width: 500px; color: var(--md-sys-color-on-surface-variant);">
-            ${t('reconciliation', 'missingCashAccountsMessage')}
-          </p>
+        <div role="alert" style="display: grid; gap: 16px; justify-items: center; padding: 48px 24px; text-align: center; background: var(--md-sys-color-surface-container-low); border-radius: var(--md-sys-shape-corner-extra-large);">
+          <material-symbols name="warning"></material-symbols>
+          <h2 style="margin: 0;">${t('reconciliation', 'missingCashAccountsTitle')}</h2>
+          <p style="margin: 0; max-width: 560px;">${t('reconciliation', 'missingCashAccountsMessage')}</p>
         </div>
       `;
     }
 
     function renderEmptyState() {
       return html`
-        <div
-          style="
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            min-height: 300px;
-            text-align: center;
-            padding: 48px;
-          "
-        >
-          <material-symbols name="payments" size="64"></material-symbols>
-          <h2 class="title-large" style="color: var(--md-sys-color-on-surface);">${t('reconciliation', 'noCashCountsFoundTitle')}</h2>
-          <p style="max-width: 400px; color: var(--md-sys-color-on-surface-variant);">
-            ${state.searchQuery || state.accountFilter !== 'All' || state.discrepancyFilter !== 'All'
-          ? t('reconciliation', 'noCashCountsFoundMessage')
-          : t('reconciliation', 'noCashCountsFoundEmptyMessage')}
-          </p>
-          ${state.searchQuery || state.accountFilter !== 'All' || state.discrepancyFilter !== 'All' ? nothing : html`
-            <button
-              role="button"
-              class="filled"
-              commandfor="cash-count-creation-dialog"
-              command="--open"
-            >
-              <material-symbols name="add"></material-symbols>
-              ${t('reconciliation', 'createCashCountButtonLabel')}
-            </button>
+        <div style="display: grid; gap: 16px; justify-items: center; padding: 48px 24px; text-align: center;">
+          <material-symbols name="payments"></material-symbols>
+          <h2 style="margin: 0;">${t('reconciliation', 'noCashCountsFoundTitle')}</h2>
+          <p style="margin: 0; max-width: 560px; color: var(--md-sys-color-on-surface-variant);">${state.searchQuery !== '' || state.discrepancyFilter !== 'All' || state.accountFilter !== 'All' ? t('reconciliation', 'noCashCountsFoundMessage') : t('reconciliation', 'noCashCountsFoundEmptyMessage')}</p>
+          ${state.searchQuery !== '' || state.discrepancyFilter !== 'All' || state.accountFilter !== 'All' ? nothing : html`
+            <button type="button" class="filled" commandfor="cash-count-creation-dialog" command="--open">${t('reconciliation', 'createCashCountButtonLabel')}</button>
           `}
         </div>
       `;
     }
 
-    function renderFilterControls() {
-      const accountOptions = [
-        { value: 'All', label: t('reconciliation', 'allAccountsLabel') },
-      ];
+    function renderFilters() {
+      const accountOptions = getAccountOptions();
+      const selectedAccountLabel = state.accountFilter === 'All'
+        ? t('reconciliation', 'allAccountsLabel')
+        : accountOptions.find(function findOption(option) {
+            return Number(option.value) === state.accountFilter;
+          })?.label ?? String(state.accountFilter);
 
       return html`
-        <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; flex-wrap: wrap;">
-          <!-- Search Field -->
-          <div class="outlined-text-field" style="--md-sys-density: -4; width: 250px; min-width: 160px;">
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <div class="outlined-text-field" style="--md-sys-density: -4; width: 280px; min-width: 180px;">
             <div class="container">
-              <material-symbols name="search" class="leading-icon" aria-hidden="true"></material-symbols>
-              <label for="cash-count-search-input">${t('reconciliation', 'searchLabel')}</label>
-              <input
-                ${readValue(state, 'searchQuery')}
-                id="cash-count-search-input"
-                type="text"
-                placeholder=" "
-                autocomplete="off"
-                @input=${handleSearchInput}
-              />
+              <material-symbols name="search" class="leading-icon"></material-symbols>
+              <label for="cash-count-search">${t('reconciliation', 'searchLabel')}</label>
+              <input ${readValue(state, 'searchQuery')} id="cash-count-search" type="text" placeholder=" " @input=${handleSearchInput} />
             </div>
           </div>
-
-          <!-- Account Filter -->
-          <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 180px; anchor-name: --account-menu-anchor;">
+          <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 200px; anchor-name: --cash-account-filter-anchor;">
             <div class="container">
-              <label for="account-filter-input">${t('reconciliation', 'accountFilterLabel')}</label>
-              <input
-                id="account-filter-input"
-                type="button"
-                value="${state.accountFilter === 'All' ? t('reconciliation', 'allAccountsLabel') : state.accountFilter}"
-                popovertarget="account-filter-menu"
-                popovertargetaction="show"
-                placeholder=" "
-              />
-              <label for="account-filter-input" class="trailing-icon">
-                <material-symbols name="arrow_drop_down"></material-symbols>
-              </label>
+              <label for="cash-account-filter-input">${t('reconciliation', 'accountFilterLabel')}</label>
+              <input id="cash-account-filter-input" type="button" value="${selectedAccountLabel}" placeholder=" " popovertarget="cash-account-filter-menu" popovertargetaction="show" />
+              <label for="cash-account-filter-input" class="trailing-icon"><material-symbols name="arrow_drop_down"></material-symbols></label>
             </div>
           </div>
-          <menu role="menu" popover id="account-filter-menu" aria-label="${t('reconciliation', 'accountFilterAriaLabel')}" class="dropdown" style="position-anchor: --account-menu-anchor;">
-            ${repeat(accountOptions, (opt) => opt.value, (opt) => html`
-              <li>
-                <button
-                  role="menuitem"
-                  data-account="${opt.value}"
-                  @click=${handleAccountFilterChange}
-                  popovertarget="account-filter-menu"
-                  popovertargetaction="hide"
-                  aria-selected=${(opt.value === 'All' && state.accountFilter === 'All') || (opt.value !== 'All' && Number(opt.value) === state.accountFilter) ? 'true' : 'false'}
-                >
-                  ${(opt.value === 'All' && state.accountFilter === 'All') || (opt.value !== 'All' && Number(opt.value) === state.accountFilter) ? html`<material-symbols name="check"></material-symbols>` : ''}
-                  ${opt.label}
-                </button>
-              </li>
-            `)}
+          <menu role="menu" popover id="cash-account-filter-menu" class="dropdown" style="position-anchor: --cash-account-filter-anchor;">
+            ${repeat(accountOptions, (option) => option.value, function renderAccountOption(option) {
+              return html`
+                <li>
+                  <button type="button" role="menuitem" data-account-code="${option.value}" @click=${handleAccountFilterChange} popovertarget="cash-account-filter-menu" popovertargetaction="hide">${option.label}</button>
+                </li>
+              `;
+            })}
           </menu>
-
-          <!-- Discrepancy Filter -->
-          <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 140px; anchor-name: --discrepancy-menu-anchor;">
+          <div class="outlined-text-field" style="--md-sys-density: -4; min-width: 180px; anchor-name: --cash-discrepancy-filter-anchor;">
             <div class="container">
-              <label for="discrepancy-filter-input">${t('reconciliation', 'discrepancyFilterLabel')}</label>
-              <input
-                id="discrepancy-filter-input"
-                type="button"
-                value="${state.discrepancyFilter}"
-                popovertarget="discrepancy-filter-menu"
-                popovertargetaction="show"
-                placeholder=" "
-              />
-              <label for="discrepancy-filter-input" class="trailing-icon">
-                <material-symbols name="arrow_drop_down"></material-symbols>
-              </label>
+              <label for="cash-discrepancy-input">${t('reconciliation', 'discrepancyFilterLabel')}</label>
+              <input id="cash-discrepancy-input" type="button" value="${t('reconciliation', state.discrepancyFilter === 'All' ? 'allDiscrepanciesLabel' : state.discrepancyFilter === 'Balanced' ? 'balancedLabel' : state.discrepancyFilter === 'Overage' ? 'overageLabel' : 'shortageLabel')}" placeholder=" " popovertarget="cash-discrepancy-menu" popovertargetaction="show" />
+              <label for="cash-discrepancy-input" class="trailing-icon"><material-symbols name="arrow_drop_down"></material-symbols></label>
             </div>
           </div>
-          <menu role="menu" popover id="discrepancy-filter-menu" aria-label="${t('reconciliation', 'discrepancyFilterAriaLabel')}" class="dropdown" style="position-anchor: --discrepancy-menu-anchor;">
-            ${repeat(discrepancyFilterOptions, (type) => type, (type) => html`
-              <li>
-                <button
-                  role="menuitem"
-                  data-discrepancy="${type}"
-                  @click=${handleDiscrepancyFilterChange}
-                  popovertarget="discrepancy-filter-menu"
-                  popovertargetaction="hide"
-                  aria-selected=${type === state.discrepancyFilter ? 'true' : 'false'}
-                >
-                  ${type === state.discrepancyFilter ? html`<material-symbols name="check"></material-symbols>` : ''}
-                  ${t('reconciliation', type === 'All' ? 'allDiscrepanciesLabel' : type === 'Balanced' ? 'balancedLabel' : type === 'Overage' ? 'overageLabel' : 'shortageLabel')}
-                </button>
-              </li>
-            `)}
+          <menu role="menu" popover id="cash-discrepancy-menu" class="dropdown" style="position-anchor: --cash-discrepancy-filter-anchor;">
+            ${repeat(discrepancyFilterOptions, (filter) => filter, function renderFilter(filter) {
+              return html`
+                <li>
+                  <button type="button" role="menuitem" data-discrepancy="${filter}" @click=${handleDiscrepancyFilterChange} popovertarget="cash-discrepancy-menu" popovertargetaction="hide">${t('reconciliation', filter === 'All' ? 'allDiscrepanciesLabel' : filter === 'Balanced' ? 'balancedLabel' : filter === 'Overage' ? 'overageLabel' : 'shortageLabel')}</button>
+                </li>
+              `;
+            })}
           </menu>
         </div>
       `;
     }
 
-    /**
-     * @param {CashCountRow} cashCount
-     */
-    function renderCashCountRow(cashCount) {
-      const discrepancyStyle = cashCount.discrepancy_type === 'overage'
-        ? 'color: var(--md-sys-color-tertiary);'
-        : cashCount.discrepancy_type === 'shortage'
-          ? 'color: var(--md-sys-color-error);'
-          : '';
+    function renderDiscrepancyChip(row) {
+      const tone = row.discrepancyType === 'balanced'
+        ? 'background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container);'
+        : row.discrepancyType === 'overage'
+          ? 'background: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container);'
+          : 'background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container);';
+      const label = row.discrepancyType === 'balanced'
+        ? t('reconciliation', 'balancedLabel')
+        : row.discrepancyType === 'overage'
+          ? t('reconciliation', 'overageLabel')
+          : t('reconciliation', 'shortageLabel');
+      return html`<span class="label-small" style="display: inline-flex; padding: 4px 12px; border-radius: var(--md-sys-shape-corner-full); ${tone}">${label}</span>`;
+    }
 
-      const discrepancyBadgeStyle = cashCount.discrepancy_type === 'overage'
-        ? 'background-color: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container);'
-        : cashCount.discrepancy_type === 'shortage'
-          ? 'background-color: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container);'
-          : 'background-color: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface-variant);';
-
+    function renderRow(row) {
       return html`
-        <tr
-          tabindex="0"
-          aria-label="${t('reconciliation', 'cashCountRowAriaLabel', cashCount.account_name)}"
-          style="cursor: pointer;"
-          @click=${handleViewCashCountClick(cashCount.count_time)}
-        >
+        <tr>
+          <td>${i18n.date.format(new Date(row.checkpointTime))}</td>
           <td>
-            <span class="body-small">${i18n.date.format(new Date(cashCount.count_time))}</span>
-          </td>
-          <td>
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-              <span class="label-large" style="color: var(--md-sys-color-primary);">${cashCount.account_code}</span>
-              <span class="body-medium">${cashCount.account_name}</span>
+            <div style="display: grid; gap: 2px;">
+              <span class="label-large" style="color: var(--md-sys-color-primary);">${row.accountCode}</span>
+              <span>${row.accountName}</span>
             </div>
           </td>
-          <td class="right">
-            <span class="label-medium">${i18n.displayCurrency(cashCount.system_balance)}</span>
-          </td>
-          <td class="right">
-            <span class="label-medium">${i18n.displayCurrency(cashCount.counted_amount)}</span>
-          </td>
-          <td class="right">
-            <span class="label-medium" style="${discrepancyStyle}">
-              ${i18n.displayCurrency(cashCount.discrepancy)}
-            </span>
-          </td>
-          <td>
-            <span
-              class="label-small"
-              style="
-                display: inline-flex;
-                padding: 4px 12px;
-                border-radius: var(--md-sys-shape-corner-full);
-                ${discrepancyBadgeStyle}
-              "
-            >${t('reconciliation', cashCount.discrepancy_type === 'balanced' ? 'balancedLabel' : cashCount.discrepancy_type === 'overage' ? 'overageLabel' : 'shortageLabel')}</span>
-          </td>
-          <td>
-            <span class="body-small">${cashCount.note || '—'}</span>
-          </td>
+          <td class="right">${i18n.displayCurrency(row.bookBalance)}</td>
+          <td class="right">${i18n.displayCurrency(row.externalBalance)}</td>
+          <td class="right">${i18n.displayCurrency(row.discrepancy)}</td>
+          <td>${renderDiscrepancyChip(row)}</td>
+          <td>${row.adjustmentJournalEntryRef ?? '—'}</td>
+          <td>${row.note ?? '—'}</td>
           <td class="center">
-            <button
-              role="button"
-              class="text extra-small"
-              title="${t('reconciliation', 'viewCashCountDetailsTitle')}"
-              aria-label="${t('reconciliation', 'viewCashCountDetailsAriaLabel', cashCount.count_time)}"
-              @click=${handleViewCashCountClick(cashCount.count_time)}
-            >
+            <button type="button" class="text extra-small" commandfor="account-reconciliation-details-dialog" command="--open" data-reconciliation-id="${row.id}" aria-label="${t('reconciliation', 'viewCashCountDetailsAriaLabel', row.id)}">
               <material-symbols name="visibility" size="20"></material-symbols>
             </button>
           </td>
@@ -506,64 +347,53 @@ export class CashCountListViewElement extends HTMLElement {
       `;
     }
 
-    function renderCashCountsTable() {
-      if (state.filteredCashCounts.length === 0) return renderEmptyState();
+    function renderTable() {
+      if (state.filteredRows.length === 0) return renderEmptyState();
 
       return html`
-        <div>
-          <table role="table" aria-label="${t('reconciliation', 'cashCountTableAriaLabel')}" style="--md-sys-density: -4;">
-            <thead>
-              <tr>
-                <th scope="col">${t('reconciliation', 'tableHeaderCountTime')}</th>
-                <th scope="col">${t('reconciliation', 'tableHeaderAccount')}</th>
-                <th scope="col" class="right">${t('reconciliation', 'tableHeaderSystemBalance')}</th>
-                <th scope="col" class="right">${t('reconciliation', 'tableHeaderCountedAmount')}</th>
-                <th scope="col" class="right">${t('reconciliation', 'tableHeaderDiscrepancy')}</th>
-                <th scope="col">${t('reconciliation', 'tableHeaderDiscrepancyType')}</th>
-                <th scope="col">${t('reconciliation', 'tableHeaderNote')}</th>
-                <th scope="col" class="center" style="width: 80px;">${t('reconciliation', 'tableHeaderActions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${repeat(state.filteredCashCounts, (cc) => cc.count_time, renderCashCountRow)}
-            </tbody>
-          </table>
-        </div>
+        <table role="table" aria-label="${t('reconciliation', 'cashCountTableAriaLabel')}">
+          <thead>
+            <tr>
+              <th scope="col">${t('reconciliation', 'tableHeaderCountTime')}</th>
+              <th scope="col">${t('reconciliation', 'tableHeaderAccount')}</th>
+              <th scope="col" class="right">${t('reconciliation', 'tableHeaderSystemBalance')}</th>
+              <th scope="col" class="right">${t('reconciliation', 'tableHeaderCountedAmount')}</th>
+              <th scope="col" class="right">${t('reconciliation', 'tableHeaderDiscrepancy')}</th>
+              <th scope="col">${t('reconciliation', 'tableHeaderDiscrepancyType')}</th>
+              <th scope="col">${t('reconciliation', 'tableHeaderAdjustmentEntry')}</th>
+              <th scope="col">${t('reconciliation', 'tableHeaderNote')}</th>
+              <th scope="col" class="center">${t('reconciliation', 'tableHeaderActions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${repeat(state.filteredRows, (row) => row.id, renderRow)}
+          </tbody>
+        </table>
       `;
     }
 
-    useEffect(host, function renderCashCountListView() {
+    useEffect(host, checkCashAccounts);
+    useEffect(host, loadRows);
+
+    useEffect(host, function renderView() {
       render(html`
-        <div class="scrollable" style="display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 12px 24px; height: 100%; overflow-y: scroll;">
+        <div class="scrollable" style="display: flex; flex-direction: column; gap: 16px; height: 100%; padding: 12px 24px; box-sizing: border-box;">
           ${state.checkingAccounts === false && state.hasCashAccounts === false ? renderMissingAccountsWarning() : html`
-            <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between;">
-              ${renderFilterControls()}
-              <div>
-                <button role="button" class="text" @click=${loadCashCounts} aria-label="${t('reconciliation', 'refreshCashCountsAriaLabel')}">
-                  <material-symbols name="refresh"></material-symbols>
-                  ${t('reconciliation', 'refreshButtonLabel')}
-                </button>
-                <button
-                  role="button"
-                  class="filled"
-                  commandfor="cash-count-creation-dialog"
-                  command="--open"
-                >
-                  <material-symbols name="add"></material-symbols>
-                  ${t('reconciliation', 'createCashCountButtonLabel')}
-                </button>
+            <div style="display: flex; gap: 12px; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+              ${renderFilters()}
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <button type="button" class="text" @click=${loadRows}>${t('reconciliation', 'refreshButtonLabel')}</button>
+                <button type="button" class="filled" commandfor="cash-count-creation-dialog" command="--open">${t('reconciliation', 'createCashCountButtonLabel')}</button>
               </div>
             </div>
-            ${state.isLoading ? renderLoadingIndicator() : nothing}
-            ${state.error instanceof Error ? renderErrorNotice(state.error) : nothing}
-            ${state.isLoading === false && state.error === null ? renderCashCountsTable() : nothing}
+            ${state.isLoading ? renderLoadingState() : nothing}
+            ${state.isLoading === false && state.error instanceof Error ? renderErrorState() : nothing}
+            ${state.isLoading === false && state.error === null ? renderTable() : nothing}
           `}
         </div>
 
-        <cash-count-creation-dialog
-          id="cash-count-creation-dialog"
-          @cash-count-created=${handleCashCountCreated}
-        ></cash-count-creation-dialog>
+        <cash-count-creation-dialog id="cash-count-creation-dialog" @cash-count-created=${function handleCreated() { void loadRows(); }}></cash-count-creation-dialog>
+        <account-reconciliation-details-dialog id="account-reconciliation-details-dialog" @view-journal-entry=${handleViewJournalEntry}></account-reconciliation-details-dialog>
       `);
     });
   }

@@ -6,12 +6,14 @@ import { useDialog } from '#web/hooks/use-dialog.js';
 import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { DatabaseContextElement } from '#web/contexts/database-context.js';
 import { I18nContextElement } from '#web/contexts/i18n-context.js';
+import { TimeContextElement } from '#web/contexts/time-context.js';
 import { useAttribute } from '#web/hooks/use-attribute.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
 import { useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/styles.js';
+import { allocateJournalEntryRef, normalizeStockTakingError } from '#web/tools/accounting.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import { feedbackDelay } from '#web/tools/timing.js';
 
@@ -39,6 +41,7 @@ export class StockTakingDialogElement extends HTMLElement {
     const host = this;
     const database = useContext(host, DatabaseContextElement);
     const i18n = useContext(host, I18nContextElement);
+    const time = useContext(host, TimeContextElement);
     const t = useTranslator(host);
 
     const dialog = useDialog(host);
@@ -151,12 +154,31 @@ export class StockTakingDialogElement extends HTMLElement {
         const expectedCost = state.inventory.cost;
         const actualStock = state.actualStock;
         const actualCost = calculateActualCost();
-        const auditTime = Date.now();
+        const auditTime = time.currentDate().getTime();
+        const journalEntryRef = actualCost !== expectedCost
+          ? await allocateJournalEntryRef(tx)
+          : null;
 
         // Insert stock taking record (triggers will handle journal entry and inventory update)
         const result = await tx.sql`
-          INSERT INTO stock_takings (inventory_id, audit_time, expected_stock, actual_stock, expected_cost, actual_cost)
-          VALUES (${state.inventory.id}, ${auditTime}, ${expectedStock}, ${actualStock}, ${expectedCost}, ${actualCost})
+          INSERT INTO stock_takings (
+            inventory_id,
+            audit_time,
+            expected_stock,
+            actual_stock,
+            expected_cost,
+            actual_cost,
+            journal_entry_ref
+          )
+          VALUES (
+            ${state.inventory.id},
+            ${auditTime},
+            ${expectedStock},
+            ${actualStock},
+            ${expectedCost},
+            ${actualCost},
+            ${journalEntryRef}
+          )
           RETURNING id;
         `;
 
@@ -179,7 +201,7 @@ export class StockTakingDialogElement extends HTMLElement {
       catch (error) {
         await tx.rollback();
         state.formState = 'error';
-        state.formError = error instanceof Error ? error : new Error(String(error));
+        state.formError = normalizeStockTakingError(error, t);
         await feedbackDelay();
       }
       finally {

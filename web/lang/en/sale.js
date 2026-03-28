@@ -97,6 +97,10 @@ const sale = {
   // Error
   errorTitle: 'Error',
   dismissButtonLabel: 'Dismiss',
+  postRequiresJournalEntryRefError: 'Unable to reserve a journal entry reference before posting this sale.',
+  paymentTotalMismatchError: 'The payment total must match the invoice amount before posting this sale.',
+  discountExceedsGrossError: 'The discount total cannot exceed the sale gross amount.',
+  postedMutationForbiddenError: 'This sale has already been posted and can no longer be changed.',
 };
 
 /** @typedef {typeof sale} SaleTranslation */

@@ -10,6 +10,15 @@ export function assertInstanceOf(constructor, value) {
   }
 }
 
+/**
+ * @param {unknown} value
+ * @returns {asserts value is NonNullable<unknown>}
+ */
+export function assertNonNullable(value) {
+  if (value === null) {
+    throw new TypeError('Expected value to be non-nullable.');
+  }
+}
 
 /**
  * @param {unknown} query
