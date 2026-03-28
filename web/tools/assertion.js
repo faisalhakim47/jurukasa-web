@@ -1,6 +1,6 @@
 /**
  * @template T 
- * @param {new (...args: Array<unknown>) => T} constructor 
+ * @param {new (...args: Array<any>) => T} constructor 
  * @param {unknown} value
  * @returns {asserts value is T}
  */

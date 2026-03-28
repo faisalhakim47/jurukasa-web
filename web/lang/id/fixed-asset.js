@@ -6,6 +6,7 @@ export default /** @type {FixedAssetTranslation} */ ({
   addAssetActionLabel: 'Tambah Aset',
   closeActionLabel: 'Tutup',
   creatingAssetLabel: 'Sedang membuat aset tetap...',
+  creatingAssetProgressIndicatorLabel: 'Membuat aset tetap',
 
   // Basic Information Section
   basicInfoSectionTitle: 'Informasi Dasar',
@@ -44,6 +45,7 @@ export default /** @type {FixedAssetTranslation} */ ({
   saveChangesActionLabel: 'Simpan Perubahan',
   cancelActionLabel: 'Batal',
   savingChangesLabel: 'Menyimpan perubahan...',
+  savingChangesProgressIndicatorLabel: 'Menyimpan perubahan',
   loadingDetailsLabel: 'Memuat rincian aset...',
   assetNotFoundTitle: 'Aset Tetap Tidak Ditemukan',
   assetNotFoundMessage: 'Aset tetap yang diminta tidak dapat ditemukan.',

@@ -32,6 +32,7 @@ export default /** @type {Partial<StockTranslation>} */ ({
   inventoryShrinkageJournalNote: 'Entri jurnal akan dibuat untuk mencatat penyusutan inventaris.',
   recordStockTakingButtonLabel: 'Catat Stok Opname',
   recordingStockTakingMessage: 'Mencatat stok opname...',
+  recordingStockTakingProgressIndicatorLabel: 'Mencatat stok opname',
   errorDialogTitle: 'Kesalahan',
   dismissButtonLabel: 'Tutup',
   journalEntryRefRequiredError: 'Referensi jurnal penyesuaian stok wajib disiapkan untuk stok opname ini.',

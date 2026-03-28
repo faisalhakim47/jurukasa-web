@@ -34,6 +34,7 @@ export default /** @type {Partial<FiscalYearTranslation>} */ ({
   creationSubmitLabel: 'Buat',
   creationLoadingLabel: 'Sedang membuat tahun fiskal...',
   creationSuccessLabel: 'Tahun fiskal berhasil dibuat!',
+  creationProgressIndicatorLabel: 'Membuat tahun fiskal',
   closeDialogLabel: 'Tutup dialog',
   loadingFormLabel: 'Memuat formulir...',
   

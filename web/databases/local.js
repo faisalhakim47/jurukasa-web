@@ -52,7 +52,13 @@ export async function createLocalDatabaseClient(config) {
     }
     catch (error) {
       if (error instanceof Error) throw error;
-      else if ('type' in error) throw new Error(error?.result?.message ?? `Unknown database error occurred: ${JSON.stringify(error)}`);
+      else if (
+        (typeof error === 'object' && error !== null)
+        && 'result' in error
+        && (typeof error.result === 'object' && error.result !== null)
+        && 'message' in error.result
+        && typeof error.result.message === 'string'
+      ) throw new Error(error?.result?.message ?? `Unknown database error occurred: ${JSON.stringify(error)}`);
       else throw new Error(`Unknown database error occurred: ${JSON.stringify(error)}`);
     }
   }

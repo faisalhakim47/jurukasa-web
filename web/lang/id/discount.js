@@ -6,6 +6,7 @@ export default /** @type {Partial<DiscountTranslation>} */ ({
   createButtonLabel: 'Buat',
   closeButtonAriaLabel: 'Tutup',
   creatingDiscountMessage: 'Membuat diskon...',
+  creatingDiscountProgressIndicatorLabel: 'Membuat diskon',
   discountNameLabel: 'Nama Diskon',
   discountNameSupportingText: 'Nama unik untuk diskon ini (contoh: "Beli 3 Diskon 500")',
   discountNameExistsError: 'Nama diskon sudah ada.',
@@ -42,6 +43,7 @@ export default /** @type {Partial<DiscountTranslation>} */ ({
   saveChangesButtonLabel: 'Simpan Perubahan',
   cancelButtonLabel: 'Batal',
   savingChangesMessage: 'Menyimpan perubahan...',
+  savingChangesProgressIndicatorLabel: 'Menyimpan perubahan',
 
   // Discount Details - Information Section
   discountInformationSectionTitle: 'Informasi Diskon',

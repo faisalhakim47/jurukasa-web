@@ -32,7 +32,7 @@ export function useContext(host, contextKey) {
   const contextProxy = new Proxy(/** @type {object} as placeholder */ ({}), {
     // Note: context value in this app is always an instance of HTMLElement subclass. Each context class is responsible to provide portable/standalone method functions. This proxy is not responsible to bind "this" context.
     get(_, prop) {
-      if (isConnected && context instanceof contextKey) return context[prop];
+      if (isConnected && context instanceof contextKey) return (/** @type {any} mandatory any work-around */ (context))[prop];
       else if (isConnected) throw new Error(`
         Context Provider for type ${contextKey.name} is not available. There are two posible issues:
           1. The provider is not in the DOM ancestor tree of the requestor element.
@@ -40,9 +40,7 @@ export function useContext(host, contextKey) {
       `);
       else throw new Error(`Cannot access context of type ${contextKey.name} on disconnected element ${host.tagName.toLowerCase()}.`);
     },
-    set() {
-      throw new Error('Context state is read-only.');
-    },
+    set() { throw new Error('Context state is read-only.'); },
     has(_, prop) {
       if (isConnected) return context instanceof contextKey && prop in context;
       else throw new Error('Cannot check context state on disconnected element.');
@@ -65,7 +63,7 @@ export function useContext(host, contextKey) {
       context = undefined;
     };
   });
-  return contextProxy;
+  return /** @type {any} mandatory any proxy */ (contextProxy);
 }
 
 /**
@@ -82,9 +80,10 @@ export function useOptionalContext(host, contextKey) {
     context = getContextValue(host, contextKey);
     return function handleDisconnected() { context = undefined; };
   });
-  return new Proxy(/** @type {object} as placeholder */ ({}), {
-    get(_, prop) { return context?.[prop]; },
+  const contextProxy = new Proxy(/** @type {object} as placeholder */ ({}), {
+    get(_, prop) { return (/** @type {any} mandatory any work-around */ (context))?.[prop]; },
     set() { throw new Error('Context state is read-only.'); },
     has(_, prop) { return context !== undefined && prop in context; },
   });
+  return /** @type {any} mandatory any proxy */ (contextProxy);
 }

@@ -20,6 +20,8 @@ export default /** @type {Partial<AccountTranslation>} */ ({
   clearParentAccountAriaLabel: 'Hapus akun induk',
   selectParentAccountAriaLabel: 'Pilih akun induk',
   creatingAccountMessage: 'Membuat akun...',
+  savingTagAssignmentProgressIndicatorLabel: 'Menyimpan penetapan tag',
+  creatingAccountProgressIndicatorLabel: 'Membuat akun',
   invalidAccountCodeError: 'Kode akun tidak valid.',
   accountNameRequiredError: 'Nama akun wajib diisi.',
   invalidNormalBalanceError: 'Saldo normal tidak valid.',

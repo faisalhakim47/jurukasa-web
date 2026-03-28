@@ -1,5 +1,5 @@
 import { defineWebComponent } from '#web/component.js';
-import { provideContext, useContext, useOptionalContext } from '#web/hooks/use-context.js';
+import { provideContext, useOptionalContext } from '#web/hooks/use-context.js';
 import { useEffect, StopEffectFlag } from '#web/hooks/use-effect.js';
 import { useConnectedCallback } from '#web/hooks/use-lifecycle.js';
 import { useWindowEventListener } from '#web/hooks/use-window-event-listener.js';

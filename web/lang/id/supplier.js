@@ -13,6 +13,7 @@ export default /** @type {Partial<SupplierTranslation>} */ ({
   addressLabel: 'Alamat (Opsional)',
   addressSupportingText: 'Alamat pemasok',
   creatingSupplierMessage: 'Membuat pemasok...',
+  creatingSupplierProgressIndicatorLabel: 'Membuat pemasok',
   createSupplierButtonLabel: 'Tambah Pemasok',
   cancelButtonLabel: 'Batal',
   errorDialogTitle: 'Kesalahan',
@@ -29,6 +30,7 @@ export default /** @type {Partial<SupplierTranslation>} */ ({
   editButtonLabel: 'Ubah',
   saveChangesButtonLabel: 'Simpan Perubahan',
   savingChangesMessage: 'Menyimpan perubahan...',
+  savingChangesProgressIndicatorLabel: 'Menyimpan perubahan',
   deleteButtonLabel: 'Hapus',
   deleteButtonAriaLabel: 'Hapus pemasok',
 

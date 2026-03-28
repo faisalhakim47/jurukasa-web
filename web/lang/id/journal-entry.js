@@ -2,6 +2,7 @@ const journalEntry = {
   creationParamsTitle: 'Buat Jurnal Umum',
   creationSubmitLabel: 'Draf Jurnal',
   creationLoadingLabel: 'Sedang membuat jurnal...',
+  creatingEntryProgressIndicatorLabel: 'Membuat jurnal umum',
   entryDateLabel: 'Tanggal Entri',
   noteLabel: 'Catatan',
   linesSectionTitle: 'Baris Jurnal',

@@ -52,10 +52,18 @@ export default /** @type {Partial<OnboardingTranslation>} */ ({
   businessLocaleLabel: 'Lokal',
   businessLanguageLabel: 'Bahasa',
   businessFiscalYearStartMonthLabel: 'Bulan Awal Tahun Fiskal',
+  businessConfigProgressIndicatorLabel: 'Mengonfigurasi usaha...',
 
   // Chart of accounts setup
   chartOfAccountsSetupTitle: 'Pilih Template Daftar Akun',
   chartOfAccountsSetupSubmitLabel: 'Selesai',
 
-  unknownState: 'Status tidak dikenal: %d',
+  // Finish
+  onboardingComplete: 'Orientasi Selesai',
+  goToDashboard: 'Ke Dashboard',
+
+  // Unknown step
+  unknownStepTitle: 'Ups!',
+  unknownStepMessage: 'Anda berada di langkah yang salah.',
+  returnToWelcome: 'Kembali ke Orientasi',
 });

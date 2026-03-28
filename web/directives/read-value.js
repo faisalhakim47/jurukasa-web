@@ -21,7 +21,7 @@ export const readValue = directive(class ValueReaderDirective extends Directive 
       if (element instanceof HTMLInputElement) {
         function valueUpdater() {
           if (element instanceof HTMLInputElement) {
-            reactive[key] = element.type === 'number' ? element.valueAsNumber
+            (/** @type {any} */ (reactive))[key] = element.type === 'number' ? element.valueAsNumber
               : element.type === 'checkbox' ? element.checked
                 : element.value;
           }

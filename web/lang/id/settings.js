@@ -21,6 +21,7 @@ export default /** @type {Partial<SettingsTranslation>} */ ({
 
   // Config Form
   savingConfigurationMessage: 'Menyimpan konfigurasi...',
+  savingConfigurationProgressIndicatorLabel: 'Menyimpan konfigurasi',
   selectPlaceholder: 'Pilih...',
   resetButtonLabel: 'Atur Ulang',
   saveChangesButtonLabel: 'Simpan Perubahan',
@@ -126,6 +127,7 @@ export default /** @type {Partial<SettingsTranslation>} */ ({
   versionSwitchDialogConfirmButtonLabel: 'Ganti',
   versionSwitchDialogCancelButtonLabel: 'Batal',
   versionSwitchDialogLoadingMessage: 'Mengunduh dan mengaktifkan versi...',
+  switchingVersionProgressIndicatorLabel: 'Mengganti versi',
   versionSwitchDialogLoadingNote: 'Aplikasi akan otomatis dimuat ulang saat siap.',
   versionLocalSourceLabel: 'Lokal',
   versionNpmSourceLabel: 'NPM',

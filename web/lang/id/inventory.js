@@ -21,6 +21,7 @@ export default /** @type {Partial<InventoryTranslation>} */ ({
   selectInventoryAccountError: 'Mohon pilih akun inventaris.',
   accountNotTaggedError: 'Akun yang dipilih harus diberi tag "POS - Inventory".',
   creatingInventoryMessage: 'Membuat inventaris...',
+  creatingInventoryProgressIndicatorLabel: 'Membuat inventaris',
   errorDialogTitle: 'Kesalahan',
   dismissButtonLabel: 'Tutup',
 
@@ -35,6 +36,7 @@ export default /** @type {Partial<InventoryTranslation>} */ ({
   saveChangesButtonLabel: 'Simpan Perubahan',
   cancelButtonLabel: 'Batal',
   savingChangesMessage: 'Menyimpan perubahan...',
+  savingChangesProgressIndicatorLabel: 'Menyimpan perubahan',
 
   // Inventory Details - Basic Information Section
   basicInformationSectionTitle: 'Informasi Dasar',
@@ -69,11 +71,13 @@ export default /** @type {Partial<InventoryTranslation>} */ ({
   currentUnitPriceLabel: 'Harga Satuan Saat Ini',
   newUnitPriceLabel: 'Harga Satuan Baru',
   updatingPriceMessage: 'Memperbarui harga...',
+  updatingPriceProgressIndicatorLabel: 'Memperbarui harga',
   updatePriceButtonLabel: 'Perbarui Harga',
 
   // Inventory Discounts Edit Dialog
   discountsEditDialogTitle: 'Ubah Diskon Inventaris',
   savingDiscountsMessage: 'Menyimpan diskon...',
+  savingDiscountsProgressIndicatorLabel: 'Menyimpan diskon',
   saveButtonLabel: 'Simpan',
   discountDescriptionText: 'Cara kerja diskon: Untuk "Setiap N Item", diskon berlaku per N item yang dibeli. Contoh: Jika N=3 dan diskon adalah 500, membeli 7 item memberikan diskon (7÷3)×500 = 1000.',
   discountsTableAriaLabel: 'Diskon inventaris',

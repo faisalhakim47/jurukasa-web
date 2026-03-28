@@ -82,4 +82,25 @@ export default /** @type {Partial<FinancialReportTranslation>} */ ({
   
   // Ad hoc report name
   adHocReportNameFormat: 'Laporan %s',
+
+  // Balance Report Creation Dialog
+  generateReportDialogTitle: 'Buat Laporan Saldo',
+  reportNameLabel: 'Nama Laporan',
+  reportNameHelperText: 'Nama opsional untuk mengidentifikasi laporan ini',
+  reportDateTimeLabel: 'Tanggal & Waktu Laporan',
+  reportDateTimeHelperText: 'Tanggal dan waktu untuk mengambil snapshot saldo akun',
+  loadingFormLabel: 'Memuat formulir...',
+  generationProgressLabel: 'Membuat laporan...',
+  invalidDateTimeError: 'Tanggal dan waktu yang ditentukan tidak valid',
+  errorTitle: 'Kesalahan',
+  dismissLabel: 'Tutup',
+  closeDialogLabel: 'Tutup dialog',
+
+  // Fiscal Year Details
+  balanceReportsBeforeClosingTitle: 'Laporan Saldo Sebelum Penutupan',
+  balanceReportsAfterClosingTitle: 'Laporan Saldo Setelah Penutupan',
+  closingEntryDetailsTitle: 'Rincian Entri Penutupan',
+  noBalanceReportsBeforeClosing: 'Belum ada laporan saldo yang dibuat sebelum penutupan',
+  noBalanceReportsAfterClosing: 'Belum ada laporan saldo yang dibuat setelah penutupan',
+  loadingDetailsLabel: 'Memuat rincian...',
 });

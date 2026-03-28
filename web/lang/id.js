@@ -8,6 +8,7 @@ import fiscalYear from '#web/lang/id/fiscal-year.js';
 import fixedAsset from '#web/lang/id/fixed-asset.js';
 import inventory from '#web/lang/id/inventory.js';
 import journalEntry from '#web/lang/id/journal-entry.js';
+import literal from '#web/lang/id/literal/index.js';
 import onboarding from '#web/lang/id/onboarding.js';
 import paymentMethod from '#web/lang/id/payment-method.js';
 import pos from '#web/lang/id/pos.js';
@@ -29,6 +30,7 @@ export default {
   fixedAsset,
   inventory,
   journalEntry,
+  literal,
   onboarding,
   paymentMethod,
   pos,
