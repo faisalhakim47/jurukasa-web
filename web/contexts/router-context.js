@@ -1,4 +1,4 @@
-import { reactive, readonly } from '@vue/reactivity';
+import { reactive } from '@vue/reactivity';
 import { defineWebComponent } from '#web/component.js';
 import { provideContext } from '#web/hooks/use-context.js';
 import { useWindowEventListener } from '#web/hooks/use-window-event-listener.js';
@@ -28,9 +28,7 @@ export class RouterContextElement extends HTMLElement {
   constructor() {
     super();
 
-    provideContext(this);
-
-    const host = this;
+    const context = provideContext(this);
     const persistedRoute = getPersistedRouteState();
     const initialRoute = (function evaluateInitialRoute() {
       try {
@@ -69,8 +67,8 @@ export class RouterContextElement extends HTMLElement {
       console.debug('router-context', 'syncNavigatorToRouter', route?.pathname, route?.search, route?.database?.provider);
     };
 
-    useWindowEventListener(host, 'popstate', syncNavigatorToRouter);
-    useWindowEventListener(host, 'load', syncNavigatorToRouter);
+    useWindowEventListener(context, 'popstate', syncNavigatorToRouter);
+    useWindowEventListener(context, 'load', syncNavigatorToRouter);
 
     /** @param {RouteTarget} target */
     this.navigate = function navigate(target) {
@@ -97,7 +95,6 @@ export class RouterContextElement extends HTMLElement {
 }
 
 defineWebComponent('router-context', RouterContextElement);
-
 
 /** @returns {PersistedRoute} */
 function getPersistedRouteState() {

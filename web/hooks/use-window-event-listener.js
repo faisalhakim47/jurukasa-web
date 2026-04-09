@@ -3,17 +3,19 @@ import { useConnectedCallback } from '#web/hooks/use-lifecycle.js';
 /** @type {Map<keyof WindowEventMap, Promise<WindowEventMap[keyof WindowEventMap]>>} */
 const earlyWindowEvents = new Map();
 
-earlyWindowEvents.set('load', new Promise(function (resolve) {
-  window.addEventListener('load', function (event) {
-    resolve(event);
-  }, { once: true });
-}));
+if (typeof window !== 'undefined') {
+  earlyWindowEvents.set('load', new Promise(function (resolve) {
+    window.addEventListener('load', function (event) {
+      resolve(event);
+    }, { once: true });
+  }));
 
-earlyWindowEvents.set('pageshow', new Promise(function (resolve) {
-  window.addEventListener('pageshow', function (event) {
-    resolve(event);
-  }, { once: true });
-}));
+  earlyWindowEvents.set('pageshow', new Promise(function (resolve) {
+    window.addEventListener('pageshow', function (event) {
+      resolve(event);
+    }, { once: true });
+  }));
+}
 
 /**
  * @template {keyof WindowEventMap} K
@@ -26,6 +28,7 @@ export function useWindowEventListener(host, eventName, callback) {
     if (earlyWindowEvents.has(eventName)) {
       earlyWindowEvents.get(eventName).then(callback);
     }
+    else if (typeof window === 'undefined') return;
     else {
       window.addEventListener(eventName, callback);
       return function detachWindowEventListener() {

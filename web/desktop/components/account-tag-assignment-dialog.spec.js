@@ -13,7 +13,7 @@ const test = jurukasaTest;
 const { describe } = test;
 
 async function setupView() {
-  const [tursoDatabaseUrl, tag] = arguments;
+  const [tursoDatabaseUrl, tag] = arguments[0];
   document.body.innerHTML = `
     <ready-context>
       <router-context>

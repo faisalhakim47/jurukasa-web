@@ -15,7 +15,7 @@ describe('Account Selector Dialog', function () {
   useStrict(test);
   const tursoLibSQLiteServer = useTursoLibSQLiteServer(test);
 
-  test('it shall make a choise', async function ({ page }) {
+  test('it shall make a choice', async function ({ page }) {
     await loadEmptyFixture(page);
 
     await page.evaluate(async function setupComponentHtml(tursoDatabaseUrl) {
@@ -66,7 +66,8 @@ describe('Account Selector Dialog', function () {
           accountSelectorDialog.addEventListener('account-select', function (event) {
             if (settled) return;
             settled = true;
-            resolve(event.detail);
+            const customEvent = /** @type {CustomEvent<{ accountCode: number, accountName: string }>} */ (event);
+            resolve(customEvent.detail);
           });
           setTimeout(function () {
             if (settled) return;

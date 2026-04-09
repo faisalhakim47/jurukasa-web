@@ -95,22 +95,17 @@ export function getJournalEntryOwnerType(row) {
 }
 
 /**
- * @param {string} ownerType
- * @param {function(string, string, ...unknown[]): string} t
+ * @param {JournalEntryOwnerType | string} ownerType
+ * @param {function(string, ...unknown[]): string} l
  * @returns {string}
  */
-export function getJournalEntryOwnerLabel(ownerType, t) {
-  if (ownerType === 'Manual') return t('journalEntry', 'ownerManualLabel');
-  if (ownerType === 'Purchase') return t('journalEntry', 'ownerPurchaseLabel');
-  if (ownerType === 'Sale') return t('journalEntry', 'ownerSaleLabel');
-  if (ownerType === 'Stock Taking') return t('journalEntry', 'ownerStockTakingLabel');
-  if (ownerType === 'Fixed Asset') return t('journalEntry', 'ownerFixedAssetLabel');
-  if (ownerType === 'Reconciliation') return t('journalEntry', 'ownerReconciliationLabel');
-  if (ownerType === 'Fiscal Year Closing') return t('journalEntry', 'ownerFiscalYearClosingLabel');
-  if (ownerType === 'Fiscal Year Reversal') return t('journalEntry', 'ownerFiscalYearReversalLabel');
-  if (ownerType === 'Fiscal Year Depreciation') return t('journalEntry', 'ownerFiscalYearDepreciationLabel');
-  if (ownerType === 'Fiscal Year Depreciation Reversal') return t('journalEntry', 'ownerFiscalYearDepreciationReversalLabel');
-  return ownerType;
+export function getJournalEntryOwnerLabel(ownerType, l) {
+  const localizedLabel = l(ownerType);
+
+  if (localizedLabel === ownerType) return localizedLabel;
+  if (localizedLabel.startsWith('[literal.') && localizedLabel.endsWith(']')) return ownerType;
+
+  return localizedLabel;
 }
 
 /**

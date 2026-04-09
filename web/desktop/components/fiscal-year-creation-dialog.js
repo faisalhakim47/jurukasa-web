@@ -86,7 +86,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
         }
         else {
           // Default to start of current year
-          const currentDate = time.currentDate();
+          const currentDate = time.newDate();
           const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
           beginDate = formatDateForInput(startOfYear);
         }
@@ -97,7 +97,7 @@ export class FiscalYearCreationDialogElement extends HTMLElement {
       catch (error) {
         console.warn('Failed to get default dates:', error);
         // Fallback to current year
-        const currentDate = time.currentDate();
+        const currentDate = time.newDate();
         const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
         defaultDates.beginDate = formatDateForInput(startOfYear);
         defaultDates.endDate = getDefaultEndDate(defaultDates.beginDate);

@@ -2,7 +2,6 @@ import { writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test as playwrightTest } from '@playwright/test';
-import { TerminalReporter } from 'playwright/lib/reporters/base';
 import { formatAXTree } from '#test/playwright/tools/playwright.js';
 /** @import { TestCase, TestResult } from '@playwright/test/reporter' */
 /** @import { Protocol } from '../../node_modules/playwright-core/types/protocol.d.ts' */
@@ -11,6 +10,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectDir = join(__dirname, '../../');
 
+// @ts-ignore playwright does not publish types for this, and it is not worth the effort to write them ourselves at the moment.
+const { TerminalReporter } = await import('playwright/lib/reporters/base');
 const formatFailure = TerminalReporter.prototype.formatFailure;
 /**
  * @param {TestCase} [test]
@@ -22,7 +23,7 @@ TerminalReporter.prototype.formatFailure = function overriddenformatFailure(test
       return attachment.name !== 'error-context';
     });
   }
-  return formatFailure.bind(this)(test, index);
+  return Reflect.apply(formatFailure, this, [test, index]);
 };
 
 const onTestEnd = TerminalReporter.prototype.onTestEnd;
@@ -31,7 +32,7 @@ const onTestEnd = TerminalReporter.prototype.onTestEnd;
  * @param {TestResult} result
  */
 TerminalReporter.prototype.onTestEnd = function overriddenOnTestEnd(test, result) {
-  onTestEnd.bind(this)(test, result);
+  Reflect.apply(onTestEnd, this, [test, result]);
   for (const result of test.results) {
     for (const error of result.errors) {
       error.stack = error.stack.replace(projectDir, '');

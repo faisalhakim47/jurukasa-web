@@ -49,10 +49,30 @@ export class AccountingConfigurationViewElement extends HTMLElement {
       return state.isLoadingConfig === false;
     });
 
+    async function hasConfigTable() {
+      try {
+        const result = await database.sql`
+          SELECT name
+          FROM sqlite_master
+          WHERE type = 'table' AND name = 'config'
+        `;
+        return result.rows.length > 0;
+      }
+      catch {
+        return false;
+      }
+    }
+
     async function loadConfig() {
       try {
         state.isLoadingConfig = true;
         state.configError = null;
+
+        if ((await hasConfigTable()) === false) {
+          state.configError = new Error('Configuration data is unavailable because the database schema is incomplete.');
+          state.isLoadingConfig = false;
+          return;
+        }
 
         const result = await database.sql`
           SELECT key, value
@@ -88,12 +108,17 @@ export class AccountingConfigurationViewElement extends HTMLElement {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
       const form = event.currentTarget;
-
-      const tx = await database.transaction('write');
+      let tx = /** @type {Awaited<ReturnType<DatabaseContextElement['transaction']>> | null} */ (null);
 
       try {
         state.configFormState = 'submitting';
         state.configFormError = null;
+
+        if ((await hasConfigTable()) === false) {
+          throw new Error('Configuration data is unavailable because the database schema is incomplete.');
+        }
+
+        tx = await database.transaction('write');
 
         const data = new FormData(form);
         const updateTime = Date.now();
@@ -117,7 +142,12 @@ export class AccountingConfigurationViewElement extends HTMLElement {
       catch (error) {
         state.configFormState = 'error';
         state.configFormError = error instanceof Error ? error : new Error(String(error));
-        await tx.rollback();
+        if (tx) {
+          try {
+            await tx.rollback();
+          }
+          catch { /** Ignore rollback errors after failed writes. */ }
+        }
       }
       finally {
         await loadConfig();
@@ -242,6 +272,7 @@ export class AccountingConfigurationViewElement extends HTMLElement {
       `;
     }
 
+    /** @param {string} langCode */
     function getLanguageDisplayName(langCode) {
       if (langCode === 'en') return 'English';
       if (langCode === 'id') return 'Bahasa Indonesia';

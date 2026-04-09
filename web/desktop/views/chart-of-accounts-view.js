@@ -65,6 +65,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
       accounts: /** @type {AccountRow[]} */ ([]),
       accountTree: /** @type {AccountTreeNode[]} */ ([]),
       expandedCodes: /** @type {Set<number>} */ (new Set()),
+      shouldExpandAll: false,
       isLoading: true,
       error: /** @type {Error | null} */ (null),
       typeFilter: /** @type {AccountType} */ ('All'),
@@ -171,6 +172,47 @@ export class ChartOfAccountsViewElement extends HTMLElement {
       });
     }
 
+    function rebuildAccountTree() {
+      const filteredAccounts = filterAccounts(state.accounts);
+
+      if (state.shouldExpandAll) {
+        state.expandedCodes = new Set(state.accounts
+          .filter(function (account) {
+            return account.is_posting_account === 0;
+          })
+          .map(function (account) {
+            return account.account_code;
+          }));
+      }
+      else {
+        state.expandedCodes = new Set([...state.expandedCodes].filter(function (accountCode) {
+          return state.accounts.some(function (account) {
+            return account.account_code === accountCode;
+          });
+        }));
+      }
+
+      const accountsToInclude = new Set(filteredAccounts.map(function (account) {
+        return account.account_code;
+      }));
+
+      for (const account of filteredAccounts) {
+        let parentCode = account.control_account_code;
+        while (parentCode !== null) {
+          accountsToInclude.add(parentCode);
+          const parentAccount = state.accounts.find(function (candidate) {
+            return candidate.account_code === parentCode;
+          });
+          parentCode = parentAccount ? parentAccount.control_account_code : null;
+        }
+      }
+
+      const accountsForTree = state.accounts.filter(function (account) {
+        return accountsToInclude.has(account.account_code);
+      });
+      state.accountTree = buildAccountTree(accountsForTree);
+    }
+
     async function loadAccounts() {
       try {
         state.isLoading = true;
@@ -215,25 +257,7 @@ export class ChartOfAccountsViewElement extends HTMLElement {
           });
         });
 
-        // Build tree from filtered accounts
-        const filteredAccounts = filterAccounts(state.accounts);
-
-        // When filtering, we need to include parent accounts even if they don't match
-        // to maintain the hierarchical structure
-        const accountsToInclude = new Set(filteredAccounts.map((a) => a.account_code));
-
-        // Add parent accounts for any filtered account
-        for (const account of filteredAccounts) {
-          let parentCode = account.control_account_code;
-          while (parentCode !== null) {
-            accountsToInclude.add(parentCode);
-            const parentAccount = state.accounts.find((a) => a.account_code === parentCode);
-            parentCode = parentAccount ? parentAccount.control_account_code : null;
-          }
-        }
-
-        const accountsForTree = state.accounts.filter((a) => accountsToInclude.has(a.account_code));
-        state.accountTree = buildAccountTree(accountsForTree);
+        rebuildAccountTree();
 
         state.isLoading = false;
       } catch (error) {
@@ -249,70 +273,23 @@ export class ChartOfAccountsViewElement extends HTMLElement {
       const hasChildren = button.dataset.hasChildren === 'true';
       if (!hasChildren) return; // No children to expand/collapse
       const accountCode = Number(button.dataset.accountCode);
-      if (state.expandedCodes.has(accountCode)) state.expandedCodes.delete(accountCode);
-      else state.expandedCodes.add(accountCode);
-      // Rebuild tree to update expanded state
-      const accountsToInclude = new Set(filterAccounts(state.accounts).map(function (account) {
-        return account.account_code;
-      }));
-      for (const account of filterAccounts(state.accounts)) {
-        let parentCode = account.control_account_code;
-        while (parentCode !== null) {
-          accountsToInclude.add(parentCode);
-          const parentAccount = state.accounts.find(function (account) {
-            return account.account_code === parentCode;
-          });
-          parentCode = parentAccount ? parentAccount.control_account_code : null;
-        }
-      }
-      const accountsForTree = state.accounts.filter(function (account) {
-        return accountsToInclude.has(account.account_code);
-      });
-      state.accountTree = buildAccountTree(accountsForTree);
+      const expandedCodes = new Set(state.expandedCodes);
+      state.shouldExpandAll = false;
+      if (expandedCodes.has(accountCode)) expandedCodes.delete(accountCode);
+      else expandedCodes.add(accountCode);
+      state.expandedCodes = expandedCodes;
+      rebuildAccountTree();
     }
 
     function expandAll() {
-      for (const account of state.accounts) {
-        if (!account.is_posting_account) state.expandedCodes.add(account.account_code);
-      }
-      const accountsToInclude = new Set(filterAccounts(state.accounts).map(function (account) {
-        return account.account_code;
-      }));
-      for (const account of filterAccounts(state.accounts)) {
-        let parentCode = account.control_account_code;
-        while (parentCode !== null) {
-          accountsToInclude.add(parentCode);
-          const parentAccount = state.accounts.find(function (account) {
-            return account.account_code === parentCode;
-          });
-          parentCode = parentAccount ? parentAccount.control_account_code : null;
-        }
-      }
-      const accountsForTree = state.accounts.filter(function (account) {
-        return accountsToInclude.has(account.account_code);
-      });
-      state.accountTree = buildAccountTree(accountsForTree);
+      state.shouldExpandAll = true;
+      rebuildAccountTree();
     }
 
     function collapseAll() {
-      state.expandedCodes.clear();
-      const accountsToInclude = new Set(filterAccounts(state.accounts).map(function (account) {
-        return account.account_code;
-      }));
-      for (const account of filterAccounts(state.accounts)) {
-        let parentCode = account.control_account_code;
-        while (parentCode !== null) {
-          accountsToInclude.add(parentCode);
-          const parentAccount = state.accounts.find(function (account) {
-            return account.account_code === parentCode;
-          });
-          parentCode = parentAccount ? parentAccount.control_account_code : null;
-        }
-      }
-      const accountsForTree = state.accounts.filter(function (account) {
-        return accountsToInclude.has(account.account_code);
-      });
-      state.accountTree = buildAccountTree(accountsForTree);
+      state.shouldExpandAll = false;
+      state.expandedCodes = new Set();
+      rebuildAccountTree();
     }
 
     /** @param {Event} event */

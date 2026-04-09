@@ -11,20 +11,23 @@ export class I18nContextElement extends HTMLElement {
   constructor() {
     super();
 
-    provideContext(this);
-
-    const host = this;
-    const device = useContext(host, DeviceContextElement);
-    const database = useContext(host, DatabaseContextElement);
+    const context = provideContext(this);
+    const device = useContext(context, DeviceContextElement);
+    const database = useContext(context, DatabaseContextElement);
 
     const config = reactive({
       currencyCode: 'IDR',
       currencyDecimals: 0,
     });
 
-    useEffect(host, function loadConfig() {
-      database.sql`SELECT value FROM config WHERE key in ('Currency Code', 'Currency Decimals');`
+    useEffect(context, function loadConfig() {
+      database.sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'config'`
+        .then(function resolveConfigTable(result) {
+          if (result.rows.length === 0) return undefined;
+          return database.sql`SELECT key, value FROM config WHERE key in ('Currency Code', 'Currency Decimals');`;
+        })
         .then(function setCurrencyConfig(result) {
+          if (!result) return;
           for (const row of result.rows) {
             const key = String(row.key);
             const value = String(row.value);
@@ -36,10 +39,11 @@ export class I18nContextElement extends HTMLElement {
               config.currencyDecimals = Number.isInteger(decimals) && decimals >= 0 ? decimals : 0;
             }
           }
-        });
+        })
+        .catch(function ignoreMissingConfigTable() {});
     });
 
-    this.date = useExposed(host, function createDateFormatter() {
+    this.date = useExposed(context, function createDateFormatter() {
       return new Intl.DateTimeFormat(device.locale, {
         year: 'numeric',
         month: 'short',
@@ -47,7 +51,7 @@ export class I18nContextElement extends HTMLElement {
       });
     });
 
-    this.time = useExposed(host, function createTimeFormatter() {
+    this.time = useExposed(context, function createTimeFormatter() {
       return new Intl.DateTimeFormat(device.locale, {
         hour: '2-digit',
         minute: '2-digit',
@@ -64,7 +68,7 @@ export class I18nContextElement extends HTMLElement {
       });
     });
 
-    this.currency = useExposed(host, currency);
+    this.currency = useExposed(context, currency);
 
     /**
      * @param {number} value in the lowest denomination (e.g., cents)

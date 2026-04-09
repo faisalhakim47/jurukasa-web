@@ -33,6 +33,10 @@ import '#web/desktop/components/material-symbols.js';
  * @fires supplier-select - Fired when a supplier is selected. Detail: { supplierId: number, supplierName: string, phoneNumber: string | null }
  * 
  * @example assuming we use lit-html for rendering
+ * const handleSupplierSelect = function (event) {
+ *   console.log('Selected:', event.detail.supplierId, event.detail.supplierName);
+ * };
+ * html`
     <button
       type="button"
       commandfor="supplier-selector-dialog"
@@ -40,8 +44,9 @@ import '#web/desktop/components/material-symbols.js';
     >Select Supplier</button>
     <supplier-selector-dialog
       id="supplier-selector-dialog"
-      @supplier-select=${() => console.log('Selected:', event.detail.supplierId, event.detail.supplierName)}
+ *     @supplier-select=${handleSupplierSelect}
     ></supplier-selector-dialog>
+ * `;
  */
 export class SupplierSelectorDialogElement extends HTMLElement {
   constructor() {

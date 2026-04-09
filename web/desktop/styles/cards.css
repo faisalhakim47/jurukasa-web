@@ -272,4 +272,3 @@ article.card>a[is="router-link"]:only-child {
 .card-grid.compact {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 }
-

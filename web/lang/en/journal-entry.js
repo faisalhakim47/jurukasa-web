@@ -49,6 +49,7 @@ const journalEntry = {
   statusPosted: 'Posted',
   statusDraft: 'Draft',
   dateLabel: 'Date',
+  sourceLabel: 'Source',
   statusLabel: 'Status',
   workflowLabel: 'Workflow',
   postedDateLabel: 'Posted Date',
@@ -85,17 +86,7 @@ const journalEntry = {
   refColumn: 'Ref',
   amountColumn: 'Amount',
 
-  ownerManualLabel: 'Manual',
-  ownerPurchaseLabel: 'Purchase',
-  ownerSaleLabel: 'Sale',
-  ownerStockTakingLabel: 'Stock Taking',
-  ownerFixedAssetLabel: 'Fixed Asset',
-  ownerReconciliationLabel: 'Reconciliation',
-  ownerFiscalYearClosingLabel: 'Fiscal Year Closing',
-  ownerFiscalYearReversalLabel: 'Fiscal Year Reversal',
-  ownerFiscalYearDepreciationLabel: 'Fiscal Year Depreciation',
-  ownerFiscalYearDepreciationReversalLabel: 'Fiscal Year Depreciation Reversal',
-
+  filterSourceAll: 'All Sources',
   filterStatusAll: 'All Statuses',
 
   emptyStateTitle: 'No journal entries found',

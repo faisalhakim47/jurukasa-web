@@ -70,7 +70,7 @@ export class DesktopViewElement extends HTMLElement {
       render(html`
         <div style="display: flex; flex-direction: row; height: 100vh; width: 100vw;">
           <aside>
-            <nav aria-label="${t('common', 'mainNavigationAriaLabel')}">
+            <nav data-navigation="main" aria-label="${t('common', 'mainNavigationAriaLabel')}">
               <a is="router-link" href="/dashboard" aria-current=${currentPath === '/' ? 'page' : 'false'}>
                 <material-symbols name="dashboard"></material-symbols>
                 <span>${t('common', 'dashboardNavLabel')}</span>

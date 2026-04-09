@@ -94,7 +94,7 @@ export class CashCountCreationDialogElement extends HTMLElement {
       state.formError = null;
       state.accountCode = null;
       state.accountName = '';
-      state.checkpointTime = time.currentDate().toISOString().slice(0, 16);
+      state.checkpointTime = time.newDate().toISOString().slice(0, 16);
       state.countedAmount = '';
       state.note = '';
       state.bookBalance = 0;
@@ -214,7 +214,7 @@ export class CashCountCreationDialogElement extends HTMLElement {
             ${countedAmount},
             (SELECT COALESCE(MAX(ref), 0) + 1 FROM journal_entries),
             ${state.note || null},
-            ${time.currentDate().getTime()}
+            ${time.newDate().getTime()}
           ) RETURNING id
         `;
 

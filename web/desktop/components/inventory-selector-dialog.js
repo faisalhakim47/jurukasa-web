@@ -45,6 +45,10 @@ import '#web/desktop/components/material-symbols.js';
  * @property {InventorySelectorDialogElementAddEventListenerType} addEventListener - Add event listener method
  * 
  * @example assuming we use lit-html for rendering
+ * const handleInventorySelect = function (event) {
+ *   console.log('Selected:', event.detail.inventoryId, event.detail.inventoryName);
+ * };
+ * html`
     <button
       type="button"
       commandfor="inventory-selector-dialog"
@@ -52,8 +56,9 @@ import '#web/desktop/components/material-symbols.js';
     >Select Inventory</button>
     <inventory-selector-dialog
       id="inventory-selector-dialog"
-      @inventory-select=${() => console.log('Selected:', event.detail.inventoryId, event.detail.inventoryName)}
+ *     @inventory-select=${handleInventorySelect}
     ></inventory-selector-dialog>
+ * `;
  */
 export class InventorySelectorDialogElement extends HTMLElement {
   constructor() {

@@ -37,10 +37,10 @@ export class OnboardingBusinessViewElement extends HTMLElement {
       errorMessage: /** @type {string} */ (undefined),
       selectedLanguage: 'en',
       selectedLanguageDisplay: 'English',
-      configData: /** @type {Record<string, string>|null} */ (null),
     });
 
     const formElementRef = useElement(host, HTMLFormElement);
+    let configData = /** @type {Record<string, string>|null} */ (null);
 
     useConnectedCallback(host, function initiateDefaultLanguage() {
       form.selectedLanguage = device?.language || 'en';
@@ -59,8 +59,8 @@ export class OnboardingBusinessViewElement extends HTMLElement {
           )
         `;
         console.debug('onboarding-business-view', 'fetchConfigData', 'result', JSON.stringify(result.rows));
-        form.configData = Object.fromEntries(result.rows.map(row => [row.key, row.value]));
-        console.debug('onboarding-business-view', 'fetchConfigData', 'configData', JSON.stringify(form.configData));
+        configData = Object.fromEntries(result.rows.map(row => [row.key, row.value]));
+        console.debug('onboarding-business-view', 'fetchConfigData', 'configData', JSON.stringify(configData));
 
         // Set input values directly since form.reset() only works with initial HTML attributes
         // Only update if input is empty or database has a value - preserves browser-restored values during back navigation
@@ -68,39 +68,39 @@ export class OnboardingBusinessViewElement extends HTMLElement {
           const formEl = formElementRef.value;
           if (!formEl) return;
           const businessNameInput = formEl.elements['business-name'];
-          const businessNameValue = form.configData?.['Business Name'];
-          if (businessNameInput && (businessNameValue || !businessNameInput.value)) {
+          const businessNameValue = configData?.['Business Name'];
+          if (businessNameInput && businessNameInput.dataset.userModified !== 'true') {
             businessNameInput.value = businessNameValue || '';
           }
           const businessTypeInput = formEl.elements['business-type'];
-          const businessTypeValue = form.configData?.['Business Type'];
-          if (businessTypeInput && (businessTypeValue || !businessTypeInput.value)) {
+          const businessTypeValue = configData?.['Business Type'];
+          if (businessTypeInput && businessTypeInput.dataset.userModified !== 'true') {
             businessTypeInput.value = businessTypeValue || 'Small Business';
           }
           const currencyCodeInput = formEl.elements['currency-code'];
-          const currencyCodeValue = form.configData?.['Currency Code'];
-          if (currencyCodeInput && (currencyCodeValue || !currencyCodeInput.value)) {
+          const currencyCodeValue = configData?.['Currency Code'];
+          if (currencyCodeInput && currencyCodeInput.dataset.userModified !== 'true') {
             currencyCodeInput.value = currencyCodeValue || 'IDR';
           }
           const currencyDecimalsInput = formEl.elements['currency-decimals'];
-          const currencyDecimalsValue = form.configData?.['Currency Decimals'];
-          if (currencyDecimalsInput && (currencyDecimalsValue || !currencyDecimalsInput.value)) {
+          const currencyDecimalsValue = configData?.['Currency Decimals'];
+          if (currencyDecimalsInput && currencyDecimalsInput.dataset.userModified !== 'true') {
             currencyDecimalsInput.value = currencyDecimalsValue || '0';
           }
           const localeInput = formEl.elements['locale'];
-          const localeValue = form.configData?.['Locale'];
-          if (localeInput && (localeValue || !localeInput.value)) {
+          const localeValue = configData?.['Locale'];
+          if (localeInput && localeInput.dataset.userModified !== 'true') {
             localeInput.value = localeValue || 'en-ID';
           }
           const fiscalYearInput = formEl.elements['fiscal-year-start-month'];
-          const fiscalYearValue = form.configData?.['Fiscal Year Start Month'];
-          if (fiscalYearInput && (fiscalYearValue || !fiscalYearInput.value)) {
+          const fiscalYearValue = configData?.['Fiscal Year Start Month'];
+          if (fiscalYearInput && fiscalYearInput.dataset.userModified !== 'true') {
             fiscalYearInput.value = fiscalYearValue || '1';
           }
         });
 
         // Update language selection from config if available
-        const configLanguage = form.configData['Language'];
+        const configLanguage = configData?.['Language'];
         if (configLanguage) {
           form.selectedLanguage = configLanguage;
           form.selectedLanguageDisplay = configLanguage === 'id' ? 'Bahasa Indonesia' : 'English';
@@ -118,6 +118,11 @@ export class OnboardingBusinessViewElement extends HTMLElement {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
       const formEl = event.currentTarget;
+      if (!formEl.checkValidity()) {
+        formEl.reportValidity();
+        return;
+      }
+
       const formData = new FormData(formEl);
 
       form.state = 'submitting';
@@ -161,6 +166,14 @@ export class OnboardingBusinessViewElement extends HTMLElement {
       }
     }
 
+    /** @param {Event} event */
+    function handleFormInput(event) {
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+        target.dataset.userModified = 'true';
+      }
+    }
+
     useEffect(host, function renderOnboardingBusinessView() {
       console.debug('onboarding-business-view', 'renderOnboardingBusinessView', form.state);
       const formState = form.state;
@@ -173,7 +186,7 @@ export class OnboardingBusinessViewElement extends HTMLElement {
           style="max-width: 600px; margin: 0 auto;"
           open
         >
-          <form class="container" ?disabled=${formDisabled} @submit=${submitBusinessConfig} ${formElementRef}>
+          <form class="container" ?disabled=${formDisabled} @submit=${submitBusinessConfig} @input=${handleFormInput} ${formElementRef}>
             <header>
               <h2 id="business-config-title" class="headline">${t('onboarding', 'businessConfigTitle')}</h2>
               <button
@@ -190,35 +203,35 @@ export class OnboardingBusinessViewElement extends HTMLElement {
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="business-name">${t('onboarding', 'businessNameLabel')}</label>
-                  <input id="business-name" name="business-name" type="text" placeholder=" " required ?disabled=${formDisabled} value=${form.configData?.['Business Name'] || ''} />
+                  <input id="business-name" name="business-name" type="text" placeholder=" " required ?disabled=${formDisabled} value="" />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="business-type">${t('onboarding', 'businessTypeLabel')}</label>
-                  <input id="business-type" name="business-type" type="text" placeholder=" " required value=${form.configData?.['Business Type'] || 'Small Business'} ?disabled=${formDisabled} />
+                  <input id="business-type" name="business-type" type="text" placeholder=" " required value="Small Business" ?disabled=${formDisabled} />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="currency-code">${t('onboarding', 'businessCurrencyCodeLabel')}</label>
-                  <input id="currency-code" name="currency-code" type="text" placeholder=" " required value=${form.configData?.['Currency Code'] || 'IDR'} ?disabled=${formDisabled} />
+                  <input id="currency-code" name="currency-code" type="text" placeholder=" " required value="IDR" ?disabled=${formDisabled} />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="currency-decimals">${t('onboarding', 'businessCurrencyDecimalsLabel')}</label>
-                  <input id="currency-decimals" name="currency-decimals" type="number" placeholder=" " required value=${form.configData?.['Currency Decimals'] || '0'} ?disabled=${formDisabled} />
+                  <input id="currency-decimals" name="currency-decimals" type="number" placeholder=" " required value="0" ?disabled=${formDisabled} />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="locale">${t('onboarding', 'businessLocaleLabel')}</label>
-                  <input id="locale" name="locale" type="text" placeholder=" " required value=${form.configData?.['Locale'] || 'en-ID'} ?disabled=${formDisabled} />
+                  <input id="locale" name="locale" type="text" placeholder=" " required value="en-ID" ?disabled=${formDisabled} />
                 </div>
               </div>
 
@@ -277,7 +290,7 @@ export class OnboardingBusinessViewElement extends HTMLElement {
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="fiscal-year-start-month">${t('onboarding', 'businessFiscalYearStartMonthLabel')}</label>
-                  <input id="fiscal-year-start-month" name="fiscal-year-start-month" type="number" min="1" max="12" placeholder=" " required value=${form.configData?.['Fiscal Year Start Month'] || '1'} ?disabled=${formDisabled} />
+                  <input id="fiscal-year-start-month" name="fiscal-year-start-month" type="number" min="1" max="12" placeholder=" " required value="1" ?disabled=${formDisabled} />
                 </div>
               </div>
             </div>

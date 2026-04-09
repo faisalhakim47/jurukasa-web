@@ -155,7 +155,7 @@ export class StockTakingDialogElement extends HTMLElement {
         const expectedCost = state.inventory.cost;
         const actualStock = state.actualStock;
         const actualCost = calculateActualCost();
-        const auditTime = time.currentDate().getTime();
+        const auditTime = time.newDate().getTime();
         const journalEntryRef = actualCost !== expectedCost
           ? await allocateJournalEntryRef(tx)
           : null;

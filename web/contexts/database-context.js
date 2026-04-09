@@ -1,4 +1,4 @@
-import { reactive } from '@vue/reactivity';
+import { computed, reactive } from '@vue/reactivity';
 
 import { defineWebComponent } from '#web/component.js';
 import { useBusyStateUntil } from '#web/contexts/ready-context.js';
@@ -60,40 +60,37 @@ export class DatabaseContextElement extends HTMLElement {
   constructor() {
     super();
 
-    provideContext(this);
-
-    const host = this;
-    const router = useContext(host, RouterContextElement);
+    const context = provideContext(this);
+    const router = useContext(context, RouterContextElement);
 
     const connection = reactive({
       state: /** @type {ConnectionState} */ ('init'),
       error: /** @type {unknown} */ (undefined),
       client: /** @type {DatabaseClient|undefined} */ (undefined),
-      databases: /** @type {DatabaseConfig[]} */ ([]),
+      databases: getDatabases(),
     });
 
-    useConnectedCallback(host, function loadDatabases() {
-      connection.databases = getDatabases();
-    });
-
-    useBusyStateUntil(host, function evaluteReadiness() {
+    const isReady = computed(function evaluateReadiness() {
       return connection.state === 'unconfigured'
         || connection.state === 'connected';
     });
 
-    this.isReady = useExposed(host, function getConnectionReady() {
-      return connection.state === 'unconfigured'
-        || connection.state === 'connected';
+    useBusyStateUntil(context, function readReadiness() {
+      return isReady.value;
     });
 
-    this.state = useExposed(host, function getConnectionState() {
+    this.isReady = useExposed(context, function readReadiness() {
+      return isReady.value;
+    });
+
+    this.state = useExposed(context, function getConnectionState() {
       return connection.state;
     });
 
     /** @type {PromiseWithResolvers<DatabaseClient>} */
     let { promise: promisedClient, resolve: resolveClient } = Promise.withResolvers();
     let isPromisedClientResolved = false;
-    useEffect(host, function monitorClientAvailability() {
+    useEffect(context, function monitorClientAvailability() {
       if (connection.client) {
         if (isPromisedClientResolved) promisedClient = Promise.resolve(connection.client);
         else {
@@ -116,7 +113,7 @@ export class DatabaseContextElement extends HTMLElement {
       // optionally apply sqlite3 opfs hotfix here
       if (config.provider === 'local') {
         try {
-          const serviceWorkerContext = getContextValue(host, ServiceWorkerContextElement);
+          const serviceWorkerContext = getContextValue(context, ServiceWorkerContextElement);
           await serviceWorkerContext.hotfixSqlite3OpfsAsyncProxy();
         }
         catch (error) {
@@ -153,12 +150,12 @@ export class DatabaseContextElement extends HTMLElement {
     }
     this.sql = sql;
 
-    const providerAttr = useAttribute(host, 'provider');
-    const nameAttr = useAttribute(host, 'name');
-    const tursoUrlAttr = useAttribute(host, 'turso-url');
-    const tursoAuthTokenAttr = useAttribute(host, 'turso-auth-token');
+    const providerAttr = useAttribute(context, 'provider');
+    const nameAttr = useAttribute(context, 'name');
+    const tursoUrlAttr = useAttribute(context, 'turso-url');
+    const tursoAuthTokenAttr = useAttribute(context, 'turso-auth-token');
 
-    useEffect(host, function evaluateExistingState() {
+    useEffect(context, function evaluateExistingState() {
       console.debug('database-context', 'evaluateExistingState', connection.state, router.route?.pathname, { provider: router.route?.database?.provider });
       if (connection.state === 'init' && router.route) {
         let config = /** @type {DatabaseConfig} */ (/** @type {unknown} */ (undefined));
@@ -341,6 +338,9 @@ function cleanupMigrationSQLText(queries) {
  */
 async function getSchemaVersion(client) {
   try {
+    const tableResult = await client.sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'config'`;
+    if (tableResult.rows.length === 0) return undefined;
+
     const result = await client.sql`SELECT value FROM config WHERE key = 'Schema Version'`;
     if (result.rows.length === 0) return undefined;
     return /** @type {string} */ (result.rows[0].value);

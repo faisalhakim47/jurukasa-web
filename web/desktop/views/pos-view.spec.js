@@ -29,7 +29,7 @@ async function setupView(tursoDatabaseUrl) {
 }
 
 /**
- * @param {import('#test/playwright/tools/database.js').SQLFunction} sql
+ * @param {import('#web/database.js').SQLFunction} sql
  */
 async function setupPOSData(sql) {
   await sql`INSERT INTO inventories (id, name, unit_price, unit_of_measurement, account_code, stock) VALUES (1, 'Product A', 10000, 'piece', 11310, 100)`;

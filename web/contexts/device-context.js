@@ -10,10 +10,8 @@ export class DeviceContextElement extends HTMLElement {
   constructor() {
     super();
 
-    provideContext(this);
-
-    const host = this;
-    const database = useContext(host, DatabaseContextElement);
+    const context = provideContext(this);
+    const database = useContext(context, DatabaseContextElement);
 
     const defaultOptions = new Intl.DateTimeFormat().resolvedOptions();
     const device = reactive({
@@ -23,10 +21,10 @@ export class DeviceContextElement extends HTMLElement {
       locale: defaultOptions.locale || 'en-GB',
     });
 
-    this.isDesktop = useExposed(host, function readIsDesktop() { return device.isDesktop; });
-    this.isMobile = useExposed(host, function readIsMobile() { return device.isMobile; });
-    this.language = useExposed(host, function readLocale() { return device.language; });
-    this.locale = useExposed(host, function readLocale() { return device.locale; });
+    this.isDesktop = useExposed(context, function readIsDesktop() { return device.isDesktop; });
+    this.isMobile = useExposed(context, function readIsMobile() { return device.isMobile; });
+    this.language = useExposed(context, function readLocale() { return device.language; });
+    this.locale = useExposed(context, function readLocale() { return device.locale; });
 
     /**
      * Set the application language
@@ -36,7 +34,7 @@ export class DeviceContextElement extends HTMLElement {
       device.language = languageCode;
     };
 
-    useWindowEventListener(host, 'resize', function syncDeviceOnResize() {
+    useWindowEventListener(context, 'resize', function syncDeviceOnResize() {
       const defaultOptions = new Intl.DateTimeFormat().resolvedOptions();
       device.isDesktop = window.innerWidth > 768;
       device.isMobile = window.innerWidth <= 768;
@@ -44,15 +42,18 @@ export class DeviceContextElement extends HTMLElement {
       device.locale = defaultOptions.locale || 'en-GB';
     });
 
-    useEffect(host, function loadConfig() {
-      database.sql`SELECT value FROM config WHERE key = 'Language'`
+    useEffect(context, function loadConfig() {
+      database.sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'config'`
+        .then(function resolveConfigTable(result) {
+          if (result.rows.length === 0) return undefined;
+          return database.sql`SELECT value FROM config WHERE key = 'Language'`;
+        })
         .then(function resolvedConfig(result) {
-          const configLanguage = String(result.rows[0]?.value || '');
+          const configLanguage = String(result?.rows[0]?.value || '');
           if (configLanguage) device.language = configLanguage;
           else device.language = navigator.language || 'en';
         })
         .catch(function handleError() {
-          // If Language config doesn't exist yet, fall back to navigator language
           device.language = navigator.language || 'en';
         });
     });

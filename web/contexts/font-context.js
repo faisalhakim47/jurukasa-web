@@ -6,10 +6,8 @@ export class FontContextElement extends HTMLElement {
   constructor() {
     super();
 
-    provideContext(this);
-
-    const host = this;
-    const fontResolve = useBusyStateResolver(host);
+    const context = provideContext(this);
+    const fontResolve = useBusyStateResolver(context);
 
     document.fonts.ready.then(fontResolve);
   }

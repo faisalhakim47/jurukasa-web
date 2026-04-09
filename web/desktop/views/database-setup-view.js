@@ -61,7 +61,6 @@ export class DatabaseSetupViewElement extends HTMLElement {
       errorMessage: /** @type {string} */ (undefined),
       selectedLanguage: 'en',
       selectedLanguageDisplay: 'English',
-      configData: /** @type {Record<string, string>|null} */ (null),
     });
 
     const chartForm = reactive({
@@ -70,6 +69,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
     });
 
     const businessFormElementRef = useElement(host, HTMLFormElement);
+    let configData = /** @type {Record<string, string>|null} */ (null);
 
     useConnectedCallback(host, function initiateDefaultLanguage() {
       businessForm.selectedLanguage = device?.language || 'en';
@@ -98,8 +98,8 @@ export class DatabaseSetupViewElement extends HTMLElement {
           )
         `;
         console.debug('database-setup-view', 'fetchConfigData', 'result', JSON.stringify(result.rows));
-        businessForm.configData = Object.fromEntries(result.rows.map(row => [row.key, row.value]));
-        console.debug('database-setup-view', 'fetchConfigData', 'configData', JSON.stringify(businessForm.configData));
+        configData = Object.fromEntries(result.rows.map(row => [row.key, row.value]));
+        console.debug('database-setup-view', 'fetchConfigData', 'configData', JSON.stringify(configData));
 
         // Set input values directly since form.reset() only works with initial HTML attributes
         // Only update if input is empty or database has a value - preserves browser-restored values during back navigation
@@ -107,39 +107,39 @@ export class DatabaseSetupViewElement extends HTMLElement {
           const formEl = businessFormElementRef.value;
           if (!formEl) return;
           const businessNameInput = formEl.elements['business-name'];
-          const businessNameValue = businessForm.configData?.['Business Name'];
-          if (businessNameInput && (businessNameValue || !businessNameInput.value)) {
+          const businessNameValue = configData?.['Business Name'];
+          if (businessNameInput && businessNameInput.dataset.userModified !== 'true') {
             businessNameInput.value = businessNameValue || '';
           }
           const businessTypeInput = formEl.elements['business-type'];
-          const businessTypeValue = businessForm.configData?.['Business Type'];
-          if (businessTypeInput && (businessTypeValue || !businessTypeInput.value)) {
+          const businessTypeValue = configData?.['Business Type'];
+          if (businessTypeInput && businessTypeInput.dataset.userModified !== 'true') {
             businessTypeInput.value = businessTypeValue || 'Small Business';
           }
           const currencyCodeInput = formEl.elements['currency-code'];
-          const currencyCodeValue = businessForm.configData?.['Currency Code'];
-          if (currencyCodeInput && (currencyCodeValue || !currencyCodeInput.value)) {
+          const currencyCodeValue = configData?.['Currency Code'];
+          if (currencyCodeInput && currencyCodeInput.dataset.userModified !== 'true') {
             currencyCodeInput.value = currencyCodeValue || 'IDR';
           }
           const currencyDecimalsInput = formEl.elements['currency-decimals'];
-          const currencyDecimalsValue = businessForm.configData?.['Currency Decimals'];
-          if (currencyDecimalsInput && (currencyDecimalsValue || !currencyDecimalsInput.value)) {
+          const currencyDecimalsValue = configData?.['Currency Decimals'];
+          if (currencyDecimalsInput && currencyDecimalsInput.dataset.userModified !== 'true') {
             currencyDecimalsInput.value = currencyDecimalsValue || '0';
           }
           const localeInput = formEl.elements['locale'];
-          const localeValue = businessForm.configData?.['Locale'];
-          if (localeInput && (localeValue || !localeInput.value)) {
+          const localeValue = configData?.['Locale'];
+          if (localeInput && localeInput.dataset.userModified !== 'true') {
             localeInput.value = localeValue || 'en-ID';
           }
           const fiscalYearInput = formEl.elements['fiscal-year-start-month'];
-          const fiscalYearValue = businessForm.configData?.['Fiscal Year Start Month'];
-          if (fiscalYearInput && (fiscalYearValue || !fiscalYearInput.value)) {
+          const fiscalYearValue = configData?.['Fiscal Year Start Month'];
+          if (fiscalYearInput && fiscalYearInput.dataset.userModified !== 'true') {
             fiscalYearInput.value = fiscalYearValue || '1';
           }
         });
 
         // Update language selection from config if available
-        const configLanguage = businessForm.configData['Language'];
+        const configLanguage = configData?.['Language'];
         if (configLanguage) {
           businessForm.selectedLanguage = configLanguage;
           businessForm.selectedLanguageDisplay = configLanguage === 'id' ? 'Bahasa Indonesia' : 'English';
@@ -229,6 +229,11 @@ export class DatabaseSetupViewElement extends HTMLElement {
       event.preventDefault();
       assertInstanceOf(HTMLFormElement, event.currentTarget);
       const formEl = event.currentTarget;
+      if (!formEl.checkValidity()) {
+        formEl.reportValidity();
+        return;
+      }
+
       const formData = new FormData(formEl);
 
       businessForm.state = 'submitting';
@@ -302,6 +307,14 @@ export class DatabaseSetupViewElement extends HTMLElement {
       for (const li of event.currentTarget.closest('[role="menu"]').children) {
         assertInstanceOf(HTMLButtonElement, li.firstElementChild);
         li.firstElementChild.setAttribute('aria-checked', selectedLanguage === li.firstElementChild.dataset.language ? 'true' : 'false');
+      }
+    }
+
+    /** @param {Event} event */
+    function handleBusinessFormInput(event) {
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+        target.dataset.userModified = 'true';
       }
     }
 
@@ -482,7 +495,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
           style="max-width: 600px; margin: 0 auto;"
           open
         >
-          <form class="container" ?disabled=${formDisabled} @submit=${submitBusinessConfig} ${businessFormElementRef}>
+          <form class="container" ?disabled=${formDisabled} @submit=${submitBusinessConfig} @input=${handleBusinessFormInput} ${businessFormElementRef}>
             <header>
               <button
                 role="button"
@@ -505,35 +518,35 @@ export class DatabaseSetupViewElement extends HTMLElement {
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="business-name">${t('onboarding', 'businessNameLabel')}</label>
-                  <input id="business-name" name="business-name" type="text" placeholder=" " required ?disabled=${formDisabled} value=${businessForm.configData?.['Business Name'] || ''} />
+                  <input id="business-name" name="business-name" type="text" placeholder=" " required ?disabled=${formDisabled} value="" />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="business-type">${t('onboarding', 'businessTypeLabel')}</label>
-                  <input id="business-type" name="business-type" type="text" placeholder=" " required value=${businessForm.configData?.['Business Type'] || 'Small Business'} ?disabled=${formDisabled} />
+                  <input id="business-type" name="business-type" type="text" placeholder=" " required value="Small Business" ?disabled=${formDisabled} />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="currency-code">${t('onboarding', 'businessCurrencyCodeLabel')}</label>
-                  <input id="currency-code" name="currency-code" type="text" placeholder=" " required value=${businessForm.configData?.['Currency Code'] || 'IDR'} ?disabled=${formDisabled} />
+                  <input id="currency-code" name="currency-code" type="text" placeholder=" " required value="IDR" ?disabled=${formDisabled} />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="currency-decimals">${t('onboarding', 'businessCurrencyDecimalsLabel')}</label>
-                  <input id="currency-decimals" name="currency-decimals" type="number" placeholder=" " required value=${businessForm.configData?.['Currency Decimals'] || '0'} ?disabled=${formDisabled} />
+                  <input id="currency-decimals" name="currency-decimals" type="number" placeholder=" " required value="0" ?disabled=${formDisabled} />
                 </div>
               </div>
 
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="locale">${t('onboarding', 'businessLocaleLabel')}</label>
-                  <input id="locale" name="locale" type="text" placeholder=" " required value=${businessForm.configData?.['Locale'] || 'en-ID'} ?disabled=${formDisabled} />
+                  <input id="locale" name="locale" type="text" placeholder=" " required value="en-ID" ?disabled=${formDisabled} />
                 </div>
               </div>
 
@@ -592,7 +605,7 @@ export class DatabaseSetupViewElement extends HTMLElement {
               <div class="outlined-text-field">
                 <div class="container">
                   <label for="fiscal-year-start-month">${t('onboarding', 'businessFiscalYearStartMonthLabel')}</label>
-                  <input id="fiscal-year-start-month" name="fiscal-year-start-month" type="number" min="1" max="12" placeholder=" " required value=${businessForm.configData?.['Fiscal Year Start Month'] || '1'} ?disabled=${formDisabled} />
+                  <input id="fiscal-year-start-month" name="fiscal-year-start-month" type="number" min="1" max="12" placeholder=" " required value="1" ?disabled=${formDisabled} />
                 </div>
               </div>
 

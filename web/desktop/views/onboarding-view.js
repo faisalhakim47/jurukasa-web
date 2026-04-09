@@ -87,9 +87,26 @@ export class OnboardingViewElement extends HTMLElement {
       // Database is connected - check business configuration and accounts
       if (database.state === 'connected') {
         Promise.all([
-          database.sql`SELECT value FROM config WHERE key = 'Business Name' LIMIT 1;`,
-          database.sql`SELECT count(*) AS count FROM accounts;`
+          database.sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'config';`,
+          database.sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'accounts';`,
         ])
+          .then(function resolveRequiredTables([configTableResult, accountsTableResult]) {
+            const hasConfigTable = configTableResult.rows.length > 0;
+            const hasAccountsTable = accountsTableResult.rows.length > 0;
+
+            if (!hasConfigTable && !hasAccountsTable) {
+              return Promise.resolve([{ rows: [] }, { rows: [{ count: 0 }] }]);
+            }
+
+            return Promise.all([
+              hasConfigTable
+                ? database.sql`SELECT value FROM config WHERE key = 'Business Name' LIMIT 1;`
+                : Promise.resolve({ rows: [] }),
+              hasAccountsTable
+                ? database.sql`SELECT count(*) AS count FROM accounts;`
+                : Promise.resolve({ rows: [{ count: 0 }] }),
+            ]);
+          })
           .then(function handleStateCheck([businessResult, accountsResult]) {
             const businessRow = businessResult.rows[0];
             const isBusinessConfigured = String(businessRow?.value || '').trim().length > 0;

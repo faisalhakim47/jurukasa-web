@@ -27,7 +27,7 @@ JuruKasa is point-of-sales (POS) web application with following features:
 - App implement latest Material 3 Expressive by Google as of December 2025.
 - The Material 3 Expressive design system is implemented in plain modern CSS
 - App implement adaptive design principles (instead of responsive design) to achive multi-size screen support.
-- App separate desktop and mobile layout into different web component view.
+- App separates desktop and mobile UI implementation entirely, including the CSS implementation itself. Only few parts are shared, for example the design tokens.
 - App design targeting 2 device sizes:
   1. Small desktop screen 720p (1280x720)
   2. Regular mobile screen size Samsung Galaxy S8 (360x740)

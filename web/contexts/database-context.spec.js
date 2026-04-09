@@ -4,8 +4,7 @@ import { loadEmptyFixture } from '#test/playwright/tools/fixture.js';
 import { useTursoLibSQLiteServer } from '#test/playwright/hooks/use-turso-libsqlite-server.js';
 import { useConsoleOutput } from '#test/playwright/hooks/use-console-output.js';
 import { useStrict } from '#test/playwright/hooks/use-strict.js';
-import { assertInstanceOf } from '#web/tools/assertion.js';
-import { DatabaseContextElement } from '#web/contexts/database-context.js';
+/** @import { DatabaseContextElement } from '#web/contexts/database-context.js' */
 
 const test = jurukasaTest;
 const { describe } = test;
@@ -37,8 +36,8 @@ async function setupTursoView(tursoDatabaseUrl) {
 
 async function getDatabaseState() {
   await customElements.whenDefined('database-context');
-  const database = document.querySelector('database-context');
-  assertInstanceOf(DatabaseContextElement, database);
+  const database = /** @type {DatabaseContextElement | null} */ (document.querySelector('database-context'));
+  if (database === null) throw new Error('database-context element is required');
   return database.state;
 }
 
@@ -53,15 +52,15 @@ async function setupConnectView() {
 }
 
 async function getInitialState() {
-  const database = document.querySelector('database-context');
-  assertInstanceOf(DatabaseContextElement, database);
+  const database = /** @type {DatabaseContextElement | null} */ (document.querySelector('database-context'));
+  if (database === null) throw new Error('database-context element is required');
   return database.state;
 }
 
 /** @param {string} tursoDatabaseUrl */
 async function connectToDatabase(tursoDatabaseUrl) {
-  const database = document.querySelector('database-context');
-  assertInstanceOf(DatabaseContextElement, database);
+  const database = /** @type {DatabaseContextElement | null} */ (document.querySelector('database-context'));
+  if (database === null) throw new Error('database-context element is required');
   await database.connect({
     provider: 'turso',
     name: 'Personal',
@@ -72,8 +71,8 @@ async function connectToDatabase(tursoDatabaseUrl) {
 }
 
 async function executeSqlQuery() {
-  const database = document.querySelector('database-context');
-  assertInstanceOf(DatabaseContextElement, database);
+  const database = /** @type {DatabaseContextElement | null} */ (document.querySelector('database-context'));
+  if (database === null) throw new Error('database-context element is required');
   const result = await database.sql`SELECT value FROM config WHERE key = 'Schema Version'`;
   return result.rows[0]?.value;
 }

@@ -61,7 +61,8 @@ describe('Supplier Selector Dialog', function () {
           supplierSelectorDialog.addEventListener('supplier-select', function (event) {
             if (settled) return;
             settled = true;
-            resolve(event.detail);
+            const customEvent = /** @type {CustomEvent<{ supplierId: number, supplierName: string, phoneNumber: string | null }>} */ (event);
+            resolve(customEvent.detail);
           });
           setTimeout(function () {
             if (settled) return;

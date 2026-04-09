@@ -49,6 +49,7 @@ const journalEntry = {
   statusPosted: 'Terposting',
   statusDraft: 'Draf',
   dateLabel: 'Tanggal',
+  sourceLabel: 'Sumber',
   statusLabel: 'Status',
   workflowLabel: 'Alur Kerja',
   postedDateLabel: 'Tanggal Posting',
@@ -85,17 +86,7 @@ const journalEntry = {
   refColumn: 'Ref',
   amountColumn: 'Jumlah',
 
-  ownerManualLabel: 'Manual',
-  ownerPurchaseLabel: 'Pembelian',
-  ownerSaleLabel: 'Penjualan',
-  ownerStockTakingLabel: 'Stock Opname',
-  ownerFixedAssetLabel: 'Aset Tetap',
-  ownerReconciliationLabel: 'Rekonsiliasi',
-  ownerFiscalYearClosingLabel: 'Penutupan Tahun Buku',
-  ownerFiscalYearReversalLabel: 'Pembalikan Tahun Buku',
-  ownerFiscalYearDepreciationLabel: 'Penyusutan Tahun Buku',
-  ownerFiscalYearDepreciationReversalLabel: 'Pembalikan Penyusutan Tahun Buku',
-
+  filterSourceAll: 'Semua Sumber',
   filterStatusAll: 'Semua Status',
 
   emptyStateTitle: 'Belum ada jurnal umum',

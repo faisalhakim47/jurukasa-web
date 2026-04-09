@@ -12,7 +12,7 @@ const appPrefix = join(__dirname, '../');
 async function generateImports(dir) {
   const importStatements = (await readdir(join(appPrefix, dir)))
     .filter(function component(filename) {
-      return filename.endsWith('.js') && !filename.endsWith('.spec.js');
+      return filename.endsWith('.js') && !filename.endsWith('.spec.js') && !filename.endsWith('.test.js');
     })
     .map(function renderImport(filename) {
       return `import '#${dir}/${filename}';`;

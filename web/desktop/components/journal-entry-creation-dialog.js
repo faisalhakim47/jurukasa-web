@@ -49,11 +49,16 @@ import '#web/desktop/components/account-selector-dialog.js';
  * @fires journal-entry-created - Fired when a journal entry is successfully created. Detail: { ref: number, posted: boolean }
  * 
  * @example
+ * const handleJournalEntryCreated = function (event) {
+ *   console.log('Created:', event.detail);
+ * };
+ * html`
  * <button type="button" commandfor="journal-entry-creation-dialog" command="--open">Create Entry</button>
  * <journal-entry-creation-dialog
  *   id="journal-entry-creation-dialog"
- *   @journal-entry-created=${(e) => console.log('Created:', e.detail)}
+ *   @journal-entry-created=${handleJournalEntryCreated}
  * ></journal-entry-creation-dialog>
+ * `;
  */
 export class JournalEntryCreationDialogElement extends HTMLElement {
   constructor() {
@@ -238,7 +243,7 @@ export class JournalEntryCreationDialogElement extends HTMLElement {
 
     const initialEntryDatetime = computed(function initialEntryDatetime() {
       if (dialog.open) {
-        const now = time.currentDate();
+        const now = time.newDate();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       }
     });

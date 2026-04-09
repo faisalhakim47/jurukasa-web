@@ -43,6 +43,9 @@ export default /** @type {Partial<FinancialReportTranslation>} */ ({
   // Balance Sheet
   balanceSheetTableLabel: 'Neraca',
   amountColumnHeader: 'Jumlah',
+  classificationAssets: 'Aset',
+  classificationLiabilities: 'Liabilitas',
+  classificationEquity: 'Ekuitas',
   categoryCurrentAssets: 'Aset Lancar',
   categoryNonCurrentAssets: 'Aset Tidak Lancar',
   categoryCurrentLiabilities: 'Liabilitas Jangka Pendek',

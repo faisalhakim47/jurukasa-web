@@ -48,6 +48,7 @@ import '#web/contexts/i18n-context.js';
 import '#web/contexts/ready-context.js';
 import '#web/contexts/router-context.js';
 import '#web/contexts/service-worker-context.js';
+import '#web/contexts/session-context.js';
 import '#web/contexts/time-context.js';
 
 import '#web/databases/local.js';
@@ -111,6 +112,7 @@ import '#web/desktop/views/purchases-view.js';
 import '#web/desktop/views/reconciliation-view.js';
 import '#web/desktop/views/sale-view.js';
 import '#web/desktop/views/sales-view.js';
+import '#web/desktop/views/session-selector-view.js';
 import '#web/desktop/views/settings-view.js';
 import '#web/desktop/views/stock-taking-creation-view.js';
 import '#web/desktop/views/stock-takings-view.js';

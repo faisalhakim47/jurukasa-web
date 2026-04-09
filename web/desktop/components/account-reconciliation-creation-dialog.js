@@ -59,7 +59,7 @@ export class AccountReconciliationCreationDialogElement extends HTMLElement {
       state.formError = null;
       state.accountCode = null;
       state.accountName = '';
-      state.checkpointTime = time.currentDate().toISOString().slice(0, 16);
+      state.checkpointTime = time.newDate().toISOString().slice(0, 16);
       state.externalBalance = '';
       state.note = '';
       state.bookBalance = 0;
@@ -178,7 +178,7 @@ export class AccountReconciliationCreationDialogElement extends HTMLElement {
             ${externalBalance},
             (SELECT COALESCE(MAX(ref), 0) + 1 FROM journal_entries),
             ${state.note || null},
-            ${time.currentDate().getTime()}
+            ${time.newDate().getTime()}
           ) RETURNING id
         `;
 

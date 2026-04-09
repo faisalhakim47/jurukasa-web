@@ -179,7 +179,7 @@ export class PurchaseDetailsDialogElement extends HTMLElement {
         state.actionState = 'processing';
         state.actionError = null;
 
-        const postTime = time.currentDate().getTime();
+        const postTime = time.newDate().getTime();
         const journalEntryRef = await allocateJournalEntryRef(tx);
 
         await tx.sql`

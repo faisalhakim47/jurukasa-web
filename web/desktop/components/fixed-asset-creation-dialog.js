@@ -178,7 +178,7 @@ export class FixedAssetCreationDialogElement extends HTMLElement {
 
         if (acquisitionTime <= 0) throw new Error(t('fixedAsset', 'invalidAcquisitionDate'));
 
-        const currentTime = time.currentDate().getTime();
+        const currentTime = time.newDate().getTime();
         const journalEntryRef = await allocateJournalEntryRef(tx);
 
         // Insert fixed asset

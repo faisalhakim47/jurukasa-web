@@ -53,7 +53,7 @@ export async function setupDatabase(tursoLibSQLiteServer, setup) {
       });
       return {
         rows: result.rows,
-        lastInsertRowId: Number(result.lastInsertRowId),
+        lastInsertRowId: Number(result.lastInsertRowid),
         rowsAffected: result.rowsAffected,
       };
     });

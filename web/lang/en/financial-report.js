@@ -41,6 +41,9 @@ const financialReport = {
   // Balance Sheet
   balanceSheetTableLabel: 'Balance Sheet',
   amountColumnHeader: 'Amount',
+  classificationAssets: 'Assets',
+  classificationLiabilities: 'Liabilities',
+  classificationEquity: 'Equity',
   categoryCurrentAssets: 'Current Assets',
   categoryNonCurrentAssets: 'Non-Current Assets',
   categoryCurrentLiabilities: 'Current Liabilities',

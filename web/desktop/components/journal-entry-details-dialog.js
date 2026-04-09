@@ -206,7 +206,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
         state.actionState = 'processing';
         state.actionError = null;
 
-        const postTime = time.currentDate().getTime();
+        const postTime = time.newDate().getTime();
 
         await tx.sql`
           UPDATE journal_entries
@@ -276,7 +276,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
         state.actionState = 'processing';
         state.actionError = null;
 
-        const entryTime = time.currentDate().getTime();
+        const entryTime = time.newDate().getTime();
         const postTime = entryTime;
         const originalRef = state.journalEntry.ref;
         const originalNote = state.journalEntry.note;
@@ -445,7 +445,7 @@ export class JournalEntryDetailsDialogElement extends HTMLElement {
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${renderStatusBadge()}</dd>
 
             <dt style="color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'workflowLabel')}</dt>
-            <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${getJournalEntryOwnerLabel(state.journalEntry.owner_type, t)}</dd>
+            <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${getJournalEntryOwnerLabel(state.journalEntry.owner_type, l)}</dd>
 
             <dt style="color: var(--md-sys-color-on-surface-variant);">${t('journalEntry', 'postedDateLabel')}</dt>
             <dd style="margin: 0; color: var(--md-sys-color-on-surface);">${isPosted ? i18n.date.format(state.journalEntry.post_time) : t('journalEntry', 'unpostedLabel')}</dd>

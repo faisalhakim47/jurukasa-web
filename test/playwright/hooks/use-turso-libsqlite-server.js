@@ -28,7 +28,8 @@ export function useTursoLibSQLiteServer(test) {
         break;
       }
       catch (error) {
-        if (attempt > maxRetries) throw new Error(`Failed to start Turso LibSQLite server after ${maxRetries} attempts: ${error?.message}`);
+        const message = error instanceof Error ? error.message : String(error);
+        if (attempt >= maxRetries) throw new Error(`Failed to start Turso LibSQLite server after ${maxRetries} attempts: ${message}`);
       }
       attempt += 1;
     }

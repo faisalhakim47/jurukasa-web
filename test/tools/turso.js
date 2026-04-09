@@ -12,6 +12,8 @@ import { mkdir, rm } from 'node:fs/promises';
 export async function startTursoLibSQLiteServer(config) {
   return await new Promise(async function spawnTursoProcess(resolve, reject) {
     let settled = true;
+    let tursoExited = false;
+    let tursoExitMessage = '';
 
     if (typeof config?.authToken === 'string') {
       throw new Error('authToken config on TursoLibSQLiteServer is not implemented yet. Require cryptographic key. The key is either a PKCS#8-encoded Ed25519 public key in PEM, or just plain bytes of the Ed25519 public key in URL-safe base64.');
@@ -37,11 +39,21 @@ export async function startTursoLibSQLiteServer(config) {
       }
     }
 
+    tursoProcess.on('exit', function handleTursoExit(code, signal) {
+      tursoExited = true;
+      tursoExitMessage = `code=${code ?? 'null'} signal=${signal ?? 'null'}`;
+      rejectWithMessage(tursoExitMessage);
+    });
+
     tursoProcess.stderr.addListener('data', function tursoProcessStderr(data) {
       rejectWithMessage(data.toString());
     });
 
-    await waitForTursoSQLiteServerReady(tursoDevPort);
+    await waitForTursoSQLiteServerReady(tursoDevPort, function isTursoProcessAlive() {
+      return tursoExited === false;
+    }, function getTursoExitMessage() {
+      return tursoExitMessage;
+    });
 
     if (settled) {
       settled = false;
@@ -65,19 +77,30 @@ export async function startTursoLibSQLiteServer(config) {
   });
 }
 
-/** @param {number} port */
-async function waitForTursoSQLiteServerReady(port) {
+/**
+ * @param {number} port
+ * @param {function(): boolean} isProcessAlive
+ * @param {function(): string} getExitMessage
+ */
+async function waitForTursoSQLiteServerReady(port, isProcessAlive, getExitMessage) {
   const url = `http://127.0.0.1:${port}`;
-  const maxWait = 5000;
+  const maxWait = 15000;
   const startTime = Date.now();
   while (Date.now() - startTime < maxWait) {
+    if (isProcessAlive() === false) {
+      throw new Error(`Turso server at port ${port} exited before becoming ready: ${getExitMessage()}`);
+    }
+
+    let client = /** @type {ReturnType<typeof createClient> | null} */ (null);
     try {
-      const client = createClient({ url });
+      client = createClient({ url });
       await client.execute('SELECT name FROM sqlite_master LIMIT 1;');
       client.close();
       return;
     }
-    catch { /** We can safely ignore it. */ }
+    catch {
+      if (client) client.close();
+    }
   }
   throw new Error(`Turso server at port ${port} did not become ready within ${maxWait}ms`);
 }

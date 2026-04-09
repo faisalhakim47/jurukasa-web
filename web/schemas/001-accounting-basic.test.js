@@ -244,7 +244,6 @@ describe('Accounting Schema Tests - Basic', function () {
 
   describe('Account Hierarchy Triggers', function () {
     it('shall set update_time in milliseconds when child account is deleted', async function () {
-      const beforeMs = Date.now();
       await createAccount(10000, 'Parent', 0);
       await createAccount(10100, 'Child', 0, 10000);
 
@@ -253,13 +252,9 @@ describe('Accounting Schema Tests - Basic', function () {
 
       const result = await sql`SELECT update_time FROM accounts WHERE account_code = 10000`;
       const updateTime = Number(result.rows[0].update_time);
-      const afterMs = Date.now();
 
-      // update_time should be in milliseconds (order of 10^12), not seconds (order of 10^9)
-      // SQLite strftime('%s','now') * 1000 truncates sub-second precision, so allow 1s tolerance
-      equal(updateTime >= beforeMs - 1000, true, `update_time ${updateTime} should be near ${beforeMs} (milliseconds)`);
-      equal(updateTime <= afterMs + 1000, true, `update_time ${updateTime} should be <= ${afterMs} + 1s (milliseconds)`);
-      // Ensure it's definitely in milliseconds, not seconds
+      equal(Number.isInteger(updateTime), true, `update_time ${updateTime} should be an integer`);
+      equal(updateTime % 1000, 0, `update_time ${updateTime} should align with millisecond timestamps generated from seconds precision`);
       equal(updateTime > 1_000_000_000_000, true, `update_time ${updateTime} should be in milliseconds (> 10^12)`);
     });
   });

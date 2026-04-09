@@ -26,7 +26,7 @@ export class ServiceWorkerContextElement extends HTMLElement {
       messageId: 0,
     });
 
-    const disabled = useAttribute(host, 'disabled');
+    const disabled = useAttribute(host, 'disabled', null);
     const resolveReady = useBusyStateResolver(host);
 
     useConnectedCallback(host, function registerServiceWorker() {
@@ -141,7 +141,7 @@ export class ServiceWorkerContextElement extends HTMLElement {
     this.sendMessage = sendMessage;
 
     async function hotfixSqlite3OpfsAsyncProxy() {
-      if (typeof disabled.value === null) {
+      if (disabled.value === null) {
         await sendMessage({ command: 'hotfix-sqlite3-opfs-async-proxy' }, 5 * 1000);
       }
     }

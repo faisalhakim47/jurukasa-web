@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  getJournalEntryOwnerLabel,
   normalizeError,
   normalizeJournalEntryError,
   normalizeLiteralError,
@@ -22,6 +23,15 @@ test('normalizeError wraps non-Error values', function () {
   const normalized = normalizeError('plain failure');
 
   assert.equal(normalized.message, 'plain failure');
+});
+
+test('getJournalEntryOwnerLabel uses literal translation', function () {
+  const literal = createLiteral({
+    Purchase: 'Pembelian',
+  });
+
+  assert.equal(getJournalEntryOwnerLabel('Purchase', literal), 'Pembelian');
+  assert.equal(getJournalEntryOwnerLabel('Manual', literal), 'Manual');
 });
 
 test('normalizeLiteralError returns translated message when literal entry exists', function () {

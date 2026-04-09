@@ -6,7 +6,7 @@
  * for desktop/tablet layouts. It provides access to primary destinations.
  *
  * HTML STRUCTURE:
- * <nav aria-label="Main Navigation">
+ * <nav data-navigation="main" aria-label="Main Navigation">
  *   <a is="a[is="router-link"]" href="/" aria-current="page">
  *     <material-symbols name="dashboard"></material-symbols>
  *     <span>Dashboard</span>
@@ -27,7 +27,7 @@
    # 1. Base Container
    ================================================================= */
 
-nav[aria-label="Main Navigation"] {
+nav[data-navigation="main"] {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -43,7 +43,7 @@ nav[aria-label="Main Navigation"] {
    # 2. Navigation Destinations (Links)
    ================================================================= */
 
-nav[aria-label="Main Navigation"]>a[is="router-link"] {
+nav[data-navigation="main"]>a[is="router-link"] {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -69,7 +69,7 @@ nav[aria-label="Main Navigation"]>a[is="router-link"] {
    # 3. Icon Container (Indicator Background)
    ================================================================= */
 
-nav[aria-label="Main Navigation"]>a[is="router-link"]>material-symbols {
+nav[data-navigation="main"]>a[is="router-link"]>material-symbols {
   position: relative;
   display: flex;
   align-items: center;
@@ -85,7 +85,7 @@ nav[aria-label="Main Navigation"]>a[is="router-link"]>material-symbols {
   transition-timing-function: var(--md-sys-motion-easing-emphasized);
 }
 
-nav[aria-label="Main Navigation"]>a[is="router-link"]>material-symbols>svg {
+nav[data-navigation="main"]>a[is="router-link"]>material-symbols>svg {
   width: 24px;
   height: 24px;
 }
@@ -94,7 +94,7 @@ nav[aria-label="Main Navigation"]>a[is="router-link"]>material-symbols>svg {
    # 4. Label
    ================================================================= */
 
-nav[aria-label="Main Navigation"]>a[is="router-link"]>span {
+nav[data-navigation="main"]>a[is="router-link"]>span {
   display: block;
   overflow: hidden;
   max-width: 72px;
@@ -113,22 +113,22 @@ nav[aria-label="Main Navigation"]>a[is="router-link"]>span {
    ================================================================= */
 
 /* ## 5.1. Hover State */
-nav[aria-label="Main Navigation"]>a[is="router-link"]:hover>material-symbols {
+nav[data-navigation="main"]>a[is="router-link"]:hover>material-symbols {
   background-color: color-mix(in srgb, var(--md-sys-color-on-surface) var(--md-sys-state-hover-state-layer-opacity), transparent);
 }
 
 /* ## 5.2. Focus State */
-nav[aria-label="Main Navigation"]>a[is="router-link"]:focus-visible {
+nav[data-navigation="main"]>a[is="router-link"]:focus-visible {
   outline: 2px solid var(--md-sys-color-primary);
   outline-offset: 2px;
 }
 
-nav[aria-label="Main Navigation"]>a[is="router-link"]:focus-visible>material-symbols {
+nav[data-navigation="main"]>a[is="router-link"]:focus-visible>material-symbols {
   background-color: color-mix(in srgb, var(--md-sys-color-on-surface) var(--md-sys-state-focus-state-layer-opacity), transparent);
 }
 
 /* ## 5.3. Pressed State */
-nav[aria-label="Main Navigation"]>a[is="router-link"]:active>material-symbols {
+nav[data-navigation="main"]>a[is="router-link"]:active>material-symbols {
   background-color: color-mix(in srgb, var(--md-sys-color-on-surface) var(--md-sys-state-pressed-state-layer-opacity), transparent);
 }
 
@@ -136,17 +136,17 @@ nav[aria-label="Main Navigation"]>a[is="router-link"]:active>material-symbols {
    # 6. Active/Selected State (aria-current="page")
    ================================================================= */
 
-nav[aria-label="Main Navigation"]>a[is="router-link"]:is(.active, [aria-current="page"]) {
+nav[data-navigation="main"]>a[is="router-link"]:is(.active, [aria-current="page"]) {
   color: var(--md-sys-color-on-surface);
 }
 
-nav[aria-label="Main Navigation"]>a[is="router-link"]:is(.active, [aria-current="page"])>material-symbols {
+nav[data-navigation="main"]>a[is="router-link"]:is(.active, [aria-current="page"])>material-symbols {
   background-color: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
 }
 
 /* Active state hover */
-nav[aria-label="Main Navigation"]>a[is="router-link"]:is(.active, [aria-current="page"]):hover>material-symbols {
+nav[data-navigation="main"]>a[is="router-link"]:is(.active, [aria-current="page"]):hover>material-symbols {
   background-color: color-mix(
     in srgb,
     var(--md-sys-color-secondary-container) 100%,
@@ -155,7 +155,7 @@ nav[aria-label="Main Navigation"]>a[is="router-link"]:is(.active, [aria-current=
 }
 
 /* Active label weight */
-nav[aria-label="Main Navigation"]>a[is="router-link"]:is(.active, [aria-current="page"])>span {
+nav[data-navigation="main"]>a[is="router-link"]:is(.active, [aria-current="page"])>span {
   font-weight: 600;
 }
 
@@ -163,7 +163,7 @@ nav[aria-label="Main Navigation"]>a[is="router-link"]:is(.active, [aria-current=
    # 7. Divider
    ================================================================= */
 
-nav[aria-label="Main Navigation"]>hr {
+nav[data-navigation="main"]>hr {
   width: 32px;
   height: 1px;
   margin: 8px 0;
@@ -175,6 +175,6 @@ nav[aria-label="Main Navigation"]>hr {
    # 8. Spacer (Flex Grow for pushing items to bottom)
    ================================================================= */
 
-nav[aria-label="Main Navigation"]>[style*="flex-grow"] {
+nav[data-navigation="main"]>[style*="flex-grow"] {
   flex-grow: 1;
 }

@@ -9,7 +9,7 @@ import { useAdoptedStyleSheets } from '#web/hooks/use-adopted-style-sheets.js';
 import { useContext } from '#web/hooks/use-context.js';
 import { useEffect } from '#web/hooks/use-effect.js';
 import { useRender } from '#web/hooks/use-render.js';
-import { useTranslator } from '#web/hooks/use-translator.js';
+import { useLiteral, useTranslator } from '#web/hooks/use-translator.js';
 import { webStyleSheets } from '#web/desktop/styles.js';
 import { assertInstanceOf } from '#web/tools/assertion.js';
 import {
@@ -32,8 +32,22 @@ import '#web/desktop/components/material-symbols.js';
  */
 
 const statusTypes = /** @type {const} */ (['All', 'Posted', 'Draft']);
+const sourceTypes = /** @type {const} */ ([
+  'All',
+  'Manual',
+  'Purchase',
+  'Sale',
+  'Stock Taking',
+  'Fixed Asset',
+  'Reconciliation',
+  'Fiscal Year Closing',
+  'Fiscal Year Reversal',
+  'Fiscal Year Depreciation',
+  'Fiscal Year Depreciation Reversal',
+]);
 
 /** @typedef {typeof statusTypes[number]} StatusType */
+/** @typedef {typeof sourceTypes[number]} SourceType */
 
 export class JournalEntriesViewElement extends HTMLElement {
   constructor() {
@@ -44,6 +58,7 @@ export class JournalEntriesViewElement extends HTMLElement {
     const i18n = useContext(host, I18nContextElement);
 
     const t = useTranslator(host);
+    const l = useLiteral(host);
     const render = useRender(host);
     useAdoptedStyleSheets(host, webStyleSheets);
 
@@ -53,6 +68,7 @@ export class JournalEntriesViewElement extends HTMLElement {
       journalEntries: /** @type {JournalEntryRow[]} */ ([]),
       isLoading: true,
       error: /** @type {Error | null} */ (null),
+      sourceFilter: /** @type {SourceType} */ ('All'),
       statusFilter: /** @type {StatusType} */ ('All'),
       currentPage: 1,
       totalCount: 0,
@@ -71,6 +87,7 @@ export class JournalEntriesViewElement extends HTMLElement {
         state.isLoading = true;
         state.error = null;
 
+        const sourceFilterValue = state.sourceFilter === 'All' ? null : state.sourceFilter;
         const statusFilterValue = state.statusFilter === 'All' ? null : state.statusFilter;
         const offset = (state.currentPage - 1) * pageSize;
 
@@ -80,6 +97,38 @@ export class JournalEntriesViewElement extends HTMLElement {
           WHERE (${statusFilterValue} IS NULL
             OR (${statusFilterValue} = 'Posted' AND je.post_time IS NOT NULL)
             OR (${statusFilterValue} = 'Draft' AND je.post_time IS NULL))
+            AND (${sourceFilterValue} IS NULL
+              OR (${sourceFilterValue} = 'Purchase' AND je.purchase_id IS NOT NULL)
+              OR (${sourceFilterValue} = 'Sale' AND je.sale_id IS NOT NULL)
+              OR (${sourceFilterValue} = 'Stock Taking' AND je.stock_taking_id IS NOT NULL)
+              OR (${sourceFilterValue} = 'Fixed Asset' AND je.fixed_asset_id IS NOT NULL)
+              OR (${sourceFilterValue} = 'Reconciliation' AND je.reconciliation_id IS NOT NULL)
+              OR (${sourceFilterValue} = 'Fiscal Year Closing' AND EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.closing_journal_entry_ref = je.ref
+              ))
+              OR (${sourceFilterValue} = 'Fiscal Year Reversal' AND EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.reversal_journal_entry_ref = je.ref
+              ))
+              OR (${sourceFilterValue} = 'Fiscal Year Depreciation' AND EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.depreciation_journal_entry_ref = je.ref
+              ))
+              OR (${sourceFilterValue} = 'Fiscal Year Depreciation Reversal' AND EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.depreciation_reversal_journal_entry_ref = je.ref
+              ))
+              OR (${sourceFilterValue} = 'Manual'
+                AND je.purchase_id IS NULL
+                AND je.sale_id IS NULL
+                AND je.stock_taking_id IS NULL
+                AND je.fixed_asset_id IS NULL
+                AND je.reconciliation_id IS NULL
+                AND NOT EXISTS(
+                  SELECT 1
+                  FROM fiscal_years fy
+                  WHERE fy.closing_journal_entry_ref = je.ref
+                    OR fy.reversal_journal_entry_ref = je.ref
+                    OR fy.depreciation_journal_entry_ref = je.ref
+                    OR fy.depreciation_reversal_journal_entry_ref = je.ref
+                )))
         `;
         state.totalCount = Number(countResult.rows[0].count);
 
@@ -112,6 +161,38 @@ export class JournalEntriesViewElement extends HTMLElement {
           WHERE (${statusFilterValue} IS NULL
             OR (${statusFilterValue} = 'Posted' AND je.post_time IS NOT NULL)
             OR (${statusFilterValue} = 'Draft' AND je.post_time IS NULL))
+            AND (${sourceFilterValue} IS NULL
+              OR (${sourceFilterValue} = 'Purchase' AND je.purchase_id IS NOT NULL)
+              OR (${sourceFilterValue} = 'Sale' AND je.sale_id IS NOT NULL)
+              OR (${sourceFilterValue} = 'Stock Taking' AND je.stock_taking_id IS NOT NULL)
+              OR (${sourceFilterValue} = 'Fixed Asset' AND je.fixed_asset_id IS NOT NULL)
+              OR (${sourceFilterValue} = 'Reconciliation' AND je.reconciliation_id IS NOT NULL)
+              OR (${sourceFilterValue} = 'Fiscal Year Closing' AND EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.closing_journal_entry_ref = je.ref
+              ))
+              OR (${sourceFilterValue} = 'Fiscal Year Reversal' AND EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.reversal_journal_entry_ref = je.ref
+              ))
+              OR (${sourceFilterValue} = 'Fiscal Year Depreciation' AND EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.depreciation_journal_entry_ref = je.ref
+              ))
+              OR (${sourceFilterValue} = 'Fiscal Year Depreciation Reversal' AND EXISTS(
+                SELECT 1 FROM fiscal_years fy WHERE fy.depreciation_reversal_journal_entry_ref = je.ref
+              ))
+              OR (${sourceFilterValue} = 'Manual'
+                AND je.purchase_id IS NULL
+                AND je.sale_id IS NULL
+                AND je.stock_taking_id IS NULL
+                AND je.fixed_asset_id IS NULL
+                AND je.reconciliation_id IS NULL
+                AND NOT EXISTS(
+                  SELECT 1
+                  FROM fiscal_years fy
+                  WHERE fy.closing_journal_entry_ref = je.ref
+                    OR fy.reversal_journal_entry_ref = je.ref
+                    OR fy.depreciation_journal_entry_ref = je.ref
+                    OR fy.depreciation_reversal_journal_entry_ref = je.ref
+                )))
           GROUP BY je.ref
           ORDER BY je.entry_time DESC, je.ref DESC
           LIMIT ${pageSize} OFFSET ${offset}
@@ -154,6 +235,14 @@ export class JournalEntriesViewElement extends HTMLElement {
     function handleStatusFilterChange(event) {
       assertInstanceOf(HTMLButtonElement, event.currentTarget);
       state.statusFilter = /** @type {StatusType} */ (event.currentTarget.dataset.statusType);
+      state.currentPage = 1;
+      loadJournalEntries();
+    }
+
+    /** @param {Event} event */
+    function handleSourceFilterChange(event) {
+      assertInstanceOf(HTMLButtonElement, event.currentTarget);
+      state.sourceFilter = /** @type {SourceType} */ (event.currentTarget.dataset.sourceType);
       state.currentPage = 1;
       loadJournalEntries();
     }
@@ -251,7 +340,7 @@ export class JournalEntriesViewElement extends HTMLElement {
     function renderJournalEntryRow(journalEntry) {
       const isPosted = journalEntry.post_time !== null;
       const statusLabel = isPosted ? t('journalEntry', 'statusPosted') : t('journalEntry', 'statusDraft');
-      const ownerLabel = getJournalEntryOwnerLabel(journalEntry.owner_type, t);
+      const ownerLabel = getJournalEntryOwnerLabel(journalEntry.owner_type, l);
 
       return html`
         <tr>
@@ -406,12 +495,53 @@ export class JournalEntriesViewElement extends HTMLElement {
       return statusType;
     }
 
+    /** @param {SourceType} sourceType */
+    function getSourceLabel(sourceType) {
+      if (sourceType === 'All') return t('journalEntry', 'filterSourceAll');
+      return getJournalEntryOwnerLabel(sourceType, l);
+    }
+
     useEffect(host, function renderJournalEntriesView() {
       render(html`
         <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px 24px 0px;">
           <header style="--md-sys-density: -4; display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; flex-direction: row; gap: 12px; align-items: center; justify-content: space-between; width: 100%;">
               <div style="display: flex; flex-direction: row; gap: 12px; align-items: center;">
+                <div class="outlined-text-field" style="min-width: 160px; anchor-name: --source-menu-anchor;">
+                  <div class="container">
+                    <label for="source-filter-input">${t('journalEntry', 'sourceLabel')}</label>
+                    <input
+                      id="source-filter-input"
+                      type="button"
+                      value="${getSourceLabel(state.sourceFilter)}"
+                      popovertarget="source-menu"
+                      popovertargetaction="show"
+                      placeholder=" "
+                      aria-label="${t('journalEntry', 'sourceLabel')}"
+                    />
+                    <label for="source-filter-input" class="trailing-icon" aria-hidden="true">
+                      <material-symbols name="arrow_drop_down"></material-symbols>
+                    </label>
+                  </div>
+                </div>
+                <menu role="menu" popover id="source-menu" class="dropdown" style="position-anchor: --source-menu-anchor">
+                  ${sourceTypes.map((sourceType) => html`
+                    <li>
+                      <button
+                        role="menuitemradio"
+                        aria-checked=${state.sourceFilter === sourceType ? 'true' : 'false'}
+                        type="button"
+                        popovertarget="source-menu"
+                        popovertargetaction="hide"
+                        data-source-type="${sourceType}"
+                        @click=${handleSourceFilterChange}
+                      >
+                        ${state.sourceFilter === sourceType ? html`<material-symbols name="check"></material-symbols>` : nothing}
+                        ${getSourceLabel(sourceType)}
+                      </button>
+                    </li>
+                  `)}
+                </menu>
                 <div class="outlined-text-field" style="min-width: 160px; anchor-name: --status-menu-anchor;">
                   <div class="container">
                     <label for="status-filter-input">${t('journalEntry', 'statusLabel')}</label>

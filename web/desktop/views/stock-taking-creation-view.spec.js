@@ -33,12 +33,11 @@ async function setupView(tursoDatabaseUrl) {
 
 function mockDateTo2025_01_16() {
   const mockNow = new Date('2025-01-16T00:00:00Z').getTime();
-  // eslint-disable-next-line no-global-assign
-  Date = class extends Date {
+  globalThis.Date = /** @type {DateConstructor} */ (/** @type {unknown} */ (class MockDate extends Date {
     static now() {
       return mockNow;
     }
-  };
+  }));
 }
 
 async function setupThreeInventories(sql) {

@@ -164,8 +164,6 @@ describe('Books View', function () {
 
     await page.getByRole('textbox', { name: 'Search', exact: true }).fill('Kas & Bank');
 
-    await page.pause();
-
     await expect(coaTree.getByRole('row'), 'it shall display header plus 1 filtered account after search').toHaveCount(2);
   });
 

@@ -129,10 +129,13 @@ describe('Balance Report Creation Dialog', function () {
     // Remove required attribute and clear the datetime input to trigger validation error
     // Empty string will cause new Date('').getTime() to return NaN
     const dateTimeInput = page.getByLabel('Report Date & Time', { exact: true });
-    await dateTimeInput.evaluate(function removeRequiredAndClear(el) {
+    await dateTimeInput.evaluate(
+      /** @param {HTMLInputElement} el */
+      function removeRequiredAndClear(el) {
       el.removeAttribute('required');
       el.value = '';
-    });
+      }
+    );
 
     await page.getByRole('dialog').getByRole('button', { name: 'Generate Report' }).click();
 

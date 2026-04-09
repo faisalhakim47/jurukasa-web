@@ -18,10 +18,10 @@ export class ReadyContextElement extends HTMLElement {
   constructor() {
     super();
 
-    provideContext(this);
+    document.createElement;
 
-    const host = this;
-    let shadowRoot = host.shadowRoot;
+    const context = provideContext(this);
+    let shadowRoot = context.shadowRoot;
     if (shadowRoot instanceof ShadowRoot) {
       const existingBusyDialog = shadowRoot.querySelector('dialog[aria-busy="true"]');
       if (existingBusyDialog instanceof HTMLDialogElement) { /* the busy dialog is present, nothing to do. */ }
@@ -51,7 +51,7 @@ export class ReadyContextElement extends HTMLElement {
     /** @type {PromiseWithResolvers<void>} */
     const { promise: readyPromise, resolve: resolveReady } = Promise.withResolvers();
 
-    useWindowEventListener(host, 'load', async function resolveBusyResolvers() {
+    useWindowEventListener(context, 'load', async function resolveBusyResolvers() {
       while (pendingResolvers.length) {
         const resolves = pendingResolvers;
         pendingResolvers = [];
@@ -76,7 +76,7 @@ export class ReadyContextElement extends HTMLElement {
 
     readyPromise.then(function dispatchReadyEvent() {
       console.debug('ready-context', 'ready-context:ready');
-      host.dispatchEvent(new CustomEvent('ready-context:ready', {
+      context.dispatchEvent(new CustomEvent('ready-context:ready', {
         bubbles: true,
         composed: false,
       }));
@@ -90,7 +90,7 @@ export class ReadyContextElement extends HTMLElement {
       });
     }
 
-    host.addEventListener('ready-context:request', onRequestReady);
+    context.addEventListener('ready-context:request', onRequestReady);
   }
 
   /** @returns {Promise<void>} */
